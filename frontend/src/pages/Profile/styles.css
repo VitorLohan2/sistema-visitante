@@ -1,0 +1,281 @@
+/* styles.css */
+.profile-container {
+  width: 100%;
+  max-width: 1180px;
+  padding: 0 30px;
+  margin: 32px auto;
+}
+
+.profile-container header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap; /* Permite quebra controlada */
+}
+
+.profile-container header span {
+  font-size: 20px;
+  margin-left: 24px;
+  max-width: 300px;;
+}
+
+.profile-container header img {
+  height: 64px;
+}
+
+.profile-container header a {
+  width: 260px;
+  margin-left: auto;
+  margin-top: 0;
+}
+
+.profile-container header button {
+  height: 60px;
+  width: 60px;
+  border-radius: 4px;
+  border: 1px solid #dcdce6;
+  background: transparent;
+  margin-left: 16px;
+  transition: border-color 0.2s;
+}
+
+.profile-container header button:hover {
+  border-color: #999;
+}
+
+.profile-container h1 {
+  margin-top: 40px;
+  margin-bottom: 24px;
+}
+
+/* Estilos da tabela simples */
+.simple-table {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.simple-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.simple-table th, 
+.simple-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+  vertical-align: middle;
+  height: 60px; /* ou outro valor fixo que padronize */
+}
+
+.simple-table th {
+  font-weight: 500;
+}
+
+.simple-table button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border: 1px solid #dcdce6;
+}
+
+.simple-table button:hover {
+  opacity: 0.5;
+  color: #666666;
+}
+
+.actions {
+  display: flex;
+  align-items:center;
+  justify-content: left; /*POSIÇÃO DOS BOTÕES*/
+  gap: 8px;
+  height: 100%;
+}
+
+.visit-button {
+  color: #4CAF50; /* Verde para o botão de visita */
+}
+.visit-button:hover {
+  border-color: #4CAF50;
+}
+
+.delete-button {
+  color: #e02041; /* Vermelho para o botão de deletar */
+}
+.delete-button:hover {
+  border-color: #e02041;
+}
+
+.edit-button {
+  color: #20a3e0; /* Azul para o botão de deletar */
+}
+.edit-button:hover {
+  border-color: #20a3e0;
+}
+
+.view-button {
+  color: #000000; /* Azul claro para indicar visualização */
+}
+.view-button:hover {
+  border-color: #000;
+}
+
+
+/* Adicione ao final do seu arquivo CSS */
+
+.page-header {
+  display: flex;
+  align-items: center;
+  margin-top: 80px;
+  margin-bottom: 24px;
+  gap: 16px;
+}
+
+.visitors-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #41414d;
+  border: 0;
+  padding: 10px 15px;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.history-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #41414d;
+  border: 0;
+  padding: 10px 15px;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.visitors-link span {
+  color: #fff;
+  background-color: #41414d;
+}
+
+.visitors-link .icone2 {
+  color: #fff;
+  background-color: #41414d;
+}
+
+.visitors-link svg {
+  margin-right: 0px;
+}
+
+.visitors-link:hover, .history-link:hover, .tickets-link:hover {
+  opacity: 0.9;
+}
+
+.history-link span {
+  background: #41414d;
+  color: #fff;
+}
+
+.history-link .icone {
+  color: #fff;
+  background-color: #41414d;
+}
+
+.blocked-name {
+  color: red;
+  font-weight: bold;
+  line-height: 1.2;
+}
+
+td .user-info {
+  display: flex;
+  align-items: center;
+  gap: 6px; /* Espaço entre ícone e nome */
+}
+
+.user-icon, .lock-icon {
+  position: relative;
+  top: 0px; /* Pequeno ajuste vertical */
+}
+
+.blocked-name span {
+  color: red;
+  font-weight: bold;
+}
+
+/*CAMPO DE BUSCA*/
+.search-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.search-icon {
+  position: absolute;
+  left: 10px;
+  color: #aaa;
+  pointer-events: none;
+  
+}
+
+.search-input {
+  
+  padding: 8px 12px 8px 32px; /* espaço para a lupa */
+  font-size: 14px;
+  border: 1px solid #dcdce6;
+  border-radius: 8px;
+  outline: none;
+  width: 250px;
+  transition: border 0.2s;
+}
+
+.search-input:focus {
+  border-color: #4CAF50;
+}
+
+.tickets-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #20a3e0;
+  border: 0;
+  padding: 10px 15px;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  overflow: visible;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: #ff012b;
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 4px 6px;
+  border-radius: 50%;
+  min-width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 2px white;
+  z-index: 1;
+}
+
+.tickets-link span {
+  color: #fff;
+}
+
+.tickets-link .icone {
+  color: #fff;
+  /*background-color: #20a3e0;*/
+}

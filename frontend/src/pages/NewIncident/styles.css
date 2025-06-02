@@ -1,0 +1,203 @@
+.new-incident-container {
+  width: 100%;
+  max-width: 1120px;
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.new-incident-container .content {
+  width: 100%;
+  padding: 90px;
+  background: #fff;
+  box-shadow: 0 0 100px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.new-incident-container .content section {
+  width: 100%;
+  max-width: 380px;
+}
+
+.new-incident-container .content section h1 {
+  margin: 64px 0 32px;
+  font-size: 32px;
+}
+
+.new-incident-container .content section p {
+  font-size: 18px;
+  color: #737380;
+  line-height: 32px;
+  margin-bottom: 20px;
+}
+
+.new-incident-container .content form {
+  width: 100%;
+  max-width: 450px;
+}
+
+.new-incident-container .content form input,
+.new-incident-container .content form textarea {
+  margin-top: 8px;
+}
+
+/* ESTILOS PARA O SELECT DE EMPRESAS */
+.new-incident-container .content form select {
+  width: 100%;
+  height: 60px;
+  color: #333;
+  border: 1px solid #dcdce6;
+  border-radius: 8px;
+  padding: 0 24px;
+  margin: 8px 0 0px;
+  font-size: 16px;
+  background: #FFF;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 16px;
+}
+
+.new-incident-container .content form select:invalid {
+  color: #a0a0a0;
+}
+
+.new-incident-container .content form select:focus {
+  border-color: #10B981;
+  outline: none;
+}
+
+/*STYLE FUNÇÃO IMAGEM*/
+
+/* Container principal */
+.file-upload-wrapper {
+  margin: 20px 0;
+}
+
+/* Botão de upload personalizado */
+.upload-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 12px 20px;
+  background-color: #f0f0f0;
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 10px;
+}
+
+.upload-button:hover {
+  background-color: #e9e9e9;
+  border-color: #999;
+}
+
+.upload-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #e9e9e9;
+}
+
+.button-icon {
+  font-size: 20px;
+  margin-right: 10px;
+  font-weight: bold;
+  background-color: #f0f0f0;
+}
+.button-icon:hover {
+  background-color: #e9e9e9;
+}
+
+.button-text {
+  font-size: 16px;
+  background-color: #f0f0f0;
+}
+.button-text:hover {
+  font-size: 16px;
+  background-color: #e9e9e9;
+}
+
+/* Texto de orientação */
+.upload-hint {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 15px;
+}
+
+/* Container de pré-visualizações */
+.image-previews {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+/* Item de pré-visualização */
+.image-preview {
+  width: 130px;
+}
+
+.image-container {
+  position: relative;
+  width: 130px;
+  height: 130px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Botão de remover */
+.remove-image {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 25px;
+  height: 25px;
+  background: rgba(0,0,0,0.7);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.remove-image:hover {
+  background: #e02041;
+}
+
+/* Informações da imagem */
+.image-info {
+  margin-top: 5px;
+  text-align: center;
+}
+
+.image-name {
+  display: block;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.image-size {
+  font-size: 11px;
+  color: #666;
+}

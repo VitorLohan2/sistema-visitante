@@ -1,0 +1,84 @@
+.register-container {
+  width: 100%;
+  max-width: 1120px;
+  height: 100vh;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.register-container .content {
+  width: 100%;
+  padding: 96px;
+  background: #fff;
+  box-shadow: 0 0 100px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.register-container .content section {
+  width: 100%;
+  max-width: 380px;
+}
+
+.register-container .content section h1 {
+  margin: 64px 0 32px;
+  font-size: 32px;
+}
+
+.register-container .content section p {
+  font-size: 18px;
+  color: #737380;
+  line-height: 32px;
+  margin-bottom: 20px;
+}
+
+.register-container .content form {
+  width: 100%;
+  max-width: 450px;
+}
+
+.register-container .content form input {
+  margin-top: 8px;
+}
+
+.register-container .content form .input-group {
+  display: flex;
+  
+}
+
+.register-container .content form .input-group input + input {
+   margin-left: 8px;
+}
+
+/* ESTILOS PARA O SELECT DE EMPRESAS */
+.register-container .content form select {
+  width: 100%;
+  height: 60px;
+  color: #333;
+  border: 1px solid #dcdce6;
+  border-radius: 8px;
+  padding: 0 24px;
+  margin: 8px 0 0px;
+  font-size: 16px;
+  background: #FFF;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 16px;
+}
+
+.register-container .content form select:invalid {
+  color: #a0a0a0;
+}
+
+.register-container .content form select:focus {
+  border-color: #10B981;
+  outline: none;
+}
