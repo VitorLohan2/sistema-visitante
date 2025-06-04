@@ -1,59 +1,61 @@
 // Update with your config settings.
+// knexfile.js
+
+require('dotenv').config();
 
 module.exports = {
 
   development: {
-    client: 'sqlite3',
-    connection: {
-      filename: './src/database/db.sqlite'
-    },
+    client: process.env.DB_CLIENT || 'pg',
+    connection:
+      process.env.DB_CLIENT === 'pg'
+        ? {
+            host: process.env.DB_HOST || 'localhost',
+            user: process.env.DB_USER || 'postgres',
+            password: process.env.DB_PASSWORD || '',
+            database: process.env.DB_NAME || 'db_sistema_visitante',
+            port: process.env.DB_PORT || 5432,
+          }
+        : {
+            filename: './src/database/db.sqlite',
+          },
     migrations: {
-      directory: './src/database/migrations'
+      directory: './src/database/migrations',
     },
-    useNullAsDefault: true,
+    pool: {
+      min: 2,
+      max: 10,
+    },
+    useNullAsDefault: process.env.DB_CLIENT !== 'pg',
   },
 
   test: {
     client: 'sqlite3',
     connection: {
-      filename: './src/database/test.sqlite'
+      filename: './src/database/test.sqlite',
     },
     migrations: {
-      directory: './src/database/migrations'
+      directory: './src/database/migrations',
     },
     useNullAsDefault: true,
   },
 
-  staging: {
-    client: 'postgresql',
-    connection: {
-      database: 'my_db',
-      user:     'username',
-      password: 'password'
-    },
-    pool: {
-      min: 2,
-      max: 10
-    },
-    migrations: {
-      tableName: 'knex_migrations'
-    }
-  },
-
   production: {
-    client: 'postgresql',
-    connection: {
-      database: 'my_db',
-      user:     'username',
-      password: 'password'
+    client: 'pg',
+     connection: {
+    connectionString: process.env.DATABASE_URL, // Necessário para conexão com Neon
+    ssl: {
+      rejectUnauthorized: false, 
     },
+  }, // <- conexão direta com Neon
     pool: {
       min: 2,
-      max: 10
+      max: 10,
     },
     migrations: {
-      tableName: 'knex_migrations'
-    }
-  }
-
+      directory: './src/database/migrations',
+      tableName: 'knex_migrations',
+    },
+  },
 };
+
