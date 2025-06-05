@@ -1,9 +1,10 @@
 const connection = require('../database/connection');
 
 module.exports = {
+  // Listagem completa do histórico
   async index(request, response) {
     const ong_id = request.headers.authorization;
-    
+
     try {
       const history = await connection('history')
         //.where('ong_id', ong_id)
@@ -18,32 +19,34 @@ module.exports = {
         ])
         .orderBy('exit_date', 'desc');
 
-      // Formata datas para o frontend
-      const formattedHistory = history.map(record => ({
-        ...record,
-        entry_date: new Date(record.entry_date).toLocaleString('pt-BR'),
-        exit_date: new Date(record.exit_date).toLocaleString('pt-BR'),
-        duration: this.calculateDuration(record.entry_date, record.exit_date)
-      }));
+      const formattedHistory = history.map(record => {
+        const duration = module.exports.calculateDuration(record.entry_date, record.exit_date);
+        return {
+          ...record,
+          duration,
+          entry_date: new Date(record.entry_date).toLocaleString('pt-BR'),
+          exit_date: new Date(record.exit_date).toLocaleString('pt-BR')
+        };
+      });
 
       return response.json(formattedHistory);
     } catch (err) {
       console.error('Erro no histórico:', err);
-      return response.status(500).json({ 
+      return response.status(500).json({
         error: 'Erro ao carregar histórico',
         details: process.env.NODE_ENV === 'development' ? err.message : undefined
       });
     }
   },
 
+  // Criação manual de um registro histórico
   async create(request, response) {
-    const transaction = await connection.transaction(); // Inicia transação
-    
+    const transaction = await connection.transaction();
+
     try {
       const { name, cpf, company, sector, entry_date } = request.body;
       const ong_id = request.headers.authorization;
 
-      // Validação básica
       if (!name || !cpf || !company || !sector) {
         await transaction.rollback();
         return response.status(400).json({ error: 'Dados incompletos' });
@@ -59,14 +62,15 @@ module.exports = {
         ong_id
       };
 
-      const [id] = await connection('history')
+      const [record] = await connection('history')
         .transacting(transaction)
-        .insert(historyRecord);
+        .insert(historyRecord)
+        .returning('id');
 
       await transaction.commit();
-      
+
       return response.status(201).json({
-        id,
+        id: record.id,
         ...historyRecord,
         message: 'Registro criado com sucesso'
       });
@@ -81,28 +85,28 @@ module.exports = {
     }
   },
 
+  // Estatísticas sobre as visitas
   async stats(request, response) {
     const ong_id = request.headers.authorization;
-    
+
     try {
       const stats = await connection('history')
         //.where('ong_id', ong_id)
         .select(
-          connection.raw('COUNT(*) as total_visits'),
-          connection.raw('AVG(TIMESTAMPDIFF(MINUTE, entry_date, exit_date)) as avg_duration'),
-          connection.raw('MAX(TIMESTAMPDIFF(MINUTE, entry_date, exit_date)) as max_duration'),
-          connection.raw('MIN(TIMESTAMPDIFF(MINUTE, entry_date, exit_date)) as min_duration'),
-          connection.raw('SUM(TIMESTAMPDIFF(MINUTE, entry_date, exit_date)) as total_time')
+          connection.raw('COUNT(*) AS total_visits'),
+          connection.raw('AVG(EXTRACT(EPOCH FROM (exit_date - entry_date)) / 60) AS avg_duration'),
+          connection.raw('MAX(EXTRACT(EPOCH FROM (exit_date - entry_date)) / 60) AS max_duration'),
+          connection.raw('MIN(EXTRACT(EPOCH FROM (exit_date - entry_date)) / 60) AS min_duration'),
+          connection.raw('SUM(EXTRACT(EPOCH FROM (exit_date - entry_date)) / 60) AS total_time')
         )
         .first();
 
-      // Formatação dos resultados
       const formattedStats = {
-        ...stats,
-        avg_duration: this.formatDuration(stats.avg_duration),
-        max_duration: this.formatDuration(stats.max_duration),
-        min_duration: this.formatDuration(stats.min_duration),
-        total_time: this.formatDuration(stats.total_time)
+        total_visits: Number(stats.total_visits),
+        avg_duration: module.exports.formatDuration(parseFloat(stats.avg_duration)),
+        max_duration: module.exports.formatDuration(parseFloat(stats.max_duration)),
+        min_duration: module.exports.formatDuration(parseFloat(stats.min_duration)),
+        total_time: module.exports.formatDuration(parseFloat(stats.total_time))
       };
 
       return response.json(formattedStats);
@@ -115,7 +119,7 @@ module.exports = {
     }
   },
 
-  // Métodos utilitários (não expostos via rotas)
+  // Utilitário: calcula duração entre duas datas
   calculateDuration(entryDate, exitDate) {
     const minutes = Math.floor((new Date(exitDate) - new Date(entryDate)) / (1000 * 60));
     const hours = Math.floor(minutes / 60);
@@ -123,8 +127,9 @@ module.exports = {
     return `${hours}h ${remainingMinutes}m`;
   },
 
+  // Utilitário: formata minutos em horas:minutos
   formatDuration(minutes) {
-    if (!minutes) return '0m';
+    if (!minutes || isNaN(minutes)) return '0m';
     const hours = Math.floor(minutes / 60);
     const mins = Math.floor(minutes % 60);
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;

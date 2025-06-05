@@ -7,7 +7,6 @@ module.exports = {
     const { funcionario, motivo, descricao, setorResponsavel, nomeUsuario, setorUsuario } = req.body;
     const ong_id = req.headers.authorization;
     
-    // Validação dos campos obrigatórios incluindo nomeUsuario e setorUsuario
     if (!funcionario || !motivo || !descricao || !setorResponsavel || !nomeUsuario || !setorUsuario) {
       return res.status(400).json({ 
         error: 'Todos os campos são obrigatórios',
@@ -24,22 +23,24 @@ module.exports = {
 
     try {
       console.log('Dados para criar ticket:', req.body);
-      const data_criacao = moment().tz("America/Sao_Paulo").format('YYYY-MM-DD HH:mm:ss'); // ✅
-      // Cria o ticket sem autenticação, usando os dados do corpo da requisição
-      const [id] = await connection('tickets').insert({
-        ong_id,
-        funcionario,
-        motivo,
-        descricao,
-        setor_responsavel: setorResponsavel,
-        nome_usuario: nomeUsuario,
-        setor_usuario: setorUsuario,
-        status: 'Aberto',
-        data_criacao
-      });
+      const data_criacao = moment().tz("America/Sao_Paulo").format('YYYY-MM-DD HH:mm:ss');
+
+      const [ticket] = await connection('tickets')
+        .insert({
+          ong_id,
+          funcionario,
+          motivo,
+          descricao,
+          setor_responsavel: setorResponsavel,
+          nome_usuario: nomeUsuario,
+          setor_usuario: setorUsuario,
+          status: 'Aberto',
+          data_criacao
+        })
+        .returning('id'); // ✅ PostgreSQL
 
       return res.status(201).json({ 
-        id,
+        id: ticket.id,
         message: 'Ticket criado com sucesso',
         data: {
           funcionario,
@@ -72,7 +73,6 @@ module.exports = {
         return res.status(404).json({ error: 'ONG não encontrada' });
       }
 
-      // Consulta todos os tickets, independentemente da ONG
       const tickets = await connection('tickets')
         .select(
           'tickets.*',
@@ -98,7 +98,6 @@ module.exports = {
     const { status } = req.body;
     const ong_id = req.headers.authorization;
 
-    // Validações básicas (ID e status)
     if (isNaN(id)) {
       return res.status(400).json({ error: 'ID do ticket deve ser numérico' });
     }
@@ -112,7 +111,6 @@ module.exports = {
     }
 
     try {
-      // Busca ONG (com type e setor)
       const ong = await connection('ongs')
         .where('id', ong_id)
         .select('type', 'setor')
@@ -122,7 +120,6 @@ module.exports = {
         return res.status(404).json({ error: 'ONG não encontrada' });
       }
 
-      // Verifica se o ticket existe
       const ticket = await connection('tickets')
         .where('id', id)
         .first();
@@ -131,9 +128,6 @@ module.exports = {
         return res.status(404).json({ error: 'Ticket não encontrado' });
       }
 
-      // PERMISSÃO: 
-      // - Se for ADMIN (qualquer setor) PODE
-      // - Se for do setor Segurança (mesmo sem ser ADMIN) PODE
       const isAdmin = ong.type === 'ADMIN';
       const isSeguranca = ong.setor === 'Segurança';
 
@@ -143,9 +137,8 @@ module.exports = {
         });
       }
 
-      const data_atualizacao = moment().tz("America/Sao_Paulo").format('YYYY-MM-DD HH:mm:ss'); // ✅
+      const data_atualizacao = moment().tz("America/Sao_Paulo").format('YYYY-MM-DD HH:mm:ss');
 
-      // Atualiza o ticket
       const updateData = { 
         status,
         data_atualizacao,
@@ -153,7 +146,7 @@ module.exports = {
       };
 
       if (status === 'Resolvido') {
-        updateData.data_finalizacao = moment().tz("America/Sao_Paulo").format('YYYY-MM-DD HH:mm:ss'); // ✅
+        updateData.data_finalizacao = moment().tz("America/Sao_Paulo").format('YYYY-MM-DD HH:mm:ss');
       }
 
       await connection('tickets')
@@ -203,62 +196,57 @@ module.exports = {
         return res.status(403).json({ error: 'Acesso negado ao ticket' });
       }
 
-      // Marca como visualizado se ainda não foi
       if (!ticket.visualizado) {
-        const data_atualizacao = moment().tz("America/Sao_Paulo").format('YYYY-MM-DD HH:mm:ss'); // ✅
+        const data_atualizacao = moment().tz("America/Sao_Paulo").format('YYYY-MM-DD HH:mm:ss');
 
         await connection('tickets')
-        .where('id', id)
-        .update({
-          visualizado: true,
-          data_atualizacao
-        });
-      
-      // Atualiza o objeto local para refletir essa mudança
-      ticket.visualizado = true;
+          .where('id', id)
+          .update({
+            visualizado: true,
+            data_atualizacao
+          });
+
+        ticket.visualizado = true;
       }
 
-    return res.json(ticket);
+      return res.json(ticket);
 
-  } catch (err) {
-    console.error('Erro ao buscar ticket:', err);
-    return res.status(500).json({ 
-      error: 'Erro ao buscar ticket',
-      detalhes: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
-  }
-},
-
-  // Contar tickets não visualizados
-async countUnseen(req, res) {
-  const ong_id = req.headers.authorization;
-  
-  try {
-    // Verifica se a ONG existe e é do setor Segurança
-    const ong = await connection('ongs')
-      .where('id', ong_id)
-      .first();
-
-    if (!ong || ong.setor !== 'Segurança') {
-      return res.json({ count: 0 }); // Retorna 0 se não for segurança
+    } catch (err) {
+      console.error('Erro ao buscar ticket:', err);
+      return res.status(500).json({ 
+        error: 'Erro ao buscar ticket',
+        detalhes: process.env.NODE_ENV === 'development' ? err.message : undefined
+      });
     }
+  },
 
-    const count = await connection('tickets')
-      .where({
-        setor_responsavel: 'Segurança',
-        visualizado: false,
-        status: 'Aberto'
-      })
-      .count('id as total');
+  async countUnseen(req, res) {
+    const ong_id = req.headers.authorization;
+    
+    try {
+      const ong = await connection('ongs')
+        .where('id', ong_id)
+        .first();
 
-    return res.json({ count: count[0].total || 0 });
-  } catch (err) {
-    console.error('Erro ao contar tickets:', err);
-    return res.status(500).json({ error: 'Erro no servidor' });
-  }
-},
+      if (!ong || ong.setor !== 'Segurança') {
+        return res.json({ count: 0 });
+      }
 
-  // Marcar todos como visualizados
+      const count = await connection('tickets')
+        .where({
+          setor_responsavel: 'Segurança',
+          visualizado: false,
+          status: 'Aberto'
+        })
+        .count('id as total');
+
+      return res.json({ count: count[0].total || 0 });
+    } catch (err) {
+      console.error('Erro ao contar tickets:', err);
+      return res.status(500).json({ error: 'Erro no servidor' });
+    }
+  },
+
   async markAllSeen(req, res) {
     const ong_id = req.headers.authorization;
     

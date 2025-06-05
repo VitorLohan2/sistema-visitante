@@ -33,10 +33,12 @@ export default function Visitors() {
       });
       
       alert('Visita Finalizada com sucesso!');
+      // Atualiza o estado antes da navegação
+      setVisitors(visitors.filter(visitor => visitor.id !== id));
+
       // Atualiza a lista de visitantes se necessário
       history.push('/history');
-
-      setVisitors(visitors.filter(visitor => visitor.id !== id));
+      
     } catch (err) {
       alert('Erro ao encerrar visita, tente novamente.');
     }
