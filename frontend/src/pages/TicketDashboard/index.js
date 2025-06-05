@@ -18,11 +18,11 @@ const TicketDashboard = () => {
   const [filterDate, setFilterDate] = useState('');
   const history = useHistory();
 
-
+  
   useEffect(() => {
-    const fetchTickets = async () => {
-      const ongId = localStorage.getItem('ongId');
+    const ongId = localStorage.getItem('ongId');
 
+    const fetchTickets = async () => {
       try {
         const user = await api.get(`/ongs/${ongId}`);
         setUserData({
@@ -39,14 +39,19 @@ const TicketDashboard = () => {
         );
 
         setTickets(sorted);
-        setFilteredTickets(sorted); // Inicialmente mostra todos os tickets
+        setFilteredTickets(sorted);
       } catch (error) {
         console.error('Erro ao buscar tickets:', error);
         alert('Erro ao carregar tickets. Verifique sua conexão.');
       }
     };
 
+    // Chamada inicial
     fetchTickets();
+
+    // Atualização a cada 5 segundos
+    const interval = setInterval(fetchTickets, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   // Filtra os tickets pela data selecionada
@@ -136,13 +141,13 @@ const TicketDashboard = () => {
       </header>
 
       <div className="ticket-header">
-       <div className="left-buttons">
-        <button 
-          onClick={handleNavigateToCreateTicket}
-          className="tickets-link">
-          <FiPlusCircle size={20} className="icone" />
-          <span>Criar Ticket</span>
-        </button>
+        <div className="left-buttons">
+          <button 
+            onClick={handleNavigateToCreateTicket}
+            className="tickets-link">
+            <FiPlusCircle size={20} className="icone" />
+            <span>Criar Ticket</span>
+          </button>
 
           <RippleButton 
             onClick={exportToExcel}
@@ -150,19 +155,19 @@ const TicketDashboard = () => {
             <img src={excel} alt="Excel" className="excel-icon" />
             Gerar Relatório
           </RippleButton>
-          </div>   
+        </div>   
 
-          <div className="date-filter">
-            <label>
-              Filtrar por data:
-              <input
-                type="date"
-                value={filterDate}
-                onChange={(e) => setFilterDate(e.target.value)}
-              />
-            </label>
-          </div>
+        <div className="date-filter">
+          <label>
+            Filtrar por data:
+            <input
+              type="date"
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+            />
+          </label>
         </div>
+      </div>
 
       <div className="kanban-board">
         {statusLabels.map(status => (
@@ -221,4 +226,3 @@ const TicketDashboard = () => {
 };
 
 export default TicketDashboard;
-
