@@ -6,7 +6,7 @@
 
 <h2 align="center"> Sistema de Visitantes </h2>
 
-<h3 align="center"><img src="imgs/react.png" alt="react" height="18"> React, <img src="imgs/react-native.png" alt="react-native" height="18"> React Native, <img src="imgs/node.png" alt="node" height="18"> Node e <img src="imgs/sqlite.png" alt="node" height="18"> SQLite </h3>
+<h3 align="center"><img src="imgs/react.png" alt="react" height="18"> React, <img src="imgs/react-native.png" alt="react-native" height="18"> React Native, <img src="imgs/node.png" alt="node" height="18"> Node e <img src="imgs/sqlite.png" alt="node" height="18"> POSTGRESQL </h3>
 
 <p align="center"> Utilizando de uma única linguagem popular e moderna, o <img src="imgs/js.png" height="18" alt="javascript"> JavaScript. <br> Produtividade e performance de forma enxuta. </p>
 
@@ -20,6 +20,8 @@ Sistema desenvolvido para Empresa DIME.
 <p>Frontend: <b>Render</b></p>
 
 <p align="center">
+    <b>LOGIN</b>
+    <img alt="" title="Login" src="imgs/login.png">
 </p>
 
 ---
