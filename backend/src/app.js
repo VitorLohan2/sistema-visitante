@@ -6,13 +6,13 @@ const routes = require('./routes');
 
 const app = express();
 
-const allowedOrigins = [
+/*const allowedOrigins = [
   'https://sistema-visitante.vercel.app', // substitua pela URL correta da Vercel
   'http://localhost:3000'            // útil para desenvolvimento local
-];
+];*/
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: '*',/*allowedOrigins*/
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));
