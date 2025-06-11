@@ -329,12 +329,12 @@ const styles = StyleSheet.create({
   backText: {
     color: '#000',
     fontSize: 18,
-    //marginLeft: 6,
+    marginLeft: 5,
   },
   logoText: {
     fontSize: 26,
     fontWeight: 'bold',
-    color: '#10B981',
+    color: '#000',
   },
   searchContainer: {
     flexDirection: 'row',

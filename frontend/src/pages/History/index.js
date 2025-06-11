@@ -157,7 +157,7 @@ export default function History() {
                         ? new Date(visitor.entry_date).toLocaleString()
                         : new Date(visitor.created_at).toLocaleString()}
                     </td>
-                    <td>
+                    <td>  
                       {visitor.exit_date
                         ? new Date(visitor.exit_date).toLocaleString()
                         : 'Não informado'}

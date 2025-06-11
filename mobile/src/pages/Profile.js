@@ -18,6 +18,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
 import api from '../services/api'; // ajuste o caminho conforme seu projeto
 
+import logoImg from '../assets/gd.png';
 import disableImg from '../assets/disable.png'; // mesmo caminho dos assets do mobile
 import userIconImg from '../assets/user.png';
 import notificacaoSom from '../assets/notificacao.mp3'; // se usar expo-av ou react-native-sound
@@ -82,7 +83,7 @@ export default function Profile() {
     if (!ongId || userData.setor !== 'Segurança') return;
 
     try {
-      const response = await api.get('profile', {
+      const response = await api.get('/profile', {
         headers: { Authorization: ongId },
       });
 
@@ -199,33 +200,53 @@ export default function Profile() {
     navigation.navigate('TicketDashboard');
   }
 
-  function handleRegisterVisit(id) {
-    const incident = incidents.find(inc => inc.id === id);
-    if (!incident) return;
+  async function handleRegisterVisit(id) {
+    try {
+      const ongId = await AsyncStorage.getItem('@Auth:ongId');
+      if (!ongId) {
+        Alert.alert('Erro', 'Usuário não autenticado');
+        return;
+      }
 
-    if (incident.bloqueado) {
-      Alert.alert('Acesso Negado', 'Este visitante está bloqueado. Registro de visita não permitido.');
-      return;
+      const incident = incidents.find(inc => inc.id === id);
+      if (!incident) {
+        Alert.alert('Erro', 'Visitante não encontrado');
+        return;
+      }
+
+      if (incident.bloqueado) {
+        Alert.alert('Acesso Negado', 'Este visitante está bloqueado. Registro de visita não permitido.');
+        return;
+      }
+
+      const response = await api.post('/visitors', {
+        name: incident.nome,
+        cpf: incident.cpf,
+        company: incident.empresa,
+        sector: incident.setor,
+        //ong_id: ongId
+      }, {
+        headers: { Authorization: ongId }
+      });
+
+      if (response.status === 201) {
+        Alert.alert('Sucesso', 'Visita registrada com sucesso!');
+        navigation.navigate('Visitors');
+      } else {
+        throw new Error('Resposta inesperada do servidor');
+      }
+    } catch (err) {
+      console.error('Erro ao registrar visita:', err);
+      Alert.alert(
+        'Erro', 
+        err.response?.data?.message || 
+        err.message || 
+        'Erro ao registrar visita'
+      );
     }
-
-    api.post('/visitors', {
-      name: incident.nome,
-      cpf: incident.cpf,
-      company: incident.empresa,
-      sector: incident.setor
-    }, {
-      headers: { Authorization: userData.setor }
-    })
-    .then(() => {
-      Alert.alert('Sucesso', 'Visita registrada com sucesso!');
-      navigation.navigate('Visitors');
-    })
-    .catch(err => {
-      Alert.alert('Erro', 'Erro ao registrar visita: ' + err.message);
-    });
   }
 
-  function handleDeleteIncident(id) {
+  function handleDeleteIncident(id) {   //FUNCIONANDO (DELELTE DE CADASTRO VISITANTE)
     Alert.alert(
       'Confirmação',
       'Tem certeza que deseja deletar este cadastro?',
@@ -311,7 +332,8 @@ export default function Profile() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View style={styles.logoRow}>
-          <Text style={styles.logoText}>DIME</Text>
+          <Image source={logoImg} style={styles.logo} />
+          {/*<Text style={styles.logoText}>DIME</Text>*/}
           <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
             <Feather name="power" size={24} color="#e02041" />
           </TouchableOpacity>
@@ -383,7 +405,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   header: {
-    marginTop: 10,
+    //marginTop: 10,
+  },
+    logo: {
+    width: 54,
+    height: 60,
+    //resizeMode: 'contain',
+    //marginRight: 10,
+    //backgroundColor: '#454545'
   },
   logoText: {
     fontSize: 28,
@@ -392,8 +421,8 @@ const styles = StyleSheet.create({
   },
   welcomeText: {
     fontSize: 16,
-    marginTop: 10,
-    marginBottom: 20,
+    marginTop: 20,
+    marginBottom: 25,
     marginVertical: 8,
   },
   searchContainer: {
@@ -403,8 +432,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 8,
     borderRadius: 8,
-    marginTop: 20,
-    marginBottom: 20,
+    marginTop: 0,
+    marginBottom: 25,
   },
   searchInput: {
     flex: 1,
@@ -413,8 +442,8 @@ const styles = StyleSheet.create({
   },
   navButtons: {
     alignItems: 'center',
-    marginTop: '15',
-    marginBottom: '15',
+    marginTop: 0,
+    marginBottom: 20,
   },
   navButton: {
     width: '100%',
