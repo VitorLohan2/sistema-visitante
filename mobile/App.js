@@ -8,6 +8,7 @@ import Register from './src/pages/Register'; //
 import Visitors from './src/pages/Visitors';
 import History from './src/pages/History';
 import TicketDashboard from './src/pages/TicketDashboard';
+import ViewVisitor from './src/pages/ViewVisitor'; //Perfil do Visitante
 
 const Stack = createStackNavigator();
 
@@ -25,6 +26,7 @@ export default function App() {
         <Stack.Screen name="Visitors" component={Visitors} options={{ headerShown: false }}/>
         <Stack.Screen name="History" component={History} options={{ headerShown: false }}/>
         <Stack.Screen name="TicketDashboard" component={TicketDashboard} options={{ headerShown: false }}/>
+        <Stack.Screen name="ViewVisitor" component={ViewVisitor} options={{ headerShown: false }}/>
       </Stack.Navigator>
     </NavigationContainer>
   );

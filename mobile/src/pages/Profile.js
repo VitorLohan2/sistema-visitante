@@ -279,7 +279,7 @@ export default function Profile() {
   }
 
   function handleViewProfile(id) {
-    navigation.navigate('ViewIncident', { id });
+    navigation.navigate('ViewVisitor', { id });
   }
 
   // Render do item da lista (equivale a linha da tabela)

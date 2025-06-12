@@ -23,7 +23,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 
 import api from '../services/api';
 import logoImg from '../assets/logo.png';
-import pdfIcon from '../assets/excel.png';
+import pdfIcon from '../assets/file.png';
 
 export default function History() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -213,7 +213,7 @@ export default function History() {
   function renderVisitorItem({ item, index }) {
     return (
       <View style={styles.visitorItem}>
-        <Text style={styles.visitorText}>#{filteredHistoryData.length - index}</Text>
+        <Text style={styles.visitorText}>{filteredHistoryData.length - index}</Text>
         <Text style={styles.visitorText}>{item.name || 'Não informado'}</Text>
         <Text style={styles.visitorText}>{item.cpf || 'Não informado'}</Text>
         <Text style={styles.visitorText}>{item.company || item.empresa || 'Não informado'}</Text>
@@ -274,7 +274,7 @@ export default function History() {
           onPress={() => exportToPDF(filteredHistoryData)}
         >
           <Image source={pdfIcon} style={styles.pdfIcon} />
-          <Text style={styles.reportButtonText}>Gerar Relatório PDF</Text>
+          <Text style={styles.reportButtonText}>Gerar Relatório</Text>
         </TouchableOpacity>
 
         <View style={styles.dateFilterContainer}>
@@ -394,15 +394,13 @@ const styles = StyleSheet.create({
   reportButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E02041',
-    padding: 10,
+    backgroundColor: '#000',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: 8,
   },
   pdfIcon: {
-    width: 20,
-    height: 20,
     marginRight: 5,
-    tintColor: '#fff',
   },
   reportButtonText: {
     color: '#fff',

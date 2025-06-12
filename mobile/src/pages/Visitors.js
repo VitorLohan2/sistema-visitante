@@ -109,7 +109,7 @@ const loadVisitors = async () => {
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, {flex: 1}]}>
           <Feather name="arrow-left" size={24} color="#e02041" />
-        <Text style={styles.headerText}>Voltar</Text>
+        <Text style={styles.backText}>Voltar</Text>
         </TouchableOpacity>
       </View>
 
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     marginTop: 50,
     marginBottom: 30,
   },
-  headerText: {
+  backText: {
     fontSize: 18,
     marginLeft: 5,
     //fontWeight: 'bold',
