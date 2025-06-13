@@ -15,6 +15,18 @@ const upload = multer(multerConfig);
 
 const routes = express.Router()
 
+const handleUploadErrors = (err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({ 
+      error: 'Erro no upload', 
+      details: err.code === 'LIMIT_FILE_SIZE' 
+        ? 'Tamanho máximo por imagem: 3MB' 
+        : 'Máximo de 3 imagens permitidas'
+    });
+  }
+  next(err);
+};
+
 routes.post('/sessions', SessionController.create)
 
 routes.get('/ongs', OngController.index)
@@ -57,6 +69,7 @@ routes.get('/incidents', celebrate({
 routes.post(
   '/incidents',
   upload.array('fotos', 3),
+  handleUploadErrors,
   celebrate({
     [Segments.HEADERS]: Joi.object({
       authorization: Joi.string().required(),

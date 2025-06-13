@@ -9,10 +9,10 @@ import logoImg from '../../assets/logo.svg'
 
 export default function Register() {
   const [name, setName] = useState('')
-  const [birthdate, setBirthdate] = useState('') // Novo estado para data de nascimento
-  const [cpf, setCpf] = useState('') // Novo estado para CPF
-  const [empresa, setEmpresa] = useState('') // Novo estado para empresa
-  const [setor, setSetor] = useState('') // Novo estado para setor
+  const [birthdate, setBirthdate] = useState('')
+  const [cpf, setCpf] = useState('')
+  const [empresa, setEmpresa] = useState('')
+  const [setor, setSetor] = useState('')
   const [email, setEmail] = useState('')
   const [whatsapp, setWhatsapp] = useState('')
   const [city, setCity] = useState('')
@@ -26,9 +26,43 @@ export default function Register() {
   ];
 
   const setoresDisponiveis = [
-  "Segurança",
-  "Recepção"
+    "Administrativo",
+    "Expedição",
+    "Recepção",
+    "Segurança",
+    "Outros"
   ];
+
+  // Estados brasileiros e cidades mais comuns
+  const estadosECidades = {
+    'AC': ['Rio Branco', 'Cruzeiro do Sul', 'Sena Madureira'],
+    'AL': ['Maceió', 'Arapiraca', 'Rio Largo'],
+    'AM': ['Manaus', 'Parintins', 'Itacoatiara'],
+    'AP': ['Macapá', 'Santana', 'Laranjal do Jari'],
+    'BA': ['Salvador', 'Feira de Santana', 'Vitória da Conquista'],
+    'CE': ['Fortaleza', 'Caucaia', 'Juazeiro do Norte'],
+    'DF': ['Brasília'],
+    'ES': ['Vitória', 'Vila Velha', 'Cariacica'],
+    'GO': ['Goiânia', 'Aparecida de Goiânia', 'Anápolis'],
+    'MA': ['São Luís', 'Imperatriz', 'Timon'],
+    'MG': ['Belo Horizonte', 'Uberlândia', 'Contagem'],
+    'MS': ['Campo Grande', 'Dourados', 'Três Lagoas'],
+    'MT': ['Cuiabá', 'Várzea Grande', 'Rondonópolis'],
+    'PA': ['Belém', 'Ananindeua', 'Santarém'],
+    'PB': ['João Pessoa', 'Campina Grande', 'Santa Rita'],
+    'PE': ['Recife', 'Jaboatão dos Guararapes', 'Olinda'],
+    'PI': ['Teresina', 'Parnaíba', 'Picos'],
+    'PR': ['Curitiba', 'Londrina', 'Maringá'],
+    'RJ': ['Rio de Janeiro', 'São Gonçalo', 'Duque de Caxias'],
+    'RN': ['Natal', 'Mossoró', 'Parnamirim'],
+    'RO': ['Porto Velho', 'Ji-Paraná', 'Ariquemes'],
+    'RR': ['Boa Vista', 'Rorainópolis', 'Caracaraí'],
+    'RS': ['Porto Alegre', 'Caxias do Sul', 'Pelotas'],
+    'SC': ['Florianópolis', 'Joinville', 'Blumenau'],
+    'SE': ['Aracaju', 'Nossa Senhora do Socorro', 'Lagarto'],
+    'SP': ['São Paulo', 'Guarulhos', 'Campinas'],
+    'TO': ['Palmas', 'Araguaína', 'Gurupi']
+  };
 
   const history = useHistory()
 
@@ -61,10 +95,10 @@ export default function Register() {
       whatsapp,
       city,
       uf,
-      birthdate, // Incluindo data de nascimento
-      cpf, // Incluindo CPF
-      empresa, // Usa diretamente o valor selecionado
-      setor, // Incluindo setor
+      birthdate,
+      cpf,
+      empresa,
+      setor,
     }
     
     try {
@@ -79,21 +113,24 @@ export default function Register() {
 
   // Função para formatar o CPF
   const formatCPF = (value) => {
-    // Remove tudo que não é número
     const cleaned = value.replace(/\D/g, '')
-
-    // Adiciona a pontuação
     const match = cleaned.match(/(\d{3})(\d{3})(\d{3})(\d{2})/)
     if (match) {
       return `${match[1]}.${match[2]}.${match[3]}-${match[4]}`
     }
-    
     return value
   }
 
   const handleCpfChange = (e) => {
     const formattedCpf = formatCPF(e.target.value)
     setCpf(formattedCpf)
+  }
+
+  // Função para lidar com mudança de UF
+  const handleUfChange = (e) => {
+    const newUf = e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2);
+    setUf(newUf);
+    setCity(''); // Reseta a cidade quando muda o estado
   }
 
   return (
@@ -110,7 +147,7 @@ export default function Register() {
         </section>
         <form onSubmit={handleRegister}>
           <input placeholder="Nome" value={name} onChange={e => setName(e.target.value.toUpperCase())} />
-           <input 
+          <input 
             type="date" 
             placeholder="Nascimento" 
             value={birthdate} 
@@ -119,7 +156,7 @@ export default function Register() {
           <input 
             placeholder="CPF" 
             value={cpf} 
-            onChange={handleCpfChange} // Usando a nova função
+            onChange={handleCpfChange}
           />
 
           <select  
@@ -128,7 +165,7 @@ export default function Register() {
             className="select-empresa"
             required
           >
-          <option value="">Selecione sua empresa</option>
+            <option value="">Selecione sua empresa</option>
             {empresasDisponiveis.map((emp, index) => (
               <option key={index} value={emp}>
                 {emp}
@@ -139,10 +176,10 @@ export default function Register() {
           <select
             value={setor}
             onChange={e => setSetor(e.target.value)}
-            className="select-setor"  // Usaremos a mesma classe do select de empresa
+            className="select-setor"
             required
           >
-          <option value="">Selecione seu setor</option>
+            <option value="">Selecione seu setor</option>
             {setoresDisponiveis.map((setorOpcao, index) => (
               <option key={index} value={setorOpcao}>
                 {setorOpcao}
@@ -151,13 +188,43 @@ export default function Register() {
           </select>
 
           <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-          <input placeholder="(DD)99999-9999" value={whatsapp} onChange={e => { const value = e.target.value.replace(/\D/g, '').slice(0, 11) 
-          setWhatsapp(value)}} />
+          <input placeholder="(DD)99999-9999" value={whatsapp} onChange={e => { 
+            const value = e.target.value.replace(/\D/g, '').slice(0, 11);
+            setWhatsapp(value);
+          }} />
+          
           <div className="input-group">
-            <input placeholder="Cidade" value={city} onChange={e => setCity(e.target.value.toUpperCase())} />
-            <input placeholder="UF" value={uf} onChange={e => { const value = e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2) 
-            setUf(value)}} style={{ width: 80 }} />
+            <select
+              placeholder="UF"
+              value={uf}
+              onChange={handleUfChange}
+              style={{ width: 80 }}
+              required
+            >
+              <option value="">UF</option>
+              {Object.keys(estadosECidades).map((sigla) => (
+                <option key={sigla} value={sigla}>
+                  {sigla}
+                </option>
+              ))}
+            </select>
+            
+            <select
+              placeholder="Cidade"
+              value={city}
+              onChange={e => setCity(e.target.value)}
+              disabled={!uf}
+              required
+            >
+              <option value="">Selecione a cidade</option>
+              {uf && estadosECidades[uf]?.map((cidade) => (
+                <option key={cidade} value={cidade}>
+                  {cidade}
+                </option>
+              ))}
+            </select>
           </div>
+          
           <button className="button" type="submit"> Cadastrar </button>
         </form>
       </div>

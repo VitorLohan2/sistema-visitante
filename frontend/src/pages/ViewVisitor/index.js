@@ -98,7 +98,7 @@ export default function ViewVisitor() {
                     onClick={() => setSelectedImage(foto)}
                   >
                     <img 
-                      src={`${api.defaults.baseURL}/uploads/${foto}`}
+                      src={foto}
                       alt={`Foto ${index + 1}`}
                       onError={(e) => {
                         e.target.onerror = null;
@@ -130,7 +130,7 @@ export default function ViewVisitor() {
               <FiX size={24} />
             </button>
             <img 
-              src={`${api.defaults.baseURL}/uploads/${selectedImage}`}
+              src={selectedImage}
               alt="Ampliada"
               onError={(e) => {
                 e.target.onerror = null;

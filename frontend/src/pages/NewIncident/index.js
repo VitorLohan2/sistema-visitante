@@ -100,6 +100,7 @@ export default function NewVisitor() {
     data.append('telefone', telefoneClean);
     data.append('observacao', form.observacao);
 
+    // Anexa cada arquivo individualmente (sem array)
     form.fotos.forEach((foto) => {
       data.append('fotos', foto);
     });
@@ -115,10 +116,11 @@ export default function NewVisitor() {
       alert('Visitante cadastrado com sucesso!');
       history.push('/profile');
     } catch (err) {
-      alert('Erro no cadastro');
+      console.error('Erro detalhado:', err.response?.data); // Log detalhado
+      alert(`Erro: ${err.response?.data?.error || 'Falha no cadastro'}`);
     }
   };
-
+  
   return (
     <div className="new-incident-container">
       <div className="content">
