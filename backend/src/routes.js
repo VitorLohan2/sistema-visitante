@@ -7,6 +7,7 @@ const ProfileController = require('./controllers/ProfileController')
 const SessionController = require('./controllers/SessionController')
 const VisitorController = require('./controllers/VisitorController')
 const TicketController = require('./controllers/TicketController')
+const CodigoController = require('./controllers/CodigoController')
 
 const multer = require('multer');
 const multerConfig = require('./config/multer');
@@ -40,7 +41,13 @@ routes.post('/ongs', celebrate({
     email: Joi.string().required().email(),
     whatsapp: Joi.string().required().min(10).max(11),
     city: Joi.string().required(),
-    uf: Joi.string().required().length(2)
+    uf: Joi.string().required().length(2),
+    type: Joi.string().valid('ADM', 'USER').default('USER'), // ✅ Adicione type
+    codigo_acesso: Joi.when('type', { // ✅ Validação condicional
+      is: 'USER',
+      then: Joi.string().required().pattern(/^[A-Z0-9]{3,20}$/),
+      otherwise: Joi.string().optional()
+    })
   })
 }), OngController.create)
 
@@ -245,6 +252,76 @@ routes.put('/tickets/mark-seen',
     }).unknown()
   }),
   TicketController.markAllSeen
+);
+
+// Rota pública para validação de código
+routes.get('/codigos/validar/:codigo', 
+  celebrate({
+    [Segments.PARAMS]: Joi.object().keys({
+      codigo: Joi.string().required().pattern(/^[A-Z0-9]{3,20}$/) // Ex: CODIGO2024
+    })
+  }),
+  CodigoController.validarCodigo
+);
+
+// Rotas protegidas para ADMs (a verificação será feita no controller)
+routes.post('/codigos', 
+  celebrate({
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown(),
+    [Segments.BODY]: Joi.object().keys({
+      codigo: Joi.string().required().pattern(/^[A-Z0-9]{3,20}$/),
+      limite_usos: Joi.number().integer().min(1).max(1000).required()
+    })
+  }),
+  CodigoController.gerarCodigo // A verificação de ADM será feita aqui
+);
+
+routes.get('/codigos',
+  celebrate({
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown()
+  }),
+  CodigoController.listarCodigos // A verificação de ADM será feita aqui
+);
+
+// ROTA DE DESATIVAR (já existente, apenas comentando para clareza)
+routes.put('/codigos/:id/desativar',
+  celebrate({
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown(),
+    [Segments.PARAMS]: Joi.object().keys({
+      id: Joi.string().required()
+    })
+  }),
+  CodigoController.desativarCodigo
+);
+
+routes.put('/codigos/:id/ativar',
+  celebrate({
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown(),
+    [Segments.PARAMS]: Joi.object().keys({
+      id: Joi.string().required()
+    })
+  }),
+  CodigoController.ativarCodigo
+);
+
+routes.delete('/codigos/:id/delete',
+  celebrate({
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown(),
+    [Segments.PARAMS]: Joi.object().keys({
+      id: Joi.string().required()
+    })
+  }),
+  CodigoController.deleteCodigo
 );
 
 module.exports = routes

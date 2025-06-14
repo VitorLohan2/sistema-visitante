@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useHistory } from 'react-router-dom'
 import { FiArrowLeft } from 'react-icons/fi'
 
@@ -17,8 +17,11 @@ export default function Register() {
   const [whatsapp, setWhatsapp] = useState('')
   const [city, setCity] = useState('')
   const [uf, setUf] = useState('')
-  
-  // Lista de empresas disponíveis para seleção
+  const [codigoSeguranca, setCodigoSeguranca] = useState('')
+  const [codigoValido, setCodigoValido] = useState(false)
+  const [verificandoCodigo, setVerificandoCodigo] = useState(false)
+  const [erroCodigo, setErroCodigo] = useState('')
+
   const empresasDisponiveis = [
     "Dime",
     "Prestadora de Serviço",
@@ -33,7 +36,6 @@ export default function Register() {
     "Outros"
   ];
 
-  // Estados brasileiros e cidades mais comuns
   const estadosECidades = {
     'AC': ['Rio Branco', 'Cruzeiro do Sul', 'Sena Madureira'],
     'AL': ['Maceió', 'Arapiraca', 'Rio Largo'],
@@ -66,52 +68,98 @@ export default function Register() {
 
   const history = useHistory()
 
+  async function verificarCodigo() {
+    if (!codigoSeguranca || codigoSeguranca.length < 3) {
+      setCodigoValido(false)
+      return
+    }
+    
+    setVerificandoCodigo(true)
+    setErroCodigo('')
+    
+    try {
+      const response = await api.get(`codigos/validar/${codigoSeguranca}`)
+      
+      // Supondo que a rota retorne { valido: true/false, mensagem?: string }
+      if (response.data.valido) {
+        setCodigoValido(true)
+      } else {
+        setCodigoValido(false)
+        setErroCodigo(response.data.mensagem || 'Código inválido')
+      }
+    } catch (err) {
+      setCodigoValido(false)
+      setErroCodigo('Erro ao verificar código')
+      console.error('Erro na verificação:', err)
+    } finally {
+      setVerificandoCodigo(false)
+    }
+  }
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      verificarCodigo()
+    }, 800)
+    
+    return () => clearTimeout(timer)
+  }, [codigoSeguranca])
+
   async function handleRegister(e) {
     e.preventDefault()
 
-    // Validação do CPF
+    if (!codigoValido) {
+      alert('Por favor, insira um código de segurança válido')
+      return
+    }
+
     const cleanedCpf = cpf.replace(/\D/g, '')
     if (cleanedCpf.length !== 11) {
       alert('O CPF deve conter 11 dígitos.')
       return
     }
 
-    // Validação do WhatsApp
     const cleanedWhatsapp = whatsapp.replace(/\D/g, '')
     if (cleanedWhatsapp.length !== 11) {
       alert('O número de Telefone deve conter 11 dígitos (DD + número).')
       return
     }
 
-    // Validação da empresa (agora obrigatória da lista)
     if (!empresa) {
-      alert('Selecione uma empresa!');
-      return;
+      alert('Selecione uma empresa!')
+      return
     }
     
     const data = {
       name,
       email,
-      whatsapp,
+      whatsapp: cleanedWhatsapp,
       city,
       uf,
       birthdate,
-      cpf,
+      cpf: cleanedCpf,
       empresa,
       setor,
+      codigo_acesso: codigoSeguranca
     }
     
     try {
       const response = await api.post('ongs', data)
-    
-      alert(`Seu ID de acesso: ${response.data.id}`)
+      
+      // Marca o código como utilizado (você pode precisar criar esta rota)
+      /*try {
+        await api.put(`codigos/utilizar/${codigoSeguranca}`)
+      } catch (err) {
+        console.error('Erro ao marcar código como utilizado:', err)
+      }*/
+      
+      alert(`✅ Cadastro realizado com sucesso! Seu ID de acesso: ${response.data.id}`)
       history.push('/')
     } catch (err) {
-      alert('Erro no cadastro, tente novamente')
+      console.error('Erro no cadastro:', err)
+      alert(err.response?.data?.message || 'Erro no cadastro, tente novamente')
     }
   }
 
-  // Função para formatar o CPF
   const formatCPF = (value) => {
     const cleaned = value.replace(/\D/g, '')
     const match = cleaned.match(/(\d{3})(\d{3})(\d{3})(\d{2})/)
@@ -126,11 +174,10 @@ export default function Register() {
     setCpf(formattedCpf)
   }
 
-  // Função para lidar com mudança de UF
   const handleUfChange = (e) => {
-    const newUf = e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2);
-    setUf(newUf);
-    setCity(''); // Reseta a cidade quando muda o estado
+    const newUf = e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2)
+    setUf(newUf)
+    setCity('')
   }
 
   return (
@@ -146,6 +193,25 @@ export default function Register() {
           </Link>
         </section>
         <form onSubmit={handleRegister}>
+          <div className="codigo-input-container">
+            <input 
+              placeholder="Código de Segurança (ex: ABC123)" 
+              value={codigoSeguranca}
+              onChange={e => setCodigoSeguranca(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+              required
+              maxLength="20"
+              pattern="[A-Z0-9]{3,20}"
+              title="Digite o código no formato ABC123"
+            />
+            {verificandoCodigo && <span className="verificando">Verificando...</span>}
+            {codigoValido && !verificandoCodigo && (
+              <span className="codigo-valido">✓ Código válido</span>
+            )}
+            {erroCodigo && !verificandoCodigo && (
+              <span className="codigo-invalido">{erroCodigo}</span>
+            )}
+          </div>
+
           <input placeholder="Nome" value={name} onChange={e => setName(e.target.value.toUpperCase())} />
           <input 
             type="date" 
@@ -188,10 +254,14 @@ export default function Register() {
           </select>
 
           <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-          <input placeholder="(DD)99999-9999" value={whatsapp} onChange={e => { 
-            const value = e.target.value.replace(/\D/g, '').slice(0, 11);
-            setWhatsapp(value);
-          }} />
+          <input 
+            placeholder="(DD)99999-9999" 
+            value={whatsapp} 
+            onChange={e => { 
+              const value = e.target.value.replace(/\D/g, '').slice(0, 11)
+              setWhatsapp(value)
+            }} 
+          />
           
           <div className="input-group">
             <select
@@ -225,7 +295,7 @@ export default function Register() {
             </select>
           </div>
           
-          <button className="button" type="submit"> Cadastrar </button>
+        <button className="button" type="submit"> Cadastrar </button>
         </form>
       </div>
     </div>

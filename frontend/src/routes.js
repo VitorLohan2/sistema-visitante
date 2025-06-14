@@ -11,6 +11,7 @@ import EditIncident from './pages/EditIncident'
 import ViewVisitor from './pages/ViewVisitor'
 import Ticket from './pages/Ticket'
 import TicketDashboard from './pages/TicketDashboard'
+import GeradorCodigo from './pages/GeradorCodigo'
 
 
 
@@ -28,6 +29,7 @@ export default function Routes() {
         <Route path="/incidents/view/:id" component={ViewVisitor} />
         <Route path="/tickets" exact component={Ticket} />
         <Route path="/ticket-dashboard" component={TicketDashboard} />
+        <Route path="/chave-cadastro" component={GeradorCodigo} />
       </Switch>
     </BrowserRouter>
   )
