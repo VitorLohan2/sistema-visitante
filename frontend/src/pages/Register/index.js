@@ -193,24 +193,6 @@ export default function Register() {
           </Link>
         </section>
         <form onSubmit={handleRegister}>
-          <div className="codigo-input-container">
-            <input 
-              placeholder="Código de Segurança (ex: ABC123)" 
-              value={codigoSeguranca}
-              onChange={e => setCodigoSeguranca(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-              required
-              maxLength="20"
-              pattern="[A-Z0-9]{3,20}"
-              title="Digite o código no formato ABC123"
-            />
-            {verificandoCodigo && <span className="verificando">Verificando...</span>}
-            {codigoValido && !verificandoCodigo && (
-              <span className="codigo-valido">✓ Código válido</span>
-            )}
-            {erroCodigo && !verificandoCodigo && (
-              <span className="codigo-invalido">{erroCodigo}</span>
-            )}
-          </div>
 
           <input placeholder="Nome" value={name} onChange={e => setName(e.target.value.toUpperCase())} />
           <input 
@@ -293,6 +275,24 @@ export default function Register() {
                 </option>
               ))}
             </select>
+          </div>
+            <div className="codigo-input-container">
+            <input 
+              placeholder="Código de Segurança" 
+              value={codigoSeguranca}
+              onChange={e => setCodigoSeguranca(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+              required
+              maxLength="20"
+              pattern="[A-Z0-9]{3,20}"
+              title="Digite o código no formato ABC123"
+            />
+            {verificandoCodigo && <span className="verificando">Verificando...</span>}
+            {codigoValido && !verificandoCodigo && (
+              <span className="codigo-valido">✓ Código válido</span>
+            )}
+            {erroCodigo && !verificandoCodigo && (
+              <span className="codigo-invalido">{erroCodigo}</span>
+            )}
           </div>
           
         <button className="button" type="submit"> Cadastrar </button>

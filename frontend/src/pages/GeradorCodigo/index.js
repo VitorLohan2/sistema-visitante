@@ -4,12 +4,16 @@ import { FiTrash2, FiPlus, FiArrowLeft } from 'react-icons/fi';
 import api from '../../services/api';
 import './styles.css';
 import logoImg from '../../assets/logo.svg';
+import SwitchToggle from '../../components/SwitchToggle';
+import Loading from '../../components/Loading';
 
 export default function GeradorCodigo() {
   const [codigos, setCodigos] = useState([]);
   const [novoCodigo, setNovoCodigo] = useState('');
   const [limiteUsos, setLimiteUsos] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [isGenerating, setIsGenerating] = useState(false);
   const history = useHistory();
   const ongName = localStorage.getItem('ongName');
 
@@ -37,6 +41,20 @@ export default function GeradorCodigo() {
       return;
     }
 
+    setIsGenerating(true);
+    setProgress(0);
+    
+    // Simulação de progresso (pode ser substituído por progresso real da API)
+    const interval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          return 100;
+        }
+        return prev + 10;
+      });
+    }, 300);
+
     try {
       await api.post('/codigos', {
         codigo: novoCodigo,
@@ -45,10 +63,13 @@ export default function GeradorCodigo() {
         headers: { Authorization: localStorage.getItem('ongId') }
       });
       setNovoCodigo('');
-      carregarCodigos();
+      await carregarCodigos();
       alert('Código criado com sucesso!');
     } catch (error) {
       alert(error.response?.data?.error || 'Erro ao criar código');
+    } finally {
+      clearInterval(interval);
+      setIsGenerating(false);
     }
   };
 
@@ -56,13 +77,16 @@ export default function GeradorCodigo() {
     if (!window.confirm('Deseja desativar este código?')) return;
 
     try {
+      setLoading(true);
       await api.put(`/codigos/${id}/desativar`, null, {
         headers: { Authorization: localStorage.getItem('ongId') }
       });
-      carregarCodigos();
+      await carregarCodigos();
       alert('Código desativado!');
     } catch (error) {
       alert(error.response?.data?.error || 'Erro ao desativar código');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -70,13 +94,16 @@ export default function GeradorCodigo() {
     if (!window.confirm('Deseja reativar este código?')) return;
 
     try {
+      setLoading(true);
       await api.put(`/codigos/${id}/ativar`, null, {
         headers: { Authorization: localStorage.getItem('ongId') }
       });
-      carregarCodigos();
+      await carregarCodigos();
       alert('Código reativado!');
     } catch (error) {
       alert(error.response?.data?.error || 'Erro ao ativar código');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -84,18 +111,24 @@ export default function GeradorCodigo() {
     if (!window.confirm('Excluir permanentemente este código? Essa ação não pode ser desfeita.')) return;
 
     try {
+      setLoading(true);
       await api.delete(`/codigos/${id}/delete`, {
         headers: { Authorization: localStorage.getItem('ongId') }
       });
-      carregarCodigos();
+      await carregarCodigos();
       alert('Código excluído do banco.');
     } catch (error) {
       alert(error.response?.data?.error || 'Erro ao excluir código');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="gerador-container">
+      {isGenerating && <Loading progress={progress} />}
+      {loading && <Loading progress={100} />} {/* Loading genérico para outras operações */}
+
       <header>
         <div className="ajuste-Titulo">
           <img src={logoImg} alt="DIME" />
@@ -114,9 +147,10 @@ export default function GeradorCodigo() {
           <div className="gerador-form-inline">
             <input
               className="input-codigo"
-              placeholder="Nome do código (ex: TURMA2024)"
+              placeholder="Nome do código (ex: DIME2025)"
               value={novoCodigo}
               onChange={(e) => setNovoCodigo(e.target.value.toUpperCase())}
+              disabled={isGenerating || loading}
             />
             <input
               className="input-limite"
@@ -125,14 +159,15 @@ export default function GeradorCodigo() {
               min="1"
               value={limiteUsos}
               onChange={(e) => setLimiteUsos(e.target.value)}
+              disabled={isGenerating || loading}
             />
             <button 
               onClick={handleGerarCodigo} 
               className="gerar-button"
-              disabled={loading}
+              disabled={isGenerating || loading}
             >
               <FiPlus size={16} />
-              {loading ? 'Gerando...' : 'Gerar Código'}
+              {isGenerating ? 'Gerando...' : 'Gerar Código'}
             </button>
           </div>
 
@@ -150,43 +185,35 @@ export default function GeradorCodigo() {
                 {codigos.length === 0 ? (
                   <tr>
                     <td colSpan="4" style={{ textAlign: 'center' }}>
-                      Nenhum código cadastrado
+                      {loading ? 'Carregando...' : 'Nenhum código cadastrado'}
                     </td>
                   </tr>
                 ) : (
                   codigos.map(codigo => (
                     <tr key={codigo.id}>
-                      <td>{codigo.codigo}</td>
+                      <td><strong>{codigo.codigo}</strong></td>
                       <td>{codigo.usos_atuais} / {codigo.limite_usos}</td>
                       <td>{codigo.ativo ? 'Ativo' : 'Inativo'}</td>
                       <td className="actions">
-                        {codigo.ativo && (
+                        <div className="actions-container">
+                          <SwitchToggle
+                            isOn={codigo.ativo}
+                            handleToggle={() =>
+                              codigo.ativo
+                                ? handleDesativarTemporario(codigo.id)
+                                : handleAtivarCodigo(codigo.id)
+                            }
+                            disabled={loading}
+                          />
                           <button
-                            onClick={() => handleDesativarTemporario(codigo.id)}
-                            className="delete-button"
-                            title="Desativar código"
+                            onClick={() => handleDeletarCodigoPermanentemente(codigo.id)}
+                            className="delete-permanent-button"
+                            title="Excluir permanentemente"
+                            disabled={loading}
                           >
                             <FiTrash2 size={16} />
                           </button>
-                        )}
-
-                        {!codigo.ativo && codigo.usos_atuais < codigo.limite_usos && (
-                          <button
-                            onClick={() => handleAtivarCodigo(codigo.id)}
-                            className="reactivate-button"
-                            title="Ativar código"
-                          >
-                            Ativar
-                          </button>
-                        )}
-
-                        <button
-                          onClick={() => handleDeletarCodigoPermanentemente(codigo.id)}
-                          className="delete-permanent-button"
-                          title="Excluir permanentemente"
-                        >
-                          🗑️
-                        </button>
+                        </div>
                       </td>
                     </tr>
                   ))

@@ -13,6 +13,7 @@
 }
 
 .gerador-container header img {
+
   height: 64px;
 }
 
@@ -68,18 +69,28 @@
   width: 100%;
   border-collapse: collapse;
   min-width: 600px;
+  table-layout: fixed;
+}
+.gerador-table-container th {
+  background-color: #5e5e5e;
+  color: #fff;
 }
 
 .gerador-table-container th, 
 .gerador-table-container td {
   padding: 12px 16px;
   text-align: left;
-  border-bottom: 1px solid #dcdce6;
+}
+.gerador-table-container td {
+background-color: #dcdce6;
 }
 
 .actions {
   display: flex;
+  align-items:center;
+  justify-content: left; /*POSIÇÃO DOS BOTÕES*/
   gap: 8px;
+  height: 100%;
 }
 
 .delete-button {
@@ -167,17 +178,58 @@
 }
 
 .delete-permanent-button {
-  background-color: #ff4d4d;
-  color: white;
-  border: none;
+  background: none;
+  border: 1px solid #dcdce6;
   border-radius: 4px;
-  padding: 6px 10px;
-  font-weight: bold;
-  font-size: 14px;
+  padding: 6px;
   cursor: pointer;
-  transition: background 0.2s;
+  color: #e02041;
 }
 
 .delete-permanent-button:hover {
-  background-color: #cc0000;
+  opacity: 0.8;
+  border: 1px solid #e02041;
+}
+
+.gerador-table-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid #dcdce6;
+  border-radius: 4px;
+  margin-bottom: 24px;
+}
+
+.actions-container {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  flex-wrap: nowrap;
+  width: 100%;
+  min-width: min-content; /* Impede quebra por falta de espaço */
+}
+
+/* Efeito zebrado com cantos arredondados */
+.gerador-table-container tr:nth-child(even) td {
+  background-color: #dcdce6; /* Cinza claro */
+  border-radius: 0;
+}
+
+.gerador-table-container tr:nth-child(odd) td {
+  background-color: #ffffff; /* Branco */
+  border-radius: 0;
+}
+
+/* Adicione estas regras ao seu CSS existente */
+
+/* Borda vermelha no botão de deletar apenas nas linhas escuras */
+.gerador-table-container tr:nth-child(even) .delete-permanent-button {
+  border: 1px solid #000; /* Vermelho igual ao ícone */
+}
+
+/* Mantenha o hover consistente */
+.gerador-table-container tr:nth-child(even) .delete-permanent-button:hover {
+  border: 1px solid #e02041; /* Vermelho mais escuro no hover */
+  background-color: rgba(224, 32, 65, 0.1); /* Fundo levemente avermelhado */
 }
