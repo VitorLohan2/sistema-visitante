@@ -1,0 +1,104 @@
+/* Adicione ao seu arquivo de estilos existente */
+
+.bipar-container {
+  width: 100%;
+  max-width: 1180px;
+  padding: 0 30px;
+  margin: 32px auto;
+}
+
+.bipar-container header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 40px; /* Aumentado o margin-bottom */
+}
+.bipar-container header img{
+  height: 64px;
+}
+
+.bipar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 70vh;
+}
+
+.bipar-card {
+  background: #fff;
+  padding: 40px;
+  border-radius: 8px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 500px;
+  text-align: center;
+}
+
+.bipar-input {
+  width: 100%;
+  padding: 15px;
+  margin: 20px 0;
+  border: 2px solid #dcdce6;
+  border-radius: 4px;
+  font-size: 18px;
+  transition: border 0.3s;
+}
+
+.bipar-input:focus {
+  border-color: #2083e0;
+  outline: none;
+}
+
+.bipar-button {
+  width: 100%;
+  padding: 15px;
+  background-color: #2083e0;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.bipar-button:hover:not(:disabled) {
+  background-color: #1e68c8;
+}
+
+.bipar-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.feedback {
+  margin: 20px 0;
+  padding: 15px;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.feedback.success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.feedback.error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.ultimo-registro {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+  text-align: left;
+}
+
+.ultimo-registro p {
+  margin: 5px 0;
+  font-size: 14px;
+}

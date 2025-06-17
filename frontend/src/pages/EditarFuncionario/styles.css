@@ -1,0 +1,42 @@
+.form-container {
+  width: 100%;
+  max-width: 1180px;
+  padding: 0 30px;
+  margin: 32px auto;
+}
+
+/* Header - ajustado para ficar igual ao gerador */
+.form-container header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 40px; /* Aumentado o margin-bottom */
+}
+
+.form-container header img {
+  height: 64px;
+}
+
+.back-link {
+  display: flex;
+  align-items: center;
+  color: #41414d;
+  font-size: 18px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+.back-link:hover {
+  opacity: 0.8;
+}
+
+.ajuste-Titulo {
+  display: flex;
+  align-items: center;
+}
+
+.ajuste-Titulo span {
+  font-size: 20px;
+  margin-left: 24px;
+}

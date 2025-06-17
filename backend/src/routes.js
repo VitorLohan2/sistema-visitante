@@ -8,6 +8,8 @@ const SessionController = require('./controllers/SessionController')
 const VisitorController = require('./controllers/VisitorController')
 const TicketController = require('./controllers/TicketController')
 const CodigoController = require('./controllers/CodigoController')
+const FuncionarioController = require('./controllers/FuncionarioController')
+const RegistroFuncionarioController = require('./controllers/RegistroFuncionarioController')
 
 const multer = require('multer');
 const multerConfig = require('./config/multer');
@@ -322,6 +324,93 @@ routes.delete('/codigos/:id/delete',
     })
   }),
   CodigoController.deleteCodigo
+);
+
+// Rotas para Funcionários                              ### --------- ###
+routes.get('/funcionarios', 
+  celebrate({
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown(),
+    [Segments.QUERY]: Joi.object().keys({
+      mostrarInativos: Joi.boolean().default(false)
+    })
+  }),
+  FuncionarioController.index
+);
+
+routes.get('/funcionarios/:cracha',
+  celebrate({
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown(),
+    [Segments.PARAMS]: Joi.object().keys({
+      cracha: Joi.string().required()
+    })
+  }),
+  FuncionarioController.buscarPorCracha
+);
+
+routes.post('/funcionarios',
+  celebrate({
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown(),
+    [Segments.BODY]: Joi.object().keys({
+      cracha: Joi.string().required().min(3).max(20),
+      nome: Joi.string().required().min(3).max(255),
+      setor: Joi.string().required().max(100),
+      funcao: Joi.string().required().max(100),
+      data_admissao: Joi.date().iso().required()
+    })
+  }),
+  FuncionarioController.criar
+);
+
+routes.put('/funcionarios/:id',
+  celebrate({
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown(),
+    [Segments.PARAMS]: Joi.object().keys({
+      id: Joi.number().required()
+    }),
+    [Segments.BODY]: Joi.object().keys({
+      nome: Joi.string().min(3).max(255),
+      setor: Joi.string().max(100),
+      funcao: Joi.string().max(100),
+      data_demissao: Joi.date().iso().allow(null),
+      ativo: Joi.boolean()
+    })
+  }),
+  FuncionarioController.atualizar
+);
+
+// Rotas para Registros de Ponto
+routes.post('/registros-ponto',
+  celebrate({
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown(),
+    [Segments.BODY]: Joi.object().keys({
+      cracha: Joi.string().required().min(3).max(20)
+    })
+  }),
+  RegistroFuncionarioController.registrarPonto
+);
+
+routes.get('/registros-ponto/historico',
+  celebrate({
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown(),
+    [Segments.QUERY]: Joi.object().keys({
+      cracha: Joi.string().required(),
+      dataInicio: Joi.date().iso(),
+      dataFim: Joi.date().iso()
+    })
+  }),
+  RegistroFuncionarioController.historico
 );
 
 module.exports = routes

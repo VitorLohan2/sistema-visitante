@@ -1,0 +1,288 @@
+/* Container principal - mantendo sua classe mas com estilos do gerador */
+.funcionarios-container {
+  width: 100%;
+  max-width: 1180px;
+  padding: 0 30px;
+  margin: 32px auto;
+}
+
+/* Header - ajustado para ficar igual ao gerador */
+.funcionarios-container header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 40px; /* Aumentado o margin-bottom */
+}
+
+.funcionarios-container header img {
+  height: 64px;
+}
+
+.ajuste-Titulo {
+  display: flex;
+  align-items: center;
+}
+
+.ajuste-Titulo span {
+  font-size: 20px;
+  margin-left: 24px;
+}
+
+.back-link {
+  display: flex;
+  align-items: center;
+  color: #41414d;
+  font-size: 18px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+.back-link:hover {
+  opacity: 0.8;
+}
+
+/* Seção de conteúdo */
+.content h1 {
+  margin-top: 40px;
+  margin-bottom: 24px;
+}
+
+/* Header do formulário */
+.funcionarios-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.search-input-Funcionarios {
+  flex: 1;
+  padding: 12px 16px;
+  font-size: 16px;
+  border: 1px solid #dcdce6;
+  border-radius: 4px;
+  min-width: 200px;
+}
+
+.new-button {
+  background-color: #2083e0;
+  color: white;
+  padding: 12px 20px;
+  font-size: 16px;
+  font-weight: bold;
+  border: none;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+  height: 48px;
+  text-decoration: none;
+}
+
+.new-button:hover {
+  background-color: #1e68c8;
+}
+
+/* ========================= */
+/* TABELA COM CABEÇALHO FIXO */
+/* ========================= */
+
+/* Wrapper da tabela */
+.funcionarios-table-wrapper {
+  width: 100%;
+  border: 1px solid #dcdce6;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+/* Cabeçalho fixo */
+.thead-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.thead-table th {
+  background-color: #5e5e5e;
+  color: white;
+  padding: 12px 16px;
+  text-align: left;
+}
+
+/* Corpo com rolagem */
+.tbody-scroll {
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Corpo da tabela */
+.tbody-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.tbody-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-top: 1px solid #dcdce6;
+}
+
+/* Efeito zebrado */
+.tbody-table tr:nth-child(even) td {
+  background-color: #f5f5f5;
+}
+
+.tbody-table tr:nth-child(odd) td {
+  background-color: #ffffff;
+}
+
+/* Linhas de funcionários inativos */
+.tbody-table tr.inactive-row td {
+  opacity: 0.9;
+}
+
+/* Nome de funcionários inativos */
+.tbody-table td.inactive-name {
+  color: #e02041;
+  font-weight: bold;
+  text-decoration: line-through;
+}
+
+/* Status badge */
+.status-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.status-badge.active {
+  background-color: #e6f7e6;
+  color: #2e7d32;
+}
+
+.status-badge.inactive {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+/* Ações */
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  height: 100%;
+}
+
+.actions-container {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  flex-wrap: nowrap;
+  width: 100%;
+  min-width: min-content;
+}
+
+/* Botões de ação */
+.history-button, 
+.edit-fun-button {
+  background: none;
+  border: 1px solid #dcdce6;
+  border-radius: 4px;
+  padding: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.history-button {
+  color: #000;
+}
+
+.edit-fun-button {
+  color: #2083e0;
+}
+
+.history-button:hover {
+  border: 1px solid #000;
+  opacity: 0.8;
+}
+
+.edit-fun-button:hover {
+  border: 1px solid #2083e0;
+  opacity: 0.8;
+}
+
+.delete-permanent-button {
+  background: none;
+  border: 1px solid #dcdce6;
+  border-radius: 4px;
+  padding: 6px;
+  cursor: pointer;
+  color: #e02041;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-permanent-button:hover {
+  opacity: 0.8;
+  border: 1px solid #e02041;
+}
+
+/* Botão de status */
+.status-button {
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  min-width: 80px;
+  text-align: center;
+}
+
+.status-button.reactivate {
+  background-color: #34a853;
+  color: white;
+}
+
+.status-button.inactivate {
+  background-color: #e02041;
+  color: white;
+}
+
+.status-button:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+/* Estilo para botão zebrado */
+.tbody-table tr:nth-child(even) .delete-permanent-button {
+  border: 1px solid #000;
+}
+
+.tbody-table tr:nth-child(even) .delete-permanent-button:hover {
+  border: 1px solid #e02041;
+  background-color: rgba(224, 32, 65, 0.1);
+}
+
+/* Mensagem quando não há funcionários */
+.tbody-table tr td[colspan] {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+}

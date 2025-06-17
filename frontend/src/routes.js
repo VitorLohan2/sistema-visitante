@@ -12,7 +12,11 @@ import ViewVisitor from './pages/ViewVisitor'
 import Ticket from './pages/Ticket'
 import TicketDashboard from './pages/TicketDashboard'
 import GeradorCodigo from './pages/GeradorCodigo'
-
+import ListaFuncionarios from './pages/ListaFuncionarios'
+import CadastrarFuncionario from './pages/CadastrarFuncionario'
+import EditarFuncionario from './pages/EditarFuncionario'
+import BiparCracha from './pages/BiparCracha'
+import HistoricoFuncionarios from './pages/HistoricoFuncionarios'
 
 
 export default function Routes() {
@@ -30,6 +34,11 @@ export default function Routes() {
         <Route path="/tickets" exact component={Ticket} />
         <Route path="/ticket-dashboard" component={TicketDashboard} />
         <Route path="/chave-cadastro" component={GeradorCodigo} />
+        <Route path="/funcionarios" exact component={ListaFuncionarios} />
+        <Route path="/funcionarios/cadastrar" component={CadastrarFuncionario} />
+        <Route path="/funcionarios/editar/:id" component={EditarFuncionario} />
+        <Route path="/funcionarios/historico/:cracha" component={HistoricoFuncionarios} />
+        <Route path="/ponto" component={BiparCracha} />
       </Switch>
     </BrowserRouter>
   )
