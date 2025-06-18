@@ -131,17 +131,17 @@
 .tbody-table td {
   padding: 12px 16px;
   text-align: left;
-  border-top: 1px solid #dcdce6;
+  /*border-top: 1px solid #dcdce6;*/
 }
 
 /* Efeito zebrado */
-.tbody-table tr:nth-child(even) td {
+/*.tbody-table tr:nth-child(even) td {
   background-color: #f5f5f5;
 }
 
 .tbody-table tr:nth-child(odd) td {
   background-color: #ffffff;
-}
+}*/
 
 /* Linhas de funcionários inativos */
 .tbody-table tr.inactive-row td {
