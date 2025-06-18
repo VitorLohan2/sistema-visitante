@@ -1,3 +1,49 @@
+/* Adicione estas regras ao seu arquivo CSS existente */
+.marcador {
+  font-weight: bold;
+}
+.radio-group {
+  display: flex;
+  gap: 20px; /* Espaço entre os itens */
+  margin-top: 8px;
+}
+
+.radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.radio-group input[type="radio"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  outline: none;
+  cursor: pointer;
+  position: relative;
+}
+
+.radio-group input[type="radio"]:checked {
+  background-color: #fff;
+}
+
+.radio-group input[type="radio"]:checked::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #000;
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Mantenha o restante do seu CSS existente */
 .form-container {
   width: 100%;
   max-width: 1180px;
@@ -5,12 +51,11 @@
   margin: 32px auto;
 }
 
-/* Header - ajustado para ficar igual ao gerador */
 .form-container header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 40px; /* Aumentado o margin-bottom */
+  margin-bottom: 40px;
 }
 
 .form-container header img {

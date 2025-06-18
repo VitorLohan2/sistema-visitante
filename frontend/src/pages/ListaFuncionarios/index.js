@@ -33,12 +33,12 @@ export default function ListaFuncionarios() {
     }
   };
 
-  const handleInativar = async (id) => {
+  const handleInativar = async (cracha) => {
     if (!window.confirm('Deseja inativar este funcionário?')) return;
 
     try {
       setLoading(true);
-      await api.put(`/funcionarios/${id}`, {
+      await api.put(`/funcionarios/${cracha}`, {
         ativo: false,
         data_demissao: new Date().toISOString().split('T')[0]
       }, {
@@ -53,12 +53,12 @@ export default function ListaFuncionarios() {
     }
   };
 
-  const handleReativar = async (id) => {
+  const handleReativar = async (cracha) => {
     if (!window.confirm('Deseja reativar este funcionário?')) return;
 
     try {
       setLoading(true);
-      await api.put(`/funcionarios/${id}`, {
+      await api.put(`/funcionarios/${cracha}`, {
         ativo: true,
         data_demissao: null
       }, {
@@ -137,7 +137,7 @@ export default function ListaFuncionarios() {
                     </tr>
                   ) : (
                     filteredFuncionarios.map(funcionario => (
-                      <tr key={funcionario.id} className={!funcionario.ativo ? 'inactive-row' : ''}>
+                      <tr key={funcionario.cracha} className={!funcionario.ativo ? 'inactive-row' : ''}>
                         <td><strong>{funcionario.cracha}</strong></td>
                         <td className={!funcionario.ativo ? 'inactive-name' : ''}>
                           {funcionario.nome}
@@ -162,7 +162,7 @@ export default function ListaFuncionarios() {
                             {isAdmin && (
                               <>
                                 <Link
-                                  to={`/funcionarios/editar/${funcionario.id}`}
+                                  to={`/funcionarios/editar/${funcionario.cracha}`}
                                   className="edit-fun-button"
                                   title="Editar"
                                 >
@@ -171,8 +171,8 @@ export default function ListaFuncionarios() {
                                 <button
                                   onClick={() =>
                                     funcionario.ativo
-                                      ? handleInativar(funcionario.id)
-                                      : handleReativar(funcionario.id)
+                                      ? handleInativar(funcionario.cracha)
+                                      : handleReativar(funcionario.cracha)
                                   }
                                   className={`status-button ${funcionario.ativo ? 'inactivate' : 'reactivate'}`}
                                   title={funcionario.ativo ? 'Inativar' : 'Reativar'}
@@ -188,6 +188,11 @@ export default function ListaFuncionarios() {
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+          <div className="contador-funcionarios">
+            <div className="contador-edit">
+              Total de funcionários cadastrados: {filteredFuncionarios.length}
             </div>
           </div>
         </section>

@@ -6,39 +6,77 @@ import './styles.css';
 import logoImg from '../../assets/logo.svg';
 import Loading from '../../components/Loading';
 
+// Dados estruturais dos setores e funções
+const setoresEFuncoes = {
+  'EXPEDIÇÃO': [
+    'TRAINEE GESTÃO LOGÍSTICA',
+    'TRAINEE ASSIST. DE EXPEDIÇÃO',
+    'ASSISTENTE DE EXPEDIÇÃO I',
+    'ASSIST. DE EXPEDIÇÃO II',
+    'ASSIST. DE EXPEDIÇÃO III',
+    'ASSIST. DE EXPEDIÇÃO IV',
+    'AUXILIAR DE EXPEDIÇÃO',
+    'ASSIST. DE SALA NOBRE',
+    'CONFERENTE DE CARGA I',
+    'CONFERENTE DE CARGA II',
+    'AUX. CONFERENTE DE CARGA',
+    'MECANICO DE VEICULOS',
+    'MANOBRISTA',
+    'LAVADOR DE VEICULOS II'      
+  ],
+  'ADMINISTRATIVO': [
+    'ASSISTENTE ADMINISTRATIVO',
+    'ANALISTA ADMINISTRATIVO',
+    'GERENTE ADMINISTRATIVO'
+  ]
+};
+
 export default function EditarFuncionario() {
   const [form, setForm] = useState({
     cracha: '',
     nome: '',
     setor: '',
     funcao: '',
-    data_admissao: '',
-    data_demissao: '',
-    ativo: true
+    data_admissao: new Date().toISOString().split('T')[0],
+    ativo: true,
+    data_demissao: ''
   });
+  const [funcoesDisponiveis, setFuncoesDisponiveis] = useState([]);
   const [loading, setLoading] = useState(false);
   const history = useHistory();
-  const { id } = useParams();
+  const { cracha } = useParams(); // Alterado de id para cracha
   const ongName = localStorage.getItem('ongName');
 
   useEffect(() => {
     carregarFuncionario();
-  }, [id]);
+  }, [cracha]); // Alterado para depender de cracha
+
+  // Atualiza as funções disponíveis quando o setor é alterado
+  useEffect(() => {
+    if (form.setor && setoresEFuncoes[form.setor]) {
+      setFuncoesDisponiveis(setoresEFuncoes[form.setor]);
+    } else {
+      setFuncoesDisponiveis([]);
+    }
+  }, [form.setor]);
 
   const carregarFuncionario = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/funcionarios/${id}`, {
+      const response = await api.get(`/funcionarios/${cracha}`, {
         headers: { Authorization: localStorage.getItem('ongId') }
       });
+
+      const funcionario = response.data;
+      
       setForm({
-        cracha: response.data.cracha,
-        nome: response.data.nome,
-        setor: response.data.setor,
-        funcao: response.data.funcao,
-        data_admissao: response.data.data_admissao,
-        data_demissao: response.data.data_demissao || '',
-        ativo: response.data.ativo
+        cracha: funcionario.cracha,
+        nome: funcionario.nome,
+        setor: funcionario.setor,
+        funcao: funcionario.funcao,
+        data_admissao: funcionario.data_admissao.split('T')[0],
+        ativo: funcionario.ativo,
+        data_demissao: funcionario.data_demissao ? funcionario.data_demissao.split('T')[0] : ''
       });
     } catch (error) {
       alert(error.response?.data?.error || 'Erro ao carregar funcionário');
@@ -50,14 +88,34 @@ export default function EditarFuncionario() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validação básica dos campos obrigatórios
+    if (!form.nome || !form.setor || !form.funcao || !form.data_admissao) {
+      alert('Preencha todos os campos obrigatórios!');
+      return;
+    }
+
     try {
       setLoading(true);
-      await api.put(`/funcionarios/${id}`, form, {
+      
+      // Prepara os dados para envio
+      const dadosParaEnviar = {
+        nome: form.nome,
+        setor: form.setor,
+        funcao: form.funcao,
+        data_admissao: form.data_admissao,
+        data_demissao: form.data_demissao || null,
+        ativo: form.ativo
+      };
+
+      await api.put(`/funcionarios/${cracha}`, dadosParaEnviar, {
         headers: { Authorization: localStorage.getItem('ongId') }
       });
+      
       alert('Funcionário atualizado com sucesso!');
       history.push('/funcionarios');
     } catch (error) {
+      console.error('Erro completo:', error.response?.data);
       alert(error.response?.data?.error || 'Erro ao atualizar funcionário');
     } finally {
       setLoading(false);
@@ -71,6 +129,15 @@ export default function EditarFuncionario() {
       ativo,
       data_demissao: ativo ? '' : new Date().toISOString().split('T')[0]
     });
+  };
+
+  const handleNomeChange = (e) => {
+    setForm({...form, nome: e.target.value.toUpperCase()});
+  };
+
+  const handleCrachaChange = (e) => {
+    const value = e.target.value.replace(/\D/g, '');
+    setForm({...form, cracha: value});
   };
 
   return (
@@ -97,9 +164,12 @@ export default function EditarFuncionario() {
               <label>Crachá:</label>
               <input
                 value={form.cracha}
-                onChange={(e) => setForm({...form, cracha: e.target.value})}
+                onChange={handleCrachaChange}
                 required
                 maxLength="20"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 disabled
               />
             </div>
@@ -108,7 +178,7 @@ export default function EditarFuncionario() {
               <label>Nome Completo:</label>
               <input
                 value={form.nome}
-                onChange={(e) => setForm({...form, nome: e.target.value})}
+                onChange={handleNomeChange}
                 required
               />
             </div>
@@ -116,20 +186,33 @@ export default function EditarFuncionario() {
             <div className="form-row">
               <div className="input-group">
                 <label>Setor:</label>
-                <input
+                <select
                   value={form.setor}
                   onChange={(e) => setForm({...form, setor: e.target.value})}
                   required
-                />
+                  className="input-select"
+                >
+                  <option value="">Selecione um setor</option>
+                  {Object.keys(setoresEFuncoes).map(setor => (
+                    <option key={setor} value={setor}>{setor}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="input-group">
                 <label>Função:</label>
-                <input
+                <select
                   value={form.funcao}
                   onChange={(e) => setForm({...form, funcao: e.target.value})}
                   required
-                />
+                  disabled={!form.setor}
+                  className="input-select"
+                >
+                  <option value="">Selecione uma função</option>
+                  {funcoesDisponiveis.map(funcao => (
+                    <option key={funcao} value={funcao}>{funcao}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -151,12 +234,13 @@ export default function EditarFuncionario() {
                     type="date"
                     value={form.data_demissao}
                     onChange={(e) => setForm({...form, data_demissao: e.target.value})}
+                    disabled={form.ativo}
                   />
                 </div>
               )}
             </div>
 
-            <div className="input-group">
+            <div className="marcador">
               <label>Status:</label>
               <div className="radio-group">
                 <label>

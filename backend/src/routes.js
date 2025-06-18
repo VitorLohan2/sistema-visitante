@@ -367,19 +367,27 @@ routes.post('/funcionarios',
   FuncionarioController.criar
 );
 
-routes.put('/funcionarios/:id',
+routes.put('/funcionarios/:cracha',
   celebrate({
     [Segments.HEADERS]: Joi.object({
       authorization: Joi.string().required(),
     }).unknown(),
     [Segments.PARAMS]: Joi.object().keys({
-      id: Joi.number().required()
+      cracha: Joi.string().required() 
     }),
     [Segments.BODY]: Joi.object().keys({
       nome: Joi.string().min(3).max(255),
       setor: Joi.string().max(100),
       funcao: Joi.string().max(100),
-      data_demissao: Joi.date().iso().allow(null),
+      data_admissao: Joi.alternatives().try(
+        Joi.date().iso(),
+        Joi.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+      ),
+      data_demissao: Joi.alternatives().try(
+        Joi.date().iso(),
+        Joi.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        Joi.allow(null)
+      ),
       ativo: Joi.boolean()
     })
   }),

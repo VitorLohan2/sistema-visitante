@@ -36,7 +36,7 @@ export default function Routes() {
         <Route path="/chave-cadastro" component={GeradorCodigo} />
         <Route path="/funcionarios" exact component={ListaFuncionarios} />
         <Route path="/funcionarios/cadastrar" component={CadastrarFuncionario} />
-        <Route path="/funcionarios/editar/:id" component={EditarFuncionario} />
+        <Route path="/funcionarios/editar/:cracha" component={EditarFuncionario} />
         <Route path="/funcionarios/historico/:cracha" component={HistoricoFuncionarios} />
         <Route path="/ponto" component={BiparCracha} />
       </Switch>

@@ -116,7 +116,7 @@
 
 /* Corpo com rolagem */
 .tbody-scroll {
-  max-height: 400px;
+  max-height: 500px;
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -285,4 +285,19 @@
   text-align: center;
   padding: 20px;
   color: #666;
+}
+
+.contador-funcionarios {
+  width: 100%;
+  margin-top: 20px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 1rem;
+}
+.contador-edit {
+  width: 27%;
+  border: 1px solid #000;
+  border-radius: 10px;
+  padding: 5px;
+  margin: 0 auto;
 }
