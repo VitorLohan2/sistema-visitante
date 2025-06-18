@@ -102,3 +102,46 @@
   margin: 5px 0;
   font-size: 14px;
 }
+
+.popup-notificacao {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  z-index: 9999;
+  pointer-events: none;
+  margin-top: 20px;
+}
+
+.popup-conteudo {
+  padding: 25px 40px;
+  font-size: 20px;
+  font-weight: bold;
+  border-radius: 12px;
+  color: white;
+  background-color: #333;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  pointer-events: all;
+  animation: fadeInOut 4s ease-in-out;
+}
+
+.popup-sucesso {
+  background-color: #28a745;
+}
+
+.popup-erro {
+  background-color: #e02020;
+}
+
+.popup-alerta {
+  background-color: #ffc107;
+  color: #000;
+}
+@keyframes fadeInOut {
+  0%   { opacity: 0; transform: translateY(-20px); }
+  10%  { opacity: 1; transform: translateY(0); }
+  90%  { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-20px); }
+}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FiArrowLeft } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
@@ -9,46 +9,75 @@ import Loading from '../../components/Loading';
 export default function BiparCracha() {
   const [cracha, setCracha] = useState('');
   const [mensagem, setMensagem] = useState('');
+  const [showPopup, setShowPopup] = useState(false);
+  const [popupTipo, setPopupTipo] = useState('erro'); // erro | alerta
   const [loading, setLoading] = useState(false);
   const [ultimoRegistro, setUltimoRegistro] = useState(null);
   const [nomeFuncionario, setNomeFuncionario] = useState('');
 
-const handleBipar = async () => {
-  if (!cracha) {
-    setMensagem('Digite o número do crachá');
-    return;
-  }
+  useEffect(() => {
+    if (showPopup) {
+      const timeout = setTimeout(() => setShowPopup(false), 3000);
+      return () => clearTimeout(timeout);
+    }
+  }, [showPopup]);
 
-  try {
-    setLoading(true);
-    console.log('Enviando crachá:', cracha);
+  const handleBipar = async () => {
+    if (!cracha) {
+      setMensagem('Número do crachá é obrigatório');
+      setPopupTipo('alerta');
+      setShowPopup(true);
+      return;
+    }
 
-    const response = await api.post('/registros-ponto', 
-      { cracha: cracha }, // Garanta que está enviando como objeto
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: localStorage.getItem('ongId') // Adicione autenticação se necessário
+    try {
+      setLoading(true);
+      const response = await api.post(
+        '/registros-ponto',
+        { cracha },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: localStorage.getItem('ongId')
+          }
         }
+      );
+
+      setMensagem(response.data.mensagem);
+      setUltimoRegistro(response.data.registro);
+      setNomeFuncionario(response.data.nomeFuncionario || '');
+      setCracha('');
+    } catch (error) {
+      const status = error.response?.status;
+      const msg = error.response?.data?.error || 'Erro ao registrar ponto';
+
+      if (status === 400 && msg.toLowerCase().includes('obrigatório')) {
+        setPopupTipo('alerta');
+      } else if (status === 404 || msg.toLowerCase().includes('não encontrado')) {
+        setPopupTipo('alerta');
+      } else {
+        setPopupTipo('erro');
       }
-    );
-    
-    console.log('Resposta:', response.data);
-    setMensagem(response.data.mensagem);
-    setUltimoRegistro(response.data.registro);
-    setNomeFuncionario(response.data.nomeFuncionario || ''); // Adiciona o nome do funcionário
-    setCracha('');
-  } catch (error) {
-    console.error('Erro detalhado:', error.response);
-    setMensagem(error.response?.data?.error || 'Erro ao registrar ponto');
-  } finally {
-    setLoading(false);
-  }
-};
+
+      setMensagem(msg);
+      setShowPopup(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="bipar-container">
       {loading && <Loading progress={100} />}
+
+      {/* POPUP CENTRALIZADO */}
+      {showPopup && (
+        <div className="popup-notificacao">
+          <div className={`popup-conteudo ${popupTipo === 'erro' ? 'popup-erro' : 'popup-alerta'}`}>
+            {mensagem}
+          </div>
+        </div>
+      )}
 
       <header>
         <div className="ajuste-Titulo">
@@ -63,7 +92,7 @@ const handleBipar = async () => {
       <div className="content">
         <section className="bipar-section">
           <h1>Registro de Ponto</h1>
-          
+
           <div className="bipar-card">
             <input
               type="text"
@@ -75,7 +104,7 @@ const handleBipar = async () => {
               className="bipar-input"
             />
 
-            <button 
+            <button
               onClick={handleBipar}
               className="bipar-button"
               disabled={loading}
@@ -83,30 +112,30 @@ const handleBipar = async () => {
               {loading ? 'Registrando...' : 'Confirmar'}
             </button>
 
-            {mensagem && (
+            {mensagem && !showPopup && (
               <div className={`feedback ${mensagem.includes('sucesso') ? 'success' : 'error'}`}>
                 {mensagem}
               </div>
             )}
 
-          {ultimoRegistro && (
-            <div className="ultimo-registro">
-              {nomeFuncionario && (
-                <p><strong>Funcionário: {nomeFuncionario}</strong></p>
-              )}
-              {ultimoRegistro.tipo === 'entrada' ? (
-                <>
-                  <p><strong>Primeiro Registro: Entrada</strong></p>
-                  <p><strong>Horário Atual: {new Date(ultimoRegistro.hora_entrada).toLocaleString()}</strong></p>
-                </>
-              ) : (
-                <>
-                  <p><strong>Segundo Registro: Saída</strong></p>
-                  <p><strong>Horário Atual: {new Date(ultimoRegistro.hora_saida).toLocaleString()}</strong></p>
-                </>
-              )}
-            </div>
-          )}
+            {ultimoRegistro && (
+              <div className="ultimo-registro">
+                {nomeFuncionario && (
+                  <p><strong>Funcionário: {nomeFuncionario}</strong></p>
+                )}
+                {ultimoRegistro.tipo === 'entrada' ? (
+                  <>
+                    <p><strong>Primeiro Registro: Entrada</strong></p>
+                    <p><strong>Horário Atual: {new Date(ultimoRegistro.hora_entrada).toLocaleString()}</strong></p>
+                  </>
+                ) : (
+                  <>
+                    <p><strong>Segundo Registro: Saída</strong></p>
+                    <p><strong>Horário Atual: {new Date(ultimoRegistro.hora_saida).toLocaleString()}</strong></p>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </section>
       </div>

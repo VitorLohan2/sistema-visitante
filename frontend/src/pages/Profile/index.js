@@ -186,7 +186,7 @@ export default function Profile() {
             </span>
           )}
         </RippleButton>
-
+            
         {userData.type === 'ADM' && (
           <div className="adm-menu-container" ref={admMenuRef}>
             <button onClick={() => setShowAdmMenu(prev => !prev)} className="adm-link">

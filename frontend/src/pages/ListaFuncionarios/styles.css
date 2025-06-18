@@ -11,7 +11,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 40px; /* Aumentado o margin-bottom */
+  margin-bottom: 40px;
 }
 
 .funcionarios-container header img {
@@ -87,72 +87,54 @@
   background-color: #1e68c8;
 }
 
-/* ========================= */
-/* TABELA COM CABEÇALHO FIXO */
-/* ========================= */
+/* =============================== */
+/* NOVA ESTRUTURA: TABELA UNIFICADA */
+/* =============================== */
 
-/* Wrapper da tabela */
-.funcionarios-table-wrapper {
-  width: 100%;
+.tabela-funcionarios-wrapper {
+  max-height: 500px;
+  overflow-y: auto;
   border: 1px solid #dcdce6;
   border-radius: 4px;
-  overflow: hidden;
-  margin-bottom: 24px;
 }
 
-/* Cabeçalho fixo */
-.thead-table {
+.tabela-funcionarios {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
 }
 
-.thead-table th {
+.tabela-funcionarios thead th {
+  position: sticky;
+  top: 0;
   background-color: #5e5e5e;
   color: white;
   padding: 12px 16px;
   text-align: left;
+  z-index: 1;
 }
 
-/* Corpo com rolagem */
-.tbody-scroll {
-  max-height: 500px;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-/* Corpo da tabela */
-.tbody-table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-}
-
-.tbody-table td {
+.tabela-funcionarios td {
   padding: 12px 16px;
   text-align: left;
-  /*border-top: 1px solid #dcdce6;*/
+  background-color: white;
 }
 
-/* Efeito zebrado */
-/*.tbody-table tr:nth-child(even) td {
-  background-color: #f5f5f5;
+/* Linhas alternadas (zebrado) */
+.tabela-funcionarios tbody tr:nth-child(even) {
+  background-color: #f9f9f9;
 }
 
-.tbody-table tr:nth-child(odd) td {
-  background-color: #ffffff;
-}*/
-
-/* Linhas de funcionários inativos */
-.tbody-table tr.inactive-row td {
-  opacity: 0.9;
+/* Linhas inativas */
+.tabela-funcionarios tr.inactive-row td {
+  background-color: #ffe5e5;
 }
 
-/* Nome de funcionários inativos */
-.tbody-table td.inactive-name {
+/* Nome de inativo com estilo */
+.tabela-funcionarios td.inactive-name {
   color: #e02041;
-  font-weight: bold;
   text-decoration: line-through;
+  font-weight: bold;
 }
 
 /* Status badge */
@@ -176,8 +158,8 @@
 }
 
 /* Ações */
-.actions {
-  display: flex;
+.actions-list-funcionarios {
+  /*display: flex;*/
   align-items: center;
   justify-content: flex-start;
   gap: 8px;
@@ -195,7 +177,7 @@
 }
 
 /* Botões de ação */
-.history-button, 
+.history-button,
 .edit-fun-button {
   background: none;
   border: 1px solid #dcdce6;
@@ -270,23 +252,28 @@
   transform: translateY(-1px);
 }
 
+.tabela-funcionarios tbody tr {
+  border-bottom: 1px solid #dcdce6;
+}
+
 /* Estilo para botão zebrado */
-.tbody-table tr:nth-child(even) .delete-permanent-button {
+.tabela-funcionarios tr:nth-child(even) .delete-permanent-button {
   border: 1px solid #000;
 }
 
-.tbody-table tr:nth-child(even) .delete-permanent-button:hover {
+.tabela-funcionarios tr:nth-child(even) .delete-permanent-button:hover {
   border: 1px solid #e02041;
   background-color: rgba(224, 32, 65, 0.1);
 }
 
 /* Mensagem quando não há funcionários */
-.tbody-table tr td[colspan] {
+.tabela-funcionarios tr td[colspan] {
   text-align: center;
   padding: 20px;
   color: #666;
 }
 
+/* Rodapé de contagem */
 .contador-funcionarios {
   width: 100%;
   margin-top: 20px;
@@ -294,10 +281,12 @@
   font-weight: bold;
   font-size: 1rem;
 }
+
 .contador-edit {
   width: 27%;
-  border: 1px solid #000;
+  border: 1px solid #dcdce6;
   border-radius: 10px;
   padding: 5px;
   margin: 0 auto;
+  opacity: 0.8;
 }

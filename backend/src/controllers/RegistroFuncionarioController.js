@@ -8,23 +8,27 @@ module.exports = {
    */
   async registrarPonto(req, res) {
     const { cracha } = req.body;
-    
-    // Validação inicial
+
     if (!cracha) {
       return res.status(400).json({ error: 'Número do crachá é obrigatório' });
     }
 
     try {
       const hoje = new Date().toISOString().split('T')[0];
-      
-      // Busca funcionário (verifique se a tabela se chama 'functionarios' ou 'funcionarios')
+
+      // Busca funcionário por crachá (sem filtrar por ativo ainda)
       const funcionario = await connection('funcionarios')
         .where('cracha', cracha)
-        .where('ativo', true)
         .first();
 
+      // Se não encontrou nenhum
       if (!funcionario) {
-        return res.status(404).json({ error: 'Funcionário não encontrado ou inativo' });
+        return res.status(404).json({ error: 'Funcionário não encontrado' });
+      }
+
+      // Se encontrou, mas está inativo
+      if (!funcionario.ativo) {
+        return res.status(403).json({ error: 'ACESSO NÃO PERMITIDO!!' });
       }
 
       // Verifica registro do dia
@@ -34,7 +38,6 @@ module.exports = {
         .first();
 
       if (!registro) {
-        // Registrar entrada
         const [novoRegistro] = await connection('registros_funcionarios')
           .insert({
             funcionario_id: funcionario.id,
@@ -42,23 +45,22 @@ module.exports = {
             hora_entrada: new Date()
           })
           .returning('*');
-        
+
         return res.json({
           mensagem: 'Entrada registrada com sucesso',
           registro: {
             ...novoRegistro,
             tipo: 'entrada'
           },
-          nomeFuncionario: funcionario.nome, // Adiciona o nome do funcionário na resposta
+          nomeFuncionario: funcionario.nome,
           tipo: 'entrada'
         });
       }
 
       if (!registro.hora_saida) {
-        // Registrar saída
         const horaSaida = new Date();
         const diffMs = horaSaida - new Date(registro.hora_entrada);
-        const horasTrabalhadas = (diffMs / (1000 * 60 * 60)).toFixed(2); // Calcula horas com 2 casas decimais
+        const horasTrabalhadas = (diffMs / (1000 * 60 * 60)).toFixed(2);
 
         const [registroAtualizado] = await connection('registros_funcionarios')
           .where('id', registro.id)
@@ -75,14 +77,14 @@ module.exports = {
             ...registroAtualizado,
             tipo: 'saida'
           },
-          nomeFuncionario: funcionario.nome, // Adiciona o nome do funcionário na resposta
+          nomeFuncionario: funcionario.nome,
           tipo: 'saida'
         });
       }
 
       return res.status(400).json({ 
         error: 'Já existe registro completo para hoje',
-        nomeFuncionario: funcionario.nome // Adiciona o nome mesmo em caso de erro
+        nomeFuncionario: funcionario.nome
       });
 
     } catch (error) {

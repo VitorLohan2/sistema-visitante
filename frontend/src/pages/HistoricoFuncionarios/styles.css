@@ -86,22 +86,48 @@
   padding: 16px;
   border-radius: 4px;
   margin-bottom: 20px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.filtros-linha {
+  display: flex;
+  gap: 20px; /* ajuste fino de espaço horizontal entre os filtros */
 }
 
 .filtro-group {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  gap: 5px;
 }
 
 .filtro-group label {
-  font-weight: bold;
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+}
+
+.filtro-group input[type="date"] {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #333;
+  background-color: #fff;
+  transition: border 0.2s ease;
+  width: 100%;
+
+}
+
+.filtro-group input[type="date"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.2);
 }
 
 .filtro-actions {
@@ -123,7 +149,8 @@
 .limpar-button {
   background-color: #f0f0f0;
   color: #333;
-  border: none;
+  border: 1px solid #000;
+  /*border: none;*/  /* Remover borda do elemento*/
   border-radius: 4px;
   padding: 8px 16px;
   cursor: pointer;
