@@ -113,7 +113,7 @@ export default function ListaFuncionarios() {
           </div>
 
           <div className="tabela-funcionarios-wrapper">
-            <table className="tabela-funcionarios">
+            <table className="tabela-funcionarios thead-table">
               <thead>
                 <tr>
                   <th>Crachá</th>
@@ -124,55 +124,59 @@ export default function ListaFuncionarios() {
                   <th>Ações</th>
                 </tr>
               </thead>
-              <tbody>
-                {filteredFuncionarios.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" style={{ textAlign: 'center' }}>
-                      {loading ? 'Carregando...' : 'Nenhum funcionário encontrado'}
-                    </td>
-                  </tr>
-                ) : (
-                  filteredFuncionarios.map(funcionario => (
-                    <tr key={funcionario.cracha} className={!funcionario.ativo ? 'inactive-row' : ''}>
-                      <td><strong>{funcionario.cracha}</strong></td>
-                      <td className={!funcionario.ativo ? 'inactive-name' : ''}>{funcionario.nome}</td>
-                      <td>{funcionario.setor}</td>
-                      <td>{funcionario.funcao}</td>
-                      <td>
-                        <span className={`status-badge ${funcionario.ativo ? 'active' : 'inactive'}`}>
-                          {funcionario.ativo ? 'Ativo' : 'Inativo'}
-                        </span>
-                      </td>
-                      <td className="actions-list-funcionarios">
-                        <div className="actions-container">
-                          <Link to={`/funcionarios/historico/${funcionario.cracha}`} className="history-button" title="Histórico">
-                            <FiClock size={16} />
-                          </Link>
-                          {isAdmin && (
-                            <>
-                              <Link to={`/funcionarios/editar/${funcionario.cracha}`} className="edit-fun-button" title="Editar">
-                                <FiEdit2 size={16} />
-                              </Link>
-                              <button
-                                onClick={() =>
-                                  funcionario.ativo
-                                    ? handleInativar(funcionario.cracha)
-                                    : handleReativar(funcionario.cracha)
-                                }
-                                className={`status-button ${funcionario.ativo ? 'inactivate' : 'reactivate'}`}
-                                title={funcionario.ativo ? 'Inativar' : 'Reativar'}
-                              >
-                                {funcionario.ativo ? 'Inativar' : 'Reativar'}
-                              </button>
-                            </>
-                          )}
-                        </div>
+            </table>
+            <div className="tbody-scroll">
+              <table className="tabela-funcionarios tbody-table">
+                <tbody>
+                  {filteredFuncionarios.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" style={{ textAlign: 'center' }}>
+                        {loading ? 'Carregando...' : 'Nenhum funcionário encontrado'}
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    filteredFuncionarios.map(funcionario => (
+                      <tr key={funcionario.cracha} className={!funcionario.ativo ? 'inactive-row' : ''}>
+                        <td><strong>{funcionario.cracha}</strong></td>
+                        <td className={!funcionario.ativo ? 'inactive-name' : ''}>{funcionario.nome}</td>
+                        <td>{funcionario.setor}</td>
+                        <td>{funcionario.funcao}</td>
+                        <td>
+                          <span className={`status-badge ${funcionario.ativo ? 'active' : 'inactive'}`}>
+                            {funcionario.ativo ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </td>
+                        <td className="actions-list-funcionarios">
+                          <div className="actions-container">
+                            <Link to={`/funcionarios/historico/${funcionario.cracha}`} className="history-button" title="Histórico">
+                              <FiClock size={16} />
+                            </Link>
+                            {isAdmin && (
+                              <>
+                                <Link to={`/funcionarios/editar/${funcionario.cracha}`} className="edit-fun-button" title="Editar">
+                                  <FiEdit2 size={16} />
+                                </Link>
+                                <button
+                                  onClick={() =>
+                                    funcionario.ativo
+                                      ? handleInativar(funcionario.cracha)
+                                      : handleReativar(funcionario.cracha)
+                                  }
+                                  className={`status-button ${funcionario.ativo ? 'inactivate' : 'reactivate'}`}
+                                  title={funcionario.ativo ? 'Inativar' : 'Reativar'}
+                                >
+                                  {funcionario.ativo ? 'Inativar' : 'Reativar'}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <div className="contador-funcionarios">

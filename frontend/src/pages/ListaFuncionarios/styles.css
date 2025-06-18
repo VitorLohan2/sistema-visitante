@@ -92,10 +92,9 @@
 /* =============================== */
 
 .tabela-funcionarios-wrapper {
-  max-height: 500px;
-  overflow-y: auto;
+  width: 100%;
   border: 1px solid #dcdce6;
-  border-radius: 4px;
+  border-radius: 1px;
 }
 
 .tabela-funcionarios {
@@ -155,6 +154,7 @@
 .status-badge.inactive {
   background-color: #ffebee;
   color: #c62828;
+  border: 1px solid #e02041;
 }
 
 /* Ações */
@@ -289,4 +289,47 @@
   padding: 5px;
   margin: 0 auto;
   opacity: 0.8;
+}
+
+
+/*---- ROLAGEM ----*/
+
+.thead-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.thead-table th {
+  background-color: #5e5e5e;
+  color: white;
+  padding: 12px 16px;
+  text-align: left;
+}
+
+.tbody-scroll {
+  max-height: 500px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.tbody-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.tbody-table td {
+  padding: 12px 16px;
+  text-align: left;
+  background-color: white;
+  border-bottom: 1px solid #dcdce6;
+}
+
+.tbody-table tbody tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.tbody-table tr.inactive-row td {
+  background-color: #ffe5e5;
 }
