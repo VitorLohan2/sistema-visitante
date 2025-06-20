@@ -25,7 +25,13 @@ export default function ListaFuncionarios() {
         params: { mostrarInativos: true },
         headers: { Authorization: localStorage.getItem('ongId') }
       });
-      setFuncionarios(response.data);
+      
+    // Ordenar por nome (case insensitive)
+    const funcionariosOrdenados = response.data.sort((a, b) =>
+      a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' })
+    );
+
+    setFuncionarios(funcionariosOrdenados);
     } catch (error) {
       alert(error.response?.data?.error || 'Erro ao carregar funcionários');
     } finally {
