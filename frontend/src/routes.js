@@ -17,7 +17,7 @@ import CadastrarFuncionario from './pages/CadastrarFuncionario'
 import EditarFuncionario from './pages/EditarFuncionario'
 import BiparCracha from './pages/BiparCracha'
 import HistoricoFuncionarios from './pages/HistoricoFuncionarios'
-
+import RecuperarId from './pages/RecuperarId'
 
 export default function Routes() {
   return (
@@ -39,6 +39,7 @@ export default function Routes() {
         <Route path="/funcionarios/editar/:cracha" component={EditarFuncionario} />
         <Route path="/funcionarios/historico/:cracha" component={HistoricoFuncionarios} />
         <Route path="/ponto" component={BiparCracha} />
+        <Route path="/recuperar-id" exact component={RecuperarId} />
       </Switch>
     </BrowserRouter>
   )

@@ -32,6 +32,16 @@ const handleUploadErrors = (err, req, res, next) => {
 
 routes.post('/sessions', SessionController.create)
 
+routes.post('/recuperar-id',
+  celebrate({
+    [Segments.BODY]: Joi.object().keys({
+      email: Joi.string().required().email(),
+      data_nascimento: Joi.string().required().regex(/^\d{4}-\d{2}-\d{2}$/)
+    })
+  }),
+  SessionController.recuperarId
+);
+
 routes.get('/ongs', OngController.index)
 routes.post('/ongs', celebrate({
   [Segments.BODY]: Joi.object().keys({
