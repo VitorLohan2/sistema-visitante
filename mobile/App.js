@@ -9,6 +9,9 @@ import Visitors from './src/pages/Visitors';
 import History from './src/pages/History';
 import TicketDashboard from './src/pages/TicketDashboard';
 import ViewVisitor from './src/pages/ViewVisitor'; //Perfil do Visitante
+import EditIncident from './src/pages/EditIncident'; //Editar do Perfil Visitante
+import NewIncident from './src/pages/NewIncident';
+import RecuperarId from './src/pages/RecuperarId';
 
 const Stack = createStackNavigator();
 
@@ -27,6 +30,9 @@ export default function App() {
         <Stack.Screen name="History" component={History} options={{ headerShown: false }}/>
         <Stack.Screen name="TicketDashboard" component={TicketDashboard} options={{ headerShown: false }}/>
         <Stack.Screen name="ViewVisitor" component={ViewVisitor} options={{ headerShown: false }}/>
+        <Stack.Screen name="EditIncident" component={EditIncident} options={{ headerShown: false }}/>
+        <Stack.Screen name="NewIncident" component={NewIncident} options={{ headerShown: false }}/>
+        <Stack.Screen name="RecuperarId" component={RecuperarId} options={{ headerShown: false }}/>
       </Stack.Navigator>
     </NavigationContainer>
   );

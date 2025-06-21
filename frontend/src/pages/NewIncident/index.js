@@ -19,7 +19,7 @@ export default function NewVisitor() {
   });
 
   const history = useHistory();
-  const empresas = ["Dime", "Dimep", "Dime Saúde"];
+  const empresas = ["Dime", "Dimep"];
   const setores = ["Reunião", "Entrega", "Visita"];
 
   const formatCPF = (value) => {

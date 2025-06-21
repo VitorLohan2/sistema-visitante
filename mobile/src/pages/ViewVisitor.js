@@ -174,11 +174,11 @@ export default function ViewVisitor() {
                 style={styles.photoThumbnail}
                 onPress={() => setSelectedImage(foto)}
               >
-                <Image
-                  style={styles.thumbnailImage}
-                  source={{ uri: `${api.defaults.baseURL}/uploads/${foto}` }}
-                  onError={() => console.log('Erro ao carregar imagem')}
-                />
+              <Image
+                style={styles.thumbnailImage}
+                source={{ uri: foto }}
+                onError={() => console.log('Erro ao carregar imagem', foto)}
+              />
                 <Text style={styles.photoLabel}>Foto {index + 1}</Text>
               </TouchableOpacity>
             ))
@@ -206,7 +206,7 @@ export default function ViewVisitor() {
           </TouchableOpacity>
           <Image
             style={styles.modalImage}
-            source={{ uri: `${api.defaults.baseURL}/uploads/${selectedImage}` }}
+            source={{ uri: selectedImage }}
             resizeMode="contain"
           />
         </View>

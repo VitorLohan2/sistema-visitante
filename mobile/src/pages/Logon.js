@@ -1,7 +1,11 @@
-import React, { useState,useEffect } from 'react';
-import { View, Text, Image, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View, Text, Image, TextInput, TouchableOpacity,
+  Alert, ActivityIndicator
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Feather } from '@expo/vector-icons'; // 👈 ícones
 
 import logoImg from '../assets/logo.png';
 import heroesImg from '../assets/ilustracao-seguranca.png';
@@ -19,39 +23,25 @@ export default function Logon() {
     }
 
     setLoading(true);
-    
+
     try {
       const response = await api.post('/sessions', { id });
-      
-      // Armazena os dados de forma segura
       await AsyncStorage.multiSet([
-        ['@Auth:ongId', id], // Adicionei prefixo @Auth para consistência
-        ['@Auth:ongName', response.data.name]
+        ['@Auth:ongId', id],
+        ['@Auth:ongName', response.data.name],
+        ['@Auth:ongType', response.data.type]
       ]);
-      
-      console.log('🧭 Navegando para Profile');
 
-      // Navegação com reset para limpar histórico
       navigation.reset({
         index: 0,
         routes: [{ name: 'Profile' }],
       });
-      console.log('🔚 Reset finalizado');
-
     } catch (error) {
-      console.error('Erro detalhado:', error.response?.data || error.message);
-      
       let errorMessage = 'Falha no login, tente novamente';
-      if (error.response) {
-        if (error.response.status === 400) {
-          errorMessage = 'ID não encontrada';
-        } else if (error.response.status === 500) {
-          errorMessage = 'Erro no servidor';
-        }
-      } else if (error.message.includes('Network Error')) {
-        errorMessage = 'Sem conexão com o servidor';
-      }
-      
+      if (error.response?.status === 400) errorMessage = 'ID não encontrada';
+      else if (error.response?.status === 500) errorMessage = 'Erro no servidor';
+      else if (error.message.includes('Network Error')) errorMessage = 'Sem conexão com o servidor';
+
       Alert.alert('Erro no login', errorMessage);
     } finally {
       setLoading(false);
@@ -73,9 +63,9 @@ export default function Logon() {
           autoCorrect={false}
           editable={!loading}
         />
-        
-        <TouchableOpacity 
-          style={[styles.button, loading && styles.disabledButton]} 
+
+        <TouchableOpacity
+          style={[styles.button, loading && styles.disabledButton]}
           onPress={handleLogin}
           disabled={loading}
         >
@@ -86,12 +76,22 @@ export default function Logon() {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.registerLink} 
+        <TouchableOpacity
+          style={styles.registerLink}
           onPress={() => !loading && navigation.navigate('Register')}
           disabled={loading}
         >
+          <Feather name="user-plus" size={16} color="#41414d" style={styles.icon} />
           <Text style={styles.registerText}>Não tenho cadastro</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.registerLink}
+          onPress={() => !loading && navigation.navigate('RecuperarId')}
+          disabled={loading}
+        >
+          <Feather name="help-circle" size={16} color="#41414d" style={styles.icon} />
+          <Text style={styles.registerText}>Esqueci meu ID</Text>
         </TouchableOpacity>
       </View>
 
@@ -150,12 +150,17 @@ const styles = {
   },
   registerLink: {
     marginTop: 20,
-    justifyContent: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   registerText: {
     color: '#41414d',
     fontWeight: 'bold',
+    marginLeft: 6,
+  },
+  icon: {
+    marginRight: 2,
   },
   heroImage: {
     width: '100%',
