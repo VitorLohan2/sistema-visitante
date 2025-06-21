@@ -18,12 +18,14 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
+import { MaterialIcons } from '@expo/vector-icons';
 import api from '../services/api';
 
 export default function NewVisitorMobile() {
   const [form, setForm] = useState({
     nome: '',
-    nascimento: '',
+    nascimento: '', // formato dd-mm-aaaa (para exibir)
+    nascimentoISO: '', // formato yyyy-mm-dd (para enviar ao backend)
     cpf: '',
     empresa: '',
     setor: '',
@@ -43,6 +45,13 @@ export default function NewVisitorMobile() {
     const match = cleaned.match(/(\d{3})(\d{3})(\d{3})(\d{2})/);
     return match ? `${match[1]}.${match[2]}.${match[3]}-${match[4]}` : cleaned;
   };
+
+  const formatarDataDDMMYYYY = (date) => {
+  const dia = String(date.getDate()).padStart(2, '0');
+  const mes = String(date.getMonth() + 1).padStart(2, '0');
+  const ano = date.getFullYear();
+  return `${dia}/${mes}/${ano}`;
+};
 
   const formatTelefone = (value) => {
     const cleaned = value.replace(/\D/g, '').slice(0, 11);
@@ -121,7 +130,7 @@ export default function NewVisitorMobile() {
 
     const data = new FormData();
     data.append('nome', form.nome);
-    data.append('nascimento', form.nascimento);
+    data.append('nascimento', form.nascimentoISO);
     data.append('cpf', cpfClean);
     data.append('empresa', form.empresa);
     data.append('setor', form.setor);
@@ -163,27 +172,28 @@ export default function NewVisitorMobile() {
         onChangeText={(text) => handleChange('nome', text)}
       />
 
-      <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
+        <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
         <Text style={{ color: form.nascimento ? '#000' : '#888' }}>
-          {form.nascimento || 'Selecionar data de nascimento'}
+            {form.nascimento || 'Selecionar data de nascimento'}
         </Text>
-      </TouchableOpacity>
+        </TouchableOpacity>
 
-      {showDatePicker && (
+        {showDatePicker && (
         <DateTimePicker
-          value={form.nascimento ? new Date(form.nascimento) : new Date()}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          maximumDate={new Date()}
-          onChange={(event, selectedDate) => {
+            value={form.nascimentoISO ? new Date(form.nascimentoISO) : new Date(1999, 0, 1)} // default 01-01-1999
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            maximumDate={new Date()}
+            onChange={(event, selectedDate) => {
             setShowDatePicker(false);
             if (selectedDate) {
-              const formatted = selectedDate.toISOString().split('T')[0];
-              handleChange('nascimento', formatted);
+                const iso = selectedDate.toISOString().split('T')[0];
+                const formatada = formatarDataDDMMYYYY(selectedDate);
+                setForm(prev => ({ ...prev, nascimento: formatada, nascimentoISO: iso }));
             }
-          }}
+            }}
         />
-      )}
+        )}
 
       <TextInput
         style={styles.input}
@@ -226,7 +236,7 @@ export default function NewVisitorMobile() {
       />
 
       <TextInput
-        style={[styles.input, { height: 80 }]}
+        style={[styles.input, { height: 100 }]}
         placeholder="Observações"
         multiline
         value={form.observacao}
@@ -235,11 +245,13 @@ export default function NewVisitorMobile() {
 
       <View style={styles.imageRow}>
         <TouchableOpacity style={styles.imageButton} onPress={takePhoto}>
-          <Text style={styles.imageButtonText}>📷 Tirar Foto</Text>
+            <MaterialIcons name="photo-camera" size={20} color="#fff" style={{ marginRight: 6 }} />
+        <Text style={styles.imageButtonText}>Tirar Foto</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.imageButton} onPress={pickImage}>
-          <Text style={styles.imageButtonText}>🖼 Galeria</Text>
+          <MaterialIcons name="photo-library" size={20} color="#fff" style={{ marginRight: 6 }} />
+        <Text style={styles.imageButtonText}>Galeria</Text>
         </TouchableOpacity>
       </View>
 
@@ -275,8 +287,7 @@ export default function NewVisitorMobile() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
-    backgroundColor: '#fff'
+    padding: 20
   },
   title: {
     fontSize: 24,
@@ -289,8 +300,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 8,
-    padding: 10,
-    marginBottom: 10
+    paddingHorizontal: 10,
+    paddingVertical: 14,
+    height: 56,
+    marginBottom: 10,
+    fontSize: 16
   },
   pickerWrapper: {
     borderWidth: 1,
@@ -310,11 +324,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginRight: 10,
     marginBottom: 10,
-    alignItems: 'center'
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center'
   },
   imageButtonText: {
     color: '#fff',
-    fontWeight: 'bold'
+    fontWeight: 'bold',
+    fontSize: 16
   },
   previewContainer: {
     flexDirection: 'row',
@@ -354,7 +371,8 @@ const styles = StyleSheet.create({
   },
   submitText: {
     color: '#fff',
-    fontWeight: 'bold'
+    fontWeight: 'bold',
+    fontSize: 18
   },
   modalOverlay: {
     flex: 1,
