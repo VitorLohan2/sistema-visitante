@@ -14,6 +14,7 @@ import {
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Feather from 'react-native-vector-icons/Feather';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
 import api from '../services/api'; // ajuste o caminho conforme seu projeto
@@ -200,6 +201,10 @@ export default function Profile() {
     navigation.navigate('TicketDashboard');
   }
 
+  function handleNavigateToBipagem() {
+  navigation.navigate('BiparCracha');
+  }
+
   async function handleRegisterVisit(id) {
     try {
       const ongId = await AsyncStorage.getItem('@Auth:ongId');
@@ -310,7 +315,7 @@ export default function Profile() {
             <Feather name="search" size={20} color="#000" />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => handleEditProfile(item.id)} style={styles.actionButton}>
-            <Feather name="edit" size={20} color="#000" />
+            <Feather name="edit" size={20} color="#20a3e0" />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => handleDeleteIncident(item.id)} style={styles.actionButton}>
             <Feather name="trash-2" size={20} color="#e02041" />
@@ -363,21 +368,25 @@ export default function Profile() {
       {/* Menu superior */}
       <View style={styles.menu}>
         <TouchableOpacity onPress={handleNavigateToVisitors} style={styles.menuButton}>
-          <Feather name="users" size={24} color="#000" />
+          <Feather name="users" size={26} color="#000" />
           <Text>Ver Visitantes</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={handleNavigateToHistory} style={styles.menuButton}>
-          <Feather name="clock" size={24} color="#000" />
+          <Feather name="clock" size={26} color="#000" />
           <Text>Histórico</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={handleNavigateToTickets} style={styles.menuButton}>
-          <Feather name="message-square" size={24} color="#000" />
+          <Feather name="message-square" size={26} color="#000" />
           <Text>Tickets</Text>
           {userData.setor === 'Segurança' && unseenCount > 0 && (
             <View style={styles.notificationBadge}>
               <Text style={styles.notificationText}>{unseenCount > 9 ? '9+' : unseenCount}</Text>
             </View>
           )}
+        </TouchableOpacity>
+        <TouchableOpacity onPress={handleNavigateToBipagem} style={styles.menuButton}>
+          <MaterialCommunityIcons name="barcode-scan" size={26} color="#000" />
+          <Text>Bipagem</Text>
         </TouchableOpacity>
       </View>
 
@@ -442,8 +451,7 @@ const styles = StyleSheet.create({
   },
   navButtons: {
     alignItems: 'center',
-    marginTop: 0,
-    marginBottom: 20,
+    marginTop: 0
   },
   navButton: {
     width: '100%',
@@ -463,10 +471,10 @@ const styles = StyleSheet.create({
   menu: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginVertical: 16,
+    marginVertical: 30
   },
   menuButton: {
-    alignItems: 'center',
+    alignItems: 'center'
   },
   notificationBadge: {
     backgroundColor: '#e02041',

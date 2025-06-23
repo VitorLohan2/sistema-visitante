@@ -12,6 +12,7 @@ import ViewVisitor from './src/pages/ViewVisitor'; //Perfil do Visitante
 import EditIncident from './src/pages/EditIncident'; //Editar do Perfil Visitante
 import NewIncident from './src/pages/NewIncident';
 import RecuperarId from './src/pages/RecuperarId';
+import BiparCracha from './src/pages/BiparCracha';
 
 const Stack = createStackNavigator();
 
@@ -33,6 +34,7 @@ export default function App() {
         <Stack.Screen name="EditIncident" component={EditIncident} options={{ headerShown: false }}/>
         <Stack.Screen name="NewIncident" component={NewIncident} options={{ headerShown: false }}/>
         <Stack.Screen name="RecuperarId" component={RecuperarId} options={{ headerShown: false }}/>
+        <Stack.Screen name="BiparCracha" component={BiparCracha} options={{ headerShown: false }}/>
       </Stack.Navigator>
     </NavigationContainer>
   );

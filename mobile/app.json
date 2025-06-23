@@ -20,10 +20,28 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.vitorlohanmatos.mobile"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Precisamos acessar sua câmera para escanear códigos de barras"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "66a0d360-212e-4be5-8297-c521d0a51cfb"
+      }
     }
   }
 }
