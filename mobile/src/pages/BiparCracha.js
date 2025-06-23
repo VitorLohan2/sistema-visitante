@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,7 @@ export default function BiparCracha() {
   const [nomeFuncionario, setNomeFuncionario] = useState('');
 
   const navigation = useNavigation();
+  const inputRef = useRef(null); // Referência ao TextInput
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -42,13 +43,6 @@ export default function BiparCracha() {
   }, [showPopup]);
 
   const handleBipar = async () => {
-    if (!cracha || cracha.length < 6) {
-      setMensagem('Número do crachá deve ter pelo menos 6 dígitos');
-      setPopupTipo('alerta');
-      setShowPopup(true);
-      return;
-    }
-
     try {
       setLoading(true);
       const token = await AsyncStorage.getItem('@Auth:ongId');
@@ -80,6 +74,8 @@ export default function BiparCracha() {
         setPopupTipo('erro');
       }
 
+      setCracha('');
+      inputRef.current?.focus(); // Redefine foco automaticamente
       setMensagem(msg);
       setShowPopup(true);
     } finally {
@@ -120,17 +116,17 @@ export default function BiparCracha() {
         <Text style={styles.title}>Registro de Ponto</Text>
 
         <TextInput
+          ref={inputRef}
           style={styles.input}
           placeholder="Digite o número do crachá"
           value={cracha}
           onChangeText={setCracha}
-          onSubmitEditing={handleBipar}
           autoFocus
           keyboardType="numeric"
           returnKeyType="done"
         />
 
-        <TouchableOpacity style={[styles.buttoncracha]} disabled={true}>
+        <TouchableOpacity style={styles.buttoncracha} onPress={handleBipar}>
           <Text style={styles.buttonText}>Confirmar</Text>
         </TouchableOpacity>
 
@@ -286,3 +282,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
+
