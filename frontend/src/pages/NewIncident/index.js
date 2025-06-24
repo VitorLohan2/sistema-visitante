@@ -80,46 +80,53 @@ export default function NewVisitor() {
     e.target.value = '';
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    const cpfClean = form.cpf.replace(/\D/g, '');
-    const telefoneClean = form.telefone.replace(/\D/g, '');
+  const cpfClean = form.cpf.replace(/\D/g, '');
+  const telefoneClean = form.telefone.replace(/\D/g, '');
 
-    if (cpfClean.length !== 11) return alert('CPF inválido. Deve conter 11 dígitos.');
-    if (telefoneClean.length !== 11) return alert('Telefone inválido. Deve conter 11 dígitos com DDD.');
-    if (!form.empresa || !form.setor) return alert('Empresa e setor são obrigatórios.');
-    if (form.fotos.length === 0) return alert('Envie pelo menos uma imagem.');
+  if (cpfClean.length !== 11) return alert('CPF inválido. Deve conter 11 dígitos.');
+  if (telefoneClean.length !== 11) return alert('Telefone inválido. Deve conter 11 dígitos com DDD.');
+  if (!form.empresa || !form.setor) return alert('Empresa e setor são obrigatórios.');
+  if (form.fotos.length === 0) return alert('Envie pelo menos uma imagem.');
 
-    const data = new FormData();
-    data.append('nome', form.nome);
-    data.append('nascimento', form.nascimento);
-    data.append('cpf', cpfClean);
-    data.append('empresa', form.empresa);
-    data.append('setor', form.setor);
-    data.append('telefone', telefoneClean);
-    data.append('observacao', form.observacao);
+  try {
+    // ⚠️ Verifica se o CPF já está cadastrado
+    const { data } = await api.get(`/cpf-existe/${cpfClean}`);
+    if (data.exists) {
+      return alert('CPF já cadastrado. Verifique antes de continuar.');
+    }
 
+    // Prossegue com o envio se o CPF for único
+    const dataToSend = new FormData();
+    dataToSend.append('nome', form.nome);
+    dataToSend.append('nascimento', form.nascimento);
+    dataToSend.append('cpf', cpfClean);
+    dataToSend.append('empresa', form.empresa);
+    dataToSend.append('setor', form.setor);
+    dataToSend.append('telefone', telefoneClean);
+    dataToSend.append('observacao', form.observacao);
+    
     // Anexa cada arquivo individualmente (sem array)
     form.fotos.forEach((foto) => {
-      data.append('fotos', foto);
+      dataToSend.append('fotos', foto);
     });
 
-    try {
-      await api.post('/incidents', data, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          Authorization: localStorage.getItem('ongId')
-        }
-      });
+    await api.post('/incidents', dataToSend, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        Authorization: localStorage.getItem('ongId')
+      }
+    });
 
-      alert('Visitante cadastrado com sucesso!');
-      history.push('/profile');
-    } catch (err) {
-      console.error('Erro detalhado:', err.response?.data); // Log detalhado
-      alert(`Erro: ${err.response?.data?.error || 'Falha no cadastro'}`);
-    }
-  };
+    alert('Visitante cadastrado com sucesso!');
+    history.push('/profile');
+  } catch (err) {
+    console.error('Erro detalhado:', err.response?.data); // Log detalhado
+    alert(`Erro: ${err.response?.data?.error || 'Falha no cadastro'}`);
+  }
+};
   
   return (
     <div className="new-incident-container">

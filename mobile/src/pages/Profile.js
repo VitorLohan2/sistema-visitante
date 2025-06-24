@@ -166,7 +166,7 @@ export default function Profile() {
     intervalRef.current = setInterval(() => {
       fetchUnseenNotifications();
       checkBlockedUsers();
-    }, 5000); // 5 segundos
+    }, 1000); // 1 segundos
 
     // Limpa o intervalo quando o componente desmonta
     return () => {

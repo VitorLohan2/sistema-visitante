@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import {
-  FiPower, FiTrash2, FiUserPlus, FiEdit, FiUsers, FiClock, FiSearch, FiMessageSquare
+  FiPower, FiTrash2, FiUserPlus, FiEdit, FiUsers, FiClock, FiSearch, FiMessageSquare,
+  FiChevronLeft, FiChevronRight
 } from 'react-icons/fi';
 import { AiFillThunderbolt } from 'react-icons/ai';
 
 import notificacaoSom from '../../assets/notificacao.mp3';
-import RippleButton from '../../components/RippleButton';
 import api from '../../services/api';
 
 import './styles.css';
@@ -25,23 +25,24 @@ export default function Profile() {
   const unseenRef = useRef(0);
   const [userData, setUserData] = useState({ setor: '' });
   const isFirstLoad = useRef(true);
-
   const [showAdmMenu, setShowAdmMenu] = useState(false);
   const admMenuRef = useRef(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 10;
+  const [pageGroup, setPageGroup] = useState(0);
+  const pagesPerGroup = 4;
 
-  // Função para formatar data no padrão dd/mm/aaaa
   function formatarData(data) {
     if (!data) return 'Data não informada';
     
-    // Remove qualquer hora que possa estar incluída
     const dataParte = data.split('T')[0];
     const partes = dataParte.split('-');
     
     if (partes.length === 3) {
-      return `${partes[2]}/${partes[1]}/${partes[0]}`; // dd/mm/aaaa
+      return `${partes[2]}/${partes[1]}/${partes[0]}`;
     }
     
-    return data; // Retorna o original se não puder formatar
+    return data;
   }
 
   useEffect(() => {
@@ -80,7 +81,7 @@ export default function Profile() {
 
     fetchData();
 
-    const interval = setInterval(fetchData, 5000);
+    const interval = setInterval(fetchData, 1000);
     return () => clearInterval(interval);
   }, [ongId]);
 
@@ -99,6 +100,28 @@ export default function Profile() {
     incident.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     incident.cpf.includes(searchTerm)
   );
+
+  // Cálculos de paginação
+  const indexOfLastRecord = currentPage * recordsPerPage;
+  const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
+  const currentRecords = filteredIncidents.slice(indexOfFirstRecord, indexOfLastRecord);
+  const totalPages = Math.ceil(filteredIncidents.length / recordsPerPage);
+
+  const nextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const prevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const goToPage = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
 
   async function handleDeleteIncident(id) {
     if (!window.confirm('Tem certeza que deseja deletar este cadastro?')) return;
@@ -189,10 +212,7 @@ export default function Profile() {
           <span>Histórico</span>
         </button>
 
-        <RippleButton onClick={(e) => {
-          e.preventDefault();
-          setTimeout(() => history.push('/ticket-dashboard'), 200);
-        }} className="tickets-link">
+        <button onClick={() => history.push('/ticket-dashboard')} className="tickets-link">
           <FiMessageSquare size={20} className="icone" />
           <span>Tickets</span>
           {userData.setor === 'Segurança' && unseenCount > 0 && (
@@ -200,8 +220,8 @@ export default function Profile() {
               {unseenCount > 9 ? '9+' : unseenCount}
             </span>
           )}
-        </RippleButton>
-            
+        </button>
+          
         {userData.type === 'ADM' && (
           <div className="adm-menu-container" ref={admMenuRef}>
             <button onClick={() => setShowAdmMenu(prev => !prev)} className="adm-link">
@@ -236,7 +256,7 @@ export default function Profile() {
             </tr>
           </thead>
           <tbody>
-            {filteredIncidents.map(incident => (
+            {currentRecords.map(incident => (
               <tr key={incident.id}>
                 <td className={incident.bloqueado ? 'blocked-name' : ''}>
                   <div className="user-info">
@@ -269,6 +289,78 @@ export default function Profile() {
             ))}
           </tbody>
         </table>
+
+        {filteredIncidents.length > recordsPerPage && (
+          <div className="pagination">
+            <button 
+              onClick={prevPage} 
+              disabled={currentPage === 1}
+              className="pagination-button"
+            >
+              <FiChevronLeft size={16} />
+            </button>
+            
+            {/* Sempre mostrar primeira página */}
+            <button
+              onClick={() => goToPage(1)}
+              className={`pagination-button ${currentPage === 1 ? 'active' : ''}`}
+            >
+              1
+            </button>
+
+            {/* Mostrar "..." se não estiver no primeiro grupo */}
+            {pageGroup > 0 && (
+              <button 
+                onClick={() => setPageGroup(pageGroup - 1)}
+                className="pagination-button"
+              >
+                ...
+              </button>
+            )}
+
+            {/* Mostrar páginas do grupo atual */}
+            {Array.from({ length: Math.min(pagesPerGroup, totalPages - 2) }, (_, i) => {
+              const pageNumber = 2 + i + (pageGroup * pagesPerGroup);
+              return pageNumber <= totalPages - 1 ? (
+                <button
+                  key={pageNumber}
+                  onClick={() => goToPage(pageNumber)}
+                  className={`pagination-button ${currentPage === pageNumber ? 'active' : ''}`}
+                >
+                  {pageNumber}
+                </button>
+              ) : null;
+            })}
+
+            {/* Mostrar "..." se houver mais grupos */}
+            {2 + (pageGroup + 1) * pagesPerGroup < totalPages && (
+              <button 
+                onClick={() => setPageGroup(pageGroup + 1)}
+                className="pagination-button"
+              >
+                ...
+              </button>
+            )}
+
+            {/* Sempre mostrar última página se for diferente da primeira */}
+            {totalPages > 1 && (
+              <button
+                onClick={() => goToPage(totalPages)}
+                className={`pagination-button ${currentPage === totalPages ? 'active' : ''}`}
+              >
+                {totalPages}
+              </button>
+            )}
+            
+            <button 
+              onClick={nextPage} 
+              disabled={currentPage === totalPages}
+              className="pagination-button"
+            >
+              <FiChevronRight size={16} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Feather } from '@expo/vector-icons'; // 👈 ícones
+import { Feather } from '@expo/vector-icons';
 
 import logoImg from '../assets/logo.png';
 import heroesImg from '../assets/ilustracao-seguranca.png';
@@ -17,7 +17,9 @@ export default function Logon() {
   const navigation = useNavigation();
 
   async function handleLogin() {
-    if (!id.trim()) {
+    const trimmedId = id.trim(); // remove espaços extras
+
+    if (!trimmedId) {
       Alert.alert('Atenção', 'Por favor, informe sua ID');
       return;
     }
@@ -25,9 +27,10 @@ export default function Logon() {
     setLoading(true);
 
     try {
-      const response = await api.post('/sessions', { id });
+      const response = await api.post('/sessions', { id: trimmedId });
+
       await AsyncStorage.multiSet([
-        ['@Auth:ongId', id],
+        ['@Auth:ongId', trimmedId],
         ['@Auth:ongName', response.data.name],
         ['@Auth:ongType', response.data.type]
       ]);
@@ -58,10 +61,12 @@ export default function Logon() {
           style={styles.input}
           placeholder="Sua ID"
           value={id}
-          onChangeText={setId}
+          onChangeText={text => setId(text)} // mantemos o texto original
           autoCapitalize="none"
           autoCorrect={false}
           editable={!loading}
+          returnKeyType="done"
+          onSubmitEditing={handleLogin} // login ao pressionar enter
         />
 
         <TouchableOpacity
@@ -93,9 +98,9 @@ export default function Logon() {
           <Feather name="help-circle" size={16} color="#41414d" style={styles.icon} />
           <Text style={styles.registerText}>Esqueci meu ID</Text>
         </TouchableOpacity>
-      </View>
 
-      <Image source={heroesImg} style={styles.heroImage} resizeMode="contain" />
+        <Image source={heroesImg} style={styles.heroImage} resizeMode="contain" />
+      </View>
     </View>
   );
 }
@@ -114,8 +119,8 @@ const styles = {
     width: 350,
     height: 100,
     alignSelf: 'center',
-    marginTop: 100,
-    marginBottom: 100,
+    marginTop: 50,
+    marginBottom: 100
   },
   title: {
     fontSize: 24,
@@ -157,7 +162,7 @@ const styles = {
   registerText: {
     color: '#41414d',
     fontWeight: 'bold',
-    marginLeft: 6,
+    marginLeft: 6
   },
   icon: {
     marginRight: 2,
@@ -165,5 +170,6 @@ const styles = {
   heroImage: {
     width: '100%',
     height: 300,
+    marginTop: 30
   }
 };

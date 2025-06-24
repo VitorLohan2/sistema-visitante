@@ -1,9 +1,9 @@
-// pages/RecuperarId/index.js
+// src/pages/RecuperarId/index.js
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
 import './styles.css';
-import { FiArrowLeft } from 'react-icons/fi';
+import { FiArrowLeft, FiCopy } from 'react-icons/fi';
 import logoImg from '../../assets/logo.svg';
 import Loading from '../../components/Loading';
 
@@ -13,6 +13,7 @@ export default function RecuperarId() {
   const [idRecuperado, setIdRecuperado] = useState(null);
   const [erro, setErro] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showNotification, setShowNotification] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -33,6 +34,17 @@ export default function RecuperarId() {
     }
   }
 
+  function copiarId() {
+    if (!idRecuperado) return;
+    navigator.clipboard.writeText(idRecuperado).then(() => {
+      setShowNotification(true);
+    });
+  }
+
+  function fecharNotificacao() {
+    setShowNotification(false);
+  }
+
   return (
     <div className="recuperar-id-container">
       {loading && <Loading progress={100} />}
@@ -45,20 +57,27 @@ export default function RecuperarId() {
             type="email"
             placeholder="Seu e-mail"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={e => setEmail(e.target.value)}
             required
           />
           <input
             type="date"
             value={dataNascimento}
-            onChange={(e) => setDataNascimento(e.target.value)}
+            onChange={e => setDataNascimento(e.target.value)}
             required
           />
-          <button className="button" type="submit">Recuperar</button>
+          <button className="button-recuperar" type="submit">Recuperar</button>
 
           {idRecuperado && (
             <p className="resultado-id">
-              Seu ID é: <strong>{idRecuperado}</strong>
+              <span className="texto-preto">Seu ID é:</span>{' '}
+              <strong className="texto-vermelho">{idRecuperado}</strong>
+              <FiCopy
+                className="icone-copiar"
+                size={18}
+                title="Copiar ID"
+                onClick={copiarId}
+              />
             </p>
           )}
 
@@ -70,6 +89,16 @@ export default function RecuperarId() {
           </Link>
         </form>
       </section>
+
+      {showNotification && (
+        <div className="modal-overlay">
+          <div className="modal-box">
+            <p>ID copiado com Sucesso!</p>
+            <button onClick={fecharNotificacao} className="modal-button">OK</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

@@ -180,7 +180,10 @@ async function handleChangeStatus(id, currentStatus) {
 }
 
   function handleNavigateToCreateTicket() {
-    history.push('Tickets');
+    navigation.navigate('Tickets');
+  };
+  function handleNavigateToProfile() {
+    navigation.navigate('Profile');
   };
 
   const getStatusIcon = (status) => {
@@ -259,7 +262,7 @@ function renderTicket({ item }) {
         {/* Botão voltar */}
         <TouchableOpacity
           style={[styles.backButton, {flex: 1}]}
-          onPress={() => navigation.goBack()}
+          onPress={handleNavigateToProfile}
           activeOpacity={0.7}
         >
           <Feather name="arrow-left" size={24} color="#e02041" />

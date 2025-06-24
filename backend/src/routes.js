@@ -431,4 +431,6 @@ routes.get('/registros-ponto/historico',
   RegistroFuncionarioController.historico
 );
 
+routes.get('/cpf-existe/:cpf', IncidentController.checkCpf);
+
 module.exports = routes

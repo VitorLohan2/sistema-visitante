@@ -275,5 +275,22 @@ async show(request, response) {
         details: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
+  },
+    // Verificar se CPF já está cadastrado
+  async checkCpf(request, response) {
+    const { cpf } = request.params;
+
+    try {
+      const cpfLimpo = cpf.replace(/\D/g, ''); // Remove pontos e traços
+      const visitante = await connection('incidents')
+        .where('cpf', cpfLimpo)
+        .first();
+
+      return response.json({ exists: !!visitante });
+    } catch (error) {
+      console.error('Erro ao verificar CPF:', error);
+      return response.status(500).json({ error: 'Erro ao verificar CPF.' });
+    }
   }
+
 };

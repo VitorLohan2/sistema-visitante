@@ -2,10 +2,11 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import { FiArrowLeft, FiPlusCircle } from 'react-icons/fi';
-import RippleButton from '../../components/RippleButton';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import api from '../../services/api';
+
+import Loading from '../../components/Loading'; // Importado o componente de carregamento
 
 import './styles.css';
 import logoImg from '../../assets/logo.svg';
@@ -16,14 +17,27 @@ const TicketDashboard = () => {
   const [filteredTickets, setFilteredTickets] = useState([]);
   const [userData, setUserData] = useState({ nome: '', setor: '' });
   const [filterDate, setFilterDate] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [progress, setProgress] = useState(0);
   const history = useHistory();
 
-  
   useEffect(() => {
     const ongId = localStorage.getItem('ongId');
 
+    const simulateProgress = () => {
+      let value = 0;
+      const interval = setInterval(() => {
+        value += 10;
+        setProgress(value);
+        if (value >= 100) {
+          clearInterval(interval);
+        }
+      }, 100);
+    };
+
     const fetchTickets = async () => {
       try {
+        simulateProgress();
         const user = await api.get(`/ongs/${ongId}`);
         setUserData({
           nome: user.data.name,
@@ -43,18 +57,20 @@ const TicketDashboard = () => {
       } catch (error) {
         console.error('Erro ao buscar tickets:', error);
         alert('Erro ao carregar tickets. Verifique sua conexão.');
+      } finally {
+        setTimeout(() => {
+          setLoading(false);
+          setProgress(100);
+        }, 1000);
       }
     };
 
-    // Chamada inicial
     fetchTickets();
 
-    // Atualização a cada 5 segundos
     const interval = setInterval(fetchTickets, 5000);
     return () => clearInterval(interval);
   }, []);
 
-  // Filtra os tickets pela data selecionada
   useEffect(() => {
     if (!filterDate) {
       setFilteredTickets(tickets);
@@ -62,7 +78,11 @@ const TicketDashboard = () => {
     }
 
     const filtered = tickets.filter(ticket => {
-      const ticketDate = new Date(ticket.data_criacao).toLocaleDateString('pt-BR').split('/').reverse().join('-');
+      const ticketDate = new Date(ticket.data_criacao)
+        .toLocaleDateString('pt-BR')
+        .split('/')
+        .reverse()
+        .join('-');
       return ticketDate === filterDate;
     });
 
@@ -76,23 +96,24 @@ const TicketDashboard = () => {
     }
 
     try {
-      const response = await api.put(`/tickets/${Number(ticketId)}`, 
+      const response = await api.put(
+        `/tickets/${Number(ticketId)}`,
         { status: newStatus },
         {
-          headers: { 
+          headers: {
             Authorization: localStorage.getItem('ongId'),
             'Content-Type': 'application/json'
           }
         }
       );
-      
+
       if (response.status === 200) {
-        setTickets(prev => prev.map(t => 
-          t.id === ticketId ? {...t, status: newStatus} : t
-        ));
-        setFilteredTickets(prev => prev.map(t => 
-          t.id === ticketId ? {...t, status: newStatus} : t
-        ));
+        setTickets(prev =>
+          prev.map(t => (t.id === ticketId ? { ...t, status: newStatus } : t))
+        );
+        setFilteredTickets(prev =>
+          prev.map(t => (t.id === ticketId ? { ...t, status: newStatus } : t))
+        );
       }
     } catch (err) {
       console.error('Erro completo:', err);
@@ -106,7 +127,6 @@ const TicketDashboard = () => {
     history.push('/tickets');
   };
 
-  // Função para exportar para Excel
   const exportToExcel = () => {
     const dataToExport = filteredTickets.map(ticket => ({
       'Criado por': ticket.nome_usuario,
@@ -121,11 +141,15 @@ const TicketDashboard = () => {
 
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Tickets");
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Tickets');
     const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
+    const blob = new Blob([excelBuffer], { type: 'application/octet-stream' });
     saveAs(blob, `tickets_${filterDate || 'todos'}.xlsx`);
   };
+
+  if (loading) {
+    return <Loading progress={progress} />;
+  }
 
   return (
     <div className="ticket-dashboard">
@@ -142,20 +166,16 @@ const TicketDashboard = () => {
 
       <div className="ticket-header">
         <div className="left-buttons">
-          <button 
-            onClick={handleNavigateToCreateTicket}
-            className="tickets-link">
+          <button onClick={handleNavigateToCreateTicket} className="tickets-link">
             <FiPlusCircle size={20} className="icone" />
             <span>Criar Ticket</span>
           </button>
 
-          <RippleButton 
-            onClick={exportToExcel}
-            className="report-button">
+          <button onClick={exportToExcel} className="report-button">
             <img src={excel} alt="Excel" className="excel-icon" />
             Gerar Relatório
-          </RippleButton>
-        </div>   
+          </button>
+        </div>
 
         <div className="date-filter">
           <label>
@@ -163,7 +183,7 @@ const TicketDashboard = () => {
             <input
               type="date"
               value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value)}
+              onChange={e => setFilterDate(e.target.value)}
             />
           </label>
         </div>
@@ -185,7 +205,7 @@ const TicketDashboard = () => {
 
                     <strong>Setor:</strong>
                     <p className="destaque-usuario">{ticket.setor_usuario}</p>
-                    
+
                     <strong>Funcionário:</strong>
                     <p>{ticket.funcionario}</p>
 
@@ -204,11 +224,11 @@ const TicketDashboard = () => {
                     {userData.setor === 'Segurança' && (
                       <select
                         value={ticket.status}
-                        onChange={(e) => handleChangeStatus(ticket.id, e.target.value)}
+                        onChange={e => handleChangeStatus(ticket.id, e.target.value)}
                         className="status-select"
                         disabled={ticket.status === 'Resolvido'}
                       >
-                        {statusLabels.map((s) => (
+                        {statusLabels.map(s => (
                           <option key={s} value={s}>
                             {s}
                           </option>
