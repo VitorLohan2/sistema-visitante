@@ -41,6 +41,21 @@ export default function Profile() {
 
   const navigation = useNavigation();
 
+  // Função para formatar data no padrão dd/mm/aaaa
+  function formatarData(data) {
+    if (!data) return 'Data não informada';
+    
+    // Remove qualquer hora que possa estar incluída
+    const dataParte = data.split('T')[0];
+    const partes = dataParte.split('-');
+    
+    if (partes.length === 3) {
+      return `${partes[2]}/${partes[1]}/${partes[0]}`; // dd/mm/aaaa
+    }
+    
+    return data; // Retorna o original se não puder formatar
+  }
+
   // Função para tocar som de notificação
   async function playNotificationSound() {
     try {
@@ -301,7 +316,7 @@ export default function Profile() {
           </Text>
         </View>
 
-        <Text style={styles.incidentText}>Nascimento: {item.nascimento}</Text>
+        <Text style={styles.incidentText}>Nascimento: {formatarData(item.nascimento)}</Text>
         <Text style={styles.incidentText}>CPF: {item.cpf}</Text>
         <Text style={styles.incidentText}>Empresa: {item.empresa}</Text>
         <Text style={styles.incidentText}>Setor: {item.setor}</Text>

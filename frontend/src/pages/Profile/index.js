@@ -29,6 +29,21 @@ export default function Profile() {
   const [showAdmMenu, setShowAdmMenu] = useState(false);
   const admMenuRef = useRef(null);
 
+  // Função para formatar data no padrão dd/mm/aaaa
+  function formatarData(data) {
+    if (!data) return 'Data não informada';
+    
+    // Remove qualquer hora que possa estar incluída
+    const dataParte = data.split('T')[0];
+    const partes = dataParte.split('-');
+    
+    if (partes.length === 3) {
+      return `${partes[2]}/${partes[1]}/${partes[0]}`; // dd/mm/aaaa
+    }
+    
+    return data; // Retorna o original se não puder formatar
+  }
+
   useEffect(() => {
     const fetchData = async () => {
       if (!ongId) return;
@@ -231,7 +246,7 @@ export default function Profile() {
                     <span>{incident.nome}</span>
                   </div>
                 </td>
-                <td>{incident.nascimento}</td>
+                <td>{formatarData(incident.nascimento)}</td>
                 <td>{incident.cpf}</td>
                 <td>{incident.empresa}</td>
                 <td>{incident.setor}</td>

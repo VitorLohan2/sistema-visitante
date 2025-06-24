@@ -11,6 +11,7 @@ import {
   Switch
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import api from '../services/api';
@@ -18,11 +19,13 @@ import api from '../services/api';
 export default function EditIncidentMobile() {
   const navigation = useNavigation();
   const route = useRoute();
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const { id } = route.params;
 
   const [form, setForm] = useState({
     nome: '',
-    nascimento: '',
+    nascimento: '', // formato dd/mm/aaaa (para exibir)
+    nascimentoISO: '', // formato yyyy-mm-dd (para enviar ao backend)
     cpf: '',
     empresa: '',
     setor: '',
@@ -43,7 +46,6 @@ export default function EditIncidentMobile() {
       const ongId = await AsyncStorage.getItem('@Auth:ongId');
       console.log('Tipo do usuário:', type); // Deve imprimir 'ADM'
 
-
       console.log('Tipo de usuário:', type);
       setIsAdmin(type?.trim().toUpperCase() === 'ADM');
 
@@ -52,8 +54,18 @@ export default function EditIncidentMobile() {
           headers: { Authorization: ongId }
         });
 
+        // Converter a data do backend (yyyy-mm-dd) para o formato de exibição (dd/mm/aaaa)
+        const dataBackend = response.data.nascimento;
+        let nascimentoDisplay = '';
+        if (dataBackend) {
+          const [year, month, day] = dataBackend.split('-');
+          nascimentoDisplay = `${day}/${month}/${year}`;
+        }
+
         setForm({
           ...response.data,
+          nascimento: nascimentoDisplay,
+          nascimentoISO: dataBackend || '',
           cpf: formatCPF(response.data.cpf || ''),
           telefone: formatTelefone(response.data.telefone || ''),
           bloqueado: Boolean(response.data.bloqueado)
@@ -83,6 +95,13 @@ export default function EditIncidentMobile() {
     return value;
   };
 
+  const formatarDataDDMMYYYY = (date) => {
+    const dia = String(date.getDate()).padStart(2, '0');
+    const mes = String(date.getMonth() + 1).padStart(2, '0');
+    const ano = date.getFullYear();
+    return `${dia}/${mes}/${ano}`;
+  };
+
   const handleChange = (name, value) => {
     const newValue = name === 'nome' ? value.toUpperCase() : value;
     setForm(prev => ({ ...prev, [name]: newValue }));
@@ -104,6 +123,15 @@ export default function EditIncidentMobile() {
     }
   };
 
+  const handleDateChange = (event, selectedDate) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      const iso = selectedDate.toISOString().split('T')[0]; // Formato yyyy-mm-dd
+      const formatada = formatarDataDDMMYYYY(selectedDate); // Formato dd/mm/aaaa
+      setForm(prev => ({ ...prev, nascimento: formatada, nascimentoISO: iso }));
+    }
+  };
+
   const handleSubmit = async () => {
     const cpfClean = form.cpf.replace(/\D/g, '');
     const telefoneClean = form.telefone.replace(/\D/g, '');
@@ -116,7 +144,7 @@ export default function EditIncidentMobile() {
 
     const payload = {
       nome: form.nome,
-      nascimento: form.nascimento,
+      nascimento: form.nascimentoISO, // Envia no formato yyyy-mm-dd
       cpf: cpfClean,
       empresa: form.empresa,
       setor: form.setor,
@@ -147,21 +175,42 @@ export default function EditIncidentMobile() {
 
       <TextInput style={styles.input} placeholder="Nome" value={form.nome} onChangeText={(value) => handleChange('nome', value)} editable={isAdmin} />
 
-      <TextInput style={styles.input} placeholder="Nascimento" value={form.nascimento} onChangeText={(value) => handleChange('nascimento', value)} editable={isAdmin} />
+      <TouchableOpacity
+        onPress={() => isAdmin && setShowDatePicker(true)}
+        style={styles.input}
+        activeOpacity={0.7}
+      >
+        <Text style={{ color: form.nascimento ? '#000' : '#888' }}>
+          {form.nascimento || 'Data de nascimento'}
+        </Text>
+      </TouchableOpacity>
+
+      {showDatePicker && (
+        <DateTimePicker
+          value={form.nascimentoISO ? new Date(form.nascimentoISO) : new Date()}
+          mode="date"
+          display="default"
+          onChange={handleDateChange}
+          locale="pt-BR"
+        />
+      )}
 
       <TextInput style={styles.input} placeholder="CPF" value={form.cpf} onChangeText={(value) => handleChange('cpf', formatCPF(value))} keyboardType="numeric" editable={isAdmin} />
 
       <Text style={styles.label}>Empresa</Text>
-      <Picker selectedValue={form.empresa} onValueChange={(value) => handleChange('empresa', value)} enabled={isAdmin}>
-        <Picker.Item label="Selecione" value="" />
-        {empresas.map((e, i) => <Picker.Item key={i} label={e} value={e} />)}
-      </Picker>
-
+      <View style={styles.pickerContainer}>
+        <Picker selectedValue={form.empresa} onValueChange={(value) => handleChange('empresa', value)} enabled={isAdmin}>
+          <Picker.Item label="Selecione" value="" />
+          {empresas.map((e, i) => <Picker.Item key={i} label={e} value={e} />)}
+        </Picker>
+      </View>
       <Text style={styles.label}>Setor</Text>
-      <Picker selectedValue={form.setor} onValueChange={(value) => handleChange('setor', value)} enabled={isAdmin}>
-        <Picker.Item label="Selecione" value="" />
-        {setores.map((s, i) => <Picker.Item key={i} label={s} value={s} />)}
-      </Picker>
+      <View style={styles.pickerContainer}>
+        <Picker selectedValue={form.setor} onValueChange={(value) => handleChange('setor', value)} enabled={isAdmin}>
+          <Picker.Item label="Selecione" value="" />
+          {setores.map((s, i) => <Picker.Item key={i} label={s} value={s} />)}
+        </Picker>
+      </View>
 
       <TextInput style={styles.input} placeholder="Telefone" value={form.telefone} onChangeText={(value) => handleChange('telefone', formatTelefone(value))} keyboardType="phone-pad" editable={isAdmin} />
 
@@ -226,5 +275,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginVertical: 12
-  }
+  },
+  pickerContainer: {
+  borderWidth: 1,
+  borderColor: '#ccc',
+  borderRadius: 8,
+  backgroundColor: '#f0f0f5',
+  marginBottom: 12
+}
 });
