@@ -4,7 +4,7 @@
     <img alt="" title="" src="imgs/logo.png" width="300">
 </h1>
 
-<h2 align="center"> Sistema de Visitantes </h2>
+<h2 align="center"> Sistema de Visitante Liberaê </h2>
 
 <h3 align="center"><img src="imgs/react.png" alt="react" height="18"> React, <img src="imgs/react-native.png" alt="react-native" height="18"> React Native, <img src="imgs/node.png" alt="node" height="18"> Node e <img src="imgs/sqlite.png" alt="node" height="18"> POSTGRESQL </h3>
 
@@ -15,18 +15,28 @@
 Sistema desenvolvido para Empresa DIME.
 
 
-<h2> Servidores: </h2>
-<p>Backend: <b>Render</b></p>
-<p>Frontend: <b>Render</b></p>
-
 <p align="center">
-    <b>LOGIN</b>
-    <img alt="" title="Login" src="imgs/login.png">
+    <h3 align="center"><b>LOGIN</b></h3>
+    <img alt="" title="Login" src="imgs/login.png" width:"300">
+    <b>CADASTRO</b><br>
+    <img alt="" title="Cadastro" src="imgs/cadastro.png" width:"300">
+    <b>RECUPERAR ID</b>
+    <img alt="" title="Recuperar ID" src="imgs/recuperar.png" width:"300">
+    <b>PERFIL</b>
+    <img alt="" title="Perfil" src="imgs/perfil.png" width:"300">
+    <b>VISITANTE</b>
+    <img alt="" title="Visitante" src="imgs/visitante.png" width:"300">
+    <b>HISTÓRICO</b>
+    <img alt="" title="Histórico" src="imgs/historico.png" width:"300">
+    <b>TICKET DASHBOARD</b>
+    <img alt="" title="Ticket DashBoard" src="imgs/dashboardticket.png" width:"300">
+    <b>CRIAR TICKET</b>
+    <img alt="" title="Ticket" src="imgs/Ticket.png" width:"300">
 </p>
 
 ---
 
-**DESENVOLVEDOR: VITOR LOHAN 🚀**
+**DESENVOLVEDOR: VITOR LOHAN 👽**
 
 ## Licença
 [MIT]
