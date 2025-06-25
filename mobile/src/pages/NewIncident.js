@@ -14,6 +14,7 @@ import {
   Pressable
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -81,8 +82,19 @@ export default function NewVisitorMobile() {
     });
 
     if (!result.canceled) {
-      const image = result.assets[0];
-      setForm(prev => ({ ...prev, fotos: [...prev.fotos, image] }));
+      const originalUri = result.assets[0].uri;
+      const fileName = originalUri.split('/').pop();
+      const newPath = FileSystem.documentDirectory + fileName;
+
+      await FileSystem.copyAsync({
+        from: originalUri,
+        to: newPath
+      });
+
+      setForm(prev => ({
+        ...prev,
+        fotos: [...prev.fotos, { ...result.assets[0], uri: newPath }]
+      }));
     }
   };
 
@@ -104,8 +116,25 @@ export default function NewVisitorMobile() {
     });
 
     if (!result.canceled) {
-      const novas = result.assets.slice(0, 3 - form.fotos.length);
-      setForm(prev => ({ ...prev, fotos: [...prev.fotos, ...novas] }));
+      const novasImagens = await Promise.all(
+        result.assets.slice(0, 3 - form.fotos.length).map(async (asset) => {
+          const originalUri = asset.uri;
+          const fileName = originalUri.split('/').pop();
+          const newPath = FileSystem.documentDirectory + fileName;
+
+          await FileSystem.copyAsync({
+            from: originalUri,
+            to: newPath
+          });
+
+          return { ...asset, uri: newPath };
+        })
+      );
+
+      setForm(prev => ({
+        ...prev,
+        fotos: [...prev.fotos, ...novasImagens]
+      }));
     }
   };
 
@@ -385,4 +414,3 @@ const styles = StyleSheet.create({
     height: '90%'
   }
 });
-

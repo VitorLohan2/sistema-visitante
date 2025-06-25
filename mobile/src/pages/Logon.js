@@ -8,7 +8,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Feather } from '@expo/vector-icons';
 
 import logoImg from '../assets/logo.png';
-import heroesImg from '../assets/ilustracao-seguranca.png';
 import api from '../services/api';
 
 export default function Logon() {
@@ -98,8 +97,6 @@ export default function Logon() {
           <Feather name="help-circle" size={16} color="#41414d" style={styles.icon} />
           <Text style={styles.registerText}>Esqueci meu ID</Text>
         </TouchableOpacity>
-
-        <Image source={heroesImg} style={styles.heroImage} resizeMode="contain" />
       </View>
     </View>
   );
@@ -166,10 +163,5 @@ const styles = {
   },
   icon: {
     marginRight: 2,
-  },
-  heroImage: {
-    width: '100%',
-    height: 300,
-    marginTop: 30
   }
 };

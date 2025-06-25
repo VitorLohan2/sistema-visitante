@@ -8,10 +8,12 @@ import {
   Platform,
   Keyboard,
   TextInput,
+  Vibration,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Audio } from 'expo-av';
 import api from '../services/api';
 
 export default function BiparCracha() {
@@ -24,7 +26,14 @@ export default function BiparCracha() {
   const [nomeFuncionario, setNomeFuncionario] = useState('');
 
   const navigation = useNavigation();
-  const inputRef = useRef(null); // Referência ao TextInput
+  const inputRef = useRef(null);
+  const soundRef = useRef(null); // Reutiliza o som carregado
+
+  useEffect(() => {
+    Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+    });
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -41,6 +50,30 @@ export default function BiparCracha() {
       return () => clearTimeout(timeout);
     }
   }, [showPopup]);
+
+  const playSound = async (file) => {
+    try {
+      if (soundRef.current) {
+        await soundRef.current.unloadAsync();
+      }
+
+      const { sound } = await Audio.Sound.createAsync(file);
+      soundRef.current = sound;
+
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.didJustFinish) {
+          sound.unloadAsync();
+        }
+      });
+
+      await sound.playAsync();
+    } catch (error) {
+      console.log('Erro ao tocar som:', error);
+    }
+  };
+
+  const playSoundAprovado = () => playSound(require('../assets/aprovado.mp3'));
+  const playSoundNegado = () => playSound(require('../assets/negado.mp3'));
 
   const handleBipar = async () => {
     try {
@@ -62,9 +95,13 @@ export default function BiparCracha() {
       setNomeFuncionario(response.data.nomeFuncionario || '');
       setCracha('');
       Keyboard.dismiss();
+      await playSoundAprovado(); // Som de sucesso
     } catch (error) {
       const status = error.response?.status;
       const msg = error.response?.data?.error || 'Erro ao registrar ponto';
+
+      Vibration.vibrate(400); // Vibração em erro
+      await playSoundNegado(); // Som de erro
 
       if (status === 400 && msg.toLowerCase().includes('obrigatório')) {
         setPopupTipo('alerta');
@@ -75,7 +112,7 @@ export default function BiparCracha() {
       }
 
       setCracha('');
-      inputRef.current?.focus(); // Redefine foco automaticamente
+      inputRef.current?.focus();
       setMensagem(msg);
       setShowPopup(true);
     } finally {
@@ -85,7 +122,6 @@ export default function BiparCracha() {
 
   return (
     <View style={styles.container}>
-      {/* POPUP */}
       {showPopup && (
         <View style={styles.popupContainer}>
           <View
@@ -103,7 +139,6 @@ export default function BiparCracha() {
         </View>
       )}
 
-      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={28} color="#e02041" />
@@ -111,7 +146,6 @@ export default function BiparCracha() {
         </TouchableOpacity>
       </View>
 
-      {/* FORMULÁRIO */}
       <View style={styles.card}>
         <Text style={styles.title}>Registro de Ponto</Text>
 
@@ -282,4 +316,3 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
-
