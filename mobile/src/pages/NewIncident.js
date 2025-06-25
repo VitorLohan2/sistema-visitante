@@ -374,6 +374,7 @@ const styles = StyleSheet.create({
   previewImage: {
     width: 80,
     height: 80,
+    marginTop: 10,
     borderRadius: 6
   },
   removeBtn: {
@@ -385,7 +386,8 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    marginTop: 10
   },
   removeText: {
     color: '#fff',
@@ -396,7 +398,8 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 20
+    marginTop: 20,
+    marginBottom: 40
   },
   submitText: {
     color: '#fff',
