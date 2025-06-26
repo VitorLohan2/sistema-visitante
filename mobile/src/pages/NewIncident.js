@@ -78,26 +78,41 @@ export default function NewVisitorMobile() {
 
     const result = await ImagePicker.launchCameraAsync({
       quality: 0.7,
-      allowsEditing: true
+      allowsEditing: true,
+      base64: false
     });
 
     if (!result.canceled) {
-      const originalUri = result.assets[0].uri;
-      const fileName = originalUri.split('/').pop();
+      const asset = result.assets[0];
+      const fileName = asset.uri.split('/').pop();
       const newPath = FileSystem.documentDirectory + fileName;
 
-      await FileSystem.copyAsync({
-        from: originalUri,
-        to: newPath
-      });
+      try {
+        await FileSystem.copyAsync({
+          from: asset.uri,
+          to: newPath
+        });
 
-      setForm(prev => ({
-        ...prev,
-        fotos: [...prev.fotos, { ...result.assets[0], uri: newPath }]
-      }));
+        // ✅ Verifica se o arquivo foi salvo corretamente
+        const fileInfo = await FileSystem.getInfoAsync(newPath);
+        console.log('📂 Imagem salva em:', newPath);
+        console.log('📁 Info do arquivo:', fileInfo);
+
+        if (fileInfo.exists) {
+          setForm(prev => ({
+            ...prev,
+            fotos: [...prev.fotos, { ...asset, uri: newPath }]
+          }));
+        } else {
+          Alert.alert('Erro ao processar imagem');
+        }
+      } catch (error) {
+        console.error('❌ Erro ao salvar imagem:', error);
+        Alert.alert('Erro ao processar imagem.');
+      }
     }
   };
-
+  
   const pickImage = async () => {
     if (form.fotos.length >= 3) {
       return Alert.alert('Limite atingido', 'Máximo de 3 imagens.');

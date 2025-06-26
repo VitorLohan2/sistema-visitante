@@ -227,7 +227,8 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 20
+    marginTop: 20,
+    marginBottom: 40
   },
   submitText: {
     color: '#fff',

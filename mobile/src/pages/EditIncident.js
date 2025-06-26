@@ -230,8 +230,7 @@ export default function EditIncidentMobile() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    backgroundColor: '#fff'
+    padding: 16
   },
   loading: {
     flex: 1,
@@ -245,6 +244,8 @@ const styles = StyleSheet.create({
     marginBottom: 30
   },
   input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
     backgroundColor: '#f0f0f5',
     padding: 10,
     borderRadius: 8,
