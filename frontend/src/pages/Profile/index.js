@@ -99,7 +99,9 @@ export default function Profile() {
   const filteredIncidents = incidents.filter(incident =>
     incident.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     incident.cpf.includes(searchTerm)
-  );
+  )
+
+  .sort((a, b) => a.nome.localeCompare(b.nome)); // 🔽 Ordena por nome
 
   // Cálculos de paginação
   const indexOfLastRecord = currentPage * recordsPerPage;

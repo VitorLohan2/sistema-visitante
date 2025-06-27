@@ -13,6 +13,7 @@ import {
   Modal,
   Pressable
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -202,7 +203,14 @@ export default function NewVisitorMobile() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.container}
+        enableOnAndroid={true}
+        keyboardShouldPersistTaps="handled"
+        extraScrollHeight={100}
+        extraHeight={100}
+        enableResetScrollToCoords={true}
+      >
       <Text style={styles.title}>Cadastrar Visitante</Text>
 
       <TextInput
@@ -320,7 +328,7 @@ export default function NewVisitorMobile() {
           <Image source={{ uri: modalImage }} style={styles.fullImage} resizeMode="contain" />
         </Pressable>
       </Modal>
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 
@@ -361,7 +369,7 @@ const styles = StyleSheet.create({
   },
   imageButton: {
     flex: 1,
-    backgroundColor: '#10B981',
+    backgroundColor: '#3883c2',
     padding: 10,
     borderRadius: 8,
     marginRight: 10,
@@ -394,7 +402,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -6,
     right: -6,
-    backgroundColor: '#f00',
+    backgroundColor: '#000',
     borderRadius: 12,
     width: 24,
     height: 24,
@@ -404,7 +412,9 @@ const styles = StyleSheet.create({
   },
   removeText: {
     color: '#fff',
-    fontSize: 18
+    fontSize: 18,
+    top: -2,
+    right: 0
   },
   submitButton: {
     backgroundColor: '#10B981',
@@ -412,7 +422,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 20,
-    marginBottom: 40
+    marginBottom: 60
   },
   submitText: {
     color: '#fff',

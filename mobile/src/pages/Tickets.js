@@ -4,7 +4,6 @@ import {
   View,
   Text,
   TextInput,
-  ScrollView,
   Alert,
   StyleSheet,
   TouchableOpacity,
@@ -13,6 +12,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Picker } from '@react-native-picker/picker';
 import { useNavigation } from '@react-navigation/native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import api from '../services/api';
 
 export default function TicketPage() {
@@ -56,7 +56,7 @@ export default function TicketPage() {
 
   const handleChange = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }));
-    setErrors(prev => ({ ...prev, [field]: false })); // limpa erro ao digitar
+    setErrors(prev => ({ ...prev, [field]: false }));
   };
 
   const handleSubmit = async () => {
@@ -115,7 +115,13 @@ export default function TicketPage() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <KeyboardAwareScrollView
+      contentContainerStyle={styles.container}
+      enableOnAndroid={true}
+      keyboardShouldPersistTaps="handled"
+      extraScrollHeight={100}
+      extraHeight={100}
+    >
       <Text style={styles.title}>Abrir Novo Ticket</Text>
 
       <Text style={styles.label}>Usuário</Text>
@@ -175,14 +181,15 @@ export default function TicketPage() {
       <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
         <Text style={styles.submitText}>Abrir Ticket</Text>
       </TouchableOpacity>
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     padding: 20,
-    backgroundColor: '#fff'
+    backgroundColor: '#fff',
+    flexGrow: 1
   },
   title: {
     fontSize: 24,
@@ -232,7 +239,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 20,
-    marginBottom: 40
+    marginBottom: 60
   },
   submitText: {
     color: '#fff',

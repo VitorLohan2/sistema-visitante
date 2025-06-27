@@ -533,6 +533,9 @@ const styles = StyleSheet.create({
   incidentName: {
     fontSize: 16,
     fontWeight: 'bold',
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    maxWidth: '85%'
   },
   blockedName: {
     color: 'red',

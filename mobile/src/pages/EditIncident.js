@@ -7,10 +7,11 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
-  ScrollView,
   ActivityIndicator,
-  Switch
+  Switch,
+  Platform
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -25,8 +26,8 @@ export default function EditIncidentMobile() {
 
   const [form, setForm] = useState({
     nome: '',
-    nascimento: '', // formato dd/mm/aaaa (para exibir)
-    nascimentoISO: '', // formato yyyy-mm-dd (para enviar ao backend)
+    nascimento: '',
+    nascimentoISO: '',
     cpf: '',
     empresa: '',
     setor: '',
@@ -45,8 +46,6 @@ export default function EditIncidentMobile() {
     async function loadData() {
       const type = await AsyncStorage.getItem('@Auth:ongType');
       const ongId = await AsyncStorage.getItem('@Auth:ongId');
-      console.log('Tipo do usuário:', type);
-
       setIsAdmin(type?.trim().toUpperCase() === 'ADM');
 
       try {
@@ -54,7 +53,6 @@ export default function EditIncidentMobile() {
           headers: { Authorization: ongId }
         });
 
-        // Converter a data do backend (yyyy-mm-dd) para o formato de exibição (dd/mm/aaaa)
         const dataBackend = response.data.nascimento;
         let nascimentoDisplay = '';
         if (dataBackend) {
@@ -95,13 +93,6 @@ export default function EditIncidentMobile() {
     return value;
   };
 
-  const formatarDataDDMMYYYY = (date) => {
-    const dia = String(date.getDate()).padStart(2, '0');
-    const mes = String(date.getMonth() + 1).padStart(2, '0');
-    const ano = date.getFullYear();
-    return `${dia}/${mes}/${ano}`;
-  };
-
   const parseDateString = (dateString) => {
     if (!dateString) return new Date();
     const [year, month, day] = dateString.split('-');
@@ -132,14 +123,13 @@ export default function EditIncidentMobile() {
   const handleDateChange = (event, selectedDate) => {
     setShowDatePicker(false);
     if (selectedDate) {
-      // Cria a data no formato yyyy-mm-dd sem problemas de fuso horário
       const day = selectedDate.getDate();
       const month = selectedDate.getMonth() + 1;
       const year = selectedDate.getFullYear();
-      
+
       const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const formatada = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
-      
+
       setForm(prev => ({ ...prev, nascimento: formatada, nascimentoISO: iso }));
     }
   };
@@ -152,12 +142,11 @@ export default function EditIncidentMobile() {
       return Alert.alert('Erro', 'CPF ou telefone inválido.');
     }
 
-    // Validação adicional para data futura
     if (form.nascimentoISO) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const birthDate = parseDateString(form.nascimentoISO);
-      
+
       if (birthDate > today) {
         return Alert.alert('Erro', 'Data de nascimento não pode ser futura.');
       }
@@ -188,15 +177,30 @@ export default function EditIncidentMobile() {
 
   if (loading) {
     return (
-      <View style={styles.loading}><ActivityIndicator size="large" color="#10B981" /></View>
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color="#10B981" />
+      </View>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <KeyboardAwareScrollView
+      contentContainerStyle={styles.container}
+      enableOnAndroid={true}
+      keyboardShouldPersistTaps="handled"
+      extraScrollHeight={100}
+      extraHeight={100}
+      enableResetScrollToCoords={true}
+    >
       <Text style={styles.title}>Editar Cadastro</Text>
 
-      <TextInput style={styles.input} placeholder="Nome" value={form.nome} onChangeText={(value) => handleChange('nome', value)} editable={isAdmin} />
+      <TextInput
+        style={styles.input}
+        placeholder="Nome"
+        value={form.nome}
+        onChangeText={(value) => handleChange('nome', value)}
+        editable={isAdmin}
+      />
 
       <TouchableOpacity
         onPress={() => isAdmin && setShowDatePicker(true)}
@@ -218,41 +222,82 @@ export default function EditIncidentMobile() {
         />
       )}
 
-      <TextInput style={styles.input} placeholder="CPF" value={form.cpf} onChangeText={(value) => handleChange('cpf', formatCPF(value))} keyboardType="numeric" editable={isAdmin} />
+      <TextInput
+        style={styles.input}
+        placeholder="CPF"
+        value={form.cpf}
+        onChangeText={(value) => handleChange('cpf', formatCPF(value))}
+        keyboardType="numeric"
+        editable={isAdmin}
+      />
 
       <Text style={styles.label}>Empresa</Text>
       <View style={styles.pickerContainer}>
-        <Picker selectedValue={form.empresa} onValueChange={(value) => handleChange('empresa', value)} enabled={isAdmin}>
+        <Picker
+          selectedValue={form.empresa}
+          onValueChange={(value) => handleChange('empresa', value)}
+          enabled={isAdmin}
+        >
           <Picker.Item label="Selecione" value="" />
           {empresas.map((e, i) => <Picker.Item key={i} label={e} value={e} />)}
         </Picker>
       </View>
+
       <Text style={styles.label}>Setor</Text>
       <View style={styles.pickerContainer}>
-        <Picker selectedValue={form.setor} onValueChange={(value) => handleChange('setor', value)} enabled={isAdmin}>
+        <Picker
+          selectedValue={form.setor}
+          onValueChange={(value) => handleChange('setor', value)}
+          enabled={isAdmin}
+        >
           <Picker.Item label="Selecione" value="" />
           {setores.map((s, i) => <Picker.Item key={i} label={s} value={s} />)}
         </Picker>
       </View>
 
-      <TextInput style={styles.input} placeholder="Telefone" value={form.telefone} onChangeText={(value) => handleChange('telefone', formatTelefone(value))} keyboardType="phone-pad" editable={isAdmin} />
+      <TextInput
+        style={styles.input}
+        placeholder="Telefone"
+        value={form.telefone}
+        onChangeText={(value) => handleChange('telefone', formatTelefone(value))}
+        keyboardType="phone-pad"
+        editable={isAdmin}
+      />
 
       <View style={styles.switchContainer}>
-        <Text style={styles.label}>{form.bloqueado ? '✅ Bloqueado' : '⛔ Bloquear'}</Text>
-        <Switch value={form.bloqueado} onValueChange={handleBlockToggle} disabled={!isAdmin} />
+        <Text style={styles.label}>
+          {form.bloqueado ? '✅ Bloqueado' : '⛔ Bloquear'}
+        </Text>
+        <Switch
+          value={form.bloqueado}
+          onValueChange={handleBlockToggle}
+          disabled={!isAdmin}
+        />
       </View>
 
-      <TextInput style={[styles.input, styles.textArea]} multiline placeholder="Observações" value={form.observacao} onChangeText={(value) => handleChange('observacao', value)} editable={isAdmin} />
+      <TextInput
+        style={[styles.input, styles.textArea]}
+        multiline
+        placeholder="Observações"
+        value={form.observacao}
+        onChangeText={(value) => handleChange('observacao', value)}
+        editable={isAdmin}
+      />
 
-      <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={!isAdmin}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={handleSubmit}
+        disabled={!isAdmin}
+      >
         <Text style={styles.buttonText}>Atualizar</Text>
       </TouchableOpacity>
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flexGrow: 1,
     padding: 16,
     backgroundColor: '#fff',
   },
@@ -290,7 +335,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 20,
-    marginBottom: 40
+    marginBottom: 60
   },
   buttonText: {
     color: '#fff',
