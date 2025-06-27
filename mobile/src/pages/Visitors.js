@@ -1,3 +1,4 @@
+// Página dos Visitantes que estão no Local (Triagem) em React Native
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';

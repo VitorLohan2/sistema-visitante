@@ -1,4 +1,4 @@
-// Register.js
+// // Página para Criar Conta no Sistema em React Native
 import React, { useState, useEffect } from 'react';
 import {
   View,

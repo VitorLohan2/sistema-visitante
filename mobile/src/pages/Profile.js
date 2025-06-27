@@ -1,3 +1,4 @@
+// Página de Perfil em React Native
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -56,6 +57,17 @@ export default function Profile() {
     return data; // Retorna o original se não puder formatar
   }
 
+  // Função para ordenar os incidentes por nome (ordem alfabética)
+  function sortIncidentsByName(incidentsArray) {
+    return [...incidentsArray].sort((a, b) => {
+      const nameA = a.nome.toUpperCase();
+      const nameB = b.nome.toUpperCase();
+      if (nameA < nameB) return -1;
+      if (nameA > nameB) return 1;
+      return 0;
+    });
+  }
+
   // Função para tocar som de notificação
   async function playNotificationSound() {
     try {
@@ -94,7 +106,7 @@ export default function Profile() {
     }
   }
 
-    async function checkBlockedUsers() {
+  async function checkBlockedUsers() {
     const ongId = await AsyncStorage.getItem('@Auth:ongId');
     if (!ongId || userData.setor !== 'Segurança') return;
 
@@ -117,7 +129,7 @@ export default function Profile() {
       );
 
       if (hasChanges) {
-        setIncidents(newIncidents);
+        setIncidents(sortIncidentsByName(newIncidents));
       }
     } catch (error) {
       console.error('Erro ao verificar bloqueios:', error);
@@ -144,7 +156,10 @@ export default function Profile() {
         headers: { Authorization: ongId },
       });
       
-      setIncidents(profileResponse.data);
+      // Ordena os incidentes por nome antes de atualizar o estado
+      const sortedIncidents = sortIncidentsByName(profileResponse.data);
+      setIncidents(sortedIncidents);
+      
       previousBlockedMapRef.current = Object.fromEntries(
         profileResponse.data.map(i => [i.id, i.bloqueado])
       );
@@ -189,7 +204,7 @@ export default function Profile() {
     }, [])
   );
 
-  // Filtra os incidentes com base no searchTerm
+  // Filtra e ordena os incidentes com base no searchTerm
   const filteredIncidents = incidents.filter(incident =>
     incident.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     incident.cpf.includes(searchTerm)
@@ -217,7 +232,7 @@ export default function Profile() {
   }
 
   function handleNavigateToBipagem() {
-  navigation.navigate('BiparCracha');
+    navigation.navigate('BiparCracha');
   }
 
   async function handleRegisterVisit(id) {
@@ -244,7 +259,6 @@ export default function Profile() {
         cpf: incident.cpf,
         company: incident.empresa,
         sector: incident.setor,
-        //ong_id: ongId
       }, {
         headers: { Authorization: ongId }
       });
@@ -266,7 +280,7 @@ export default function Profile() {
     }
   }
 
-  function handleDeleteIncident(id) {   //FUNCIONANDO (DELELTE DE CADASTRO VISITANTE)
+  function handleDeleteIncident(id) {
     Alert.alert(
       'Confirmação',
       'Tem certeza que deseja deletar este cadastro?',
@@ -353,7 +367,6 @@ export default function Profile() {
       <View style={styles.header}>
         <View style={styles.logoRow}>
           <Image source={logoImg} style={styles.logo} />
-          {/*<Text style={styles.logoText}>DIME</Text>*/}
           <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
             <Feather name="power" size={24} color="#e02041" />
           </TouchableOpacity>
@@ -405,7 +418,7 @@ export default function Profile() {
         </TouchableOpacity>
       </View>
 
-      {/* Lista de incidentes */}
+      {/* Lista de Visitantes */}
       <FlatList
         data={filteredIncidents}
         keyExtractor={item => String(item.id)}
@@ -417,26 +430,22 @@ export default function Profile() {
           </View>
         )}
       />
+      <View style={styles.margin}></View>
     </SafeAreaView>
   );
 }
 
-// Estilos básicos, adapte conforme necessidade
+// Estilos (mantidos os mesmos)
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#fff'
   },
-  header: {
-    //marginTop: 10,
-  },
-    logo: {
+  header: {},
+  logo: {
     width: 54,
     height: 60,
-    //resizeMode: 'contain',
-    //marginRight: 10,
-    //backgroundColor: '#454545'
   },
   logoText: {
     fontSize: 28,
@@ -555,4 +564,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  margin:{
+    marginBottom: 40
+  }
 });

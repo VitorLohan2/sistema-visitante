@@ -1,4 +1,4 @@
-// Versão React Native da página de cadastro de visitante
+// Página de cadastro de visitante em React Native
 import React, { useState } from 'react';
 import {
   View,
@@ -14,7 +14,7 @@ import {
   Pressable
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as ImageManipulator from 'expo-image-manipulator';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -25,8 +25,8 @@ import api from '../services/api';
 export default function NewVisitorMobile() {
   const [form, setForm] = useState({
     nome: '',
-    nascimento: '', // formato dd-mm-aaaa (para exibir)
-    nascimentoISO: '', // formato yyyy-mm-dd (para enviar ao backend)
+    nascimento: '',
+    nascimentoISO: '',
     cpf: '',
     empresa: '',
     setor: '',
@@ -48,11 +48,11 @@ export default function NewVisitorMobile() {
   };
 
   const formatarDataDDMMYYYY = (date) => {
-  const dia = String(date.getDate()).padStart(2, '0');
-  const mes = String(date.getMonth() + 1).padStart(2, '0');
-  const ano = date.getFullYear();
-  return `${dia}/${mes}/${ano}`;
-};
+    const dia = String(date.getDate()).padStart(2, '0');
+    const mes = String(date.getMonth() + 1).padStart(2, '0');
+    const ano = date.getFullYear();
+    return `${dia}/${mes}/${ano}`;
+  };
 
   const formatTelefone = (value) => {
     const cleaned = value.replace(/\D/g, '').slice(0, 11);
@@ -84,35 +84,27 @@ export default function NewVisitorMobile() {
 
     if (!result.canceled) {
       const asset = result.assets[0];
-      const fileName = asset.uri.split('/').pop();
-      const newPath = FileSystem.documentDirectory + fileName;
 
       try {
-        await FileSystem.copyAsync({
-          from: asset.uri,
-          to: newPath
-        });
+        const manipulatedImage = await ImageManipulator.manipulateAsync(
+          asset.uri,
+          [],
+          { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+        );
+      
+        console.log('URI manipulada:', manipulatedImage.uri);
 
-        // ✅ Verifica se o arquivo foi salvo corretamente
-        const fileInfo = await FileSystem.getInfoAsync(newPath);
-        console.log('📂 Imagem salva em:', newPath);
-        console.log('📁 Info do arquivo:', fileInfo);
-
-        if (fileInfo.exists) {
-          setForm(prev => ({
-            ...prev,
-            fotos: [...prev.fotos, { ...asset, uri: newPath }]
-          }));
-        } else {
-          Alert.alert('Erro ao processar imagem');
-        }
+        setForm(prev => ({
+          ...prev,
+          fotos: [...prev.fotos, { ...asset, uri: manipulatedImage.uri }]
+        }));
       } catch (error) {
-        console.error('❌ Erro ao salvar imagem:', error);
+        console.error('❌ Erro ao processar imagem:', error);
         Alert.alert('Erro ao processar imagem.');
       }
     }
   };
-  
+
   const pickImage = async () => {
     if (form.fotos.length >= 3) {
       return Alert.alert('Limite atingido', 'Máximo de 3 imagens.');
@@ -131,25 +123,29 @@ export default function NewVisitorMobile() {
     });
 
     if (!result.canceled) {
-      const novasImagens = await Promise.all(
-        result.assets.slice(0, 3 - form.fotos.length).map(async (asset) => {
-          const originalUri = asset.uri;
-          const fileName = originalUri.split('/').pop();
-          const newPath = FileSystem.documentDirectory + fileName;
+      try {
+        const novasImagens = await Promise.all(
+          result.assets.slice(0, 3 - form.fotos.length).map(async (asset) => {
+            const manipulatedImage = await ImageManipulator.manipulateAsync(
+              asset.uri,
+              [],
+              { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+            );
+            
+            console.log('Imagem manipulada:', manipulatedImage.uri);
 
-          await FileSystem.copyAsync({
-            from: originalUri,
-            to: newPath
-          });
+            return { ...asset, uri: manipulatedImage.uri };
+          })
+        );
 
-          return { ...asset, uri: newPath };
-        })
-      );
-
-      setForm(prev => ({
-        ...prev,
-        fotos: [...prev.fotos, ...novasImagens]
-      }));
+        setForm(prev => ({
+          ...prev,
+          fotos: [...prev.fotos, ...novasImagens]
+        }));
+      } catch (error) {
+        console.error('❌ Erro ao processar imagem da galeria:', error);
+        Alert.alert('Erro ao processar imagens da galeria.');
+      }
     }
   };
 
@@ -216,28 +212,28 @@ export default function NewVisitorMobile() {
         onChangeText={(text) => handleChange('nome', text)}
       />
 
-        <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
+      <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
         <Text style={{ color: form.nascimento ? '#000' : '#888' }}>
-            {form.nascimento || 'Selecionar data de nascimento'}
+          {form.nascimento || 'Selecionar data de nascimento'}
         </Text>
-        </TouchableOpacity>
+      </TouchableOpacity>
 
-        {showDatePicker && (
+      {showDatePicker && (
         <DateTimePicker
-            value={form.nascimentoISO ? new Date(form.nascimentoISO) : new Date(1999, 0, 1)} // default 01-01-1999
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            maximumDate={new Date()}
-            onChange={(event, selectedDate) => {
+          value={form.nascimentoISO ? new Date(form.nascimentoISO) : new Date(1999, 0, 1)}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          maximumDate={new Date()}
+          onChange={(event, selectedDate) => {
             setShowDatePicker(false);
             if (selectedDate) {
-                const iso = selectedDate.toISOString().split('T')[0];
-                const formatada = formatarDataDDMMYYYY(selectedDate);
-                setForm(prev => ({ ...prev, nascimento: formatada, nascimentoISO: iso }));
+              const iso = selectedDate.toISOString().split('T')[0];
+              const formatada = formatarDataDDMMYYYY(selectedDate);
+              setForm(prev => ({ ...prev, nascimento: formatada, nascimentoISO: iso }));
             }
-            }}
+          }}
         />
-        )}
+      )}
 
       <TextInput
         style={styles.input}
@@ -289,13 +285,13 @@ export default function NewVisitorMobile() {
 
       <View style={styles.imageRow}>
         <TouchableOpacity style={styles.imageButton} onPress={takePhoto}>
-            <MaterialIcons name="photo-camera" size={20} color="#fff" style={{ marginRight: 6 }} />
-        <Text style={styles.imageButtonText}>Tirar Foto</Text>
+          <MaterialIcons name="photo-camera" size={20} color="#fff" style={{ marginRight: 6 }} />
+          <Text style={styles.imageButtonText}>Tirar Foto</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.imageButton} onPress={pickImage}>
           <MaterialIcons name="photo-library" size={20} color="#fff" style={{ marginRight: 6 }} />
-        <Text style={styles.imageButtonText}>Galeria</Text>
+          <Text style={styles.imageButtonText}>Galeria</Text>
         </TouchableOpacity>
       </View>
 
@@ -319,7 +315,6 @@ export default function NewVisitorMobile() {
         <Text style={styles.submitText}>Cadastrar</Text>
       </TouchableOpacity>
 
-      {/* Modal de Imagem Ampliada */}
       <Modal visible={!!modalImage} transparent>
         <Pressable style={styles.modalOverlay} onPress={() => setModalImage(null)}>
           <Image source={{ uri: modalImage }} style={styles.fullImage} resizeMode="contain" />
@@ -331,7 +326,8 @@ export default function NewVisitorMobile() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20
+    padding: 20,
+    backgroundColor: '#fff'
   },
   title: {
     fontSize: 24,
@@ -343,6 +339,7 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
+    backgroundColor: '#f0f0f5',
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 14,
@@ -353,6 +350,7 @@ const styles = StyleSheet.create({
   pickerWrapper: {
     borderWidth: 1,
     borderColor: '#ccc',
+    backgroundColor: '#f0f0f5',
     borderRadius: 8,
     marginBottom: 10,
     overflow: 'hidden'

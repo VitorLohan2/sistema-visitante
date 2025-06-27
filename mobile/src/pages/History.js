@@ -1,3 +1,4 @@
+// Página de Historico de Visitantes em React Native
 import React, { useState, useEffect } from 'react';
 import {
   View,

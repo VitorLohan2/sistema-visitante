@@ -1,3 +1,4 @@
+// Página para Visualizar Perfil do Visitante em React Native
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -260,17 +261,18 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    color: '#41414d',
+    color: '#000',
     marginBottom: 8,
     fontWeight: 'bold',
   },
   input: {
-    height: 40,
+    borderWidth: 1,
+    borderColor: '#ccc',
     backgroundColor: '#f0f0f5',
     borderRadius: 8,
     paddingHorizontal: 16,
     fontSize: 16,
-    color: '#41414d',
+    color: '#000',
   },
   textArea: {
     height: 100,

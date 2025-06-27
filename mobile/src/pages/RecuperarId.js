@@ -1,3 +1,4 @@
+// Página de Recuperar ID da Conta em React Native
 import React, { useState } from 'react';
 import {
   View,

@@ -1,3 +1,4 @@
+// Página para Bipar Cracha dos Funcionarios em React Native
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -211,7 +212,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     paddingTop: Platform.OS === 'android' ? 50 : 40,
-    backgroundColor: '#f0f0f5',
+    backgroundColor: '#fff',
   },
   header: {
     flexDirection: 'row',

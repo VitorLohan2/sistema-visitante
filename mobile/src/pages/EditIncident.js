@@ -1,3 +1,4 @@
+// Página de Editar Cadastro de Visitantes em React Native
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -44,9 +45,8 @@ export default function EditIncidentMobile() {
     async function loadData() {
       const type = await AsyncStorage.getItem('@Auth:ongType');
       const ongId = await AsyncStorage.getItem('@Auth:ongId');
-      console.log('Tipo do usuário:', type); // Deve imprimir 'ADM'
+      console.log('Tipo do usuário:', type);
 
-      console.log('Tipo de usuário:', type);
       setIsAdmin(type?.trim().toUpperCase() === 'ADM');
 
       try {
@@ -102,6 +102,12 @@ export default function EditIncidentMobile() {
     return `${dia}/${mes}/${ano}`;
   };
 
+  const parseDateString = (dateString) => {
+    if (!dateString) return new Date();
+    const [year, month, day] = dateString.split('-');
+    return new Date(year, month - 1, day);
+  };
+
   const handleChange = (name, value) => {
     const newValue = name === 'nome' ? value.toUpperCase() : value;
     setForm(prev => ({ ...prev, [name]: newValue }));
@@ -126,8 +132,14 @@ export default function EditIncidentMobile() {
   const handleDateChange = (event, selectedDate) => {
     setShowDatePicker(false);
     if (selectedDate) {
-      const iso = selectedDate.toISOString().split('T')[0]; // Formato yyyy-mm-dd
-      const formatada = formatarDataDDMMYYYY(selectedDate); // Formato dd/mm/aaaa
+      // Cria a data no formato yyyy-mm-dd sem problemas de fuso horário
+      const day = selectedDate.getDate();
+      const month = selectedDate.getMonth() + 1;
+      const year = selectedDate.getFullYear();
+      
+      const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const formatada = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+      
       setForm(prev => ({ ...prev, nascimento: formatada, nascimentoISO: iso }));
     }
   };
@@ -140,11 +152,22 @@ export default function EditIncidentMobile() {
       return Alert.alert('Erro', 'CPF ou telefone inválido.');
     }
 
+    // Validação adicional para data futura
+    if (form.nascimentoISO) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const birthDate = parseDateString(form.nascimentoISO);
+      
+      if (birthDate > today) {
+        return Alert.alert('Erro', 'Data de nascimento não pode ser futura.');
+      }
+    }
+
     const ongId = await AsyncStorage.getItem('@Auth:ongId');
 
     const payload = {
       nome: form.nome,
-      nascimento: form.nascimentoISO, // Envia no formato yyyy-mm-dd
+      nascimento: form.nascimentoISO,
       cpf: cpfClean,
       empresa: form.empresa,
       setor: form.setor,
@@ -187,7 +210,7 @@ export default function EditIncidentMobile() {
 
       {showDatePicker && (
         <DateTimePicker
-          value={form.nascimentoISO ? new Date(form.nascimentoISO) : new Date()}
+          value={parseDateString(form.nascimentoISO)}
           mode="date"
           display="default"
           onChange={handleDateChange}
@@ -230,7 +253,8 @@ export default function EditIncidentMobile() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16
+    padding: 16,
+    backgroundColor: '#fff',
   },
   loading: {
     flex: 1,
@@ -279,10 +303,10 @@ const styles = StyleSheet.create({
     marginVertical: 12
   },
   pickerContainer: {
-  borderWidth: 1,
-  borderColor: '#ccc',
-  borderRadius: 8,
-  backgroundColor: '#f0f0f5',
-  marginBottom: 12
-}
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    backgroundColor: '#f0f0f5',
+    marginBottom: 12
+  }
 });

@@ -1,3 +1,4 @@
+// Página para Criar Tickets em React Native
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -180,7 +181,8 @@ export default function TicketPage() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20
+    padding: 20,
+    backgroundColor: '#fff'
   },
   title: {
     fontSize: 24,
@@ -197,6 +199,7 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
+    backgroundColor: '#f0f0f5',
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: Platform.OS === 'ios' ? 14 : 10,
@@ -210,6 +213,7 @@ const styles = StyleSheet.create({
   pickerWrapper: {
     borderWidth: 1,
     borderColor: '#ccc',
+    backgroundColor: '#f0f0f5',
     borderRadius: 8,
     overflow: 'hidden',
     marginBottom: 6

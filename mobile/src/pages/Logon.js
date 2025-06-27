@@ -1,3 +1,4 @@
+// Página de Login em React Native
 import React, { useState } from 'react';
 import {
   View, Text, Image, TextInput, TouchableOpacity,

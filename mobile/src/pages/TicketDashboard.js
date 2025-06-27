@@ -1,4 +1,4 @@
-// src/pages/TicketDashboard/index.js
+// Página do DashBoard dos Tickets em React Native
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -306,6 +306,7 @@ function renderTicket({ item }) {
           </View>
         )}
       />
+      <View style={styles.margin}></View>
     </SafeAreaView>
   );
 }
@@ -409,12 +410,15 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     marginTop: 50,
-    alignItems: 'center',
+    alignItems: 'center'
   },
   createButton: {
   width: 40,
   height: 40,
   alignItems: 'center',
   justifyContent: 'center'
+  },
+   margin:{
+    marginBottom: 40
   }
 });
