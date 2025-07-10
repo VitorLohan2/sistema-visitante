@@ -1,0 +1,176 @@
+.helpdesk-container {
+  font-family: 'Segoe UI', sans-serif;
+  text-align: center;
+  background: #fff;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.helpdesk-header {
+  background: #10B981;
+  padding: 60px 20px;
+  color: white;
+  position: relative;
+}
+
+.helpdesk-header h1 {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 500px;
+  margin: 0 auto 20px;
+  background: white;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.search-box input {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 10px;
+  font-size: 1rem;
+}
+
+.search-box svg {
+  color: #888;
+}
+
+.suggested-questions {
+  margin-top: 10px;
+  text-align: left;
+  max-width: 600px;
+  margin: 0 auto;
+  color: white;
+}
+
+.suggested-questions p {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.suggested-questions ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.suggested-questions li {
+  margin: 6px 0;
+}
+
+.suggested-questions a {
+  color: white;
+  text-decoration: underline;
+  font-size: 0.95rem;
+}
+
+.helpdesk-categories {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 40px 20px;
+  gap: 20px;
+}
+
+.category-card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+  width: 240px;
+  text-align: center;
+  transition: transform 0.2s ease;
+}
+
+.category-card:hover {
+  transform: translateY(-4px);
+}
+
+.category-card img {
+  width: 80px;
+  height: 80px;
+}
+
+.category-card h3 {
+  margin: 10px 0 5px;
+  font-size: 1.2rem;
+}
+
+.category-card p {
+  color: #555;
+  font-size: 0.95rem;
+}
+
+.category-card {
+  text-decoration: none;
+  color: inherit;
+}
+
+.category-card:visited,
+.category-card:hover,
+.category-card:focus {
+  text-decoration: none;
+  color: inherit;
+}
+
+.contact-button {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #1ed827;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 30px;
+  text-decoration: none;
+  font-weight: bold;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Espaço entre ícone e texto */
+  font-size: 1rem;
+}
+
+.contact-button:hover {
+  animation: shake 0.4s ease-in-out;
+}
+
+@keyframes shake {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-2px, 0); }
+  40% { transform: translate(2px, 0); }
+  60% { transform: translate(-2px, 0); }
+  80% { transform: translate(2px, 0); }
+  100% { transform: translate(0, 0); }
+}
+
+.logo-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 40px;
+  margin-top: 30px; /* Distância do topo da página */
+  margin-bottom: 20px;
+}
+
+.contact-button svg {
+  font-size: 24px; /* aumenta o tamanho do ícone */
+}
+
+.helpdesk-footer {
+  text-align: center;
+  font-size: 0.85rem;
+  color: #888;
+  padding: 20px 0;
+  margin-top: auto; /* Isso empurra o footer para o final */
+}
+
+.helpdesk-logo {
+  height: 80px;
+  object-fit: contain;
+}

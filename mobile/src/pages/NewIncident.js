@@ -204,13 +204,14 @@ export default function NewVisitorMobile() {
 
   return (
       <KeyboardAwareScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={styles.scrollContainer}
         enableOnAndroid={true}
         keyboardShouldPersistTaps="handled"
         extraScrollHeight={100}
         extraHeight={100}
         enableResetScrollToCoords={true}
       >
+      <View style={styles.blocoCadastro}>
       <Text style={styles.title}>Cadastrar Visitante</Text>
 
       <TextInput
@@ -328,14 +329,19 @@ export default function NewVisitorMobile() {
           <Image source={{ uri: modalImage }} style={styles.fullImage} resizeMode="contain" />
         </Pressable>
       </Modal>
+      </View>  
     </KeyboardAwareScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  blocoCadastro: {
+    flex: 1,
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    backgroundColor: '#fff',
     padding: 20,
-    backgroundColor: '#fff'
   },
   title: {
     fontSize: 24,

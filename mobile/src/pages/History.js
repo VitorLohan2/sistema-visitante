@@ -310,7 +310,7 @@ export default function History() {
       )}
 
       <ScrollView horizontal>
-        <View>
+        <View style={styles.blocoList}>
           <View style={styles.tableHeader}>
             <Text style={styles.headerText}>#</Text>
             <Text style={styles.headerText}>Nome</Text>
@@ -426,6 +426,9 @@ const styles = StyleSheet.create({
   clearDateButton: {
     marginLeft: 8,
     padding: 8,
+  },
+  blocoList: {
+    marginBottom: 50
   },
   tableHeader: {
     flexDirection: 'row',

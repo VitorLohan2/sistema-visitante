@@ -33,71 +33,55 @@ export default function Profile() {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [unseenCount, setUnseenCount] = useState(0);
-  const [userData, setUserData] = useState({ setor: '' });
-  
+  const [userData, setUserData] = useState({ setor: '', nome: '' });
+
   const unseenRef = useRef(0);
   const isFirstLoad = useRef(true);
   const intervalRef = useRef(null);
-  const previousBlockedMapRef = useRef({}); // mapa anterior dos bloqueios
+  const previousBlockedMapRef = useRef({});
 
   const navigation = useNavigation();
 
-  // Função para formatar data no padrão dd/mm/aaaa
   function formatarData(data) {
     if (!data) return 'Data não informada';
-    
-    // Remove qualquer hora que possa estar incluída
     const dataParte = data.split('T')[0];
     const partes = dataParte.split('-');
-    
-    if (partes.length === 3) {
-      return `${partes[2]}/${partes[1]}/${partes[0]}`; // dd/mm/aaaa
-    }
-    
-    return data; // Retorna o original se não puder formatar
+    if (partes.length === 3) return `${partes[2]}/${partes[1]}/${partes[0]}`;
+    return data;
   }
 
-  // Função para ordenar os incidentes por nome (ordem alfabética)
-  function sortIncidentsByName(incidentsArray) {
-    return [...incidentsArray].sort((a, b) => {
-      const nameA = a.nome.toUpperCase();
-      const nameB = b.nome.toUpperCase();
-      if (nameA < nameB) return -1;
-      if (nameA > nameB) return 1;
-      return 0;
-    });
+  function sortIncidentsByName(array) {
+    return [...array].sort((a, b) =>
+      a.nome.toUpperCase().localeCompare(b.nome.toUpperCase())
+    );
   }
 
-  // Função para tocar som de notificação
   async function playNotificationSound() {
     try {
       const { sound } = await Audio.Sound.createAsync(notificacaoSom);
       await sound.playAsync();
-      // Descarrega o som depois que tocar
       sound.setOnPlaybackStatusUpdate(status => {
-        if (!status.isPlaying) {
-          sound.unloadAsync();
-        }
+        if (!status.isPlaying) sound.unloadAsync();
       });
     } catch (error) {
       console.log('Erro ao tocar som:', error);
     }
   }
 
-  // Função para buscar apenas as notificações não vistas
   async function fetchUnseenNotifications() {
     const ongId = await AsyncStorage.getItem('@Auth:ongId');
-    if (!ongId || userData.setor !== 'Segurança') return;
+    if (!ongId) return;
 
     try {
       const unseenResponse = await api.get('/tickets/unseen', {
         headers: { Authorization: ongId },
       });
 
-      const newCount = unseenResponse.data.count;
+      const newCount = unseenResponse.data.count;playNotificationSound
       if (!isFirstLoad.current && newCount > unseenRef.current) {
         playNotificationSound();
       }
+
       unseenRef.current = newCount;
       setUnseenCount(newCount);
       isFirstLoad.current = false;
@@ -108,7 +92,7 @@ export default function Profile() {
 
   async function checkBlockedUsers() {
     const ongId = await AsyncStorage.getItem('@Auth:ongId');
-    if (!ongId || userData.setor !== 'Segurança') return;
+    if (!ongId) return;
 
     try {
       const response = await api.get('/profile', {
@@ -123,7 +107,6 @@ export default function Profile() {
         return prevBlocked !== undefined && prevBlocked !== incident.bloqueado;
       });
 
-      // Atualiza o mapa
       previousBlockedMapRef.current = Object.fromEntries(
         newIncidents.map(i => [i.id, i.bloqueado])
       );
@@ -136,87 +119,79 @@ export default function Profile() {
     }
   }
 
-  // Carrega dados do perfil e tickets não vistos
   async function fetchData() {
     setLoading(true);
 
     const ongId = await AsyncStorage.getItem('@Auth:ongId');
     if (!ongId) {
       setLoading(false);
-      return;
+      return null;
     }
 
     try {
-      // Busca dados da ONG para setor
       const ongResponse = await api.get(`ongs/${ongId}`);
-      setUserData({ setor: ongResponse.data.setor, nome: ongResponse.data.name });
+      const setor = ongResponse.data.setor;
+      const nome = ongResponse.data.name;
+      setUserData({ setor, nome });
 
-      // Busca os incidentes/cadastros
       const profileResponse = await api.get('profile', {
         headers: { Authorization: ongId },
       });
-      
-      // Ordena os incidentes por nome antes de atualizar o estado
-      const sortedIncidents = sortIncidentsByName(profileResponse.data);
-      setIncidents(sortedIncidents);
-      
+
+      const sorted = sortIncidentsByName(profileResponse.data);
+      setIncidents(sorted);
+
       previousBlockedMapRef.current = Object.fromEntries(
-        profileResponse.data.map(i => [i.id, i.bloqueado])
+        sorted.map(i => [i.id, i.bloqueado])
       );
 
-      // Se usuário for do setor Segurança, checa tickets não vistos
-      if (ongResponse.data.setor === 'Segurança') {
-        await fetchUnseenNotifications();
-      }
+      return setor;
     } catch (error) {
-      console.error('Erro ao carregar dados:', error.response?.data || error.message);
+      console.error('Erro ao carregar dados:', error);
+      return null;
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
-  // Configura o intervalo para atualizar notificações
-  useEffect(() => {
-    // Inicia o intervalo quando o componente monta
-    intervalRef.current = setInterval(() => {
-      fetchUnseenNotifications();
-      checkBlockedUsers();
-    }, 1000); // 1 segundos
-
-    // Limpa o intervalo quando o componente desmonta
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [userData.setor]); // Dependência para recriar o intervalo se o setor mudar
-
-  // Atualiza os dados toda vez que a tela foca (navegação)
   useFocusEffect(
     React.useCallback(() => {
-      fetchData(); // Busca todos os dados inicialmente
-      
-      // Se for segurança, busca notificações imediatamente
-      if (userData.setor === 'Segurança') {
+      let mounted = true;
+
+      fetchData().then(setor => {
+        if (!mounted || setor !== 'Segurança') return;
+
         fetchUnseenNotifications();
         checkBlockedUsers();
-      }
+
+        intervalRef.current = setInterval(() => {
+          fetchUnseenNotifications();
+          checkBlockedUsers();
+        }, 5000);
+      });
+
+      return () => {
+        mounted = false;
+
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+
+        isFirstLoad.current = true; // reset para não tocar som duplicado
+      };
     }, [])
   );
 
-  // Filtra e ordena os incidentes com base no searchTerm
   const filteredIncidents = incidents.filter(incident =>
     incident.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     incident.cpf.includes(searchTerm)
   );
 
-  // Funções de navegação e ações (adaptadas)
+  // navegação e ações (mantidas iguais)
   function handleLogout() {
     AsyncStorage.clear();
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'Logon' }],
-    });
+    navigation.reset({ index: 0, routes: [{ name: 'Logon' }] });
   }
 
   function handleNavigateToVisitors() {
@@ -238,19 +213,9 @@ export default function Profile() {
   async function handleRegisterVisit(id) {
     try {
       const ongId = await AsyncStorage.getItem('@Auth:ongId');
-      if (!ongId) {
-        Alert.alert('Erro', 'Usuário não autenticado');
-        return;
-      }
-
       const incident = incidents.find(inc => inc.id === id);
-      if (!incident) {
-        Alert.alert('Erro', 'Visitante não encontrado');
-        return;
-      }
-
-      if (incident.bloqueado) {
-        Alert.alert('Acesso Negado', 'Este visitante está bloqueado. Registro de visita não permitido.');
+      if (!incident || incident.bloqueado) {
+        Alert.alert('Acesso Negado', 'Visitante bloqueado ou não encontrado.');
         return;
       }
 
@@ -264,48 +229,38 @@ export default function Profile() {
       });
 
       if (response.status === 201) {
-        Alert.alert('Sucesso', 'Visita registrada com sucesso!');
+        Alert.alert('Sucesso', 'Visita registrada!');
         navigation.navigate('Visitors');
       } else {
-        throw new Error('Resposta inesperada do servidor');
+        throw new Error('Resposta inesperada');
       }
     } catch (err) {
-      console.error('Erro ao registrar visita:', err);
-      Alert.alert(
-        'Erro', 
-        err.response?.data?.message || 
-        err.message || 
-        'Erro ao registrar visita'
-      );
+      Alert.alert('Erro', err.message);
     }
   }
 
   function handleDeleteIncident(id) {
-    Alert.alert(
-      'Confirmação',
-      'Tem certeza que deseja deletar este cadastro?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Deletar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const ongId = await AsyncStorage.getItem('@Auth:ongId');
-              const response = await api.delete(`incidents/${id}`, {
-                headers: { Authorization: ongId }
-              });
-              if (response.status === 204) {
-                setIncidents(incidents.filter(inc => inc.id !== id));
-                Alert.alert('Sucesso', 'Cadastro deletado com sucesso!');
-              }
-            } catch (err) {
-              Alert.alert('Erro', 'Acesso Bloqueado: ' + (err.response?.data?.error || err.message));
+    Alert.alert('Confirmação', 'Deseja deletar este cadastro?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Deletar',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const ongId = await AsyncStorage.getItem('@Auth:ongId');
+            const response = await api.delete(`incidents/${id}`, {
+              headers: { Authorization: ongId }
+            });
+            if (response.status === 204) {
+              setIncidents(incidents.filter(inc => inc.id !== id));
+              Alert.alert('Sucesso', 'Cadastro deletado!');
             }
+          } catch (err) {
+            Alert.alert('Erro', 'Erro ao deletar cadastro');
           }
         }
-      ]
-    );
+      }
+    ]);
   }
 
   function handleEditProfile(id) {
@@ -316,7 +271,6 @@ export default function Profile() {
     navigation.navigate('ViewVisitor', { id });
   }
 
-  // Render do item da lista (equivale a linha da tabela)
   function renderIncident({ item }) {
     return (
       <View style={styles.incidentItem}>
@@ -329,13 +283,11 @@ export default function Profile() {
             {item.nome}
           </Text>
         </View>
-
         <Text style={styles.incidentText}>Nascimento: {formatarData(item.nascimento)}</Text>
         <Text style={styles.incidentText}>CPF: {item.cpf}</Text>
         <Text style={styles.incidentText}>Empresa: {item.empresa}</Text>
         <Text style={styles.incidentText}>Setor: {item.setor}</Text>
         <Text style={styles.incidentText}>Telefone: {item.telefone}</Text>
-
         <View style={styles.actionsContainer}>
           <TouchableOpacity onPress={() => handleRegisterVisit(item.id)} style={styles.actionButton}>
             <Feather name="user-plus" size={20} color="#34CB79" />
@@ -371,9 +323,7 @@ export default function Profile() {
             <Feather name="power" size={24} color="#e02041" />
           </TouchableOpacity>
         </View>
-
         <Text style={styles.welcomeText}>Bem-vindo(a), {userData.nome || 'Usuário'}</Text>
-
         <View style={styles.searchContainer}>
           <Feather name="search" size={20} color="#999" />
           <TextInput
@@ -383,7 +333,6 @@ export default function Profile() {
             onChangeText={setSearchTerm}
           />
         </View>
-
         <View style={styles.navButtons}>
           <TouchableOpacity
             style={styles.navButton}
@@ -393,7 +342,6 @@ export default function Profile() {
         </View>
       </View>
 
-      {/* Menu superior */}
       <View style={styles.menu}>
         <TouchableOpacity onPress={handleNavigateToVisitors} style={styles.menuButton}>
           <Feather name="users" size={26} color="#000" />
@@ -418,7 +366,6 @@ export default function Profile() {
         </TouchableOpacity>
       </View>
 
-      {/* Lista de Visitantes */}
       <FlatList
         data={filteredIncidents}
         keyExtractor={item => String(item.id)}
@@ -435,71 +382,31 @@ export default function Profile() {
   );
 }
 
-// Estilos (mantidos os mesmos)
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: 16,
-    backgroundColor: '#fff'
-  },
+  container: { flex: 1, paddingHorizontal: 16, backgroundColor: '#fff' },
   header: {},
-  logo: {
-    width: 54,
-    height: 60,
-  },
-  logoText: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#10B981',
-  },
-  welcomeText: {
-    fontSize: 16,
-    marginTop: 20,
-    marginBottom: 25,
-    marginVertical: 8,
-  },
+  logo: { width: 54, height: 60 },
+  welcomeText: { fontSize: 16, marginTop: 20, marginBottom: 25 },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderColor: '#ddd',
-    borderWidth: 1,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    marginTop: 0,
+    flexDirection: 'row', alignItems: 'center',
+    borderColor: '#ddd', borderWidth: 1,
+    paddingHorizontal: 8, borderRadius: 8,
     marginBottom: 25,
   },
-  searchInput: {
-    flex: 1,
-    height: 40,
-    marginLeft: 8,
-  },
-  navButtons: {
-    alignItems: 'center',
-    marginTop: 0
-  },
+  searchInput: { flex: 1, height: 40, marginLeft: 8 },
+  navButtons: { alignItems: 'center' },
   navButton: {
-    width: '100%',
-    backgroundColor: '#10B981',
-    paddingHorizontal: 15,
-    paddingVertical: 15,
-    borderRadius: 8
+    width: '100%', backgroundColor: '#10B981',
+    padding: 15, borderRadius: 8
   },
-  navButtonText: {
-    textAlign:'center',
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  logoutButton: {
-    padding: 8,
-  },
+  navButtonText: { textAlign: 'center', color: '#fff', fontWeight: 'bold' },
+  logoutButton: { padding: 8 },
   menu: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginVertical: 30
   },
-  menuButton: {
-    alignItems: 'center'
-  },
+  menuButton: { alignItems: 'center' },
   notificationBadge: {
     backgroundColor: '#e02041',
     borderRadius: 12,
@@ -525,49 +432,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  userIcon: {
-    width: 16,
-    height: 16,
-    marginRight: 8,
-  },
-  incidentName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    flexShrink: 1,
-    flexWrap: 'wrap',
-    maxWidth: '85%'
-  },
-  blockedName: {
-    color: 'red',
-  },
-  incidentText: {
-    fontSize: 14,
-    marginBottom: 4,
-  },
+  userIcon: { width: 16, height: 16, marginRight: 8 },
+  incidentName: { fontSize: 16, fontWeight: 'bold', flexShrink: 1, maxWidth: '85%' },
+  blockedName: { color: 'red' },
+  incidentText: { fontSize: 14, marginBottom: 4 },
   actionsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginTop: 8,
   },
-  actionButton: {
-    padding: 8,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    marginTop: 40,
-  },
-  loading: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  actionButton: { padding: 8 },
+  emptyContainer: { alignItems: 'center', marginTop: 40 },
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   logoRow: {
-    marginTop: 40,  
+    marginTop: 40,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  margin:{
-    marginBottom: 40
-  }
+  margin: { marginBottom: 40 }
 });

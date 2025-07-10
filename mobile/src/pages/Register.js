@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Platform,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
@@ -135,11 +136,16 @@ export default function RegisterScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.container}
+        enableOnAndroid={true}
+        keyboardShouldPersistTaps="handled"
+        extraScrollHeight={100}
+        extraHeight={100}
+        enableResetScrollToCoords={true}
+      >
       <Text style={styles.title}>Cadastro</Text>
-
       <TextInput style={styles.input} placeholder="Nome" value={name} onChangeText={t => setName(t.toUpperCase())} />
-
       <TouchableOpacity style={[styles.input, styles.dateInput]} onPress={() => setShowDatePicker(true)}>
         <Text style={[styles.dateText, { color: birthdate ? '#000' : '#888' }]}>
           {birthdate || 'Data de nascimento'}
@@ -216,15 +222,15 @@ export default function RegisterScreen() {
       <TouchableOpacity onPress={() => navigation.navigate('Logon')}>
       <Text style={styles.voltar}>Voltar ao login</Text>
       </TouchableOpacity>
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
-    backgroundColor: '#f9f9f9',
     flexGrow: 1,
+    padding: 20,
+    backgroundColor: '#fff'
   },
   title: {
     fontSize: 26,
@@ -235,21 +241,22 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   input: {
-    height: 50,
+    height: 56,
     borderWidth: 1,
     borderColor: '#ccc',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 14,
+    backgroundColor: '#f0f0f5',
     fontSize: 16,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   pickerWrapper: {
     borderWidth: 1,
     borderColor: '#ccc',
-    borderRadius: 10,
-    backgroundColor: '#fff',
-    marginBottom: 12,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f5',
+    marginBottom: 10,
     overflow: 'hidden',
   },
   button: {
@@ -290,7 +297,7 @@ const styles = StyleSheet.create({
   },
     voltar: {
     marginTop: 40,
-    marginBottom: 20,
+    marginBottom: 60,
     textAlign: 'center',
     color: '#000',
     fontWeight: '500',
