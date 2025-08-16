@@ -77,9 +77,10 @@ module.exports = {
         .select(
           'tickets.*',
           'ongs.name as ong_name',
-          'ongs.setor as ong_setor'
+          'ongs.setor_id as ong_setor_id'
         )
         .leftJoin('ongs', 'tickets.ong_id', 'ongs.id')
+        .leftJoin('setores', 'ongs.setor_id', 'setores.id')
         .orderBy('tickets.data_criacao', 'desc');
 
       return res.json(tickets);
@@ -92,7 +93,7 @@ module.exports = {
       });
     }
   },
-
+      //ATUALIZAÇÃO NO TICKET     
   async update(req, res) {
     const { id } = req.params;
     const { status } = req.body;
@@ -113,7 +114,7 @@ module.exports = {
     try {
       const ong = await connection('ongs')
         .where('id', ong_id)
-        .select('type', 'setor')
+        .select('type', 'setor_id')
         .first();
 
       if (!ong) {
@@ -129,7 +130,7 @@ module.exports = {
       }
 
       const isAdmin = ong.type === 'ADMIN';
-      const isSeguranca = ong.setor === 'Segurança';
+      const isSeguranca = ong.setor_id === 4;
 
       if (!isAdmin && !isSeguranca) {
         return res.status(403).json({ 
@@ -179,7 +180,7 @@ module.exports = {
         .select(
           'tickets.*',
           'ongs.name as ong_name',
-          'ongs.setor as ong_setor'
+          'ongs.setor_id as ong_setor_id'
         )
         .leftJoin('ongs', 'tickets.ong_id', 'ongs.id')
         .first();
@@ -228,7 +229,7 @@ module.exports = {
         .where('id', ong_id)
         .first();
 
-      if (!ong || ong.setor !== 'Segurança') {
+      if (!ong || ong.setor_id !== 4) {
         return res.json({ count: 0 });
       }
 

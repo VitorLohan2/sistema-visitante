@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useHistory } from 'react-router-dom'
 import { FiArrowLeft } from 'react-icons/fi'
-
 import api from '../../services/api'
 import './styles.css'
-
 import logoImg from '../../assets/logo.svg'
 
 export default function Register() {
@@ -22,19 +20,8 @@ export default function Register() {
   const [verificandoCodigo, setVerificandoCodigo] = useState(false)
   const [erroCodigo, setErroCodigo] = useState('')
 
-  const empresasDisponiveis = [
-    "Dime",
-    "Prestadora de Serviço",
-    "Outros"
-  ];
-
-  const setoresDisponiveis = [
-    "Administrativo",
-    "Expedição",
-    "Recepção",
-    "Segurança",
-    "Outros"
-  ];
+  const [empresasDisponiveis, setEmpresasDisponiveis] = useState([])
+  const [setoresDisponiveis, setSetoresDisponiveis] = useState([])
 
   const estadosECidades = {
     'AC': ['Rio Branco', 'Cruzeiro do Sul', 'Sena Madureira'],
@@ -64,7 +51,7 @@ export default function Register() {
     'SE': ['Aracaju', 'Nossa Senhora do Socorro', 'Lagarto'],
     'SP': ['São Paulo', 'Guarulhos', 'Campinas'],
     'TO': ['Palmas', 'Araguaína', 'Gurupi']
-  };
+  }
 
   const history = useHistory()
 
@@ -73,14 +60,10 @@ export default function Register() {
       setCodigoValido(false)
       return
     }
-    
     setVerificandoCodigo(true)
     setErroCodigo('')
-    
     try {
       const response = await api.get(`codigos/validar/${codigoSeguranca}`)
-      
-      // Supondo que a rota retorne { valido: true/false, mensagem?: string }
       if (response.data.valido) {
         setCodigoValido(true)
       } else {
@@ -100,35 +83,46 @@ export default function Register() {
     const timer = setTimeout(() => {
       verificarCodigo()
     }, 800)
-    
     return () => clearTimeout(timer)
   }, [codigoSeguranca])
 
+  // 🔹 Busca empresas e setores da API
+  useEffect(() => {
+    async function fetchEmpresasESetores() {
+      try {
+        const [empresasRes, setoresRes] = await Promise.all([
+          api.get('/empresas'),
+          api.get('/setores')
+        ])
+        setEmpresasDisponiveis(empresasRes.data)
+        setSetoresDisponiveis(setoresRes.data)
+      } catch (err) {
+        console.error('Erro ao carregar empresas ou setores:', err)
+      }
+    }
+    fetchEmpresasESetores()
+  }, [])
+
   async function handleRegister(e) {
     e.preventDefault()
-
     if (!codigoValido) {
       alert('Por favor, insira um código de segurança válido')
       return
     }
-
     const cleanedCpf = cpf.replace(/\D/g, '')
     if (cleanedCpf.length !== 11) {
       alert('O CPF deve conter 11 dígitos.')
       return
     }
-
     const cleanedWhatsapp = whatsapp.replace(/\D/g, '')
     if (cleanedWhatsapp.length !== 11) {
       alert('O número de Telefone deve conter 11 dígitos (DD + número).')
       return
     }
-
     if (!empresa) {
       alert('Selecione uma empresa!')
       return
     }
-    
     const data = {
       name,
       email,
@@ -137,21 +131,12 @@ export default function Register() {
       uf,
       birthdate,
       cpf: cleanedCpf,
-      empresa,
-      setor,
+      empresa_id:empresa,
+      setor_id:setor,
       codigo_acesso: codigoSeguranca
     }
-    
     try {
       const response = await api.post('ongs', data)
-      
-      // Marca o código como utilizado (você pode precisar criar esta rota)
-      /*try {
-        await api.put(`codigos/utilizar/${codigoSeguranca}`)
-      } catch (err) {
-        console.error('Erro ao marcar código como utilizado:', err)
-      }*/
-      
       alert(`✅ Cadastro realizado com sucesso! Seu ID de acesso: ${response.data.id}`)
       history.push('/')
     } catch (err) {
@@ -170,8 +155,7 @@ export default function Register() {
   }
 
   const handleCpfChange = (e) => {
-    const formattedCpf = formatCPF(e.target.value)
-    setCpf(formattedCpf)
+    setCpf(formatCPF(e.target.value))
   }
 
   const handleUfChange = (e) => {
@@ -184,101 +168,60 @@ export default function Register() {
     <div className="register-container">
       <div className="content">
         <section>
-          <img src={logoImg} alt="DIME" width={"350px"}/>
-          <h1> Cadastro </h1>
-          <p> Solicite o código de cadastro ao setor de alta performance.</p>
+          <img src={logoImg} alt="DIME" width={"350px"} />
+          <h1>Cadastro</h1>
+          <p>Solicite o código de cadastro ao setor de alta performance.</p>
           <Link className="back-link" to="/">
             <FiArrowLeft size={16} color="#e02041" />
             Voltar
           </Link>
         </section>
         <form onSubmit={handleRegister}>
-
           <input placeholder="Nome" value={name} onChange={e => setName(e.target.value.toUpperCase())} />
-          <input 
-            type="date" 
-            placeholder="Nascimento" 
-            value={birthdate} 
-            onChange={e => setBirthdate(e.target.value)} 
-          />
-          <input 
-            placeholder="CPF" 
-            value={cpf} 
-            onChange={handleCpfChange}
-          />
+          <input type="date" placeholder="Nascimento" value={birthdate} onChange={e => setBirthdate(e.target.value)} />
+          <input placeholder="CPF" value={cpf} onChange={handleCpfChange} />
 
-          <select  
-            value={empresa} 
-            onChange={e => setEmpresa(e.target.value)} 
-            className="select-empresa"
-            required
-          >
+          {/* 🔹 Empresas da API */}
+          <select value={empresa} onChange={e => setEmpresa(e.target.value)} className="select-empresa" required>
             <option value="">Selecione sua empresa</option>
-            {empresasDisponiveis.map((emp, index) => (
-              <option key={index} value={emp}>
-                {emp}
+            {empresasDisponiveis.map(emp => (
+              <option key={emp.id} value={emp.id}>
+                {emp.nome}
               </option>
             ))}
           </select>
 
-          <select
-            value={setor}
-            onChange={e => setSetor(e.target.value)}
-            className="select-setor"
-            required
-          >
+          {/* 🔹 Setores da API */}
+          <select value={setor} onChange={e => setSetor(e.target.value)} className="select-setor" required>
             <option value="">Selecione seu setor</option>
-            {setoresDisponiveis.map((setorOpcao, index) => (
-              <option key={index} value={setorOpcao}>
-                {setorOpcao}
+            {setoresDisponiveis.map(setorOpcao => (
+              <option key={setorOpcao.id} value={setorOpcao.id}>
+                {setorOpcao.nome}
               </option>
             ))}
           </select>
 
           <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-          <input 
-            placeholder="(DD)99999-9999" 
-            value={whatsapp} 
-            onChange={e => { 
-              const value = e.target.value.replace(/\D/g, '').slice(0, 11)
-              setWhatsapp(value)
-            }} 
-          />
-          
+          <input placeholder="(DD)99999-9999" value={whatsapp} onChange={e => setWhatsapp(e.target.value.replace(/\D/g, '').slice(0, 11))} />
+
           <div className="input-group">
-            <select
-              placeholder="UF"
-              value={uf}
-              onChange={handleUfChange}
-              style={{ width: 80 }}
-              required
-            >
+            <select value={uf} onChange={handleUfChange} style={{ width: 80 }} required>
               <option value="">UF</option>
-              {Object.keys(estadosECidades).map((sigla) => (
-                <option key={sigla} value={sigla}>
-                  {sigla}
-                </option>
+              {Object.keys(estadosECidades).map(sigla => (
+                <option key={sigla} value={sigla}>{sigla}</option>
               ))}
             </select>
-            
-            <select
-              placeholder="Cidade"
-              value={city}
-              onChange={e => setCity(e.target.value)}
-              disabled={!uf}
-              required
-            >
+            <select value={city} onChange={e => setCity(e.target.value)} disabled={!uf} required>
               <option value="">Selecione a cidade</option>
-              {uf && estadosECidades[uf]?.map((cidade) => (
-                <option key={cidade} value={cidade}>
-                  {cidade}
-                </option>
+              {uf && estadosECidades[uf]?.map(cidade => (
+                <option key={cidade} value={cidade}>{cidade}</option>
               ))}
             </select>
           </div>
-            <div className="codigo-input-container">
-            <input 
-              placeholder="Código de Segurança" 
+
+          <div className="codigo-input-container">
+            <input
+              placeholder="Código de Segurança"
               value={codigoSeguranca}
               onChange={e => setCodigoSeguranca(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
               required
@@ -287,15 +230,11 @@ export default function Register() {
               title="Digite o código no formato ABC123"
             />
             {verificandoCodigo && <span className="verificando">Verificando...</span>}
-            {codigoValido && !verificandoCodigo && (
-              <span className="codigo-valido">✓ Código válido</span>
-            )}
-            {erroCodigo && !verificandoCodigo && (
-              <span className="codigo-invalido">{erroCodigo}</span>
-            )}
+            {codigoValido && !verificandoCodigo && <span className="codigo-valido">✓ Código válido</span>}
+            {erroCodigo && !verificandoCodigo && <span className="codigo-invalido">{erroCodigo}</span>}
           </div>
-          
-        <button className="button" type="submit"> Cadastrar </button>
+
+          <button className="button" type="submit">Cadastrar</button>
         </form>
       </div>
     </div>

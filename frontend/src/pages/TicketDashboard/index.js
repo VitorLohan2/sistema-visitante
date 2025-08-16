@@ -41,7 +41,7 @@ const TicketDashboard = () => {
         const user = await api.get(`/ongs/${ongId}`);
         setUserData({
           nome: user.data.name,
-          setor: user.data.setor
+          setor_id: user.data.setor_id
         });
 
         const response = await api.get('/tickets', {
@@ -221,7 +221,7 @@ const TicketDashboard = () => {
                     <strong>Data:</strong>
                     <p>{new Date(ticket.data_criacao).toLocaleString('pt-BR')}</p>
 
-                    {userData.setor === 'Segurança' && (
+                    {userData.setor_id === 4 && (
                       <select
                         value={ticket.status}
                         onChange={e => handleChangeStatus(ticket.id, e.target.value)}

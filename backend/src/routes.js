@@ -11,6 +11,11 @@ const CodigoController = require('./controllers/CodigoController')
 const FuncionarioController = require('./controllers/FuncionarioController')
 const RegistroFuncionarioController = require('./controllers/RegistroFuncionarioController')
 
+const EmpresasController = require('./controllers/EmpresasController');
+const SetoresController = require('./controllers/SetoresController');
+const EmpresasVisitantesController = require('./controllers/EmpresasVisitantesController');
+const SetoresVisitantesController = require('./controllers/SetoresVisitantesController');
+
 const multer = require('multer');
 const multerConfig = require('./config/multer');
 const upload = multer(multerConfig);
@@ -48,8 +53,8 @@ routes.post('/ongs', celebrate({
     name: Joi.string().required(),
     birthdate: Joi.string().required(), // Adicionando data de nascimento
     cpf: Joi.string().required().regex(/^\d{3}\.\d{3}\.\d{3}-\d{2}$|^\d{11}$/), // Adicionando CPF (11 dígitos)
-    empresa: Joi.string().required(), // Adicionando empresa
-    setor: Joi.string().required(), // Adicionando setor
+    empresa_id: Joi.number().integer().required(), 
+    setor_id: Joi.number().integer().required(),   
     email: Joi.string().required().email(),
     whatsapp: Joi.string().required().min(10).max(11),
     city: Joi.string().required(),
@@ -432,5 +437,13 @@ routes.get('/registros-ponto/historico',
 );
 
 routes.get('/cpf-existe/:cpf', IncidentController.checkCpf);
+
+routes.get('/empresas', EmpresasController.index);  //Empresas
+
+routes.get('/setores', SetoresController.index);    //Setores
+
+routes.get('/empresas-visitantes', EmpresasVisitantesController.index);  //Empresas Visitantes
+
+routes.get('/setores-visitantes', SetoresVisitantesController.index);    //Setores Visitantes
 
 module.exports = routes

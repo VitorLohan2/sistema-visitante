@@ -32,6 +32,11 @@ export default function Profile() {
   const [pageGroup, setPageGroup] = useState(0);
   const pagesPerGroup = 4;
 
+  const [empresasVisitantes, setEmpresasVisitantes] = useState([]);
+  const [setoresVisitantes, setSetoresVisitantes] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  
   function formatarData(data) {
     if (!data) return 'Data não informada';
     
@@ -45,46 +50,68 @@ export default function Profile() {
     return data;
   }
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!ongId) return;
+// SOLUÇÃO 1: Carregar empresas/setores primeiro, depois os incidents
+useEffect(() => {
+  const fetchData = async () => {
+    if (!ongId) return;
 
-      try {
-        const ongResponse = await api.get(`ongs/${ongId}`);
-        const { setor, type } = ongResponse.data;
-        setUserData({ setor, type });
+    try {
+      // 1. Primeiro carrega empresas e setores
+      const [empresasResponse, setoresResponse] = await Promise.all([
+        api.get('/empresas-visitantes'),
+        api.get('/setores-visitantes')
+      ]);
+      
+      const empresas = empresasResponse.data;
+      const setores = setoresResponse.data;
+      
+      setEmpresasVisitantes(empresas);
+      setSetoresVisitantes(setores);
 
-        const profileResponse = await api.get('profile', {
+      // 2. Depois carrega os dados da ONG e incidents
+      const ongResponse = await api.get(`ongs/${ongId}`);
+      const { setor, type } = ongResponse.data;
+      setUserData({ setor, type });
+
+      const profileResponse = await api.get('profile', {
+        headers: { Authorization: ongId }
+      });
+
+      // 3. Agora mapeia com os dados já carregados
+      const incidentsWithNames = profileResponse.data.map(incident => ({
+        ...incident,
+        empresa: empresas.find(e => e.id === incident.empresa_id)?.nome || 'Não informado',
+        setor: setores.find(s => s.id === incident.setor_id)?.nome || 'Não informado'
+      }));
+      
+      setIncidents(incidentsWithNames);
+
+      // Lógica de segurança (mantida igual)
+      if (setor === 'Segurança') {
+        const unseenResponse = await api.get('/tickets/unseen', {
           headers: { Authorization: ongId }
         });
-        setIncidents(profileResponse.data);
 
-        if (setor === 'Segurança') {
-          const unseenResponse = await api.get('/tickets/unseen', {
-            headers: { Authorization: ongId }
-          });
-
-          const newCount = unseenResponse.data.count;
-          if (!isFirstLoad.current && newCount > unseenRef.current) {
-            const audio = new Audio(notificacaoSom);
-            audio.play().catch(err => console.error("Erro ao tocar som:", err));
-          }
-
-          unseenRef.current = newCount;
-          setUnseenCount(newCount);
-          isFirstLoad.current = false;
+        const newCount = unseenResponse.data.count;
+        if (!isFirstLoad.current && newCount > unseenRef.current) {
+          const audio = new Audio(notificacaoSom);
+          audio.play().catch(err => console.error("Erro ao tocar som:", err));
         }
-      } catch (error) {
-        console.error('Erro ao carregar dados:', error.response?.data || error.message);
+
+        unseenRef.current = newCount;
+        setUnseenCount(newCount);
+        isFirstLoad.current = false;
       }
-    };
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error.response?.data || error.message);
+    }
+  };
 
-    fetchData();
-
-    const interval = setInterval(fetchData, 1000);
-    return () => clearInterval(interval);
-  }, [ongId]);
-
+  fetchData();
+  const interval = setInterval(fetchData, 1000);
+  return () => clearInterval(interval);
+}, [ongId]);
+  
   useEffect(() => {
     function handleClickOutside(event) {
       if (admMenuRef.current && !admMenuRef.current.contains(event.target)) {
@@ -366,4 +393,4 @@ export default function Profile() {
       </div>
     </div>
   );
-}
+} 

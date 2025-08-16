@@ -12,21 +12,17 @@ module.exports = {
     try {
       const [{ count }] = await connection('incidents').count();
       const incidents = await connection('incidents')
-        .join('ongs', 'ongs.id', '=', 'incidents.ong_id')
-        .limit(5)
-        .offset((page - 1) * 5)
-        .select([
-          'incidents.*',
-          'ongs.name',
-          'ongs.birthdate',
-          'ongs.cpf',
-          'ongs.empresa',
-          'ongs.setor',
-          'ongs.email',
-          'ongs.whatsapp',
-          'ongs.city',
-          'ongs.uf'
-        ]);
+      .leftJoin('empresas_visitantes', 'empresas_visitantes.id', '=', 'incidents.empresa_id')
+      .leftJoin('setores_visitantes', 'setores_visitantes.id', '=', 'incidents.setor_id')
+      .join('ongs', 'ongs.id', '=', 'incidents.ong_id') // Mantém o JOIN com ongs se necessário
+      .limit(5)
+      .offset((page - 1) * 5)
+      .select([
+        'incidents.*',
+        'empresas_visitantes.nome as empresa_nome',
+        'setores_visitantes.nome as setor_nome',
+        'ongs.name' // Se precisar do nome da ONG
+      ]);
 
       response.header('X-Total-Count', Number(count));
       return response.json(incidents);
@@ -84,8 +80,8 @@ async create(request, response) {
       nome,
       nascimento,
       cpf,
-      empresa,
-      setor,
+      empresa_id: empresa,
+      setor_id: setor,
       telefone,
       observacao,
       imagem1: imageUrls[0] || null,
@@ -168,8 +164,8 @@ async show(request, response) {
         nome,
         nascimento,
         cpf,
-        empresa,
-        setor,
+        empresa_id: empresa,
+        setor_id: setor,
         telefone,
         observacao
       });

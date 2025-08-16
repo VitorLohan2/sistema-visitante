@@ -1,5 +1,5 @@
 // src/pages/NewIncident/index.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import { FiArrowLeft } from 'react-icons/fi';
 import api from '../../services/api';
@@ -11,16 +11,36 @@ export default function NewVisitor() {
     nome: '',
     nascimento: '',
     cpf: '',
-    empresa: '',
-    setor: '',
+    empresa_id: '',
+    setor_id: '',
     telefone: '',
     observacao: '',
     fotos: []
   });
 
   const history = useHistory();
-  const empresas = ["Dime", "Dimep"];
-  const setores = ["Reunião", "Entrega", "Visita"];
+  const [empresasVisitantes, setEmpresasVisitantes] = useState([]);
+  const [setoresVisitantes, setSetoresVisitantes] = useState([]);
+
+    // Busca empresas e setores do banco de dados
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [empresasResponse, setoresResponse] = await Promise.all([
+          api.get('/empresas-visitantes'),
+          api.get('/setores-visitantes')
+        ]);
+        
+        setEmpresasVisitantes(empresasResponse.data);
+        setSetoresVisitantes(setoresResponse.data);
+      } catch (err) {
+        console.error('Erro ao carregar dados:', err);
+        alert('Erro ao carregar opções de empresa e setor');
+      }
+    }
+
+    loadData();
+  }, []);
 
   const formatCPF = (value) => {
     const cleaned = value.replace(/\D/g, '').slice(0, 11);
@@ -88,7 +108,7 @@ const handleSubmit = async (e) => {
 
   if (cpfClean.length !== 11) return alert('CPF inválido. Deve conter 11 dígitos.');
   if (telefoneClean.length !== 11) return alert('Telefone inválido. Deve conter 11 dígitos com DDD.');
-  if (!form.empresa || !form.setor) return alert('Empresa e setor são obrigatórios.');
+  if (!form.empresa_id || !form.setor_id) return alert('Empresa e setor são obrigatórios.');
   if (form.fotos.length === 0) return alert('Envie pelo menos uma imagem.');
 
   try {
@@ -103,8 +123,8 @@ const handleSubmit = async (e) => {
     dataToSend.append('nome', form.nome);
     dataToSend.append('nascimento', form.nascimento);
     dataToSend.append('cpf', cpfClean);
-    dataToSend.append('empresa', form.empresa);
-    dataToSend.append('setor', form.setor);
+    dataToSend.append('empresa', form.empresa_id);
+    dataToSend.append('setor', form.setor_id);
     dataToSend.append('telefone', telefoneClean);
     dataToSend.append('observacao', form.observacao);
     
@@ -112,6 +132,18 @@ const handleSubmit = async (e) => {
     form.fotos.forEach((foto) => {
       dataToSend.append('fotos', foto);
     });
+
+      // Log para debug
+      console.log('Dados sendo enviados:', {
+        nome: form.nome.trim(),
+        nascimento: form.nascimento,
+        cpf: cpfClean,
+        empresa: form.empresa_id,    // Note: 'empresa', não 'empresa_id'
+        setor: form.setor_id,        // Note: 'setor', não 'setor_id'
+        telefone: telefoneClean,
+        observacao: form.observacao.trim(),
+        fotos_count: form.fotos.length
+      });
 
     await api.post('/incidents', dataToSend, {
       headers: {
@@ -168,26 +200,30 @@ const handleSubmit = async (e) => {
           />
 
           <select
-            name="empresa"
-            value={form.empresa}
+            name="empresa_id"
+            value={form.empresa_id}
             onChange={handleChange}
             required
           >
-            <option value="">Empresa</option>
-            {empresas.map((opt, i) => (
-              <option key={i} value={opt}>{opt}</option>
+            <option value="">Selecione a empresa</option>
+            {empresasVisitantes.map((empresa) => (
+              <option key={empresa.id} value={empresa.id}>
+                {empresa.nome}
+            </option>
             ))}
           </select>
 
           <select
-            name="setor"
-            value={form.setor}
+            name="setor_id"
+            value={form.setor_id}
             onChange={handleChange}
             required
           >
-            <option value="">Setor</option>
-            {setores.map((opt, i) => (
-              <option key={i} value={opt}>{opt}</option>
+            <option value="">Selecione o setor</option>
+            {setoresVisitantes.map((setor) => (
+              <option key={setor.id} value={setor.id}>
+                {setor.nome}
+            </option>
             ))}
           </select>
 

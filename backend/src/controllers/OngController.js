@@ -10,7 +10,7 @@ module.exports = {
 
   async create(request, response) {
 
-    const { name, birthdate, cpf, empresa, setor, email, whatsapp, city, uf, type, codigo_acesso } = request.body
+    const { name, birthdate, cpf, empresa_id, setor_id, email, whatsapp, city, uf, type, codigo_acesso } = request.body
 
       // 🔐 Validação do código (apenas para USER)
     if (type === 'USER' || !type) {
@@ -53,8 +53,8 @@ module.exports = {
       name,
       birthdate, // Novo campo
       cpf: cleanedCpf, // Novo campo
-      empresa, // Novo campo
-      setor, // Novo campo
+      empresa_id, // Novo campo
+      setor_id, // Novo campo
       email,
       whatsapp,
       city,
@@ -65,23 +65,37 @@ module.exports = {
     return response.json({ id })
   },
     // ✅ NOVO: buscar um CADASTRO pelo ID
-  async show(req, res) {
-    const { id } = req.params;
+async show(req, res) {
+  const { id } = req.params;
 
-    try {
-      const ong = await connection('ongs')
-        .where('id', id)
-        .select('id', 'name', 'setor', 'type')
-        .first();
+  try {
+    const ong = await connection('ongs')
+      .leftJoin('empresas', 'ongs.empresa_id', 'empresas.id')
+      .leftJoin('setores', 'ongs.setor_id', 'setores.id')
+      .where('ongs.id', id)
+      .select(
+        'ongs.id',
+        'ongs.name',
+        'ongs.type',
+        'empresas.id as empresa_id',
+        'empresas.nome as empresa',
+        'setores.id as setor_id',
+        'setores.nome as setor'
+      )
+      .first();
 
-      if (!ong) {
-        return res.status(404).json({ error: 'ONG não encontrada' });
-      }
-
-      return res.json(ong);
-    } catch (error) {
-      console.error('Erro ao buscar ONG:', error);
-      return response.status(500).json({ error: 'Erro interno ao cadastrar ONG', details: error.message });
+    if (!ong) {
+      return res.status(404).json({ error: 'ONG não encontrada' });
     }
-  } 
+
+    return res.json(ong);
+  } catch (error) {
+    console.error('Erro ao buscar ONG:', error);
+    return res.status(500).json({
+      error: 'Erro interno ao buscar ONG',
+      details: error.message
+    });
+  }
+}
+
 }; 
