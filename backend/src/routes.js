@@ -443,7 +443,12 @@ routes.get('/empresas', EmpresasController.index);  //Empresas
 routes.get('/setores', SetoresController.index);    //Setores
 
 routes.get('/empresas-visitantes', EmpresasVisitantesController.index);  //Empresas Visitantes
+routes.post('/empresas-visitantes', EmpresasVisitantesController.create);
+
 
 routes.get('/setores-visitantes', SetoresVisitantesController.index);    //Setores Visitantes
+
+// 🔹 Nova rota para abrir o modal do crachá
+routes.get('/incidents/:id/badge', IncidentController.showBadge);
 
 module.exports = routes

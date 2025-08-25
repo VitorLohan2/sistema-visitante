@@ -1,6 +1,17 @@
 //controllers/FuncionarioController.js
 const connection = require('../database/connection');
 
+// ✅ Helper para extrair token do Bearer (igual aos outros controllers)
+function getBearerToken(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return null;
+  const parts = authHeader.split(' ');
+  if (parts.length === 2 && parts[0] === 'Bearer') {
+    return parts[1]; // retorna só o ID
+  }
+  return authHeader; // Se não tem Bearer, retorna como está
+}
+
 module.exports = {
   /**
    * Lista todos os funcionários (ativos por padrão)
@@ -48,47 +59,52 @@ module.exports = {
   },
 
   /**
-   * Cria novo funcionário (somente ADM)
+   * Cria novo funcionário (SOMENTE ADM) - COM AUTENTICAÇÃO
    */
   async criar(req, res) {
+    const { cracha, nome, setor, funcao, data_admissao } = req.body;
+    const criado_por = getBearerToken(req); // ✅ USAR HELPER
+
     try {
-      const { cracha, nome, setor, funcao, data_admissao } = req.body;
+      // ✅ DEBUG DETALHADO:
+      console.log('=== DEBUG CADASTRAR FUNCIONÁRIO ===');
+      console.log('Authorization header:', criado_por);
+      console.log('Tipo do criado_por:', typeof criado_por);
       
-      // Verifica se crachá já existe
-      const existe = await connection('funcionarios')
-        .where('cracha', cracha)
-        .first();
-      
-      if (existe) {
-        return res.status(400).json({ error: 'Crachá já cadastrado' });
+      if (!criado_por) {
+        return res.status(401).json({ error: 'Authorization header é obrigatório' });
       }
 
-      // Insere novo funcionário
-      const [id] = await connection('funcionarios')
-        .insert({
-          cracha,
-          nome,
-          setor,
-          funcao,
-          data_admissao: data_admissao || new Date().toISOString().split('T')[0],
-          ativo: true
-        })
-        .returning('id');
+      // Buscar ONG primeiro
+      const ong = await connection('ongs')
+        .where('id', criado_por)
+        .first();
 
-      return res.status(201).json({ id, message: 'Funcionário cadastrado com sucesso' });
-    } catch (error) {
-      console.error('Erro ao criar funcionário:', error);
-      return res.status(500).json({ error: 'Erro interno ao criar funcionário' });
-    }
-  },
+      console.log('ONG encontrada:', ong);
 
-  /**
-   * Atualiza funcionário (somente ADM)
-   */
-  async criar(req, res) {
-    try {
-      const { cracha, nome, setor, funcao, data_admissao } = req.body;
-      
+      if (!ong) {
+        console.log('❌ ONG não encontrada para ID:', criado_por);
+        return res.status(404).json({ 
+          error: 'ONG não encontrada',
+          id_enviado: criado_por
+        });
+      }
+
+      console.log('Tipo da ONG encontrada:', ong.type);
+
+      // ✅ VERIFICAR AMBOS OS VALORES (ADM e ADMIN):
+      if (ong.type !== 'ADM' && ong.type !== 'ADMIN') {
+        console.log('❌ ONG não é ADM nem ADMIN. Tipo atual:', ong.type);
+        return res.status(403).json({ 
+          error: 'Somente administradores tem permissão!',
+          userType: ong.type,
+          redirectTo: '/profile', // ✅ ADICIONAR REDIRECT
+          tipoPossivelProblema: 'Valor do campo type está incorreto'
+        });
+      }
+
+      console.log('✅ ONG é administrador, prosseguindo com cadastro...');
+
       // Verifica se crachá já existe
       const existe = await connection('funcionarios')
         .where('cracha', cracha)
@@ -114,24 +130,56 @@ module.exports = {
         data_demissao: null
       });
 
-      return res.status(201).json({ cracha, message: 'Funcionário cadastrado com sucesso' });
+      console.log('✅ Funcionário cadastrado com sucesso:', cracha);
+
+      return res.status(201).json({ 
+        cracha, 
+        message: 'Funcionário cadastrado com sucesso' 
+      });
     } catch (error) {
       console.error('Erro ao criar funcionário:', error);
       return res.status(500).json({ 
         error: 'Erro interno ao criar funcionário',
-        details: error.message
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
     }
   },
 
   /**
-   * Atualiza funcionário por crachá (somente ADM)
+   * Atualiza funcionário por crachá (SOMENTE ADM) - COM AUTENTICAÇÃO
    */
   async atualizar(req, res) {
+    const { cracha } = req.params;
+    const { nome, setor, funcao, data_admissao, data_demissao, ativo } = req.body;
+    const criado_por = getBearerToken(req); // ✅ USAR HELPER
+
     try {
-      const { cracha } = req.params;
-      const { nome, setor, funcao, data_admissao, data_demissao, ativo } = req.body;
-      
+      // ✅ VERIFICAÇÃO DE AUTENTICAÇÃO ADM
+      if (!criado_por) {
+        return res.status(401).json({ error: 'Authorization header é obrigatório' });
+      }
+
+      const ong = await connection('ongs')
+        .where('id', criado_por)
+        .first();
+
+      if (!ong) {
+        return res.status(404).json({ 
+          error: 'ONG não encontrada',
+          id_enviado: criado_por
+        });
+      }
+
+      // ✅ VERIFICAR AMBOS OS VALORES (ADM e ADMIN):
+      if (ong.type !== 'ADM' && ong.type !== 'ADMIN') {
+        return res.status(403).json({ 
+          error: 'Somente administradores tem permissão!',
+          userType: ong.type,
+          redirectTo: '/profile'
+        });
+      }
+
       // Verifica se funcionário existe
       const funcionario = await connection('funcionarios')
         .where('cracha', cracha)
@@ -175,7 +223,7 @@ module.exports = {
       console.error('Erro ao atualizar funcionário:', error);
       return res.status(500).json({ 
         error: 'Erro interno ao atualizar funcionário',
-        details: error.message
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   }

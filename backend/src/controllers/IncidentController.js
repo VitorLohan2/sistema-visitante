@@ -4,6 +4,20 @@ const fs = require('fs');
 const util = require('util');
 const unlinkFile = util.promisify(fs.unlink);
 
+// Função auxiliar para extrair token do header Authorization
+function getBearerToken(request) {
+  const authHeader = request.headers.authorization
+  if (!authHeader) return null
+
+  const parts = authHeader.split(' ')
+  if (parts.length !== 2) return null
+
+  const [scheme, token] = parts
+  if (!/^Bearer$/i.test(scheme)) return null
+
+  return token
+}
+
 module.exports = {
   // Listagem paginada
   async index(request, response) {
@@ -43,7 +57,7 @@ async create(request, response) {
   }))
 });
   const { nome, nascimento, cpf, empresa, setor, telefone, observacao } = request.body;
-  const ong_id = request.headers.authorization;
+  const ong_id = getBearerToken(request);
 
   try {
     if (!request.files || request.files.length === 0) {
@@ -101,79 +115,101 @@ async create(request, response) {
   }
 },
   // Buscar incidente específico
-async show(request, response) {
-  const { id } = request.params;
-
-  try {
-    const incident = await connection('incidents')
-      .where('id', id)
-      .select('*')
-      .first();
-
-    if (!incident) {
-      return response.status(404).json({ error: 'Cadastro não encontrado.' });
-    }
-
-    // Função para normalizar as imagens
-    const normalizeImage = (image) => {
-      if (!image) return null;
-      
-      // Se já for uma URL do Cloudinary
-      if (image.startsWith('https://res.cloudinary.com')) {
-        return image;
-      }
-      
-      // Se for um nome de arquivo antigo
-      return `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload/visitantes/${image}`;
-    };
-
-    // Cria array de fotos normalizadas
-    const fotos = [
-      normalizeImage(incident.imagem1),
-      normalizeImage(incident.imagem2),
-      normalizeImage(incident.imagem3)
-    ].filter(url => url !== null); // Remove valores nulos
-
-    return response.json({
-      ...incident,
-      fotos
-    });
-
-  } catch (error) {
-    console.error('Erro ao buscar cadastro:', error);
-    return response.status(500).json({ 
-      error: 'Erro ao buscar cadastro.',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-},
-
-  // Atualizar incidente
-  async update(request, response) {
+  async show(request, response) {
     const { id } = request.params;
-    const ong_id = request.headers.authorization;
-    const { nome, nascimento, cpf, empresa, setor, telefone, observacao } = request.body;
 
     try {
-      const incident = await connection('incidents').where('id', id).first();
+      const incident = await connection('incidents')
+        .leftJoin('empresas_visitantes', 'empresas_visitantes.id', '=', 'incidents.empresa_id')
+        .leftJoin('setores_visitantes', 'setores_visitantes.id', '=', 'incidents.setor_id')
+        .where('incidents.id', id)
+        .select(
+          'incidents.*',
+          'empresas_visitantes.nome as empresa',
+          'setores_visitantes.nome as setor'
+        )
+        .first();
+
       if (!incident) {
         return response.status(404).json({ error: 'Cadastro não encontrado.' });
       }
 
-      await connection('incidents').where('id', id).update({
-        nome,
-        nascimento,
-        cpf,
-        empresa_id: empresa,
-        setor_id: setor,
-        telefone,
-        observacao
+      // Função para normalizar as imagens
+      const normalizeImage = (image) => {
+        if (!image) return null;
+        
+        // Se já for uma URL do Cloudinary
+        if (image.startsWith('https://res.cloudinary.com')) {
+          return image;
+        }
+        
+        // Se for um nome de arquivo antigo
+        return `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload/visitantes/${image}`;
+      };
+
+      // Cria array de fotos normalizadas
+      const fotos = [
+        normalizeImage(incident.imagem1),
+        normalizeImage(incident.imagem2),
+        normalizeImage(incident.imagem3)
+      ].filter(url => url !== null); // Remove valores nulos
+
+      return response.json({
+        ...incident,
+        fotos
       });
 
-      return response.status(204).send();
     } catch (error) {
-      console.error('Erro na atualização:', error);
-      return response.status(500).json({ error: 'Erro na atualização.' });
+      console.error('Erro ao buscar cadastro:', error);
+      return response.status(500).json({ 
+        error: 'Erro ao buscar cadastro.',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  },
+
+  // Atualizar incidente
+  async update(req, res) {
+    const { id } = req.params;
+    const { nome, nascimento, cpf, empresa, setor, telefone, observacao } = req.body;
+
+    try {
+      // Buscar id da empresa pelo nome
+      const empresaData = await connection('empresas_visitantes')
+        .where('nome', empresa)
+        .select('id')
+        .first();
+
+      if (!empresaData) {
+        return res.status(400).json({ error: 'Empresa não encontrada.' });
+      }
+
+      // Buscar id do setor pelo nome
+      const setorData = await connection('setores_visitantes')
+        .where('nome', setor)
+        .select('id')
+        .first();
+
+      if (!setorData) {
+        return res.status(400).json({ error: 'Setor não encontrado.' });
+      }
+
+      await connection('incidents')
+        .where('id', id)
+        .update({
+          nome,
+          nascimento,
+          cpf,
+          empresa_id: empresaData.id,
+          setor_id: setorData.id,
+          telefone,
+          observacao
+        });
+
+      return res.status(200).json({ message: 'Cadastro atualizado com sucesso.' });
+    } catch (error) {
+      console.error('Erro ao atualizar incidente:', error);
+      return res.status(500).json({ error: 'Erro ao atualizar incidente.' });
     }
   },
 
@@ -181,7 +217,7 @@ async show(request, response) {
   async blockIncident(request, response) {
     const { id } = request.params;
     const { bloqueado } = request.body;
-    const ong_id = request.headers.authorization;
+    const ong_id = getBearerToken(request);
 
     try {
       const ong = await connection('ongs')
@@ -214,10 +250,10 @@ async show(request, response) {
     }
   },
 
-  // Deletar incidente com limpeza no Cloudinary - VERSÃO CORRIGIDA
+  // Deletar incidente com limpeza no Cloudinary
   async delete(request, response) {
     const { id } = request.params;
-    const ong_id = request.headers.authorization;
+    const ong_id = getBearerToken(request);
 
     try {
       // Verifica se é ADM
@@ -270,6 +306,36 @@ async show(request, response) {
         error: 'Erro ao excluir cadastro.',
         details: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
+    }
+  },
+   // 🔹 Função para buscar dados do colaborador e retornar para o modal
+  async showBadge(request, response) {
+    const { id } = request.params;
+
+    try {
+      const badgeData = await connection('incidents')
+        .leftJoin('empresas_visitantes', 'empresas_visitantes.id', '=', 'incidents.empresa_id')
+        .leftJoin('setores_visitantes', 'setores_visitantes.id', '=', 'incidents.setor_id')
+        .where('incidents.id', id)
+        .select(
+          'incidents.id',
+          'incidents.nome',
+          'incidents.cpf',
+          'incidents.telefone',
+          'empresas_visitantes.nome as empresa',
+          'setores_visitantes.nome as setor',
+          'incidents.imagem1'
+        )
+        .first();
+
+      if (!badgeData) {
+        return response.status(404).json({ error: 'Colaborador não encontrado.' });
+      }
+
+      return response.json(badgeData);
+    } catch (error) {
+      console.error('Erro ao buscar crachá:', error);
+      return response.status(500).json({ error: 'Erro interno no servidor' });
     }
   },
     // Verificar se CPF já está cadastrado

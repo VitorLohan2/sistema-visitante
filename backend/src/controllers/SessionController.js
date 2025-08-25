@@ -15,7 +15,8 @@ module.exports = {
 
     return response.json({
       name: ong.name,
-      type: ong.type
+      type: ong.type,
+      token: id
     });
   },
 

@@ -10,13 +10,52 @@ export default function ListaFuncionarios() {
   const [funcionarios, setFuncionarios] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [userType, setUserType] = useState(null); // ✅ Controlar tipo do usuário
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true); // ✅ Loading da verificação
   const history = useHistory();
   const ongName = localStorage.getItem('ongName');
-  const isAdmin = localStorage.getItem('ongType') === 'ADM';
+  const isAdmin = userType === 'ADM' || userType === 'ADMIN'; // ✅ Baseado no estado verificado
+  const [progress, setProgress] = useState(0);
 
+  // ✅ VERIFICAR AUTENTICAÇÃO ADM NO MOUNT
   useEffect(() => {
-    carregarFuncionarios();
-  }, []);
+    const checkAuth = async () => {
+      try {
+        const ongId = localStorage.getItem('ongId');
+        const ongTypeStored = localStorage.getItem('ongType') || localStorage.getItem('userType');
+        
+        console.log('=== DEBUG LISTA FUNCIONÁRIOS ===');
+        console.log('ongId:', ongId);
+        console.log('ongName:', ongName);
+        console.log('ongType/userType:', ongTypeStored);
+        
+        // Se não tiver ID, redirecionar para login
+        if (!ongId) {
+          alert('Sessão expirada. Faça login novamente.');
+          history.push('/');
+          return;
+        }
+        
+        // ✅ Verificar se é ADM/ADMIN
+        if (ongTypeStored !== 'ADM' && ongTypeStored !== 'ADMIN') {
+          alert('Somente administradores tem permissão!');
+          history.push('/profile');
+          return;
+        }
+        
+        setUserType(ongTypeStored);
+        setIsCheckingAuth(false);
+        // Só carregar funcionários após confirmar que é ADM
+        carregarFuncionarios();
+        
+      } catch (error) {
+        console.error('Erro ao verificar autenticação:', error);
+        history.push('/profile');
+      }
+    };
+
+    checkAuth();
+  }, [history]);
 
   const carregarFuncionarios = async () => {
     try {
@@ -26,13 +65,20 @@ export default function ListaFuncionarios() {
         headers: { Authorization: localStorage.getItem('ongId') }
       });
       
-    // Ordenar por nome (case insensitive)
-    const funcionariosOrdenados = response.data.sort((a, b) =>
-      a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' })
-    );
+      // Ordenar por nome (case insensitive)
+      const funcionariosOrdenados = response.data.sort((a, b) =>
+        a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' })
+      );
 
-    setFuncionarios(funcionariosOrdenados);
+      setFuncionarios(funcionariosOrdenados);
     } catch (error) {
+      // ✅ Tratar erro de permissão
+      if (error.response?.status === 403) {
+        alert('Somente administradores tem permissão!');
+        history.push('/profile');
+        return;
+      }
+      
       alert(error.response?.data?.error || 'Erro ao carregar funcionários');
     } finally {
       setLoading(false);
@@ -53,6 +99,13 @@ export default function ListaFuncionarios() {
       await carregarFuncionarios();
       alert('Funcionário inativado!');
     } catch (error) {
+      // ✅ Tratar erro de permissão
+      if (error.response?.status === 403) {
+        alert('Somente administradores tem permissão!');
+        history.push('/profile');
+        return;
+      }
+      
       alert(error.response?.data?.error || 'Erro ao inativar funcionário');
     } finally {
       setLoading(false);
@@ -73,16 +126,35 @@ export default function ListaFuncionarios() {
       await carregarFuncionarios();
       alert('Funcionário reativado!');
     } catch (error) {
+      // ✅ Tratar erro de permissão
+      if (error.response?.status === 403) {
+        alert('Somente administradores tem permissão!');
+        history.push('/profile');
+        return;
+      }
+      
       alert(error.response?.data?.error || 'Erro ao reativar funcionário');
     } finally {
       setLoading(false);
     }
   };
 
+  // ✅ Mostrar loading enquanto verifica autenticação
+  if (isCheckingAuth) {
+    return <Loading progress={50} />;
+  }
+
+  // ✅ Se não é ADM, não renderizar nada (já redirecionou)
+  if (userType !== 'ADM' && userType !== 'ADMIN') {
+    return null;
+  }
+
   const filteredFuncionarios = funcionarios.filter(funcionario =>
     funcionario.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     funcionario.cracha.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  if (loading) return <Loading progress={progress} message="Carregando Listagem..."/>;
 
   return (
     <div className="funcionarios-container">

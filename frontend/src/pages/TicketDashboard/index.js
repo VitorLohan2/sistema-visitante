@@ -5,8 +5,8 @@ import { FiArrowLeft, FiPlusCircle } from 'react-icons/fi';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import api from '../../services/api';
-
-import Loading from '../../components/Loading'; // Importado o componente de carregamento
+import { useAuth } from '../../hooks/useAuth';
+import Loading from '../../components/Loading';
 
 import './styles.css';
 import logoImg from '../../assets/logo.svg';
@@ -15,41 +15,44 @@ import excel from '../../assets/xlss.png';
 const TicketDashboard = () => {
   const [tickets, setTickets] = useState([]);
   const [filteredTickets, setFilteredTickets] = useState([]);
-  const [userData, setUserData] = useState({ nome: '', setor: '' });
+  const [userData, setUserData] = useState({ nome: '', setor_id: '' });
   const [filterDate, setFilterDate] = useState('');
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
   const history = useHistory();
+  const { user } = useAuth();
 
   useEffect(() => {
-    const ongId = localStorage.getItem('ongId');
+    const ongId = user?.id || localStorage.getItem('ongId');
+
+    if (!ongId) {
+      history.push('/'); // Proteção de rota
+      return;
+    }
 
     const simulateProgress = () => {
       let value = 0;
       const interval = setInterval(() => {
         value += 10;
         setProgress(value);
-        if (value >= 100) {
-          clearInterval(interval);
-        }
+        if (value >= 100) clearInterval(interval);
       }, 100);
     };
 
     const fetchTickets = async () => {
       try {
         simulateProgress();
-        const user = await api.get(`/ongs/${ongId}`);
+
+        const userRes = await api.get(`/ongs/${ongId}`);
         setUserData({
-          nome: user.data.name,
-          setor_id: user.data.setor_id
+          nome: userRes.data.name,
+          setor_id: userRes.data.setor_id
         });
 
-        const response = await api.get('/tickets', {
-          headers: { Authorization: ongId }
-        });
+        const response = await api.get('/tickets'); // Header Authorization já enviado pelo interceptor
 
-        const sorted = response.data.sort((a, b) =>
-          new Date(b.data_criacao) - new Date(a.data_criacao)
+        const sorted = response.data.sort(
+          (a, b) => new Date(b.data_criacao) - new Date(a.data_criacao)
         );
 
         setTickets(sorted);
@@ -66,10 +69,9 @@ const TicketDashboard = () => {
     };
 
     fetchTickets();
-
     const interval = setInterval(fetchTickets, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [history, user]);
 
   useEffect(() => {
     if (!filterDate) {
@@ -96,17 +98,7 @@ const TicketDashboard = () => {
     }
 
     try {
-      const response = await api.put(
-        `/tickets/${Number(ticketId)}`,
-        { status: newStatus },
-        {
-          headers: {
-            Authorization: localStorage.getItem('ongId'),
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
+      const response = await api.put(`/tickets/${Number(ticketId)}`, { status: newStatus });
       if (response.status === 200) {
         setTickets(prev =>
           prev.map(t => (t.id === ticketId ? { ...t, status: newStatus } : t))
@@ -147,9 +139,7 @@ const TicketDashboard = () => {
     saveAs(blob, `tickets_${filterDate || 'todos'}.xlsx`);
   };
 
-  if (loading) {
-    return <Loading progress={progress} />;
-  }
+  if (loading) return <Loading progress={progress} message="Carregando Tickets..."/>;
 
   return (
     <div className="ticket-dashboard">
@@ -166,11 +156,10 @@ const TicketDashboard = () => {
 
       <div className="ticket-header">
         <div className="left-buttons">
-          <button onClick={handleNavigateToCreateTicket} className="tickets-link">
+          <button onClick={handleNavigateToCreateTicket} className="tickets-dashboard">
             <FiPlusCircle size={20} className="icone" />
             <span>Criar Ticket</span>
           </button>
-
           <button onClick={exportToExcel} className="report-button">
             <img src={excel} alt="Excel" className="excel-icon" />
             Gerar Relatório
@@ -180,11 +169,7 @@ const TicketDashboard = () => {
         <div className="date-filter">
           <label>
             Filtrar por data:
-            <input
-              type="date"
-              value={filterDate}
-              onChange={e => setFilterDate(e.target.value)}
-            />
+            <input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)} />
           </label>
         </div>
       </div>

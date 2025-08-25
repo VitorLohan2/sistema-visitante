@@ -14,32 +14,32 @@ export default function Visitors() {
   const ongName = localStorage.getItem('ongName');
 
   useEffect(() => {
-    api.get('visitors', {
-      headers: {
-        Authorization: ongId,
-      }
-    }).then(response => {
-      setVisitors(response.data);
-    });
+    // ✅ CORREÇÃO: REMOVER header manual - o interceptor já adiciona Bearer automaticamente
+    api.get('visitors')
+      .then(response => {
+        setVisitors(response.data);
+      })
+      .catch(error => {
+        console.error('Erro ao carregar visitantes:', error);
+        alert('Erro ao carregar visitantes. Verifique sua conexão.');
+      });
   }, [ongId]);
 
   // 👉 Função adicionada:
   async function handleEndVisit(id) {
     try {
-      await api.put(`visitors/${id}/exit`, {}, {
-        headers: {
-          Authorization: ongId,
-        }
-      });
+      // ✅ CORREÇÃO: REMOVER header manual - o interceptor já adiciona Bearer automaticamente
+      await api.put(`visitors/${id}/exit`, {});
       
       alert('Visita Finalizada com sucesso!');
-      // Atualiza o estado antes da navegação
+      // Atualiza o estado removendo o visitante da lista
       setVisitors(visitors.filter(visitor => visitor.id !== id));
 
-      // Atualiza a lista de visitantes se necessário
-      history.push('/history');
+      // Opcional: redirecionar para histórico
+      // history.push('/history');
       
     } catch (err) {
+      console.error('Erro ao encerrar visita:', err);
       alert('Erro ao encerrar visita, tente novamente.');
     }
   }

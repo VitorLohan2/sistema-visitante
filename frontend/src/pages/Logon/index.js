@@ -3,6 +3,7 @@ import { Link, useHistory } from 'react-router-dom';
 import { FiLogIn } from 'react-icons/fi';
 
 import api from '../../services/api';
+import { useAuth } from '../../hooks/useAuth';
 import './styles.css';
 
 import logoImg from '../../assets/logo.svg';
@@ -14,6 +15,15 @@ export default function Logon() {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const history = useHistory();
+  const { login, isAuthenticated } = useAuth();
+
+  // Se já está autenticado, redireciona para profile
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log('Usuário já autenticado, redirecionando...'); // DEBUG
+      history.push('/profile');
+    }
+  }, [isAuthenticated, history]);
 
   useEffect(() => {
     let interval = null;
@@ -38,22 +48,37 @@ export default function Logon() {
 
   async function handleLogin(e) {
     e.preventDefault();
+    
+    if (!id.trim()) {
+      alert('Por favor, informe seu ID');
+      return;
+    }
+    
     setLoading(true);
+    console.log('Tentando fazer login com ID:', id); // DEBUG
 
     try {
-      const response = await api.post('sessions', { id });
+      const response = await api.post('/sessions', { id });
+      console.log('Resposta do login:', response.data); // DEBUG
 
-      localStorage.setItem('ongId', id);
-      localStorage.setItem('ongName', response.data.name);
-      localStorage.setItem('ongType', response.data.type);
+      const userData = {
+        id: id,
+        name: response.data.name,
+        type: response.data.type
+      };
 
-      // força barra a ir até 100%
+      // Usa o método login do contexto
+      login(userData);
+
+      // Força barra a ir até 100%
       setProgress(100);
       setTimeout(() => {
         history.push('/profile');
-      }, 300); // pequeno delay para usuário ver barra cheia
+      }, 300);
     } catch (err) {
-      alert('Falha no login, tente novamente.');
+      console.error('Erro no login:', err); // DEBUG
+      const errorMessage = err.response?.data?.error || 'Falha no login, tente novamente.';
+      alert(errorMessage);
       setLoading(false);
     }
   }
@@ -73,6 +98,7 @@ export default function Logon() {
             placeholder="Sua ID"
             value={id}
             onChange={e => setId(e.target.value)}
+            required
           />
           <button className="button" type="submit">Entrar</button>
           <Link className="back-link" to="/register">
@@ -89,4 +115,3 @@ export default function Logon() {
     </div>
   );
 }
-

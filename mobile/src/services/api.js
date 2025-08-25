@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ✅ Força sempre o uso do IP local da sua máquina
 const api = axios.create({
-  baseURL: process.env.API_URL || 'http://192.168.10.27:3333', // Substitua pelo seu IP real baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3333' / baseURL: 'https://sistema-visitante.onrender.com'
+  baseURL: 'http://192.168.10.27:3333', // Substitua pelo seu IP real baseURL: process.env.API_URL || 'http://localhost:3333' / baseURL: 'https://sistema-visitante.onrender.com'
   timeout: 15000,
   headers: {
     'Accept': 'application/json',

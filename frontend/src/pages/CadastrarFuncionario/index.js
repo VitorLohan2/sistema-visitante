@@ -41,15 +41,53 @@ export default function CadastrarFuncionario() {
   });
   const [loading, setLoading] = useState(false);
   const [funcoesDisponiveis, setFuncoesDisponiveis] = useState([]);
+  const [userType, setUserType] = useState(null); // ✅ Controlar tipo do usuário
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true); // ✅ Loading da verificação
   const history = useHistory();
   const ongName = localStorage.getItem('ongName');
   const isMounted = useRef(true);
 
+  // ✅ VERIFICAR AUTENTICAÇÃO ADM NO MOUNT
   useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const ongId = localStorage.getItem('ongId');
+        const ongTypeStored = localStorage.getItem('ongType') || localStorage.getItem('userType');
+        
+        console.log('=== DEBUG CADASTRAR FUNCIONÁRIO ===');
+        console.log('ongId:', ongId);
+        console.log('ongName:', ongName);
+        console.log('ongType/userType:', ongTypeStored);
+        
+        // Se não tiver ID, redirecionar para login
+        if (!ongId) {
+          alert('Sessão expirada. Faça login novamente.');
+          history.push('/');
+          return;
+        }
+        
+        // ✅ Verificar se é ADM/ADMIN
+        if (ongTypeStored !== 'ADM' && ongTypeStored !== 'ADMIN') {
+          alert('Somente administradores tem permissão!');
+          history.push('/profile');
+          return;
+        }
+        
+        setUserType(ongTypeStored);
+        setIsCheckingAuth(false);
+        
+      } catch (error) {
+        console.error('Erro ao verificar autenticação:', error);
+        history.push('/profile');
+      }
+    };
+
+    checkAuth();
+    
     return () => {
       isMounted.current = false;
     };
-  }, []);
+  }, [history]);
 
   // Atualiza as funções disponíveis quando o setor é alterado
   useEffect(() => {
@@ -75,6 +113,13 @@ export default function CadastrarFuncionario() {
       }
     } catch (error) {
       if (isMounted.current) {
+        // ✅ Tratar erro de permissão
+        if (error.response?.status === 403) {
+          alert('Somente administradores tem permissão!');
+          history.push('/profile');
+          return;
+        }
+        
         alert(error.response?.data?.error || 'Erro ao cadastrar funcionário');
         setLoading(false);
       }
@@ -91,6 +136,16 @@ export default function CadastrarFuncionario() {
     const value = e.target.value.replace(/\D/g, '');
     setForm({...form, cracha: value});
   };
+
+  // ✅ Mostrar loading enquanto verifica autenticação
+  if (isCheckingAuth) {
+    return <Loading progress={50} />;
+  }
+
+  // ✅ Se não é ADM, não renderizar nada (já redirecionou)
+  if (userType !== 'ADM' && userType !== 'ADMIN') {
+    return null;
+  }
 
   return (
     <div className="form-container">
@@ -178,8 +233,12 @@ export default function CadastrarFuncionario() {
             </div>
 
             <div className="form-actions">
-              <button type="submit" className="save-button">
-                Salvar Funcionário
+              <button 
+                type="submit" 
+                className="save-button"
+                disabled={loading}
+              >
+                {loading ? 'Salvando...' : 'Salvar Funcionário'}
               </button>
               <Link to="/funcionarios" className="cancel-button">
                 Cancelar

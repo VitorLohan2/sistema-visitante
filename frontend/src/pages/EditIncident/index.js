@@ -21,20 +21,22 @@ export default function EditIncident() {
   const [isAdmin, setIsAdmin] = useState(false);
   const history = useHistory();
   const { id } = useParams();
+  const [empresas, setEmpresas] = useState([]);
+  const [setores, setSetores] = useState([]);
 
-  const empresas = ["Dime", "Dimep", "Dime Saúde"];
-  const setores = ["Reunião", "Entrega", "Visita"];
 
   useEffect(() => {
-    console.log('userType:', localStorage.getItem('ongType'));
-    console.log('ongId:', localStorage.getItem('ongId'));
-    // Verifica se é ADM quando o componente carrega
     setIsAdmin(localStorage.getItem('ongType') === 'ADM');
-    
-    async function loadIncident() {
+
+    async function loadData() {
       try {
-        const response = await api.get(`/incidents/${id}`);
-        const data = response.data;
+        const [incidentRes, empresasRes, setoresRes] = await Promise.all([
+          api.get(`/incidents/${id}`),
+          api.get('/empresas-visitantes'),
+          api.get('/setores-visitantes')
+        ]);
+
+        const data = incidentRes.data;
 
         setForm({
           ...data,
@@ -42,13 +44,17 @@ export default function EditIncident() {
           telefone: formatTelefone(data.telefone || ''),
           bloqueado: Boolean(data.bloqueado)
         });
+
+        setEmpresas(empresasRes.data);
+        setSetores(setoresRes.data);
+
       } catch (err) {
         alert('Erro ao carregar dados do incidente');
         history.push('/profile');
       }
     }
 
-    loadIncident();
+    loadData();
   }, [id, history]);
 
   const formatCPF = (value) => {
@@ -89,8 +95,7 @@ export default function EditIncident() {
     
     try {
       await api.put(`/incidents/${id}/block`, 
-        { bloqueado: novoEstado },
-        { headers: { authorization: localStorage.getItem('ongId') } }
+        { bloqueado: novoEstado }
       );
       setForm(prev => ({ ...prev, bloqueado: novoEstado }));
       alert(`Cadastro ${novoEstado ? 'bloqueado' : 'desbloqueado'} com sucesso!`);
@@ -194,8 +199,8 @@ export default function EditIncident() {
             required
           >
             <option value="">Empresa</option>
-            {empresas.map((opt, i) => (
-              <option key={i} value={opt}>{opt}</option>
+            {empresas.map((opt) => (
+              <option key={opt.id} value={opt.nome}>{opt.nome}</option>
             ))}
           </select>
 
@@ -206,8 +211,8 @@ export default function EditIncident() {
             required
           >
             <option value="">Setor</option>
-            {setores.map((opt, i) => (
-              <option key={i} value={opt}>{opt}</option>
+            {setores.map((opt) => (
+              <option key={opt.id} value={opt.nome}>{opt.nome}</option>
             ))}
           </select>
 

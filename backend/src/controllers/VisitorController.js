@@ -1,48 +1,110 @@
 const connection = require('../database/connection');
 
+// ✅ Helper para extrair token do Bearer (igual ao TicketController)
+function getBearerToken(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return null;
+  const parts = authHeader.split(' ');
+  if (parts.length === 2 && parts[0] === 'Bearer') {
+    return parts[1]; // retorna só o ID
+  }
+  return null;
+}
+
 module.exports = {
   // Listar visitantes atuais
   async index(request, response) {
-    const ong_id = request.headers.authorization;
+    const ong_id = getBearerToken(request);
 
-    const visitors = await connection('visitors')
-      //.where('ong_id', ong_id) // Ative se for multi-ONG
-      .select([
-        'id',
-        'name',
-        'cpf',
-        'company',
-        'sector',
-        'entry_date',
-        'created_at'
-      ]);
+    if (!ong_id) {
+      return response.status(401).json({ error: 'Authorization header é obrigatório' });
+    }
 
-    return response.json(visitors);
+    try {
+      const visitors = await connection('visitors')
+        //.where('ong_id', ong_id) // Ative se for multi-ONG
+        .select([
+          'id',
+          'name',
+          'cpf',
+          'company',
+          'sector',
+          'entry_date',
+          'created_at'
+        ]);
+
+      return response.json(visitors);
+    } catch (error) {
+      console.error('Erro ao buscar visitantes:', error);
+      return response.status(500).json({ 
+        error: 'Erro ao buscar visitantes',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
   },
 
   // Registrar nova entrada
   async create(request, response) {
     const { name, cpf, company, sector } = request.body;
-    const ong_id = request.headers.authorization;
-    const entry_date = new Date();
+    const ong_id = getBearerToken(request);
 
-    const [visitor] = await connection('visitors')
-      .insert({
-        name,
-        cpf,
-        company,
-        sector,
-        entry_date,
-        ong_id,
-      })
-      .returning('id');
+    if (!ong_id) {
+      return response.status(401).json({ error: 'Authorization header é obrigatório' });
+    }
 
-    return response.status(201).json({ id: visitor.id, entry_date });
+    console.log('🔍 Dados recebidos:', { name, cpf, company, sector, ong_id });
+
+    try {
+      // ✅ VERIFICAÇÃO: Confirma se a ONG existe (igual ao padrão dos outros controllers)
+      const ong = await connection('ongs')
+        .where('id', ong_id)
+        .first();
+      
+      if (!ong) {
+        console.error('❌ ONG não encontrada:', ong_id);
+        return response.status(404).json({ 
+          error: `ONG com ID ${ong_id} não encontrada` 
+        });
+      }
+
+      console.log('✅ ONG encontrada:', ong.name);
+
+      const [visitor] = await connection('visitors')
+        .insert({
+          name,
+          cpf,
+          company,
+          sector,
+          entry_date: new Date(),
+          ong_id,
+        })
+        .returning('id');
+
+      console.log('✅ Visita registrada com sucesso');
+      
+      return response.status(201).json({ 
+        id: visitor.id, 
+        entry_date: new Date(),
+        message: 'Visita registrada com sucesso'
+      });
+
+    } catch (error) {
+      console.error('❌ Erro ao registrar visita:', error);
+      return response.status(500).json({ 
+        error: 'Erro ao registrar visita',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
   },
 
   // Encerrar visita e mover para histórico
   async endVisit(request, response) {
     const { id } = request.params;
+    const ong_id = getBearerToken(request);
+
+    if (!ong_id) {
+      return response.status(401).json({ error: 'Authorization header é obrigatório' });
+    }
 
     try {
       const visitor = await connection('visitors').where('id', id).first();
@@ -50,6 +112,11 @@ module.exports = {
       if (!visitor) {
         return response.status(404).json({ error: 'Visitante não encontrado' });
       }
+
+      // Verificar se o visitante pertence à ONG (se multi-ONG)
+      // if (visitor.ong_id !== ong_id) {
+      //   return response.status(403).json({ error: 'Acesso negado a este visitante' });
+      // }
 
       await connection('history').insert({
         name: visitor.name,
@@ -66,23 +133,34 @@ module.exports = {
       return response.status(204).send();
     } catch (err) {
       console.error('Erro ao encerrar visita:', err);
-      return response.status(500).json({ error: 'Erro ao encerrar visita' });
+      return response.status(500).json({ 
+        error: 'Erro ao encerrar visita',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
+      });
     }
   },
 
   // Histórico completo de visitas
   async history(request, response) {
-    const ongId = request.headers.authorization;
+    const ong_id = getBearerToken(request);
+
+    if (!ong_id) {
+      return response.status(401).json({ error: 'Authorization header é obrigatório' });
+    }
 
     try {
       const results = await connection('history')
-        //.where('ong_id', ongId) // Descomente se multi-ONG
-        .select('*');
+        //.where('ong_id', ong_id) // Descomente se multi-ONG
+        .select('*')
+        .orderBy('exit_date', 'desc');
 
       return response.json(results);
     } catch (err) {
       console.error('Erro ao buscar histórico:', err);
-      return response.status(500).json({ error: 'Erro ao buscar histórico' });
+      return response.status(500).json({ 
+        error: 'Erro ao buscar histórico',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
+      });
     }
   }
 };

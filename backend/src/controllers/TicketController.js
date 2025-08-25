@@ -2,10 +2,21 @@
 const connection = require('../database/connection');
 const moment = require('moment-timezone'); // ✅ Importa moment com timezone
 
+// Helper para extrair token do Bearer
+function getBearerToken(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return null;
+  const parts = authHeader.split(' ');
+  if (parts.length === 2 && parts[0] === 'Bearer') {
+    return parts[1]; // retorna só o ID
+  }
+  return null;
+}
+
 module.exports = {
   async create(req, res) {
+    const ong_id = getBearerToken(req);
     const { funcionario, motivo, descricao, setorResponsavel, nomeUsuario, setorUsuario } = req.body;
-    const ong_id = req.headers.authorization;
     
     if (!funcionario || !motivo || !descricao || !setorResponsavel || !nomeUsuario || !setorUsuario) {
       return res.status(400).json({ 
@@ -22,7 +33,6 @@ module.exports = {
     }
 
     try {
-      console.log('Dados para criar ticket:', req.body);
       const data_criacao = moment().tz("America/Sao_Paulo").format('YYYY-MM-DD HH:mm:ss');
 
       const [ticket] = await connection('tickets')
@@ -37,7 +47,7 @@ module.exports = {
           status: 'Aberto',
           data_criacao
         })
-        .returning('id'); // ✅ PostgreSQL
+        .returning('id');
 
       return res.status(201).json({ 
         id: ticket.id,
@@ -61,17 +71,19 @@ module.exports = {
   },
 
   async index(req, res) {
-    const ong_id = req.headers.authorization;
+    const ong_id = getBearerToken(req);
+
+    if (!ong_id) {
+      return res.status(401).json({ error: 'Authorization header é obrigatório' });
+    }
 
     try {
       const ong = await connection('ongs')
         .where('id', ong_id)
-        .select('type')
+        .select('type', 'setor_id')
         .first();
 
-      if (!ong) {
-        return res.status(404).json({ error: 'ONG não encontrada' });
-      }
+      if (!ong) return res.status(404).json({ error: 'ONG não encontrada' });
 
       const tickets = await connection('tickets')
         .select(
@@ -80,7 +92,6 @@ module.exports = {
           'ongs.setor_id as ong_setor_id'
         )
         .leftJoin('ongs', 'tickets.ong_id', 'ongs.id')
-        .leftJoin('setores', 'ongs.setor_id', 'setores.id')
         .orderBy('tickets.data_criacao', 'desc');
 
       return res.json(tickets);
@@ -93,22 +104,17 @@ module.exports = {
       });
     }
   },
-      //ATUALIZAÇÃO NO TICKET     
+
   async update(req, res) {
+    const ong_id = getBearerToken(req);
     const { id } = req.params;
     const { status } = req.body;
-    const ong_id = req.headers.authorization;
 
-    if (isNaN(id)) {
-      return res.status(400).json({ error: 'ID do ticket deve ser numérico' });
-    }
+    if (isNaN(id)) return res.status(400).json({ error: 'ID do ticket deve ser numérico' });
 
     const statusValidos = ['Aberto', 'Em andamento', 'Resolvido'];
     if (!status || !statusValidos.includes(status)) {
-      return res.status(400).json({ 
-        error: 'Status inválido',
-        status_validos: statusValidos
-      });
+      return res.status(400).json({ error: 'Status inválido', status_validos: statusValidos });
     }
 
     try {
@@ -117,25 +123,19 @@ module.exports = {
         .select('type', 'setor_id')
         .first();
 
-      if (!ong) {
-        return res.status(404).json({ error: 'ONG não encontrada' });
-      }
+      if (!ong) return res.status(404).json({ error: 'ONG não encontrada' });
 
       const ticket = await connection('tickets')
         .where('id', id)
         .first();
 
-      if (!ticket) {
-        return res.status(404).json({ error: 'Ticket não encontrado' });
-      }
+      if (!ticket) return res.status(404).json({ error: 'Ticket não encontrado' });
 
       const isAdmin = ong.type === 'ADMIN';
       const isSeguranca = ong.setor_id === 4;
 
       if (!isAdmin && !isSeguranca) {
-        return res.status(403).json({ 
-          error: 'Acesso permitido apenas para administradores ou setor de Segurança'
-        });
+        return res.status(403).json({ error: 'Acesso permitido apenas para administradores ou setor de Segurança' });
       }
 
       const data_atualizacao = moment().tz("America/Sao_Paulo").format('YYYY-MM-DD HH:mm:ss');
@@ -154,25 +154,17 @@ module.exports = {
         .where('id', id)
         .update(updateData);
 
-      return res.json({ 
-        success: true,
-        message: 'Status atualizado com sucesso',
-        ticket_id: id,
-        novo_status: status
-      });
+      return res.json({ success: true, message: 'Status atualizado com sucesso', ticket_id: id, novo_status: status });
 
     } catch (err) {
       console.error('Erro ao atualizar ticket:', err);
-      return res.status(500).json({ 
-        error: 'Erro interno ao atualizar ticket',
-        detalhes: process.env.NODE_ENV === 'development' ? err.message : undefined
-      });
+      return res.status(500).json({ error: 'Erro interno ao atualizar ticket', detalhes: process.env.NODE_ENV === 'development' ? err.message : undefined });
     }
   },
-    
+
   async show(req, res) {
+    const ong_id = getBearerToken(req);
     const { id } = req.params;
-    const ong_id = req.headers.authorization;
 
     try {
       const ticket = await connection('tickets')
@@ -185,9 +177,7 @@ module.exports = {
         .leftJoin('ongs', 'tickets.ong_id', 'ongs.id')
         .first();
 
-      if (!ticket) {
-        return res.status(404).json({ error: 'Ticket não encontrado' });
-      }
+      if (!ticket) return res.status(404).json({ error: 'Ticket não encontrado' });
 
       const ong = await connection('ongs')
         .where('id', ong_id)
@@ -202,10 +192,7 @@ module.exports = {
 
         await connection('tickets')
           .where('id', id)
-          .update({
-            visualizado: true,
-            data_atualizacao
-          });
+          .update({ visualizado: true, data_atualizacao });
 
         ticket.visualizado = true;
       }
@@ -214,31 +201,22 @@ module.exports = {
 
     } catch (err) {
       console.error('Erro ao buscar ticket:', err);
-      return res.status(500).json({ 
-        error: 'Erro ao buscar ticket',
-        detalhes: process.env.NODE_ENV === 'development' ? err.message : undefined
-      });
+      return res.status(500).json({ error: 'Erro ao buscar ticket', detalhes: process.env.NODE_ENV === 'development' ? err.message : undefined });
     }
   },
 
   async countUnseen(req, res) {
-    const ong_id = req.headers.authorization;
-    
+    const ong_id = getBearerToken(req);
+
     try {
       const ong = await connection('ongs')
         .where('id', ong_id)
         .first();
 
-      if (!ong || ong.setor_id !== 4) {
-        return res.json({ count: 0 });
-      }
+      if (!ong || ong.setor_id !== 4) return res.json({ count: 0 });
 
       const count = await connection('tickets')
-        .where({
-          setor_responsavel: 'Segurança',
-          visualizado: false,
-          status: 'Aberto'
-        })
+        .where({ setor_responsavel: 'Segurança', visualizado: false, status: 'Aberto' })
         .count('id as total');
 
       return res.json({ count: count[0].total || 0 });
@@ -249,16 +227,13 @@ module.exports = {
   },
 
   async markAllSeen(req, res) {
-    const ong_id = req.headers.authorization;
-    
+    const ong_id = getBearerToken(req);
+
     try {
       await connection('tickets')
-        .where({
-          setor_responsavel: 'Segurança',
-          visualizado: false
-        })
+        .where({ setor_responsavel: 'Segurança', visualizado: false })
         .update({ visualizado: true });
-      
+
       return res.json({ success: true });
     } catch (err) {
       console.error(err);
