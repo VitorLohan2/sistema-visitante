@@ -22,6 +22,8 @@ import RecuperarId from "../pages/RecuperarId";
 import HelpDesk from "../pages/HelpDesk";
 import CadastrarEmpresaVisitantes from "../pages/CadastrarEmpresaVisitantes";
 import ProtectedRoute from "./protectedRoutes";
+import ListaAgendamentos from "../pages/ListaAgendamentos";
+import CadastrarAgendamentos from "../pages/CadastrarAgendamentos";
 
 export default function Routes() {
   return (
@@ -88,6 +90,14 @@ export default function Routes() {
 
         <ProtectedRoute path="/funcionarios/historico/:cracha">
           <HistoricoFuncionarios />
+        </ProtectedRoute>
+
+        <ProtectedRoute path="/agendamentos">
+          <ListaAgendamentos />
+        </ProtectedRoute>
+
+        <ProtectedRoute path="/agendamentos/novo">
+          <CadastrarAgendamentos />
         </ProtectedRoute>
 
         <ProtectedRoute path="/ponto">

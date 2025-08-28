@@ -49,13 +49,14 @@ module.exports = {
   // Criação de incidente com upload para Cloudinary
 async create(request, response) {
   console.log('Dados recebidos:', {
-  body: request.body,
-  files: request.files.map(f => ({
-    name: f.originalname,
-    size: f.size,
-    buffer: f.buffer ? 'OK' : 'NULL' // Verifica se o buffer existe
-  }))
-});
+    body: request.body,
+    files: request.files.map(f => ({
+      name: f.originalname,
+      size: f.size,
+      buffer: f.buffer ? 'OK' : 'NULL'
+    }))
+  });
+
   const { nome, nascimento, cpf, empresa, setor, telefone, observacao } = request.body;
   const ong_id = getBearerToken(request);
 
@@ -64,32 +65,25 @@ async create(request, response) {
       return response.status(400).json({ error: 'Nenhuma imagem enviada.' });
     }
 
-    // Upload paralelo para o Cloudinary (usando buffer)
-    const uploadPromises = request.files.map(async (file) => {
-      try {
-        const result = await new Promise((resolve, reject) => {
-          cloudinary.uploader.upload_stream(
-            {
-              folder: 'visitantes',
-              transformation: { width: 1080, crop: "limit", quality: "auto" },
-              resource_type: "image",
-              public_id: `${Date.now()}-${file.originalname.split('.')[0]}`
-            },
-            (error, result) => {
-              if (error) reject(error);
-              else resolve(result);
-            }
-          ).end(file.buffer);
-        });
-        return result.secure_url;
-      } catch (uploadError) {
-        throw new Error(`Falha no upload da imagem: ${uploadError.message}`);
-      }
-    });
+    // Upload das imagens para o Cloudinary
+    const uploadPromises = request.files.map(file => new Promise((resolve, reject) => {
+      cloudinary.uploader.upload_stream(
+        {
+          folder: 'visitantes',
+          transformation: { width: 1080, crop: "limit", quality: "auto" },
+          resource_type: "image",
+          public_id: `${Date.now()}-${file.originalname.split('.')[0]}`
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result.secure_url);
+        }
+      ).end(file.buffer);
+    }));
 
     const imageUrls = await Promise.all(uploadPromises);
 
-    // Insere no banco
+    // Inserir no banco
     const [incident] = await connection('incidents').insert({
       nome,
       nascimento,
@@ -101,19 +95,21 @@ async create(request, response) {
       imagem1: imageUrls[0] || null,
       imagem2: imageUrls[1] || null,
       imagem3: imageUrls[2] || null,
-      ong_id,
+      avatar_imagem: imageUrls[0] || null, // Define primeira imagem como avatar padrão
+      ong_id
     }).returning('id');
 
     return response.json({ id: incident.id });
 
   } catch (error) {
     console.error('Erro no cadastro:', error);
-    return response.status(500).json({ 
+    return response.status(500).json({
       error: 'Erro ao criar cadastro.',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 },
+
   // Buscar incidente específico
   async show(request, response) {
     const { id } = request.params;
@@ -134,34 +130,38 @@ async create(request, response) {
         return response.status(404).json({ error: 'Cadastro não encontrado.' });
       }
 
-      // Função para normalizar as imagens
+      // Normaliza todas as imagens
       const normalizeImage = (image) => {
         if (!image) return null;
-        
-        // Se já for uma URL do Cloudinary
-        if (image.startsWith('https://res.cloudinary.com')) {
-          return image;
-        }
-        
-        // Se for um nome de arquivo antigo
+        if (image.startsWith('https://res.cloudinary.com')) return image;
         return `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload/visitantes/${image}`;
       };
 
-      // Cria array de fotos normalizadas
       const fotos = [
         normalizeImage(incident.imagem1),
         normalizeImage(incident.imagem2),
         normalizeImage(incident.imagem3)
-      ].filter(url => url !== null); // Remove valores nulos
+      ].filter(url => url !== null);
+
+      // Avatar_imagem já é a URL completa armazenada no banco
+      const avatarUrl = normalizeImage(incident.avatar_imagem);
+
+      console.log('Dados do show:', {
+        id: incident.id,
+        fotos: fotos,
+        avatar_imagem_db: incident.avatar_imagem,
+        avatar_normalizado: avatarUrl
+      });
 
       return response.json({
         ...incident,
-        fotos
+        fotos,
+        avatar_imagem: avatarUrl
       });
 
     } catch (error) {
       console.error('Erro ao buscar cadastro:', error);
-      return response.status(500).json({ 
+      return response.status(500).json({
         error: 'Erro ao buscar cadastro.',
         details: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
@@ -171,7 +171,13 @@ async create(request, response) {
   // Atualizar incidente
   async update(req, res) {
     const { id } = req.params;
-    const { nome, nascimento, cpf, empresa, setor, telefone, observacao } = req.body;
+    const { nome, nascimento, cpf, empresa, setor, telefone, observacao, avatar_imagem } = req.body;
+
+    console.log('Update recebido:', {
+      id,
+      avatar_imagem,
+      body: req.body
+    });
 
     try {
       // Buscar id da empresa pelo nome
@@ -194,6 +200,35 @@ async create(request, response) {
         return res.status(400).json({ error: 'Setor não encontrado.' });
       }
 
+      // Buscar o incidente atual para validar se a URL do avatar existe nas imagens
+      const currentIncident = await connection('incidents')
+        .where('id', id)
+        .select('imagem1', 'imagem2', 'imagem3')
+        .first();
+
+      if (!currentIncident) {
+        return res.status(404).json({ error: 'Cadastro não encontrado.' });
+      }
+
+      // Validar se o avatar_imagem é uma das URLs válidas
+      let avatarToSave = null;
+      if (avatar_imagem) {
+        const validImages = [
+          currentIncident.imagem1,
+          currentIncident.imagem2,
+          currentIncident.imagem3
+        ].filter(img => img !== null);
+
+        if (validImages.includes(avatar_imagem)) {
+          avatarToSave = avatar_imagem;
+        } else {
+          console.log('Avatar inválido:', avatar_imagem);
+          console.log('Imagens válidas:', validImages);
+        }
+      }
+
+      console.log('Avatar a ser salvo:', avatarToSave);
+
       await connection('incidents')
         .where('id', id)
         .update({
@@ -203,10 +238,15 @@ async create(request, response) {
           empresa_id: empresaData.id,
           setor_id: setorData.id,
           telefone,
-          observacao
+          observacao,
+          avatar_imagem: avatarToSave // Salva a URL completa ou null
         });
 
-      return res.status(200).json({ message: 'Cadastro atualizado com sucesso.' });
+      return res.status(200).json({ 
+        message: 'Cadastro atualizado com sucesso.',
+        avatar_saved: avatarToSave
+      });
+
     } catch (error) {
       console.error('Erro ao atualizar incidente:', error);
       return res.status(500).json({ error: 'Erro ao atualizar incidente.' });
@@ -324,7 +364,7 @@ async create(request, response) {
           'incidents.telefone',
           'empresas_visitantes.nome as empresa',
           'setores_visitantes.nome as setor',
-          'incidents.imagem1'
+          'incidents.avatar_imagem' // Retorna o avatar selecionado
         )
         .first();
 
@@ -353,6 +393,34 @@ async create(request, response) {
       console.error('Erro ao verificar CPF:', error);
       return response.status(500).json({ error: 'Erro ao verificar CPF.' });
     }
+  },
+// 🔎 Buscar visitantes por nome ou CPF (SEM AUTENTICAÇÃO)
+async search(request, response) {
+  const { query } = request.query;
+
+  if (!query || query.trim() === '') {
+    return response.status(400).json({ error: 'Parâmetro de busca não informado.' });
   }
+
+  try {
+    // 🔹 BUSCA TODOS OS CAMPOS NECESSÁRIOS (sem filtrar por ONG)
+    const incidents = await connection('incidents')
+      .where(function() {
+        this.where('nome', 'ILIKE', `%${query}%`)
+            .orWhere('cpf', 'ILIKE', `%${query}%`);
+      })
+      .select([
+        'id', 'nome', 'cpf', 'telefone', 'nascimento', 
+        'empresa_id', 'setor_id', 'avatar_imagem', 
+        'bloqueado', 'ong_id'
+      ]); // 🔹 Retorna todos os campos necessários
+
+    return response.json(incidents);
+
+  } catch (error) {
+    console.error('Erro na busca:', error);
+    return response.status(500).json({ error: 'Erro ao realizar busca' });
+  }
+}
 
 };

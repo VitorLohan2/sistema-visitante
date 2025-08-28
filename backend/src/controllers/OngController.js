@@ -77,6 +77,7 @@ async show(req, res) {
         'ongs.id',
         'ongs.name',
         'ongs.type',
+        'ongs.email',
         'empresas.id as empresa_id',
         'empresas.nome as empresa',
         'setores.id as setor_id',

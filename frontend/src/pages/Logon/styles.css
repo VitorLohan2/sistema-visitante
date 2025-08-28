@@ -1,13 +1,23 @@
+/* Container principal em coluna */
 .logon-container {
   width: 100%;
   max-width: 1120px;
-  height: 100vh;
+  min-height: 100vh;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column; /* agora coluna */
+  justify-content: space-between; /* conteúdo e footer separados */
+}
+
+/* Área principal lado a lado */
+.logon-content {
+  flex: 1; /* ocupa espaço disponível */
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
+/* Form */
 .logon-container section.form {
   width: 100%;
   max-width: 350px;
@@ -21,4 +31,29 @@
 .logon-container section.form form h1 {
   font-size: 32px;
   margin-bottom: 32px;
+}
+
+.logon-footer {
+  position: relative;
+  z-index: 10;
+  text-align: center;
+  padding: 2rem 0;
+  margin-top: 4rem;
+}
+
+.logon-footer .footer-brand-name {
+  font-weight: 700;
+  color: #059669;
+  margin: 0 4px;
+}
+
+.logon-footer .footer-badge-beta {
+  display: inline-block;
+  background: linear-gradient(135deg, #10b981, #22c55e);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  margin-left: 0.5rem;
+  font-weight: 600;
 }

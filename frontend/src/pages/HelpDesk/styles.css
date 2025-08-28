@@ -116,7 +116,6 @@
   left: 0;
   width: 100%;
   height: 4px;
-  background: linear-gradient(90deg, #10b981, #22c55e);
   border-radius: 2px;
 }
 
@@ -508,7 +507,7 @@
 }
 
 .footer-content p {
-  color: #6b7280;
+  color: #000;
   font-weight: 500;
   margin: 0;
 }

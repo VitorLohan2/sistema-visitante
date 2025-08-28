@@ -171,6 +171,32 @@ const Loading = ({ progress = 0, message = 'Carregando...' }) => {
           font-weight: 500;
         }
         
+        .dark-theme .loading-message {
+          color: #fff;
+        }
+        .dark-theme .spinner-ring {
+          border-top: 3px solid #BD93F9;
+        }
+        .dark-theme .spinner-ring:nth-child(2) {
+          border-top-color: #fff;
+        }
+        
+        .dark-theme .spinner-ring:nth-child(3) {
+          border-top-color: #BD93F9;
+        }
+
+        .dark-theme .loading-header h2 {
+          color: #BD93F9;
+        }
+
+        .dark-theme .progress-fill {
+          background: linear-gradient(90deg, #FF79C6, #6272A4);
+        }
+
+        .dark-theme .loading-dots span {
+          background: #BD93F9;
+        }
+        
         .loading-dots {
           display: flex;
           justify-content: center;

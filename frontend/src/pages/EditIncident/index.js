@@ -23,6 +23,9 @@ export default function EditIncident() {
   const { id } = useParams();
   const [empresas, setEmpresas] = useState([]);
   const [setores, setSetores] = useState([]);
+  const [fotos, setFotos] = useState([]); // fotos já enviadas
+  const [avatar, setAvatar] = useState(''); // avatar selecionado
+
 
 
   useEffect(() => {
@@ -44,6 +47,10 @@ export default function EditIncident() {
           telefone: formatTelefone(data.telefone || ''),
           bloqueado: Boolean(data.bloqueado)
         });
+
+        // Carregar fotos e avatar
+        setFotos(data.fotos || []); // array de imagens já enviadas
+        setAvatar(data.avatar_imagem || (data.fotos?.[0] || '')); // avatar atual ou primeira foto
 
         setEmpresas(empresasRes.data);
         setSetores(setoresRes.data);
@@ -132,7 +139,8 @@ export default function EditIncident() {
       empresa: form.empresa,
       setor: form.setor,
       telefone: telefoneClean,
-      observacao: form.observacao
+      observacao: form.observacao,
+      avatar_imagem: avatar 
       // Removido o bloqueado do payload principal
     };
 
@@ -245,6 +253,23 @@ export default function EditIncident() {
             value={form.observacao}
             onChange={handleChange}
           />
+
+          {fotos.length > 0 && (
+            <div className="photo-selector">
+              <h3>Selecionar Avatar</h3>
+              <div className="photo-list">
+                {fotos.map((foto, index) => (
+                  <img
+                    key={index}
+                    src={foto} // URL da foto
+                    alt={`Foto ${index + 1}`}
+                    className={`photo-item ${avatar === foto ? 'selected' : ''}`}
+                    onClick={() => setAvatar(foto)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           <button className="button" type="submit">
             Atualizar

@@ -15,7 +15,7 @@ export default function NewVisitor() {
     setor_id: '',
     telefone: '',
     observacao: '',
-    fotos: []
+    fotos: [],
   });
 
   const history = useHistory();

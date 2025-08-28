@@ -2,26 +2,28 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import {
   FiPower, FiTrash2, FiUserPlus, FiEdit, FiUsers, FiClock, FiSearch, FiMessageSquare,
-  FiChevronLeft, FiChevronRight, FiCoffee, FiUserCheck 
+  FiChevronLeft, FiChevronRight, FiCoffee, FiUserCheck , FiUser, FiSettings, FiGitlab,
+  FiMoon, FiSun, FiX, FiInfo
 } from 'react-icons/fi';
-import { AiFillThunderbolt } from 'react-icons/ai';
 
 import notificacaoSom from '../../assets/notificacao.mp3';
 import api from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
+import Loading from '../../components/Loading';
 
 import './styles.css';
 
-import logoImg from '../../assets/logo.svg';
-import disable from '../../assets/disable.png';
+import logoImgBlack from '../../assets/logo_black.png';
+import logoImgWhite from '../../assets/logo_white.png';
 import userIcon from '../../assets/user.png';
 
 export default function Profile() {
   const [incidents, setIncidents] = useState([]);
+  const [allIncidents, setAllIncidents] = useState([]); // lista completa original
   const [searchTerm, setSearchTerm] = useState('');
+  const [isSearching, setIsSearching] = useState(false); // 🆕 Flag para controlar busca
   const history = useHistory();
   
-  // ✅ MUDANÇA: Usar useAuth ao invés de localStorage
   const { user, logout } = useAuth();
   const ongId = user?.id;
   const ongName = user?.name;
@@ -36,14 +38,49 @@ export default function Profile() {
   const recordsPerPage = 10;
   const [pageGroup, setPageGroup] = useState(0);
   const pagesPerGroup = 4;
+  const [progress, setProgress] = useState(0);
 
   const [empresasVisitantes, setEmpresasVisitantes] = useState([]);
   const [setoresVisitantes, setSetoresVisitantes] = useState([]);
   const [loading, setLoading] = useState(true);
 
-    // 🔹 ESTADO PARA MODAL
   const [badgeModalVisible, setBadgeModalVisible] = useState(false);
   const [badgeData, setBadgeData] = useState(null);
+  
+  const [configModalVisible, setConfigModalVisible] = useState(false);
+  const [darkTheme, setDarkTheme] = useState(false);
+  const [userDetails, setUserDetails] = useState(null);
+  
+  // Carregar tema do localStorage na inicialização
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('darkTheme');
+    if (savedTheme) {
+      setDarkTheme(JSON.parse(savedTheme));
+      document.body.classList.toggle('dark-theme', JSON.parse(savedTheme));
+    }
+  }, []);
+
+  function toggleTheme() {
+    const newTheme = !darkTheme;
+    setDarkTheme(newTheme);
+    localStorage.setItem('darkTheme', JSON.stringify(newTheme));
+    document.body.classList.toggle('dark-theme', newTheme);
+  }
+
+  async function handleOpenConfigModal() {
+    try {
+      const response = await api.get(`ongs/${ongId}`);
+      setUserDetails(response.data);
+      setConfigModalVisible(true);
+    } catch (err) {
+      alert('Erro ao carregar informações do usuário: ' + err.message);
+    }
+  }
+
+  function handleCloseConfigModal() {
+    setConfigModalVisible(false);
+    setUserDetails(null);
+  }
   
   function formatarData(data) {
     if (!data) return 'Data não informada';
@@ -58,68 +95,269 @@ export default function Profile() {
     return data;
   }
 
-// SOLUÇÃO 1: Carregar empresas/setores primeiro, depois os incidents
-useEffect(() => {
-  const fetchData = async () => {
-    if (!ongId) return;
+  // 🔹 FUNÇÃO PARA MAPEAR DADOS COM EMPRESA/SETOR
+  const mapIncidentsWithNames = (incidentsData) => {
+    return incidentsData.map(incident => ({
+      ...incident,
+      empresa: empresasVisitantes.find(e => e.id === incident.empresa_id)?.nome || 'Não informado',
+      setor: setoresVisitantes.find(s => s.id === incident.setor_id)?.nome || 'Não informado'
+    }));
+  };
 
-    try {
-      // 1. Primeiro carrega empresas e setores
-      const [empresasResponse, setoresResponse] = await Promise.all([
-        api.get('/empresas-visitantes'),
-        api.get('/setores-visitantes')
-      ]);
-      
-      const empresas = empresasResponse.data;
-      const setores = setoresResponse.data;
-      
-      setEmpresasVisitantes(empresas);
-      setSetoresVisitantes(setores);
+  // 🔹 CARREGAMENTO INICIAL - SÓ UMA VEZ
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      if (!ongId) return;
 
-      // 2. Depois carrega os dados da ONG e incidents
-      const ongResponse = await api.get(`ongs/${ongId}`);
-      const { setor, type } = ongResponse.data;
-      setUserData({ setor, type });
+      try {
+        let value = 0;
+        const interval = setInterval(() => {
+          value += 10;
+          setProgress(value);
+          if (value >= 100) clearInterval(interval);
+        }, 100);
 
-      const profileResponse = await api.get('profile', {
-        headers: { Authorization: ongId }
-      });
+        // 1. Carrega empresas e setores primeiro
+        const [empresasResponse, setoresResponse] = await Promise.all([
+          api.get('/empresas-visitantes'),
+          api.get('/setores-visitantes')
+        ]);
+        
+        const empresas = empresasResponse.data;
+        const setores = setoresResponse.data;
+        
+        setEmpresasVisitantes(empresas);
+        setSetoresVisitantes(setores);
 
-      // 3. Agora mapeia com os dados já carregados
-      const incidentsWithNames = profileResponse.data.map(incident => ({
-        ...incident,
-        empresa: empresas.find(e => e.id === incident.empresa_id)?.nome || 'Não informado',
-        setor: setores.find(s => s.id === incident.setor_id)?.nome || 'Não informado'
-      }));
-      
-      setIncidents(incidentsWithNames);
+        // 2. Carrega dados da ONG
+        const ongResponse = await api.get(`ongs/${ongId}`);
+        const { setor, type } = ongResponse.data;
+        setUserData({ setor, type });
 
-      // Lógica de segurança (mantida igual)
-      if (setor === 'Segurança') {
-        const unseenResponse = await api.get('/tickets/unseen', {
+        // 3. Carrega todos os incidents
+        const profileResponse = await api.get('profile', {
           headers: { Authorization: ongId }
         });
 
-        const newCount = unseenResponse.data.count;
-        if (!isFirstLoad.current && newCount > unseenRef.current) {
-          const audio = new Audio(notificacaoSom);
-          audio.play().catch(err => console.error("Erro ao tocar som:", err));
+        // 4. Mapeia com nomes de empresa/setor
+        const incidentsWithNames = profileResponse.data.map(incident => ({
+          ...incident,
+          empresa: empresas.find(e => e.id === incident.empresa_id)?.nome || 'Não informado',
+          setor: setores.find(s => s.id === incident.setor_id)?.nome || 'Não informado'
+        }));
+        
+        // 5. Salva os dados
+        setAllIncidents(incidentsWithNames);
+        setIncidents(incidentsWithNames);
+
+        // Lógica de segurança (mantida igual)
+        if (setor === 'Segurança') {
+          const unseenResponse = await api.get('/tickets/unseen', {
+            headers: { Authorization: ongId }
+          });
+
+          const newCount = unseenResponse.data.count;
+          if (!isFirstLoad.current && newCount > unseenRef.current) {
+            const audio = new Audio(notificacaoSom);
+            audio.play().catch(err => console.error("Erro ao tocar som:", err));
+          }
+
+          unseenRef.current = newCount;
+          setUnseenCount(newCount);
+          isFirstLoad.current = false;
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dados:', error.response?.data || error.message);
+      } finally {
+        setTimeout(() => {
+          setLoading(false);
+          setProgress(100);
+        }, 500);
+      }
+    };
+
+    fetchInitialData();
+  }, [ongId, empresasVisitantes.length, setoresVisitantes.length]); // 🔹 Só executa quando necessário
+
+  // 🔹 ATUALIZAÇÃO PERIÓDICA - SÓ SE NÃO ESTIVER BUSCANDO
+  useEffect(() => {
+    if (!ongId || isSearching || allIncidents.length === 0) return;
+
+    const intervalId = setInterval(async () => {
+      try {
+        // Só atualiza se não estiver em busca ativa
+        if (!isSearching && searchTerm.trim() === '') {
+          const profileResponse = await api.get('profile', {
+            headers: { Authorization: ongId }
+          });
+
+          const incidentsWithNames = mapIncidentsWithNames(profileResponse.data);
+          setAllIncidents(incidentsWithNames);
+          setIncidents(incidentsWithNames);
         }
 
-        unseenRef.current = newCount;
-        setUnseenCount(newCount);
-        isFirstLoad.current = false;
+        // Sempre atualiza notificações de segurança
+        if (userData.setor === 'Segurança') {
+          const unseenResponse = await api.get('/tickets/unseen', {
+            headers: { Authorization: ongId }
+          });
+
+          const newCount = unseenResponse.data.count;
+          if (newCount > unseenRef.current) {
+            const audio = new Audio(notificacaoSom);
+            audio.play().catch(err => console.error("Erro ao tocar som:", err));
+          }
+
+          unseenRef.current = newCount;
+          setUnseenCount(newCount);
+        }
+      } catch (error) {
+        console.error('Erro na atualização automática:', error);
       }
-    } catch (error) {
-      console.error('Erro ao carregar dados:', error.response?.data || error.message);
+    }, 3000); // 🔹 Aumentei para 3 segundos para reduzir carga
+
+    return () => clearInterval(intervalId);
+  }, [ongId, userData.setor, isSearching, searchTerm, allIncidents.length]);
+
+  // 🔹 BUSCA COM DEBOUNCE - CORRIGIDA
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      console.log('🔍 Executando busca para:', searchTerm); // Debug
+      
+      if (!searchTerm.trim()) {
+        // Se busca vazia, volta para lista completa
+        setIsSearching(false);
+        setIncidents(allIncidents);
+        // SÓ reseta página se estava buscando antes
+        if (isSearching) {
+          setCurrentPage(1);
+        }
+        return;
+      }
+
+      setIsSearching(true); // 🔹 Marca que está buscando
+      setCurrentPage(1); // Reset da paginação só quando começa uma busca nova
+
+      try {
+        console.log('📊 Dados disponíveis para busca:', allIncidents.length); // Debug
+        
+        // Busca localmente primeiro (mais rápido) - BUSCA MAIS PRECISA
+        const searchLower = searchTerm.toLowerCase().trim();
+        const cpfNumbers = searchTerm.replace(/\D/g, ''); // Remove formatação do CPF
+        
+        console.log('🔍 Termo de busca processado:', { original: searchTerm, lower: searchLower, cpfNumbers }); // Debug
+        
+        const localResults = allIncidents.filter(incident => {
+          // Verificações mais rigorosas
+          const hasName = incident.nome && typeof incident.nome === 'string';
+          const hasCpf = incident.cpf && typeof incident.cpf === 'string';
+          
+          // 🔹 BUSCA POR NOME - Busca por palavras inteiras, não apenas substring
+          let nameMatch = false;
+          if (hasName) {
+            const nomeNormalizado = incident.nome.toLowerCase().trim();
+            // Verifica se o termo de busca existe como palavra completa ou início de palavra
+            nameMatch = nomeNormalizado.includes(searchLower) && (
+              nomeNormalizado.startsWith(searchLower) || // Começa com o termo
+              nomeNormalizado.includes(' ' + searchLower) || // Palavra inteira no meio
+              nomeNormalizado === searchLower // Nome exato
+            );
+          }
+          
+          // 🔹 BUSCA POR CPF - Só busca se o termo tem números
+          let cpfMatch = false;
+          if (hasCpf && cpfNumbers.length > 0) {
+            cpfMatch = incident.cpf.includes(searchTerm) || 
+                      incident.cpf.replace(/\D/g, '').includes(cpfNumbers);
+          }
+          
+          console.log(`👤 ${incident.nome}:`, {
+            hasName,
+            hasCpf,
+            nomeNormalizado: hasName ? incident.nome.toLowerCase() : 'N/A',
+            nameMatch,
+            cpfMatch,
+            finalResult: nameMatch || cpfMatch
+          }); // Debug detalhado
+          
+          return nameMatch || cpfMatch;
+        });
+
+        console.log('📝 Resultados locais encontrados:', localResults.length); // Debug
+        console.log('📝 Nomes encontrados:', localResults.map(r => r.nome)); // Debug - listar nomes
+
+        if (localResults.length > 0) {
+          setIncidents(localResults);
+        } else {
+          console.log('🌐 Buscando na API...'); // Debug
+          // Se não encontrar localmente, busca na API
+          const response = await api.get('/search', {
+            params: { query: searchTerm }
+            // 🔹 REMOVIDO: headers: { Authorization: ongId }
+          });
+
+          console.log('📡 Resposta da API:', response.data); // Debug
+
+          // Mapeia os resultados da API com empresa/setor
+          const searchResults = mapIncidentsWithNames(response.data);
+          setIncidents(searchResults);
+        }
+      } catch (err) {
+        console.error('❌ Erro na busca:', err);
+        // Se der erro, busca localmente como fallback - BUSCA MAIS PRECISA
+        const searchLower = searchTerm.toLowerCase().trim();
+        const cpfNumbers = searchTerm.replace(/\D/g, '');
+        
+        const localResults = allIncidents.filter(incident => {
+          const hasName = incident.nome && typeof incident.nome === 'string';
+          const hasCpf = incident.cpf && typeof incident.cpf === 'string';
+          
+          // Busca mais precisa por nome
+          let nameMatch = false;
+          if (hasName) {
+            const nomeNormalizado = incident.nome.toLowerCase().trim();
+            nameMatch = nomeNormalizado.includes(searchLower) && (
+              nomeNormalizado.startsWith(searchLower) ||
+              nomeNormalizado.includes(' ' + searchLower) ||
+              nomeNormalizado === searchLower
+            );
+          }
+          
+          // Busca por CPF só se tiver números
+          let cpfMatch = false;
+          if (hasCpf && cpfNumbers.length > 0) {
+            cpfMatch = incident.cpf.includes(searchTerm) || 
+                      incident.cpf.replace(/\D/g, '').includes(cpfNumbers);
+          }
+          
+          return nameMatch || cpfMatch;
+        });
+        
+        setIncidents(localResults);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]); // 🔹 REMOVIDO allIncidents da dependência para evitar loops
+
+  // 🔹 RESET DA BUSCA QUANDO SAIR DO INPUT
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    
+    if (value.trim() === '') {
+      setIsSearching(false);
     }
   };
 
-  fetchData();
-  const interval = setInterval(fetchData, 1000);
-  return () => clearInterval(interval);
-}, [ongId]);
-  
+  // 🆕 EFEITO PARA ATUALIZAR A LISTA QUANDO allIncidents MUDA (mas não está buscando)
+  useEffect(() => {
+    if (!isSearching && searchTerm.trim() === '' && allIncidents.length > 0) {
+      console.log('🔄 Atualizando lista completa'); // Debug
+      setIncidents(allIncidents);
+    }
+  }, [allIncidents, isSearching, searchTerm]);
+
   useEffect(() => {
     function handleClickOutside(event) {
       if (admMenuRef.current && !admMenuRef.current.contains(event.target)) {
@@ -131,11 +369,25 @@ useEffect(() => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const filteredIncidents = incidents.filter(incident =>
-    incident.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    incident.cpf.includes(searchTerm)
-  )
-  .sort((a, b) => a.nome.localeCompare(b.nome)); // 🔽 Ordena por nome
+  const filteredIncidents = incidents.sort((a, b) => a.nome.localeCompare(b.nome));
+
+  // 🔹 DEBUG - Logs para entender o estado atual
+  console.log('📊 Estado atual:', {
+    searchTerm,
+    isSearching,
+    allIncidentsCount: allIncidents.length,
+    incidentsCount: incidents.length,
+    filteredCount: filteredIncidents.length,
+    currentPage,
+    totalPages: Math.ceil(filteredIncidents.length / recordsPerPage)
+  });
+
+  // 🔍 DEBUG ADICIONAL - Mostrar alguns nomes da lista atual
+  if (incidents.length > 0) {
+    console.log('📋 Primeiros 5 nomes na lista atual:', 
+      incidents.slice(0, 5).map(inc => inc.nome)
+    );
+  }
 
   // Cálculos de paginação
   const indexOfLastRecord = currentPage * recordsPerPage;
@@ -143,19 +395,23 @@ useEffect(() => {
   const currentRecords = filteredIncidents.slice(indexOfFirstRecord, indexOfLastRecord);
   const totalPages = Math.ceil(filteredIncidents.length / recordsPerPage);
 
+  // 🔹 FUNÇÕES DE PAGINAÇÃO COM DEBUG
   const nextPage = () => {
     if (currentPage < totalPages) {
+      console.log(`📄 Próxima página: ${currentPage} -> ${currentPage + 1}`); // Debug
       setCurrentPage(currentPage + 1);
     }
   };
 
   const prevPage = () => {
     if (currentPage > 1) {
+      console.log(`📄 Página anterior: ${currentPage} -> ${currentPage - 1}`); // Debug
       setCurrentPage(currentPage - 1);
     }
   };
 
   const goToPage = (pageNumber) => {
+    console.log(`📄 Indo para página: ${currentPage} -> ${pageNumber}`); // Debug
     setCurrentPage(pageNumber);
   };
 
@@ -168,7 +424,13 @@ useEffect(() => {
       });
 
       if (response.status === 204) {
-        setIncidents(incidents.filter(incident => incident.id !== id));
+        // Remove da lista principal e da lista filtrada
+        const newAllIncidents = allIncidents.filter(incident => incident.id !== id);
+        const newIncidents = incidents.filter(incident => incident.id !== id);
+        
+        setAllIncidents(newAllIncidents);
+        setIncidents(newIncidents);
+        
         alert('Cadastro deletado com sucesso!');
       }
     } catch (err) {
@@ -209,24 +471,25 @@ useEffect(() => {
     history.push(`/incidents/view/${id}`);
   }
 
-  // ✅ MUDANÇA: Nova função de logout
   function handleLogout() {
     if (window.confirm('Tem certeza que deseja sair?')) {
-      logout(); // Usa o método do hook - vai redirecionar automaticamente
+      logout();
     }
   }
 
   async function handleOpenBadgeModal(id) {
     try {
       const response = await api.get(`incidents/${id}/badge`);
-      setBadgeData(response.data);
+      setBadgeData({
+        ...response.data,
+        imagem: response.data.avatar_imagem || response.data.imagem1 || null
+      });
       setBadgeModalVisible(true);
     } catch (err) {
       alert('Erro ao abrir crachá: ' + err.message);
     }
   }
 
-  // Função para imprimir o crachá
   function handlePrintBadge() {
     if (!badgeData) return;
 
@@ -267,7 +530,7 @@ useEffect(() => {
         <body>
           <div class="badge">
             <h1>Crachá de Visitante</h1>
-            <img src="${badgeData.imagem1 || userIcon}" alt="Foto visitante"/>
+            <img src="${badgeData.imagem || userIcon}" alt="Foto visitante"/>
             <p><strong>Nome:</strong> ${badgeData.nome}</p>
             <p><strong>Empresa:</strong> ${badgeData.empresa}</p>
             <p><strong>Setor:</strong> ${badgeData.setor}</p>
@@ -286,24 +549,14 @@ useEffect(() => {
     setBadgeData(null);
   }
 
-  // ✅ PROTEÇÃO: Se não estiver autenticado, não renderiza
-  if (!user) {
-    return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh' 
-      }}>
-        Redirecionando...
-      </div>
-    );
-  }
+  const logoAtual = darkTheme ? logoImgWhite : logoImgBlack;
+
+  if (loading) return <Loading progress={progress} message="Carregando Listagem..." />;
 
   return (
     <div className="profile-container">
       <header>
-        <img src={logoImg} alt="DIME" />
+        <img src={logoAtual} alt="DIME" />
         <span> Bem-vindo(a), {ongName} </span>
 
         <div className="search-container">
@@ -313,8 +566,39 @@ useEffect(() => {
             placeholder="Consultar por nome ou CPF"
             className="search-input"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={handleSearchChange} // 🔹 Função atualizada
           />
+          
+          {/* 🔹 REMOVER BOTÃO DE DEBUG APÓS TESTE */}
+          {/* 
+          <button 
+            type="button" 
+            onClick={() => {
+              console.log('🧪 DEBUG MANUAL - Estado completo:');
+              console.log('searchTerm:', searchTerm);
+              console.log('allIncidents (primeiros 3):', allIncidents.slice(0, 3));
+              console.log('incidents (primeiros 3):', incidents.slice(0, 3));
+              
+              // Teste manual da busca
+              const testSearch = 'alberto';
+              const testResults = allIncidents.filter(inc => 
+                inc.nome && inc.nome.toLowerCase().includes(testSearch.toLowerCase())
+              );
+              console.log(`🧪 Teste manual "${testSearch}":`, testResults.map(r => r.nome));
+            }}
+            style={{ 
+              marginLeft: '10px', 
+              padding: '5px 10px', 
+              fontSize: '12px',
+              backgroundColor: '#f0f0f0',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            🧪 Debug
+          </button>
+          */}
         </div>
 
         <Link className="button" to="/incidents/new">Cadastrar Visitante</Link>
@@ -347,8 +631,8 @@ useEffect(() => {
         {userData.type === 'ADM' && (
           <div className="adm-menu-container" ref={admMenuRef}>
             <button onClick={() => setShowAdmMenu(prev => !prev)} className="adm-link">
-              <AiFillThunderbolt size={20} className="icone" />
-              <span>EasyPonto</span>
+              <FiGitlab size={20} className="icone" />
+              <span>Administrativo</span>
             </button>
 
             {showAdmMenu && (
@@ -363,28 +647,50 @@ useEffect(() => {
           </div>
         )}
 
-        <button onClick={() => history.push('/profile')} className="history-link">
+        <button onClick={() => history.push('/agendamentos')} className="agendamentos-link">
           <FiCoffee size={20} className="icone" />
           <span>Agendamentos</span>
         </button>
+
+        <button onClick={handleOpenConfigModal} className="history-link">
+          <FiSettings size={20} className="icone" />
+          <span>Configuração</span>
+        </button>
       </div>
 
-      <h1>Cadastrados</h1>
+      <h1>
+        Cadastrados 
+        {isSearching && searchTerm && (
+          <span className="search-results-info">
+            - Buscando por "{searchTerm}" ({filteredIncidents.length} resultados)
+          </span>
+        )}
+      </h1>
 
-      {/* NOVA ESTRUTURA COM CARDS */}
+      {/* CARDS CONTAINER */}
       <div className="cards-container">
         {currentRecords.map(incident => (
           <div key={incident.id} className={`visitor-card ${incident.bloqueado ? 'blocked' : ''}`}>
             <div className="card-left">
               <div className="card-avatar">
-                <img 
-                  src={incident.bloqueado ? disable : userIcon} 
-                  alt={incident.bloqueado ? "Bloqueado" : "Usuário"} 
-                />
+                {incident.avatar_imagem ? (
+                  <img
+                    src={incident.avatar_imagem}
+                    alt={incident.bloqueado ? "Bloqueado" : "Usuário"}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <FiUser size={55} className="default-user-icon" />
+                )}
               </div>
-              
+  
               <div className="card-info">
-                <h3 className="card-name">{incident.nome}</h3>
+                <h3 className="card-name">
+                  {incident.nome}
+                  {incident.bloqueado && <span className="blocked-badge">BLOQUEADO</span>}
+                </h3>
                 
                 <div className="card-details">
                   <div className="card-detail">
@@ -445,7 +751,7 @@ useEffect(() => {
                 className="card-action-btn cracha" 
                 title="Crachá"
               >
-                <FiUserCheck  size={16} />
+                <FiUserCheck size={16} />
               </button>
               
               <button 
@@ -460,7 +766,17 @@ useEffect(() => {
         ))}
       </div>
 
-      {/* PAGINAÇÃO MANTIDA IGUAL */}
+      {/* Mensagem quando não há resultados */}
+      {filteredIncidents.length === 0 && !loading && (
+        <div className="no-results">
+          {searchTerm ? 
+            `Nenhum resultado encontrado para "${searchTerm}"` : 
+            'Nenhum cadastro encontrado'
+          }
+        </div>
+      )}
+
+      {/* PAGINAÇÃO */}
       {filteredIncidents.length > recordsPerPage && (
         <div className="pagination">
           <button 
@@ -471,7 +787,6 @@ useEffect(() => {
             <FiChevronLeft size={16} />
           </button>
           
-          {/* Sempre mostrar primeira página */}
           <button
             onClick={() => goToPage(1)}
             className={`pagination-button ${currentPage === 1 ? 'active' : ''}`}
@@ -479,7 +794,6 @@ useEffect(() => {
             1
           </button>
 
-          {/* Mostrar "..." se não estiver no primeiro grupo */}
           {pageGroup > 0 && (
             <button 
               onClick={() => setPageGroup(pageGroup - 1)}
@@ -489,7 +803,6 @@ useEffect(() => {
             </button>
           )}
 
-          {/* Mostrar páginas do grupo atual */}
           {Array.from({ length: Math.min(pagesPerGroup, totalPages - 2) }, (_, i) => {
             const pageNumber = 2 + i + (pageGroup * pagesPerGroup);
             return pageNumber <= totalPages - 1 ? (
@@ -503,7 +816,6 @@ useEffect(() => {
             ) : null;
           })}
 
-          {/* Mostrar "..." se houver mais grupos */}
           {2 + (pageGroup + 1) * pagesPerGroup < totalPages && (
             <button 
               onClick={() => setPageGroup(pageGroup + 1)}
@@ -513,7 +825,6 @@ useEffect(() => {
             </button>
           )}
 
-          {/* Sempre mostrar última página se for diferente da primeira */}
           {totalPages > 1 && (
             <button
               onClick={() => goToPage(totalPages)}
@@ -533,19 +844,112 @@ useEffect(() => {
         </div>
       )}
 
-      {/* 🔹 MODAL DO CRACHÁ */}
+      {/* MODAL DO CRACHÁ */}
       {badgeModalVisible && badgeData && (
         <div className="modal-overlay" onClick={handleCloseBadgeModal}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <button className="modal-close" onClick={handleCloseBadgeModal}>X</button>
             <h2>Crachá de Visitante</h2>
-            <img src={badgeData.imagem1 || userIcon} alt="Foto visitante" className="modal-avatar" />
+            <img src={badgeData.imagem || userIcon} alt="Foto visitante" className="modal-avatar" />
             <p><strong>Nome:</strong> {badgeData.nome}</p>
             <p><strong>Empresa:</strong> {badgeData.empresa}</p>
             <p><strong>Setor:</strong> {badgeData.setor}</p>
-
-            {/* Botão de impressão */}
             <button onClick={handlePrintBadge} className="modal-print-btn">Imprimir Crachá</button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIGURAÇÃO */}
+      {configModalVisible && (
+        <div className="config-modal-overlay" onClick={handleCloseConfigModal}>
+          <div className="config-modal-content" onClick={e => e.stopPropagation()}>
+            <div className="config-modal-header">
+              <h2>
+                <FiSettings size={24} />
+                Configurações
+              </h2>
+              <button className="config-modal-close" onClick={handleCloseConfigModal}>
+                <FiX size={20} />
+              </button>
+            </div>
+
+            <div className="config-modal-body">
+              <div className="config-section">
+                <h3>Aparência</h3>
+                <div className="theme-toggle-container">
+                  <label className="theme-toggle">
+                    <input
+                      type="checkbox"
+                      checked={darkTheme}
+                      onChange={toggleTheme}
+                    />
+                    <div className="theme-slider">
+                      <div className="theme-icon sun">
+                        <FiSun size={18} />
+                      </div>
+                      <div className="theme-icon moon">
+                        <FiMoon size={18} />
+                      </div>
+                    </div>
+                  </label>
+                  <span className="theme-label">
+                    {darkTheme ? 'Tema Escuro' : 'Tema Claro'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="config-section">
+                <h3>
+                  <FiInfo size={18} />
+                  Informações da Conta
+                </h3>
+                
+                <div className="user-info-container">
+                  <div className="user-info-item">
+                    <label>ID do Usuário:</label>
+                    <span className="user-info-value">{ongId}</span>
+                  </div>
+                  
+                  <div className="user-info-item">
+                    <label>Nome:</label>
+                    <span className="user-info-value">
+                      {userDetails?.name || ongName || 'Carregando...'}
+                    </span>
+                  </div>
+                  
+                  <div className="user-info-item">
+                    <label>Email:</label>
+                    <span className="user-info-value">
+                      {userDetails?.email || 'Carregando...'}
+                    </span>
+                  </div>
+
+                  {userDetails?.setor && (
+                    <div className="user-info-item">
+                      <label>Setor:</label>
+                      <span className="user-info-value">{userDetails.setor}</span>
+                    </div>
+                  )}
+
+                  {userDetails?.type && (
+                    <div className="user-info-item">
+                      <label>Tipo de Conta:</label>
+                      <span className="user-info-value badge-type">
+                        {userDetails.type}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="config-modal-footer">
+              <button 
+                className="config-close-btn"
+                onClick={handleCloseConfigModal}>
+                Fechar
+              </button>
+            </div>
           </div>
         </div>
       )}

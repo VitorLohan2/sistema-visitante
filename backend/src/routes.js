@@ -84,6 +84,17 @@ routes.get('/profile', celebrate({
   }).unknown(),
 }), ProfileController.index)
 
+// Busca global de visitantes (por nome ou CPF)
+routes.get('/search',
+  celebrate({
+    [Segments.QUERY]: Joi.object().keys({
+      query: Joi.string().required()
+    })
+  }),
+  IncidentController.search
+);
+
+
 routes.get('/incidents', celebrate({
   [Segments.QUERY]: Joi.object().keys({
     page: Joi.number(),
@@ -175,7 +186,8 @@ routes.put('/incidents/:id',
       setor: Joi.string().required(),
       telefone: Joi.string().required(),
       observacao: Joi.string().allow('', null),
-      bloqueado: Joi.boolean().optional()
+      bloqueado: Joi.boolean().optional(),
+      avatar_imagem: Joi.string().uri().allow(null, '')
     })
   }),
   IncidentController.update

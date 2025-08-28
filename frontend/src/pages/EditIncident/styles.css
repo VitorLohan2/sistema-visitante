@@ -103,3 +103,30 @@ input:disabled {
   color: #999;
   cursor: not-allowed;
 }
+
+
+.photo-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.photo-item {
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  object-fit: cover;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border 0.2s;
+}
+
+.photo-item.selected {
+  border-color: #10B981;
+}
+
+.photo-selector h3{
+  margin-top: 12px;
+  margin-bottom: 12px;
+}

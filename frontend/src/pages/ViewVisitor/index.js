@@ -15,9 +15,7 @@ export default function ViewVisitor() {
   useEffect(() => {
     async function fetchVisitor() {
       try {
-        const response = await api.get(`/incidents/${id}`, {
-          headers: { Authorization: ongId }
-        });
+        const response = await api.get(`/incidents/${id}`);
         
         // Extrai as fotos dos campos imagem1, imagem2, imagem3
         const fotos = [];
@@ -37,7 +35,7 @@ export default function ViewVisitor() {
     }
 
     fetchVisitor();
-  }, [id, ongId, history]);
+  }, [id, history]);
 
   const formatCPF = (cpf) =>
     cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
@@ -136,6 +134,7 @@ export default function ViewVisitor() {
                 e.target.onerror = null;
                 e.target.src = 'https://via.placeholder.com/600?text=Imagem+não+encontrada';
               }}
+              onContextMenu={(e) => e.preventDefault()} // 🔹 Impede clique direito
             />
           </div>
         </div>

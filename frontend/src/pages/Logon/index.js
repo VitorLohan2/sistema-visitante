@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useHistory } from 'react-router-dom';
-import { FiLogIn } from 'react-icons/fi';
+import { FiLogIn, FiHelpCircle, FiKey } from 'react-icons/fi';
 
 import api from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
@@ -88,30 +88,48 @@ export default function Logon() {
   }
 
   return (
-    <div className="logon-container">
-      <section className="form">
-        <img src={logoImg} alt="Controle de Segurança" width={"350px"} />
+<div className="logon-container">
+  <div className="logon-content">
+    <section className="form">
+      <img src={logoImg} alt="DIME" width={"350px"} />
 
-        <form onSubmit={handleLogin}>
-          <h1>Faça seu Login</h1>
-          <input
-            placeholder="Sua ID"
-            value={id}
-            onChange={e => setId(e.target.value)}
-            required
-          />
-          <button className="button" type="submit">Entrar</button>
-          <Link className="back-link" to="/register">
-            <FiLogIn size={16} color="#e02041" />
-            Não tenho cadastro
-          </Link>
-          <Link className="back-link" to="/recuperar-id">
-            <FiLogIn size={16} color="#e02041" />
-            Esqueci meu ID
-          </Link>
-        </form>
-      </section>
-      <img src={heroesImg} alt="Heroes" width={"550px"} />
+      <form onSubmit={handleLogin}>
+        <h1>Faça seu Login</h1>
+        <input
+          placeholder="Sua ID"
+          value={id}
+          onChange={e => setId(e.target.value)}
+          required
+        />
+        <button className="button" type="submit">Entrar</button>
+        <Link className="back-link" to="/register">
+          <FiLogIn size={20} color="#059669" />
+          Não tenho cadastro
+        </Link>
+        <Link className="back-link" to="/recuperar-id">
+          <FiKey  size={20} color="#059669" />
+          Esqueci meu ID
+        </Link>
+        <Link className="back-link" to="/helpdesk">
+          <FiHelpCircle  size={20} color="#e02041" />
+          HelpDesk
+        </Link>
+      </form>
+    </section>
+    <img src={heroesImg} alt="IMAGEM ILUSTRATIVA" width={"550px"} />
+  </div>
+
+  {/* Footer igual do HelpDesk */}
+  <footer className="logon-footer">
+    <div className="footer-content">
+      <p>
+        Sistema de visitante 
+        <span className="footer-brand-name"> Liberaê 1.0</span>
+        <span className="footer-badge-beta">Beta</span>
+      </p>
     </div>
-  );
+  </footer>
+</div>
+
+);
 }

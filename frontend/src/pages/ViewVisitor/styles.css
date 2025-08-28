@@ -147,6 +147,11 @@
   object-fit: cover;
 }
 
+img {
+  user-drag: none;
+  -webkit-user-drag: none;
+}
+
 .photo-thumbnail span {
   position: absolute;
   bottom: 0;
@@ -210,5 +215,9 @@
   border: none;
   cursor: pointer;
   font-size: 24px;
-  color: #E02041;
+  color: #fff;
+}
+
+.close-button:hover {
+  color: #e61616;
 }
