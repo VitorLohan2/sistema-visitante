@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useHistory } from 'react-router-dom';
-import { FiArrowLeft } from 'react-icons/fi';
+import { FiArrowLeft, FiCheck } from 'react-icons/fi';
 import api from '../../services/api';
 import './styles.css';
 import logoImg from '../../assets/logo.svg';
@@ -15,6 +15,7 @@ export default function CadastrarEmpresaVisitantes() {
   const [progress, setProgress] = useState(0);
   const [userType, setUserType] = useState(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const history = useHistory();
   const ongName = localStorage.getItem('ongName');
   const isMounted = useRef(true);
@@ -84,6 +85,17 @@ export default function CadastrarEmpresaVisitantes() {
     };
   }, [history]);
 
+  // ✅ Efeito para fechar o modal automaticamente
+  useEffect(() => {
+    if (showSuccessModal) {
+      const timer = setTimeout(() => {
+        setShowSuccessModal(false);
+      }, 1000); // Modal desaparece após 1 segundos
+
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccessModal]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -92,20 +104,15 @@ export default function CadastrarEmpresaVisitantes() {
       return;
     }
     
-    setLoading(true);
-    
     try {
       await api.post('/empresas-visitantes', form, {
         headers: { Authorization: localStorage.getItem('ongId') }
       });
       
       if (isMounted.current) {
-        // Força barra a ir até 100%
-        setProgress(100);
-        setTimeout(() => {
-          alert('Empresa cadastrada com sucesso!');
-          history.push('/profile');
-        }, 300);
+        setShowSuccessModal(true);
+        // Limpar o formulário após o sucesso
+        setForm({ nome: '' });
       }
     } catch (error) {
       if (isMounted.current) {
@@ -118,7 +125,6 @@ export default function CadastrarEmpresaVisitantes() {
         
         const errorMessage = error.response?.data?.error || 'Erro ao cadastrar empresa';
         alert(errorMessage);
-        setLoading(false);
       }
     }
   };
@@ -135,11 +141,6 @@ export default function CadastrarEmpresaVisitantes() {
   // ✅ Se não é ADM, não renderizar nada (já redirecionou)
   if (userType !== 'ADM' && userType !== 'ADMIN') {
     return null;
-  }
-
-  // ✅ Mostrar loading durante submit
-  if (loading) {
-    return <Loading progress={progress} />;
   }
 
   return (
@@ -174,7 +175,7 @@ export default function CadastrarEmpresaVisitantes() {
               <button 
                 type="submit" 
                 className="save-button"
-                disabled={loading || !form.nome.trim()}
+                disabled={!form.nome.trim()}
               >
                 Salvar Empresa
               </button>
@@ -182,6 +183,19 @@ export default function CadastrarEmpresaVisitantes() {
           </form>
         </section>
       </div>
+
+      {/* ✅ Modal de Sucesso */}
+      {showSuccessModal && (
+        <div className="success-modal-overlay">
+          <div className="success-modal">
+            <div className="success-icon">
+              <FiCheck size={48} color="#28a745" />
+            </div>
+            <h3>Cadastro Realizado!</h3>
+            <p>Empresa cadastrada com sucesso!</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

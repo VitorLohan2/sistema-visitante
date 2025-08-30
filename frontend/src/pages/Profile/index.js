@@ -568,37 +568,6 @@ export default function Profile() {
             value={searchTerm}
             onChange={handleSearchChange} // 🔹 Função atualizada
           />
-          
-          {/* 🔹 REMOVER BOTÃO DE DEBUG APÓS TESTE */}
-          {/* 
-          <button 
-            type="button" 
-            onClick={() => {
-              console.log('🧪 DEBUG MANUAL - Estado completo:');
-              console.log('searchTerm:', searchTerm);
-              console.log('allIncidents (primeiros 3):', allIncidents.slice(0, 3));
-              console.log('incidents (primeiros 3):', incidents.slice(0, 3));
-              
-              // Teste manual da busca
-              const testSearch = 'alberto';
-              const testResults = allIncidents.filter(inc => 
-                inc.nome && inc.nome.toLowerCase().includes(testSearch.toLowerCase())
-              );
-              console.log(`🧪 Teste manual "${testSearch}":`, testResults.map(r => r.nome));
-            }}
-            style={{ 
-              marginLeft: '10px', 
-              padding: '5px 10px', 
-              fontSize: '12px',
-              backgroundColor: '#f0f0f0',
-              border: '1px solid #ccc',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            🧪 Debug
-          </button>
-          */}
         </div>
 
         <Link className="button" to="/incidents/new">Cadastrar Visitante</Link>
