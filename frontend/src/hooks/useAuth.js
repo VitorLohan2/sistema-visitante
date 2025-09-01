@@ -17,7 +17,7 @@ export function AuthProvider({ children }) {
     const ongName = localStorage.getItem('ongName');
     const ongType = localStorage.getItem('ongType');
     
-    console.log('Verificando autenticação:', { ongId, ongName, ongType });
+    //console.log('Verificando autenticação:', { ongId, ongName, ongType });
     
     if (ongId && ongName) {
       setIsAuthenticated(true);

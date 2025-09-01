@@ -221,7 +221,7 @@ export default function Profile() {
   // 🔹 BUSCA COM DEBOUNCE - CORRIGIDA
   useEffect(() => {
     const timer = setTimeout(async () => {
-      console.log('🔍 Executando busca para:', searchTerm); // Debug
+      //console.log('🔍 Executando busca para:', searchTerm); // Debug
       
       if (!searchTerm.trim()) {
         // Se busca vazia, volta para lista completa
@@ -352,7 +352,7 @@ export default function Profile() {
   // 🆕 EFEITO PARA ATUALIZAR A LISTA QUANDO allIncidents MUDA (mas não está buscando)
   useEffect(() => {
     if (!isSearching && searchTerm.trim() === '' && allIncidents.length > 0) {
-      console.log('🔄 Atualizando lista completa'); // Debug
+      //console.log('🔄 Atualizando lista completa'); // Debug
       setIncidents(allIncidents);
     }
   }, [allIncidents, isSearching, searchTerm]);
@@ -371,7 +371,7 @@ export default function Profile() {
   const filteredIncidents = incidents.sort((a, b) => a.nome.localeCompare(b.nome));
 
   // 🔹 DEBUG - Logs para entender o estado atual
-  console.log('📊 Estado atual:', {
+  /*console.log('📊 Estado atual:', {
     searchTerm,
     isSearching,
     allIncidentsCount: allIncidents.length,
@@ -379,14 +379,14 @@ export default function Profile() {
     filteredCount: filteredIncidents.length,
     currentPage,
     totalPages: Math.ceil(filteredIncidents.length / recordsPerPage)
-  });
+  });*/
 
   // 🔍 DEBUG ADICIONAL - Mostrar alguns nomes da lista atual
-  if (incidents.length > 0) {
+ /* if (incidents.length > 0) {
     console.log('📋 Primeiros 5 nomes na lista atual:', 
       incidents.slice(0, 5).map(inc => inc.nome)
     );
-  }
+  }*/
 
   // Cálculos de paginação
   const indexOfLastRecord = currentPage * recordsPerPage;
