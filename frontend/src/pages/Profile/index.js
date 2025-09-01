@@ -13,8 +13,7 @@ import Loading from '../../components/Loading';
 
 import './styles.css';
 
-import logoImgBlack from '../../assets/logo_black.png';
-import logoImgWhite from '../../assets/logo_white.png';
+import logo from '../../assets/logo.svg';
 import userIcon from '../../assets/user.png';
 
 export default function Profile() {
@@ -549,14 +548,14 @@ export default function Profile() {
     setBadgeData(null);
   }
 
-  const logoAtual = darkTheme ? logoImgWhite : logoImgBlack;
+  //const logoAtual = darkTheme ? logoImgWhite : logoImgBlack;
 
   if (loading) return <Loading progress={progress} message="Carregando Listagem..." />;
 
   return (
     <div className="profile-container">
       <header>
-        <img src={logoAtual} alt="DIME" />
+        <img src={logo} alt="DIME" />
         <span> Bem-vindo(a), {ongName} </span>
 
         <div className="search-container">
