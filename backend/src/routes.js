@@ -15,9 +15,11 @@ const EmpresasController = require('./controllers/EmpresasController');
 const SetoresController = require('./controllers/SetoresController');
 const EmpresasVisitantesController = require('./controllers/EmpresasVisitantesController');
 const SetoresVisitantesController = require('./controllers/SetoresVisitantesController');
+const AgendamentoController = require('./controllers/AgendamentoController');
 
 const multer = require('multer');
 const multerConfig = require('./config/multer');
+const uploadAgendamento = require('./config/multerAgendamentos');
 const upload = multer(multerConfig);
 
 
@@ -462,5 +464,59 @@ routes.get('/setores-visitantes', SetoresVisitantesController.index);    //Setor
 
 // 🔹 Nova rota para abrir o modal do crachá
 routes.get('/incidents/:id/badge', IncidentController.showBadge);
+
+
+routes.post('/agendamentos',
+  uploadAgendamento.single('foto_colaborador'),
+  handleUploadErrors,
+  celebrate({
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown(),
+    [Segments.BODY]: Joi.object().keys({
+      nome: Joi.string().required().max(100),
+      cpf: Joi.string().required().regex(/^\d{11}$/),
+      setor_id: Joi.number().integer().required(),
+      setor: Joi.string().required().max(100),
+      horario_agendado: Joi.date().iso().required(),
+      observacao: Joi.string().allow('', null).max(500),
+      criado_por: Joi.string().required().max(100)
+    })
+  }),
+  AgendamentoController.create
+);
+
+// ✅ Rota para listar agendamentos (se quiser)
+routes.get('/agendamentos', AgendamentoController.index);
+
+// ✅ Rota para deletar agendamento
+routes.delete('/agendamentos/:id',
+  celebrate({
+    [Segments.PARAMS]: Joi.object().keys({
+      id: Joi.number().integer().required(),
+    }),
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown()
+  }),
+  AgendamentoController.delete
+);
+
+// ✅ Rota para confirmar agendamento (se necessário)
+routes.put('/agendamentos/:id/confirmar',
+  celebrate({
+    [Segments.PARAMS]: Joi.object().keys({
+      id: Joi.number().integer().required(),
+    }),
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown()
+  }),
+  AgendamentoController.confirmar
+);
+
+routes.put('/agendamentos/:id/presenca', AgendamentoController.presenca);
+
+routes.get('/agendamentos/relatorio/presencas', AgendamentoController.relatorioPresencas);
 
 module.exports = routes

@@ -6,7 +6,7 @@ module.exports = {
 
     const ong = await connection('ongs')
       .where('id', id)
-      .select('name', 'type')
+      .select('name', 'type', 'setor_id')
       .first();
 
     if (!ong) {
@@ -16,6 +16,7 @@ module.exports = {
     return response.json({
       name: ong.name,
       type: ong.type,
+      setor_id: ong.setor_id,
       token: id
     });
   },

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import {
   FiPower, FiSave, FiArrowLeft, FiUser, FiClock, 
-  FiHome, FiFileText, FiCalendar
+  FiHome, FiFileText, FiCalendar, FiImage
 } from 'react-icons/fi';
 
 import api from '../../services/api';
@@ -10,7 +10,6 @@ import { useAuth } from '../../hooks/useAuth';
 import Loading from '../../components/Loading';
 
 import './styles.css';
-
 import logoImg from '../../assets/logo.svg';
 
 export default function NovoAgendamento() {
@@ -29,6 +28,8 @@ export default function NovoAgendamento() {
     horario_agendado: '',
     observacao: ''
   });
+
+  const [file, setFile] = useState(null); // 🔹 novo estado para imagem
 
   useEffect(() => {
     async function loadSetores() {
@@ -52,10 +53,7 @@ export default function NovoAgendamento() {
   }
 
   function formatarCPF(value) {
-    // Remove tudo que não é número
     const numbers = value.replace(/\D/g, '');
-    
-    // Aplica a máscara
     return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
   }
 
@@ -67,6 +65,10 @@ export default function NovoAgendamento() {
       ...prev,
       cpf: formattedValue
     }));
+  }
+
+  function handleFileChange(e) {
+    setFile(e.target.files[0]); // apenas 1 imagem
   }
 
   function validarFormulario() {
@@ -92,7 +94,6 @@ export default function NovoAgendamento() {
       return false;
     }
 
-    // Verificar se o horário não é no passado
     const agora = new Date();
     const horarioSelecionado = new Date(horario_agendado);
     
@@ -116,25 +117,42 @@ export default function NovoAgendamento() {
     try {
       const setorSelecionado = setoresVisitantes.find(s => s.id === parseInt(formData.setor_id));
       
-      const dadosEnvio = {
-        nome: formData.nome.trim(),
-        cpf: formData.cpf.replace(/\D/g, ''), // Remove formatação
-        setor_id: parseInt(formData.setor_id),
-        setor: setorSelecionado?.nome || '',
-        horario_agendado: formData.horario_agendado,
-        observacao: formData.observacao.trim(),
-        criado_por: ongName
-      };
+      // 🔹 montar FormData
+      const data = new FormData();
+      data.append('nome', formData.nome.trim());
+      data.append('cpf', formData.cpf.replace(/\D/g, ''));
+      data.append('setor_id', parseInt(formData.setor_id));
+      data.append('setor', setorSelecionado?.nome || '');
+      data.append('horario_agendado', formData.horario_agendado);
+      data.append('observacao', formData.observacao.trim());
+      data.append('criado_por', ongName);
 
-      await api.post('/agendamentos', dadosEnvio, {
-        headers: { Authorization: ongId }
+      if (file) {
+        data.append('foto_colaborador', file); // 🔹 adiciona imagem
+      }
+
+      console.log('Enviando FormData:', Object.fromEntries(data)); // DEBUG
+
+     await api.post('/agendamentos', data, {
+      headers: { Authorization: ongId }
       });
 
       alert('Agendamento criado com sucesso!');
       history.push('/agendamentos');
     } catch (error) {
       console.error('Erro ao criar agendamento:', error);
-      const errorMessage = error.response?.data?.error || 'Erro ao criar agendamento';
+      
+      let errorMessage = 'Erro ao criar agendamento';
+      if (error.response) {
+        if (error.response.status === 400) {
+          errorMessage = error.response.data.error || 'Dados inválidos';
+        } else if (error.response.status === 401) {
+          errorMessage = 'Não autorizado. Faça login novamente.';
+        } else if (error.response.status === 500) {
+          errorMessage = 'Erro interno do servidor';
+        }
+      }
+      
       alert(errorMessage);
     } finally {
       setLoading(false);
@@ -145,11 +163,10 @@ export default function NovoAgendamento() {
     if (window.confirm('Tem certeza que deseja sair?')) {
       logout();
     }
-  }
+  } 
 
-  // Calcular data/hora mínima (agora + 1 hora)
   const agora = new Date();
-  const minimaData = new Date(agora.getTime() + 60 * 60 * 1000); // +1 hora
+  const minimaData = new Date(agora.getTime() + 60 * 60 * 1000);
   const minimaDataString = minimaData.toISOString().slice(0, 16);
 
   if (loading) return <Loading progress={100} message="Salvando agendamento..." />;
@@ -157,19 +174,15 @@ export default function NovoAgendamento() {
   return (
     <div className="novo-agendamento-container">
       <header>
-        <img src={logoImg} alt="DIME" />
-        <span>Bem-vindo(a), {ongName}</span>
-
-        <div className="header-actions">
-          <Link to="/agendamentos" className="back-button">
-            <FiArrowLeft size={16} />
-            Voltar
-          </Link>
-
-          <button onClick={handleLogout} type="button">
-            <FiPower size={18} color="#e02041" />
-          </button>
+        <div className="ajuste-Titulo">
+          <img src={logoImg} alt="DIME" />
+          <span>Bem-vindo(a), {ongName}</span>
         </div>
+
+        <Link className="back-link" to="/agendamentos">
+        <FiArrowLeft size={16} color="#E02041" />
+          Voltar
+        </Link> 
       </header>
 
       <div className="page-content">
@@ -178,8 +191,9 @@ export default function NovoAgendamento() {
           <h1>Novo Agendamento</h1>
         </div>
 
-        <form onSubmit={handleSubmit} className="agendamento-form">
+        <form onSubmit={handleSubmit} className="agendamento-form" encType="multipart/form-data">
           <div className="form-grid">
+            {/* Nome */}
             <div className="form-group">
               <label htmlFor="nome">
                 <FiUser size={16} />
@@ -197,6 +211,7 @@ export default function NovoAgendamento() {
               />
             </div>
 
+            {/* CPF */}
             <div className="form-group">
               <label htmlFor="cpf">
                 <FiUser size={16} />
@@ -214,6 +229,7 @@ export default function NovoAgendamento() {
               />
             </div>
 
+            {/* Setor */}
             <div className="form-group">
               <label htmlFor="setor_id">
                 <FiHome size={16} />
@@ -235,6 +251,7 @@ export default function NovoAgendamento() {
               </select>
             </div>
 
+            {/* Horário */}
             <div className="form-group">
               <label htmlFor="horario_agendado">
                 <FiClock size={16} />
@@ -254,6 +271,7 @@ export default function NovoAgendamento() {
               </small>
             </div>
 
+            {/* Observação */}
             <div className="form-group full-width">
               <label htmlFor="observacao">
                 <FiFileText size={16} />
@@ -271,6 +289,21 @@ export default function NovoAgendamento() {
               <small className="form-hint">
                 {formData.observacao.length}/500 caracteres
               </small>
+            </div>
+
+            {/* Upload da imagem */}
+            <div className="form-group full-width">
+              <label htmlFor="file">
+                <FiImage size={16} />
+                Foto do Colaborador (opcional)
+              </label>
+              <input 
+                type="file" 
+                id="file" 
+                name="file"
+                accept="image/*"
+                onChange={handleFileChange}
+              />
             </div>
           </div>
 

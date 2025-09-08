@@ -20,7 +20,7 @@ export default function Logon() {
   // Se já está autenticado, redireciona para profile
   useEffect(() => {
     if (isAuthenticated) {
-      console.log('Usuário já autenticado, redirecionando...'); // DEBUG
+      console.log('Usuário já autenticado, redirecionando...'); 
       history.push('/profile');
     }
   }, [isAuthenticated, history]);
@@ -64,7 +64,8 @@ export default function Logon() {
       const userData = {
         id: id,
         name: response.data.name,
-        type: response.data.type
+        type: response.data.type,
+        setor_id: response.data.setor_id
       };
 
       // Usa o método login do contexto
