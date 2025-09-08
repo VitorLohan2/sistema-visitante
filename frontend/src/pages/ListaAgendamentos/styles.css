@@ -72,7 +72,7 @@
 }
 
 /* Page title */
-.page-title {
+.page-title-ListaAgendamentos {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -81,7 +81,7 @@
    width: 100%;
 }
 
-.page-title h1 {
+.page-title-ListaAgendamentos h1 {
   color: #41414d;
   font-size: 28px;
   margin: 0;
@@ -97,7 +97,7 @@
   border-radius: 12px;
 }
 
-.page-title svg {
+.page-title-ListaAgendamentos svg {
   color: #2083e0;
 }
 
@@ -448,7 +448,7 @@
     height: 50px;
   }
   
-  .page-title h1 {
+  .page-title-ListaAgendamentos h1 {
     font-size: 24px;
   }
   
@@ -514,7 +514,7 @@
     font-size: 16px;
   }
   
-  .page-title h1 {
+  .page-title-ListaAgendamentos h1 {
     font-size: 20px;
   }
   

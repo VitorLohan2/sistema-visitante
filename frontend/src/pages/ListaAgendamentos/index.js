@@ -250,7 +250,7 @@ export default function Agendamentos() {
       </header>
 
       <div className="page-content">
-        <div className="page-title">
+        <div className="page-title-ListaAgendamentos">
           <FiCalendar size={24} />
           <h1>Agendamentos de Visitas</h1>
           <span className="badge">{agendamentos.length} agendamentos</span>
