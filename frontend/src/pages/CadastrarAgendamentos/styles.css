@@ -1,4 +1,4 @@
-/* Container principal do formulário */
+/* Container principal do novo agendamento */
 .novo-agendamento-container {
   width: 100%;
   max-width: 1180px;
@@ -23,32 +23,6 @@
   margin-left: 24px;
   font-weight: 500;
   color: #41414d;
-}
-
-/* Header actions */
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.back-button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  background: #f0f0f5;
-  border: 1px solid #dcdce6;
-  border-radius: 4px;
-  color: #41414d;
-  text-decoration: none;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.back-button:hover {
-  border-color: #999;
-  color: #e02041;
 }
 
 .novo-agendamento-container header button {
@@ -86,15 +60,19 @@
   font-weight: 600;
 }
 
+.page-title svg {
+  color: #2083e0;
+}
+
 /* Formulário */
 .agendamento-form {
-  background: #fff;
-  padding: 32px;
+  background: white;
   border-radius: 8px;
+  padding: 32px;
+  border: 1px solid #dcdce6;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
-/* Grid do formulário */
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -102,10 +80,10 @@
   margin-bottom: 32px;
 }
 
-/* Grupos de input */
 .form-group {
   display: flex;
   flex-direction: column;
+  gap: 8px;
 }
 
 .form-group.full-width {
@@ -113,25 +91,26 @@
 }
 
 .form-group label {
+  font-weight: 600;
+  color: #41414d;
+  font-size: 14px;
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
-  font-weight: bold;
-  color: #41414d;
-  font-size: 16px;
+}
+
+.form-group label svg {
+  color: #2083e0;
 }
 
 .form-group input,
 .form-group select,
 .form-group textarea {
-  width: 100%;
-  padding: 12px 16px;
+  padding: 16px;
   border: 1px solid #dcdce6;
   border-radius: 4px;
   font-size: 16px;
   color: #41414d;
-  background-color: #fff;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
@@ -143,40 +122,28 @@
   box-shadow: 0 0 0 2px rgba(32, 131, 224, 0.1);
 }
 
-.form-group input::placeholder,
-.form-group textarea::placeholder {
-  color: #999;
+.form-group textarea {
+  resize: vertical;
+  min-height: 100px;
+  font-family: inherit;
 }
 
-/* Select customizado */
-.form-group select {
-  appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 16px;
+.form-group input[type="file"] {
+  padding: 12px;
+  border: 2px dashed #dcdce6;
+  background: #f8f9fa;
   cursor: pointer;
 }
 
-.form-group select:disabled {
-  background-color: #f5f5f5;
-  color: #999;
-  cursor: not-allowed;
+.form-group input[type="file"]:hover {
+  border-color: #2083e0;
+  background: #f8f9ff;
 }
 
-/* Textarea */
-.form-group textarea {
-  resize: vertical;
-  font-family: inherit;
-  min-height: 100px;
-}
-
-/* Form hint */
 .form-hint {
-  color: #999;
   font-size: 12px;
+  color: #666;
   margin-top: 4px;
-  font-weight: normal;
 }
 
 /* Ações do formulário */
@@ -188,7 +155,6 @@
   border-top: 1px solid #eee;
 }
 
-/* Botão de cancelar */
 .cancel-button {
   padding: 12px 24px;
   border: 1px solid #dcdce6;
@@ -197,52 +163,35 @@
   text-decoration: none;
   border-radius: 4px;
   font-weight: 500;
-  font-size: 16px;
   transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .cancel-button:hover {
   border-color: #999;
-  color: #41414d;
+  background: #f8f9fa;
 }
 
-/* Botão de salvar */
 .save-button {
-  background-color: #2083e0;
-  color: white;
   padding: 12px 24px;
   border: none;
+  background: #2083e0;
+  color: white;
   border-radius: 4px;
-  font-size: 16px;
-  font-weight: bold;
+  font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s;
   display: flex;
   align-items: center;
   gap: 8px;
+  transition: background 0.2s;
 }
 
 .save-button:hover:not(:disabled) {
-  background-color: #1e68c8;
+  background: #1e68c8;
 }
 
 .save-button:disabled {
-  background-color: #ccc;
+  background: #ccc;
   cursor: not-allowed;
-  opacity: 0.6;
-}
-
-/* Input de data e hora */
-.form-group input[type="datetime-local"] {
-  cursor: pointer;
-}
-
-.form-group input[type="datetime-local"]::-webkit-calendar-picker-indicator {
-  cursor: pointer;
-  filter: invert(0.5);
 }
 
 /* Responsividade */
@@ -260,31 +209,25 @@
   
   .novo-agendamento-container header span {
     margin-left: 0;
-    text-align: center;
     align-self: center;
   }
   
-  .header-actions {
-    align-self: stretch;
-    justify-content: space-between;
-  }
   
   .page-title h1 {
     font-size: 24px;
   }
   
-  .agendamento-form {
-    padding: 20px;
-  }
-  
   .form-grid {
     grid-template-columns: 1fr;
-    gap: 20px;
+    gap: 16px;
+  }
+  
+  .agendamento-form {
+    padding: 24px 20px;
   }
   
   .form-actions {
-    flex-direction: column;
-    gap: 12px;
+    flex-direction: column-reverse;
   }
   
   .cancel-button,
@@ -294,40 +237,24 @@
   }
 }
 
-/* Estados de validação */
-.form-group input:invalid {
-  border-color: #e02041;
-}
-
-.form-group input:valid {
-  border-color: #28a745;
-}
-
-/* Animações sutis */
-.form-group input,
-.form-group select,
-.form-group textarea {
-  transition: all 0.2s ease;
-}
-
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-  transform: translateY(-1px);
-}
-
-/* Melhorias visuais */
-.form-group label svg {
-  color: #2083e0;
-}
-
-.page-title svg {
-  color: #2083e0;
-}
-
-/* Estados hover nos inputs */
-.form-group input:hover:not(:focus),
-.form-group select:hover:not(:focus),
-.form-group textarea:hover:not(:focus) {
-  border-color: #999;
+@media (max-width: 480px) {
+  .novo-agendamento-container {
+    padding: 0 12px;
+    margin: 12px auto;
+  }
+  
+  .agendamento-form {
+    padding: 20px 16px;
+  }
+  
+  .page-title h1 {
+    font-size: 20px;
+  }
+  
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    padding: 12px;
+    font-size: 14px;
+  }
 }

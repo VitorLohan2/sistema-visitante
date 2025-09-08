@@ -16,15 +16,17 @@ export function AuthProvider({ children }) {
     const ongId = localStorage.getItem('ongId');
     const ongName = localStorage.getItem('ongName');
     const ongType = localStorage.getItem('ongType');
-    
-    //console.log('Verificando autenticação:', { ongId, ongName, ongType });
+    const ongSetorId = localStorage.getItem('ongSetorId'); // 🔹 novo
+
+    console.log('Verificando autenticação:', { ongId, ongName, ongType, ongSetorId });
     
     if (ongId && ongName) {
       setIsAuthenticated(true);
       setUser({
         id: ongId,
         name: ongName,
-        type: ongType
+        type: ongType,
+        setor_id: ongSetorId ? parseInt(ongSetorId, 10) : null, // 🔹 converter para número
       });
     } else {
       setIsAuthenticated(false);
@@ -41,6 +43,8 @@ export function AuthProvider({ children }) {
     localStorage.setItem('ongId', userData.id);
     localStorage.setItem('ongName', userData.name);
     localStorage.setItem('ongType', userData.type);
+    localStorage.setItem('ongSetorId', userData.setor_id); // 🔹 novo
+
     
     setIsAuthenticated(true);
     setUser(userData);
@@ -53,6 +57,8 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('ongId');
     localStorage.removeItem('ongName');
     localStorage.removeItem('ongType');
+    localStorage.removeItem('ongSetorId'); // 🔹 limpar setor
+
     
     setIsAuthenticated(false);
     setUser(null);

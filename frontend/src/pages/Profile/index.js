@@ -130,8 +130,8 @@ export default function Profile() {
 
         // 2. Carrega dados da ONG
         const ongResponse = await api.get(`ongs/${ongId}`);
-        const { setor, type } = ongResponse.data;
-        setUserData({ setor, type });
+        const { setor, type, setor_id } = ongResponse.data;
+        setUserData({ setor, type, setor_id });
 
         // 3. Carrega todos os incidents
         const profileResponse = await api.get('profile', {
@@ -615,10 +615,12 @@ export default function Profile() {
           </div>
         )}
 
-        <button onClick={() => history.push('/agendamentos')} className="agendamentos-link">
-          <FiCoffee size={20} className="icone" />
-          <span>Agendamentos</span>
-        </button>
+        {(userData.type === 'ADM' || [3, 4, 6].includes(userData.setor_id)) && (
+          <button onClick={() => history.push('/agendamentos')} className="agendamentos-link">
+            <FiCoffee size={20} className="icone" />
+            <span>Agendamentos</span>
+          </button>
+        )}
 
         <button onClick={handleOpenConfigModal} className="history-link">
           <FiSettings size={20} className="icone" />

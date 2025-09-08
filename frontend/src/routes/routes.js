@@ -92,12 +92,12 @@ export default function Routes() {
           <HistoricoFuncionarios />
         </ProtectedRoute>
 
-        <ProtectedRoute path="/agendamentos">
-          <ListaAgendamentos />
-        </ProtectedRoute>
-
         <ProtectedRoute path="/agendamentos/novo">
           <CadastrarAgendamentos />
+        </ProtectedRoute>
+        
+        <ProtectedRoute path="/agendamentos">
+          <ListaAgendamentos />
         </ProtectedRoute>
 
         <ProtectedRoute path="/ponto">
