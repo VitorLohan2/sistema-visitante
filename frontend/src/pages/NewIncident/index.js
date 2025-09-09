@@ -5,6 +5,8 @@ import { FiArrowLeft, FiCamera } from 'react-icons/fi';
 import api from '../../services/api';
 import './styles.css';
 import logoImg from '../../assets/logo.svg';
+import Loading from '../../components/Loading';
+
 
 export default function NewVisitor() {
   const [form, setForm] = useState({
@@ -27,6 +29,23 @@ export default function NewVisitor() {
   const canvasRef = useRef(null);
   const [cameraAtiva, setCameraAtiva] = useState(false);
   const [showModal, setShowModal] = useState(false);
+
+  //Tela de carregamento
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+
+  // Modal Confirmar Cadastro
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  const simulateProgress = () => {
+  let value = 0;
+  const interval = setInterval(() => {
+    value += 15;
+    setProgress(value);
+    if (value >= 100) clearInterval(interval);
+  }, 150);
+  };
 
   // Busca empresas e setores do banco de dados
   useEffect(() => {
@@ -162,19 +181,35 @@ const tirarFoto = () => {
 
   // === Submit ===
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
 
     const cpfClean = form.cpf.replace(/\D/g, '');
     const telefoneClean = form.telefone.replace(/\D/g, '');
 
-    if (cpfClean.length !== 11) return alert('CPF inválido. Deve conter 11 dígitos.');
-    if (telefoneClean.length !== 11) return alert('Telefone inválido. Deve conter 11 dígitos com DDD.');
-    if (!form.empresa_id || !form.setor_id) return alert('Empresa e setor são obrigatórios.');
-    if (form.fotos.length === 0) return alert('Envie pelo menos uma imagem.');
+    if (cpfClean.length !== 11) {
+      alert('CPF inválido. Deve conter 11 dígitos.');
+      return;
+    }
+    if (telefoneClean.length !== 11) {
+      alert('Telefone inválido. Deve conter 11 dígitos com DDD.');
+      return;
+    }
+    if (!form.empresa_id || !form.setor_id) {
+      alert('Empresa e setor são obrigatórios.');
+      return;
+    }
+    if (form.fotos.length === 0) {
+      alert('Envie pelo menos uma imagem.');
+      return;
+    }
 
     try {
+      setLoading(true);
+      simulateProgress();
+
       const { data } = await api.get(`/cpf-existe/${cpfClean}`);
       if (data.exists) {
+        setLoading(false);
         return alert('CPF já cadastrado. Verifique antes de continuar.');
       }
 
@@ -186,20 +221,8 @@ const tirarFoto = () => {
       dataToSend.append('setor', form.setor_id);
       dataToSend.append('telefone', telefoneClean);
       dataToSend.append('observacao', form.observacao);
-      
       form.fotos.forEach((foto) => {
         dataToSend.append('fotos', foto);
-      });
-
-      console.log('Dados sendo enviados:', {
-        nome: form.nome.trim(),
-        nascimento: form.nascimento,
-        cpf: cpfClean,
-        empresa: form.empresa_id,
-        setor: form.setor_id,
-        telefone: telefoneClean,
-        observacao: form.observacao.trim(),
-        fotos_count: form.fotos.length
       });
 
       await api.post('/incidents', dataToSend, {
@@ -209,14 +232,31 @@ const tirarFoto = () => {
         }
       });
 
-      alert('Visitante cadastrado com sucesso!');
-      history.push('/profile');
+      setTimeout(() => {
+        setLoading(false);
+        history.push('/profile');
+      }, 1200);
     } catch (err) {
       console.error('Erro detalhado:', err.response?.data);
+      setLoading(false);
       alert(`Erro: ${err.response?.data?.error || 'Falha no cadastro'}`);
     }
   };
+
+  // Nova função para abrir o modal ao tentar enviar
+  const handleOpenConfirm = (e) => {
+    e.preventDefault();
+    setShowConfirmModal(true);
+  };
+
+  // Função que confirma e chama o submit real
+  const handleConfirmSubmit = (e) => {
+    setShowConfirmModal(false);
+    handleSubmit(); 
+  };
   
+  if (loading) return <Loading progress={progress} message="Cadastrando visitante..." />;
+
   return (
     <div className="new-incident-container">
       <div className="content">
@@ -230,7 +270,7 @@ const tirarFoto = () => {
           </Link>
         </section>
 
-        <form onSubmit={handleSubmit}>
+        <form>
           <input
             name="nome"
             placeholder="Nome"
@@ -392,10 +432,37 @@ const tirarFoto = () => {
             </div>
           )}
 
-          <button className="button" type="submit">
+          <button 
+            className="button" 
+            type="button" 
+            onClick={handleOpenConfirm}
+          >
             Cadastrar
           </button>
         </form>
+
+        {showConfirmModal && (
+            <div className="modal-cadastro-visitante">
+              <div className="modal-content-visitante">
+                <h3>Deseja realmente realizar o cadastro?</h3>
+                <div className="modal-actions-visistante">
+                  <button 
+                    className="button yes" 
+                    onClick={handleConfirmSubmit}
+                  >
+                    Sim
+                  </button>
+                  <button 
+                    className="button no" 
+                    onClick={() => setShowConfirmModal(false)}
+                  >
+                    Não
+                  </button>
+                </div>
+              </div>
+            </div>
+        )}
+
       </div>
     </div>
   );
