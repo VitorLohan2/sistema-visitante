@@ -576,9 +576,13 @@ td .user-info {
   text-align: center;
 }
 
+.modal-content h2 {
+  margin-bottom: 20px;
+}
+
 .modal-content p {
   text-align: center;
-  margin-bottom: 5px;
+  margin-bottom: 10px;
 }
 
 .modal-close {
@@ -591,13 +595,13 @@ td .user-info {
   cursor: pointer;
 }
 
-.modal-avatar {
+/*.modal-avatar {
   width: 320px;
   height: 360px;
   border-radius: 50%;
   margin-top: 12px;
   margin-bottom: 12px;
-}
+}*/
 
 .default-user-icon {
   border-radius: 50%;

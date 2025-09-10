@@ -490,58 +490,67 @@ export default function Profile() {
   }
 
   function handlePrintBadge() {
-    if (!badgeData) return;
+  if (!badgeData) return;
 
-    const printWindow = window.open('', 'PRINT', 'height=600,width=720');
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Crachá de Visitante</title>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              text-align: center;
-              padding: 10px;
-            }
-            .badge {
-              width: 220px;
-              height: 320px;
-              border: 2px solid #000;
-              border-radius: 12px;
-              padding: 10px;
-            }
-            .badge img {
-              width: 160px;
-              height: 180px;
-              border-radius: 25%;
-              margin-bottom: 10px;
-            }
-            .badge p {
-              margin: 10px 0;
-              font-size: 16px;
-            }
-            .badge h1 {
-              font-size: 18px;
-              margin-bottom: 10px;
-            }  
-          </style>
-        </head>
-        <body>
-          <div class="badge">
-            <h1>Crachá de Visitante</h1>
-            <img src="${badgeData.imagem || userIcon}" alt="Foto visitante"/>
-            <p><strong>Nome:</strong> ${badgeData.nome}</p>
-            <p><strong>Empresa:</strong> ${badgeData.empresa}</p>
-            <p><strong>Setor:</strong> ${badgeData.setor}</p>
-          </div>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-    printWindow.close();
-  }
+  const printWindow = window.open('', 'PRINT', 'height=600,width=720');
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>Crachá de Visitante</title>
+        <style>
+          @page {
+            size: 60mm 40mm landscape; /* imprime deitado */
+            margin: 0;
+          }
+          html, body {
+            width: 60mm;
+            height: 40mm;
+            margin: 0;
+            padding: 0;
+          }
+          body {
+            display: flex;
+            justify-content: flex-start; /* canto superior esquerdo horizontal */
+            align-items: flex-start;     /* canto superior esquerdo vertical */
+          }
+          .badge {
+            width: 60mm;
+            height: 40mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start; /* texto grudado à esquerda */
+            font-family: Arial, sans-serif;
+            border: 1px solid #000; /* opcional */
+            border-radius: 6px;     /* opcional */
+            padding: 2mm;           /* deixa um pouco de espaço interno */
+            box-sizing: border-box;
+          }
+          .badge h1 {
+            font-size: 12px;
+            margin: 0 0 2px 0;
+          }
+          .badge p {
+            font-size: 10px;
+            margin: 1px 0;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="badge">
+          <h1>Crachá de Visitante</h1>
+          <p><strong>Nome:</strong> ${badgeData.nome}</p>
+          <p><strong>Empresa:</strong> ${badgeData.empresa}</p>
+          <p><strong>Setor:</strong> ${badgeData.setor}</p>
+        </div>
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+  printWindow.close();
+}
 
   function handleCloseBadgeModal() {
     setBadgeModalVisible(false);
@@ -820,7 +829,6 @@ export default function Profile() {
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <button className="modal-close" onClick={handleCloseBadgeModal}>X</button>
             <h2>Crachá de Visitante</h2>
-            <img src={badgeData.imagem || userIcon} alt="Foto visitante" className="modal-avatar" />
             <p><strong>Nome:</strong> {badgeData.nome}</p>
             <p><strong>Empresa:</strong> {badgeData.empresa}</p>
             <p><strong>Setor:</strong> {badgeData.setor}</p>
