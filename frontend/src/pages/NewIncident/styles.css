@@ -322,6 +322,50 @@
   font-size: 18px;
 }
 
+/*MODAL DE CONFIRMAÇÃO*/
+
+.modal-cadastro-visitante {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.modal-content-visitante {
+  background: #fff;
+  padding: 20px 30px;
+  border-radius: 8px;
+  text-align: center;
+  max-width: 400px;
+  width: 100%;
+}
+
+.modal-actions-visistante {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 20px;
+  gap: 15px;
+}
+
+.modal-actions-visistante .yes {
+  background: #0c9e6d;
+  color: #fff;
+  border: none;
+}
+
+.modal-actions-visistante .no {
+  background: #c00719;
+  color: #fff;
+  border: none;
+}
+
+
 /* Responsividade do modal */
 @media (max-width: 768px) {
   .modal-estrtura-webcam {
