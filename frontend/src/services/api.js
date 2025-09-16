@@ -1,11 +1,15 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3333'
+  baseURL: 'https://sistema-visitante.onrender.com' //process.env.REACT_APP_API_URL || 'http://localhost:3333' https://visitante.dimeexperience.com.br
 })
 
+<<<<<<< HEAD
 //console.log('🌐 API baseURL:', api); // Verifique no console
 //console.log('API Base URL:', api.defaults.baseURL); // Verifique no console
+=======
+console.log('API Base URL:', api.defaults.baseURL); // Verifique no console
+>>>>>>> novacorrecao
 
 // Interceptor para adicionar o token automaticamente
 api.interceptors.request.use((config) => {
@@ -16,7 +20,7 @@ api.interceptors.request.use((config) => {
   }
   
   return config;
-});
+}); 
 
 // Interceptor para tratar erros de autenticação
 api.interceptors.response.use(

@@ -1,20 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useHistory } from 'react-router-dom';
-import {
-  FiPower, FiTrash2, FiUserPlus, FiEdit, FiUsers, FiClock, FiSearch, FiMessageSquare,
-  FiChevronLeft, FiChevronRight, FiCoffee, FiUserCheck , FiUser, FiSettings, FiGitlab,
-  FiMoon, FiSun, FiX, FiInfo
-} from 'react-icons/fi';
+import { FiPower, FiSearch, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 
 import notificacaoSom from '../../assets/notificacao.mp3';
 import api from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import Loading from '../../components/Loading';
 
+import VisitorCard from "../../components/VisitorCard";
+import ProfileMenu from '../../components/ProfileMenu';
+import ConfigModal from '../../components/ConfigModal';
+
 import './styles.css';
+import '../../styles/dark-theme.css';
+import '../../styles/visitorcard.css';
 
 import logo from '../../assets/logo.svg';
-import userIcon from '../../assets/user.png';
 
 export default function Profile() {
   const [incidents, setIncidents] = useState([]);
@@ -22,17 +23,16 @@ export default function Profile() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSearching, setIsSearching] = useState(false); // 🆕 Flag para controlar busca
   const history = useHistory();
-  
+
   const { user, logout } = useAuth();
   const ongId = user?.id;
   const ongName = user?.name;
-  
+
   const [unseenCount, setUnseenCount] = useState(0);
   const unseenRef = useRef(0);
   const [userData, setUserData] = useState({ setor: '' });
   const isFirstLoad = useRef(true);
-  const [showAdmMenu, setShowAdmMenu] = useState(false);
-  const admMenuRef = useRef(null);
+
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 10;
   const [pageGroup, setPageGroup] = useState(0);
@@ -45,11 +45,11 @@ export default function Profile() {
 
   const [badgeModalVisible, setBadgeModalVisible] = useState(false);
   const [badgeData, setBadgeData] = useState(null);
-  
+
   const [configModalVisible, setConfigModalVisible] = useState(false);
   const [darkTheme, setDarkTheme] = useState(false);
   const [userDetails, setUserDetails] = useState(null);
-  
+
   // Carregar tema do localStorage na inicialização
   useEffect(() => {
     const savedTheme = localStorage.getItem('darkTheme');
@@ -80,17 +80,17 @@ export default function Profile() {
     setConfigModalVisible(false);
     setUserDetails(null);
   }
-  
+
   function formatarData(data) {
     if (!data) return 'Data não informada';
-    
+
     const dataParte = data.split('T')[0];
     const partes = dataParte.split('-');
-    
+
     if (partes.length === 3) {
       return `${partes[2]}/${partes[1]}/${partes[0]}`;
     }
-    
+
     return data;
   }
 
@@ -121,10 +121,10 @@ export default function Profile() {
           api.get('/empresas-visitantes'),
           api.get('/setores-visitantes')
         ]);
-        
+
         const empresas = empresasResponse.data;
         const setores = setoresResponse.data;
-        
+
         setEmpresasVisitantes(empresas);
         setSetoresVisitantes(setores);
 
@@ -144,7 +144,7 @@ export default function Profile() {
           empresa: empresas.find(e => e.id === incident.empresa_id)?.nome || 'Não informado',
           setor: setores.find(s => s.id === incident.setor_id)?.nome || 'Não informado'
         }));
-        
+
         // 5. Salva os dados
         setAllIncidents(incidentsWithNames);
         setIncidents(incidentsWithNames);
@@ -222,7 +222,6 @@ export default function Profile() {
   useEffect(() => {
     const timer = setTimeout(async () => {
       //console.log('🔍 Executando busca para:', searchTerm); // Debug
-      
       if (!searchTerm.trim()) {
         // Se busca vazia, volta para lista completa
         setIsSearching(false);
@@ -238,19 +237,19 @@ export default function Profile() {
       setCurrentPage(1); // Reset da paginação só quando começa uma busca nova
 
       try {
-        console.log('📊 Dados disponíveis para busca:', allIncidents.length); // Debug
-        
+        //console.log('📊 Dados disponíveis para busca:', allIncidents.length); // Debug
+
         // Busca localmente primeiro (mais rápido) - BUSCA MAIS PRECISA
         const searchLower = searchTerm.toLowerCase().trim();
         const cpfNumbers = searchTerm.replace(/\D/g, ''); // Remove formatação do CPF
-        
-        console.log('🔍 Termo de busca processado:', { original: searchTerm, lower: searchLower, cpfNumbers }); // Debug
-        
+
+        //console.log('🔍 Termo de busca processado:', { original: searchTerm, lower: searchLower, cpfNumbers }); // Debug
+
         const localResults = allIncidents.filter(incident => {
           // Verificações mais rigorosas
           const hasName = incident.nome && typeof incident.nome === 'string';
           const hasCpf = incident.cpf && typeof incident.cpf === 'string';
-          
+
           // 🔹 BUSCA POR NOME - Busca por palavras inteiras, não apenas substring
           let nameMatch = false;
           if (hasName) {
@@ -262,14 +261,14 @@ export default function Profile() {
               nomeNormalizado === searchLower // Nome exato
             );
           }
-          
+
           // 🔹 BUSCA POR CPF - Só busca se o termo tem números
           let cpfMatch = false;
           if (hasCpf && cpfNumbers.length > 0) {
-            cpfMatch = incident.cpf.includes(searchTerm) || 
-                      incident.cpf.replace(/\D/g, '').includes(cpfNumbers);
+            cpfMatch = incident.cpf.includes(searchTerm) ||
+              incident.cpf.replace(/\D/g, '').includes(cpfNumbers);
           }
-          
+
           console.log(`👤 ${incident.nome}:`, {
             hasName,
             hasCpf,
@@ -278,12 +277,12 @@ export default function Profile() {
             cpfMatch,
             finalResult: nameMatch || cpfMatch
           }); // Debug detalhado
-          
+
           return nameMatch || cpfMatch;
         });
 
-        console.log('📝 Resultados locais encontrados:', localResults.length); // Debug
-        console.log('📝 Nomes encontrados:', localResults.map(r => r.nome)); // Debug - listar nomes
+        //console.log('📝 Resultados locais encontrados:', localResults.length); // Debug
+        //console.log('📝 Nomes encontrados:', localResults.map(r => r.nome)); // Debug - listar nomes
 
         if (localResults.length > 0) {
           setIncidents(localResults);
@@ -292,10 +291,9 @@ export default function Profile() {
           // Se não encontrar localmente, busca na API
           const response = await api.get('/search', {
             params: { query: searchTerm }
-            // 🔹 REMOVIDO: headers: { Authorization: ongId }
           });
 
-          console.log('📡 Resposta da API:', response.data); // Debug
+          //console.log('📡 Resposta da API:', response.data); // Debug
 
           // Mapeia os resultados da API com empresa/setor
           const searchResults = mapIncidentsWithNames(response.data);
@@ -306,11 +304,11 @@ export default function Profile() {
         // Se der erro, busca localmente como fallback - BUSCA MAIS PRECISA
         const searchLower = searchTerm.toLowerCase().trim();
         const cpfNumbers = searchTerm.replace(/\D/g, '');
-        
+
         const localResults = allIncidents.filter(incident => {
           const hasName = incident.nome && typeof incident.nome === 'string';
           const hasCpf = incident.cpf && typeof incident.cpf === 'string';
-          
+
           // Busca mais precisa por nome
           let nameMatch = false;
           if (hasName) {
@@ -321,17 +319,17 @@ export default function Profile() {
               nomeNormalizado === searchLower
             );
           }
-          
+
           // Busca por CPF só se tiver números
           let cpfMatch = false;
           if (hasCpf && cpfNumbers.length > 0) {
-            cpfMatch = incident.cpf.includes(searchTerm) || 
-                      incident.cpf.replace(/\D/g, '').includes(cpfNumbers);
+            cpfMatch = incident.cpf.includes(searchTerm) ||
+              incident.cpf.replace(/\D/g, '').includes(cpfNumbers);
           }
-          
+
           return nameMatch || cpfMatch;
         });
-        
+
         setIncidents(localResults);
       }
     }, 400);
@@ -343,7 +341,7 @@ export default function Profile() {
   const handleSearchChange = (e) => {
     const value = e.target.value;
     setSearchTerm(value);
-    
+
     if (value.trim() === '') {
       setIsSearching(false);
     }
@@ -352,41 +350,11 @@ export default function Profile() {
   // 🆕 EFEITO PARA ATUALIZAR A LISTA QUANDO allIncidents MUDA (mas não está buscando)
   useEffect(() => {
     if (!isSearching && searchTerm.trim() === '' && allIncidents.length > 0) {
-      //console.log('🔄 Atualizando lista completa'); // Debug
       setIncidents(allIncidents);
     }
   }, [allIncidents, isSearching, searchTerm]);
 
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (admMenuRef.current && !admMenuRef.current.contains(event.target)) {
-        setShowAdmMenu(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   const filteredIncidents = incidents.sort((a, b) => a.nome.localeCompare(b.nome));
-
-  // 🔹 DEBUG - Logs para entender o estado atual
-  /*console.log('📊 Estado atual:', {
-    searchTerm,
-    isSearching,
-    allIncidentsCount: allIncidents.length,
-    incidentsCount: incidents.length,
-    filteredCount: filteredIncidents.length,
-    currentPage,
-    totalPages: Math.ceil(filteredIncidents.length / recordsPerPage)
-  });*/
-
-  // 🔍 DEBUG ADICIONAL - Mostrar alguns nomes da lista atual
- /* if (incidents.length > 0) {
-    console.log('📋 Primeiros 5 nomes na lista atual:', 
-      incidents.slice(0, 5).map(inc => inc.nome)
-    );
-  }*/
 
   // Cálculos de paginação
   const indexOfLastRecord = currentPage * recordsPerPage;
@@ -404,13 +372,13 @@ export default function Profile() {
 
   const prevPage = () => {
     if (currentPage > 1) {
-      console.log(`📄 Página anterior: ${currentPage} -> ${currentPage - 1}`); // Debug
+      //console.log(`📄 Página anterior: ${currentPage} -> ${currentPage - 1}`); // Debug
       setCurrentPage(currentPage - 1);
     }
   };
 
   const goToPage = (pageNumber) => {
-    console.log(`📄 Indo para página: ${currentPage} -> ${pageNumber}`); // Debug
+    //console.log(`📄 Indo para página: ${currentPage} -> ${pageNumber}`); // Debug
     setCurrentPage(pageNumber);
   };
 
@@ -426,10 +394,10 @@ export default function Profile() {
         // Remove da lista principal e da lista filtrada
         const newAllIncidents = allIncidents.filter(incident => incident.id !== id);
         const newIncidents = incidents.filter(incident => incident.id !== id);
-        
+
         setAllIncidents(newAllIncidents);
         setIncidents(newIncidents);
-        
+
         alert('Cadastro deletado com sucesso!');
       }
     } catch (err) {
@@ -491,9 +459,8 @@ export default function Profile() {
 
   function handlePrintBadge() {
   if (!badgeData) return;
-
-  const printWindow = window.open('', 'PRINT', 'height=600,width=720');
-  printWindow.document.write(`
+    const printWindow = window.open('', 'PRINT', 'height=600,width=720');
+    printWindow.document.write(`
     <html>
       <head>
         <title>Crachá de Visitante</title>
@@ -546,11 +513,11 @@ export default function Profile() {
       </body>
     </html>
   `);
-  printWindow.document.close();
-  printWindow.focus();
-  printWindow.print();
-  printWindow.close();
-}
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+    printWindow.close();
+  }
 
   function handleCloseBadgeModal() {
     setBadgeModalVisible(false);
@@ -580,65 +547,18 @@ export default function Profile() {
 
         <Link className="button" to="/incidents/new">Cadastrar Visitante</Link>
         <button onClick={handleLogout} type="button">
-          <FiPower size={18} color="#e02041" />
+          <FiPower size={18} color="#e02041" className='power'/>
         </button>
       </header>
 
-      <div className="page-header">
-        <button onClick={() => history.push('/visitors')} className="visitors-link">
-          <FiUsers size={20} className="icone2" />
-          <span>Ver Visitantes</span>
-        </button>
-
-        <button onClick={() => history.push('/history')} className="history-link">
-          <FiClock size={20} className="icone" />
-          <span>Histórico</span>
-        </button>
-
-        <button onClick={() => history.push('/ticket-dashboard')} className="tickets-link">
-          <FiMessageSquare size={20} className="icone" />
-          <span>Tickets</span>
-          {userData.setor === 'Segurança' && unseenCount > 0 && (
-            <span className="notification-badge">
-              {unseenCount > 9 ? '9+' : unseenCount}
-            </span>
-          )}
-        </button>
-          
-        {userData.type === 'ADM' && (
-          <div className="adm-menu-container" ref={admMenuRef}>
-            <button onClick={() => setShowAdmMenu(prev => !prev)} className="adm-link">
-              <FiGitlab size={20} className="icone" />
-              <span>Administrativo</span>
-            </button>
-
-            {showAdmMenu && (
-              <div className="adm-submenu">
-                <button onClick={() => history.push('/chave-cadastro')}>Chave de Cadastro</button>
-                <button onClick={() => history.push('/empresa-visitantes')}>Cadastrar Empresa</button>
-                <button onClick={() => history.push('/funcionarios')}>Gerenciar Funcionários</button>
-                <button onClick={() => history.push('/funcionarios/cadastrar')}>Cadastrar Funcionário</button>
-                <button onClick={() => history.push('/ponto')}>Bipagem Entrada/Saída</button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {(userData.type === 'ADM' || [3, 4, 6].includes(userData.setor_id)) && (
-          <button onClick={() => history.push('/agendamentos')} className="agendamentos-link">
-            <FiCoffee size={20} className="icone" />
-            <span>Agendamentos</span>
-          </button>
-        )}
-
-        <button onClick={handleOpenConfigModal} className="history-link">
-          <FiSettings size={20} className="icone" />
-          <span>Configuração</span>
-        </button>
-      </div>
+      <ProfileMenu
+        userData={userData}
+        unseenCount={unseenCount}
+        handleOpenConfigModal={handleOpenConfigModal}
+      />
 
       <h1>
-        Cadastrados 
+        Visitantes Cadastrados
         {isSearching && searchTerm && (
           <span className="search-results-info">
             - Buscando por "{searchTerm}" ({filteredIncidents.length} resultados)
@@ -647,109 +567,27 @@ export default function Profile() {
       </h1>
 
       {/* CARDS CONTAINER */}
-      <div className="cards-container">
+      <div className="visitors-list">
         {currentRecords.map(incident => (
-          <div key={incident.id} className={`visitor-card ${incident.bloqueado ? 'blocked' : ''}`}>
-            <div className="card-left">
-              <div className="card-avatar">
-                {incident.avatar_imagem ? (
-                  <img
-                    src={incident.avatar_imagem}
-                    alt={incident.bloqueado ? "Bloqueado" : "Usuário"}
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                    }}
-                  />
-                ) : (
-                  <FiUser size={55} className="default-user-icon" />
-                )}
-              </div>
-  
-              <div className="card-info">
-                <h3 className="card-name">
-                  {incident.nome}
-                  {incident.bloqueado && <span className="blocked-badge">BLOQUEADO</span>}
-                </h3>
-                
-                <div className="card-details">
-                  <div className="card-detail">
-                    <span className="card-detail-label">Nascimento</span>
-                    <span className="card-detail-value">{formatarData(incident.nascimento)}</span>
-                  </div>
-                  
-                  <div className="card-detail">
-                    <span className="card-detail-label">CPF</span>
-                    <span className="card-detail-value">{incident.cpf}</span>
-                  </div>
-                  
-                  <div className="card-detail">
-                    <span className="card-detail-label">Empresa</span>
-                    <span className="card-detail-value">{incident.empresa}</span>
-                  </div>
-                  
-                  <div className="card-detail">
-                    <span className="card-detail-label">Setor</span>
-                    <span className="card-detail-value">{incident.setor}</span>
-                  </div>
-                  
-                  <div className="card-detail">
-                    <span className="card-detail-label">Telefone</span>
-                    <span className="card-detail-value">{incident.telefone}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="card-actions">
-              <button 
-                onClick={() => handleRegisterVisit(incident.id)} 
-                className="card-action-btn visit" 
-                title="Registrar visita"
-              >
-                <FiUserPlus size={16} />
-              </button>
-              
-              <button 
-                onClick={() => handleViewProfile(incident.id)} 
-                className="card-action-btn view" 
-                title="Visualizar perfil"
-              >
-                <FiSearch size={16} />
-              </button>
-              
-              <button 
-                onClick={() => handleEditProfile(incident.id)} 
-                className="card-action-btn edit" 
-                title="Editar perfil"
-              >
-                <FiEdit size={16} />
-              </button>
-
-              <button 
-                onClick={() => handleOpenBadgeModal(incident.id)} 
-                className="card-action-btn cracha" 
-                title="Crachá"
-              >
-                <FiUserCheck size={16} />
-              </button>
-              
-              <button 
-                onClick={(e) => { e.stopPropagation(); handleDeleteIncident(incident.id); }} 
-                className="card-action-btn delete" 
-                title="Deletar cadastro"
-              >
-                <FiTrash2 size={16} />
-              </button>
-            </div>
-          </div>
+          <VisitorCard
+            key={incident.id}
+            incident={incident}
+            formatarData={formatarData}
+            handleRegisterVisit={handleRegisterVisit}
+            handleViewProfile={handleViewProfile}
+            handleEditProfile={handleEditProfile}
+            handleOpenBadgeModal={handleOpenBadgeModal}
+            handleDeleteIncident={handleDeleteIncident}
+          />
         ))}
       </div>
+
 
       {/* Mensagem quando não há resultados */}
       {filteredIncidents.length === 0 && !loading && (
         <div className="no-results">
-          {searchTerm ? 
-            `Nenhum resultado encontrado para "${searchTerm}"` : 
+          {searchTerm ?
+            `Nenhum resultado encontrado para "${searchTerm}"` :
             'Nenhum cadastro encontrado'
           }
         </div>
@@ -758,14 +596,14 @@ export default function Profile() {
       {/* PAGINAÇÃO */}
       {filteredIncidents.length > recordsPerPage && (
         <div className="pagination">
-          <button 
-            onClick={prevPage} 
+          <button
+            onClick={prevPage}
             disabled={currentPage === 1}
             className="pagination-button"
           >
             <FiChevronLeft size={16} />
           </button>
-          
+
           <button
             onClick={() => goToPage(1)}
             className={`pagination-button ${currentPage === 1 ? 'active' : ''}`}
@@ -774,7 +612,7 @@ export default function Profile() {
           </button>
 
           {pageGroup > 0 && (
-            <button 
+            <button
               onClick={() => setPageGroup(pageGroup - 1)}
               className="pagination-button"
             >
@@ -796,7 +634,7 @@ export default function Profile() {
           })}
 
           {2 + (pageGroup + 1) * pagesPerGroup < totalPages && (
-            <button 
+            <button
               onClick={() => setPageGroup(pageGroup + 1)}
               className="pagination-button"
             >
@@ -812,9 +650,9 @@ export default function Profile() {
               {totalPages}
             </button>
           )}
-          
-          <button 
-            onClick={nextPage} 
+
+          <button
+            onClick={nextPage}
             disabled={currentPage === totalPages}
             className="pagination-button"
           >
@@ -838,99 +676,15 @@ export default function Profile() {
       )}
 
       {/* MODAL DE CONFIGURAÇÃO */}
-      {configModalVisible && (
-        <div className="config-modal-overlay" onClick={handleCloseConfigModal}>
-          <div className="config-modal-content" onClick={e => e.stopPropagation()}>
-            <div className="config-modal-header">
-              <h2>
-                <FiSettings size={24} />
-                Configurações
-              </h2>
-              <button className="config-modal-close" onClick={handleCloseConfigModal}>
-                <FiX size={20} />
-              </button>
-            </div>
-
-            <div className="config-modal-body">
-              <div className="config-section">
-                <h3>Aparência</h3>
-                <div className="theme-toggle-container">
-                  <label className="theme-toggle">
-                    <input
-                      type="checkbox"
-                      checked={darkTheme}
-                      onChange={toggleTheme}
-                    />
-                    <div className="theme-slider">
-                      <div className="theme-icon sun">
-                        <FiSun size={18} />
-                      </div>
-                      <div className="theme-icon moon">
-                        <FiMoon size={18} />
-                      </div>
-                    </div>
-                  </label>
-                  <span className="theme-label">
-                    {darkTheme ? 'Tema Escuro' : 'Tema Claro'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="config-section">
-                <h3>
-                  <FiInfo size={18} />
-                  Informações da Conta
-                </h3>
-                
-                <div className="user-info-container">
-                  <div className="user-info-item">
-                    <label>ID do Usuário:</label>
-                    <span className="user-info-value">{ongId}</span>
-                  </div>
-                  
-                  <div className="user-info-item">
-                    <label>Nome:</label>
-                    <span className="user-info-value">
-                      {userDetails?.name || ongName || 'Carregando...'}
-                    </span>
-                  </div>
-                  
-                  <div className="user-info-item">
-                    <label>Email:</label>
-                    <span className="user-info-value">
-                      {userDetails?.email || 'Carregando...'}
-                    </span>
-                  </div>
-
-                  {userDetails?.setor && (
-                    <div className="user-info-item">
-                      <label>Setor:</label>
-                      <span className="user-info-value">{userDetails.setor}</span>
-                    </div>
-                  )}
-
-                  {userDetails?.type && (
-                    <div className="user-info-item">
-                      <label>Tipo de Conta:</label>
-                      <span className="user-info-value badge-type">
-                        {userDetails.type}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="config-modal-footer">
-              <button 
-                className="config-close-btn"
-                onClick={handleCloseConfigModal}>
-                Fechar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfigModal
+        visible={configModalVisible}
+        onClose={handleCloseConfigModal}
+        darkTheme={darkTheme}
+        toggleTheme={toggleTheme}
+        userDetails={userDetails}
+        ongId={ongId}
+        ongName={ongName}
+      />
     </div>
   );
 }
