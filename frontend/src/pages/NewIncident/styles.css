@@ -14,7 +14,7 @@
   width: 100%;
   padding: 90px;
   background: #fff;
-  box-shadow: 0 0 100px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
   border-radius: 8px;
   display: flex;
   justify-content: space-between;
@@ -33,7 +33,7 @@
 
 .new-incident-container .content section p {
   font-size: 18px;
-  color: #737380;
+  color: #000;
   line-height: 32px;
   margin-bottom: 20px;
 }
@@ -52,13 +52,13 @@
 .new-incident-container .content form select {
   width: 100%;
   height: 60px;
-  color: #333;
-  border: 1px solid #dcdce6;
+  color: #000;
+  border: 1px solid #494949;
   border-radius: 8px;
   padding: 0 24px;
   margin: 8px 0 0px;
   font-size: 16px;
-  background: #FFF;
+  background: #fff;
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -69,7 +69,7 @@
 }
 
 .new-incident-container .content form select:invalid {
-  color: #a0a0a0;
+  color: #000;
 }
 
 .new-incident-container .content form select:focus {
@@ -158,7 +158,7 @@
 /* Texto de orientação */
 .upload-hint {
   font-size: 14px;
-  color: #666;
+  color: #000;
   margin-bottom: 15px;
   text-align: center;
 }

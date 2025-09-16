@@ -1,27 +1,21 @@
-# Usa Node oficial
-FROM node:20-alpine
+FROM node:22-alpine AS builder
 
-# Define diretório dentro do container
-WORKDIR app
+WORKDIR /app
 
-# Copia apenas package.json e package-lock.json
 COPY package*.json ./
 
-# Instala dependências
 RUN npm install
 
 COPY . .
 
-# Copia todo o restante do código
+FROM node:22-alpine
 
-COPY src ./src
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --production
 
-# Variáveis padrão
-ENV NODE_ENV=production
-ENV PORT=3001
+COPY --from=builder /app . 
 
-# Expõe porta do backend
 EXPOSE 3001
 
-# Comando que roda o backend
 CMD ["node", "src/server.js"]
