@@ -21,6 +21,18 @@ module.exports = {
     useNullAsDefault: true,
   },
 
+  staging: {
+    client: 'pg',
+    connection: {
+      connectionString: process.env.DATABASE_URL_STAGING,
+      ssl: { rejectUnauthorized: false }, // necessário para o Neon
+    },
+    migrations: {
+      directory: './src/database/migrations',
+    },
+    useNullAsDefault: true,
+  },
+
   production: {
     client: 'pg',
     connection: {
