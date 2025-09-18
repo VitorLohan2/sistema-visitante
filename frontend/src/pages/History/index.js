@@ -90,6 +90,8 @@ export default function History() {
       CPF: visitor.cpf || 'Não informado',
       Empresa: visitor.company || visitor.empresa || 'Não informado',
       Setor: visitor.sector || visitor.setor || 'Não informado',
+      Placa: visitor.placa_veiculo || 'Não informado',
+      Cor: visitor.cor_veiculo || 'Não informado',
       Entrada: visitor.entry_date
         ? new Date(visitor.entry_date).toLocaleString()
         : new Date(visitor.created_at).toLocaleString(),
@@ -172,6 +174,8 @@ export default function History() {
                   <th>CPF</th>
                   <th>Empresa</th>
                   <th>Setor</th>
+                  <th>Placa</th>
+                  <th>Cor</th>
                   <th>Entrada</th>
                   <th>Saída</th>
                 </tr>
@@ -184,6 +188,8 @@ export default function History() {
                     <td>{visitor.cpf || 'Não informado'}</td>
                     <td>{visitor.company || visitor.empresa || 'Não informado'}</td>
                     <td>{visitor.sector || visitor.setor || 'Não informado'}</td>
+                    <td className='placaendcor'>{visitor.placa_veiculo || '-'}</td>
+                    <td className='placaendcor'>{visitor.cor_veiculo || '-'}</td>
                     <td>
                       {visitor.entry_date
                         ? new Date(visitor.entry_date).toLocaleString()

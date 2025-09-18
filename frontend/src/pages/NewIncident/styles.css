@@ -246,22 +246,21 @@
 }
 
 .modal-estrtura-webcam {
-  background: #fff;
-  padding: 30px;
-  border-radius: 12px;
+  background: #f4f4f4;
+  padding: 15px;
+  border-radius: 3px;
   text-align: center;
   box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-  max-width: 90vw;
-  max-height: 90vh;
+  max-width: 110vw;
+  max-height: 110vh;
 }
 
 .modal-estrtura-webcam video {
   border-radius: 8px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
 }
 
 .camera-webcam {
-  margin-top: 20px;
+  margin-bottom: 5px;
   display: flex;
   justify-content: center;
   gap: 15px;

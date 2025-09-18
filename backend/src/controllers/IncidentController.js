@@ -32,7 +32,7 @@ module.exports = {
       .limit(5)
       .offset((page - 1) * 5)
       .select([
-        'incidents.*',
+        'incidents.*', // Retornado Tudo
         'empresas_visitantes.nome as empresa_nome',
         'setores_visitantes.nome as setor_nome',
         'ongs.name' // Se precisar do nome da ONG
@@ -57,7 +57,7 @@ async create(request, response) {
     }))
   });
 
-  const { nome, nascimento, cpf, empresa, setor, telefone, observacao } = request.body;
+  const { nome, nascimento, cpf, empresa, setor, telefone, observacao, placa_veiculo, cor_veiculo } = request.body;
   const ong_id = getBearerToken(request);
 
   try {
@@ -92,6 +92,8 @@ async create(request, response) {
       setor_id: setor,
       telefone,
       observacao,
+      placa_veiculo, 
+      cor_veiculo,   
       imagem1: imageUrls[0] || null,
       imagem2: imageUrls[1] || null,
       imagem3: imageUrls[2] || null,
@@ -171,7 +173,7 @@ async create(request, response) {
   // Atualizar incidente
   async update(req, res) {
     const { id } = req.params;
-    const { nome, nascimento, cpf, empresa, setor, telefone, observacao, avatar_imagem } = req.body;
+    const { nome, nascimento, cpf, empresa, setor, telefone, observacao, placa_veiculo, cor_veiculo, avatar_imagem } = req.body;
 
     console.log('Update recebido:', {
       id,
@@ -239,6 +241,8 @@ async create(request, response) {
           setor_id: setorData.id,
           telefone,
           observacao,
+          placa_veiculo, 
+          cor_veiculo,   
           avatar_imagem: avatarToSave // Salva a URL completa ou null
         });
 
@@ -362,6 +366,8 @@ async create(request, response) {
           'incidents.nome',
           'incidents.cpf',
           'incidents.telefone',
+          'incidents.placa_veiculo',
+          'incidents.cor_veiculo',  
           'empresas_visitantes.nome as empresa',
           'setores_visitantes.nome as setor',
           'incidents.avatar_imagem' // Retorna o avatar selecionado
@@ -412,7 +418,7 @@ async search(request, response) {
       .select([
         'id', 'nome', 'cpf', 'telefone', 'nascimento', 
         'empresa_id', 'setor_id', 'avatar_imagem', 
-        'bloqueado', 'ong_id'
+        'bloqueado', 'ong_id', 'placa_veiculo', 'cor_veiculo'
       ]); // 🔹 Retorna todos os campos necessários
 
     return response.json(incidents);

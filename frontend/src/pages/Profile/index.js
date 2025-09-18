@@ -270,14 +270,14 @@ export default function Profile() {
               incident.cpf.replace(/\D/g, '').includes(cpfNumbers);
           }
 
-          console.log(`👤 ${incident.nome}:`, {
-            hasName,
-            hasCpf,
-            nomeNormalizado: hasName ? incident.nome.toLowerCase() : 'N/A',
-            nameMatch,
-            cpfMatch,
-            finalResult: nameMatch || cpfMatch
-          }); // Debug detalhado
+          // console.log(`👤 ${incident.nome}:`, {
+          //   hasName,
+          //   hasCpf,
+          //   nomeNormalizado: hasName ? incident.nome.toLowerCase() : 'N/A',
+          //   nameMatch,
+          //   cpfMatch,
+          //   finalResult: nameMatch || cpfMatch
+          // }); // Debug detalhado
 
           return nameMatch || cpfMatch;
         });
@@ -419,7 +419,9 @@ export default function Profile() {
         name: incident.nome,
         cpf: incident.cpf,
         company: incident.empresa,
-        sector: incident.setor
+        sector: incident.setor,
+        placa_veiculo: incident.placa_veiculo,
+        cor_veiculo: incident.cor_veiculo
       }, {
         headers: { Authorization: ongId }
       });

@@ -73,6 +73,8 @@ export default function Visitors() {
                   <th>CPF</th>
                   <th>Empresa</th>
                   <th>Setor</th>
+                  <th>Placa</th>
+                  <th>Cor</th>
                   <th>Data/Hora Entrada</th>
                   <th>Ação</th> 
                 </tr>
@@ -85,6 +87,8 @@ export default function Visitors() {
                     <td>{visitor.cpf || 'Não informado'}</td>
                     <td>{visitor.company || visitor.empresa || 'Não informado'}</td>
                     <td>{visitor.sector || visitor.setor || 'Não informado'}</td>
+                    <td className='placaendcor'>{visitor.placa_veiculo || '-'}</td>
+                    <td className='placaendcor'>{visitor.cor_veiculo || '-'}</td>
                     <td>
                       {visitor.entry_date ? 
                         new Date(visitor.entry_date).toLocaleString() : 

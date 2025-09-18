@@ -17,11 +17,12 @@ const EmpresasVisitantesController = require('./controllers/EmpresasVisitantesCo
 const SetoresVisitantesController = require('./controllers/SetoresVisitantesController');
 const AgendamentoController = require('./controllers/AgendamentoController');
 
+const ResponsibleController = require('./controllers/ResponsavelController');
+
 const multer = require('multer');
 const multerConfig = require('./config/multer');
 const uploadAgendamento = require('./config/multerAgendamentos');
 const upload = multer(multerConfig);
-
 
 const routes = express.Router()
 
@@ -118,6 +119,8 @@ routes.post(
       empresa: Joi.string().required(),
       setor: Joi.string().required(),
       telefone: Joi.string().required(),
+      placa_veiculo: Joi.string().allow('', null).optional(), 
+      cor_veiculo: Joi.string().allow('', null).optional(),
       observacao: Joi.string().allow('', null)
     })
   }),
@@ -146,7 +149,10 @@ routes.post('/visitors', celebrate({
     name: Joi.string().required(),
     cpf: Joi.string().required(),
     company: Joi.string().required(),
-    sector: Joi.string().required()
+    sector: Joi.string().required(),
+    placa_veiculo: Joi.string().allow('', null).optional(),
+    cor_veiculo: Joi.string().allow('', null).optional(),
+    responsavel: Joi.string().required()
   })
 }), VisitorController.create);
 
@@ -173,6 +179,10 @@ routes.get('/history',
   VisitorController.history
 );
 
+// Buscar responsáveis (Modal de Liberar Visita)
+routes.get('/responsaveis', ResponsibleController.index);
+
+
 routes.get('/incidents/:id', IncidentController.show);
 
 routes.put('/incidents/:id',
@@ -187,6 +197,8 @@ routes.put('/incidents/:id',
       empresa: Joi.string().required(),
       setor: Joi.string().required(),
       telefone: Joi.string().required(),
+      placa_veiculo: Joi.string().allow('', null).optional(), 
+      cor_veiculo: Joi.string().allow('', null).optional(),   
       observacao: Joi.string().allow('', null),
       bloqueado: Joi.boolean().optional(),
       avatar_imagem: Joi.string().uri().allow(null, '')
