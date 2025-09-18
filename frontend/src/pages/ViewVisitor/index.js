@@ -78,6 +78,12 @@ export default function ViewVisitor() {
 
             <label>Setor</label>
             <input value={visitor.setor} readOnly />
+            
+            <label>Placa do Veículo</label>
+            <input value={visitor.placa_veiculo || 'Não informado'} readOnly />
+            
+            <label>Cor do Veículo</label>
+            <input value={visitor.cor_veiculo  || 'Não informado'} readOnly />
 
             <label>Telefone</label>
             <input value={formatTelefone(visitor.telefone)} readOnly />
@@ -119,8 +125,8 @@ export default function ViewVisitor() {
 
       {/* Modal para visualização ampliada */}
       {selectedImage && (
-        <div className="image-modal" onClick={() => setSelectedImage(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="image-modal-visualizacao" onClick={() => setSelectedImage(null)}>
+          <div className="modal-content-visualizacao" onClick={(e) => e.stopPropagation()}>
             <button 
               className="close-button"
               onClick={() => setSelectedImage(null)}

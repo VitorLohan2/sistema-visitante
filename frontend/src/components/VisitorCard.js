@@ -60,6 +60,16 @@ export default function VisitorCard({
             </div>
             
             <div className="card-detail">
+              <span className="card-detail-label">Placa</span>
+              <span className="card-detail-value">{incident.placa_veiculo || '-'}</span>
+            </div>
+            
+            <div className="card-detail">
+              <span className="card-detail-label">Cor</span>
+              <span className="card-detail-value">{incident.cor_veiculo || '-'}</span>
+            </div>
+            
+            <div className="card-detail">
               <span className="card-detail-label">Telefone</span>
               <span className="card-detail-value">{incident.telefone}</span>
             </div>

@@ -1,6 +1,6 @@
 .visitors-container {
   width: 100%;
-  max-width: 1180px;
+  max-width: 1350px;
   padding: 0 30px;
   margin: 32px auto;
 }
@@ -73,11 +73,14 @@
 .visitors-history table th,
 .visitors-history table td {
   padding: 12px 16px;
-  text-align: left;
+  /* text-align: left; */
   border-bottom: 1px solid #dcdce6;
 }
-
+.placaendcor {
+  text-align: center;
+}
 .visitors-history table th {
+  text-align: left;
   font-weight: 500;
   color: #41414d;
   white-space: nowrap;

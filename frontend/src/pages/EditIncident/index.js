@@ -7,6 +7,12 @@ import './styles.css';
 import logoImg from '../../assets/logo.svg';
 
 export default function EditIncident() {
+  // Lista de cores pré-definidas (mesmo do cadastro)
+  const opcoesCores = [
+    'PRETO', 'BRANCO', 'PRATA', 'CINZA', 'VERMELHO', 'AZUL', 'VERDE', 'AMARELO',
+    'LARANJA',
+  ];
+
   const [form, setForm] = useState({
     nome: '',
     nascimento: '',
@@ -14,6 +20,8 @@ export default function EditIncident() {
     empresa: '',
     setor: '',
     telefone: '',
+    placa_veiculo: '',
+    cor_veiculo: '',
     observacao: '',
     bloqueado: false
   });
@@ -23,10 +31,12 @@ export default function EditIncident() {
   const { id } = useParams();
   const [empresas, setEmpresas] = useState([]);
   const [setores, setSetores] = useState([]);
-  const [fotos, setFotos] = useState([]); // fotos já enviadas
-  const [avatar, setAvatar] = useState(''); // avatar selecionado
-
-
+  const [fotos, setFotos] = useState([]);
+  const [avatar, setAvatar] = useState('');
+  const [errors, setErrors] = useState({
+    placa_veiculo: '',
+    cor_veiculo: ''
+  });
 
   useEffect(() => {
     setIsAdmin(localStorage.getItem('ongType') === 'ADM');
@@ -45,13 +55,12 @@ export default function EditIncident() {
           ...data,
           cpf: formatCPF(data.cpf || ''),
           telefone: formatTelefone(data.telefone || ''),
+          placa_veiculo: formatPlaca(data.placa_veiculo || ''), // Formatar placa
           bloqueado: Boolean(data.bloqueado)
         });
 
-        // Carregar fotos e avatar
-        setFotos(data.fotos || []); // array de imagens já enviadas
-        setAvatar(data.avatar_imagem || (data.fotos?.[0] || '')); // avatar atual ou primeira foto
-
+        setFotos(data.fotos || []);
+        setAvatar(data.avatar_imagem || (data.fotos?.[0] || ''));
         setEmpresas(empresasRes.data);
         setSetores(setoresRes.data);
 
@@ -64,6 +73,7 @@ export default function EditIncident() {
     loadData();
   }, [id, history]);
 
+  // === Funções de formatação (iguais ao cadastro) ===
   const formatCPF = (value) => {
     const cleaned = value.replace(/\D/g, '');
     const match = cleaned.match(/(\d{3})(\d{3})(\d{3})(\d{2})/);
@@ -78,9 +88,51 @@ export default function EditIncident() {
     return value;
   };
 
+  // ← FUNÇÃO PARA FORMATAR PLACA (igual ao cadastro)
+  const formatPlaca = (value) => {
+    const cleaned = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 7);
+
+    if (cleaned.length <= 3) {
+      return cleaned;
+    }
+
+    // Formato Mercosul: AAA1A11 ou Formato antigo: AAA1111
+    if (cleaned.length > 3) {
+      return `${cleaned.slice(0, 3)}${cleaned.slice(3, 4)}${cleaned.slice(4, 5)}${cleaned.slice(5, 7)}`;
+    }
+
+    return cleaned;
+  };
+
+  // ← VALIDAÇÃO DE PLACA EM TEMPO REAL (igual ao cadastro)
+  const validatePlaca = (value) => {
+    const cleaned = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    if (cleaned.length > 0 && cleaned.length < 7) {
+      setErrors(prev => ({
+        ...prev,
+        placa_veiculo: 'Placa deve ter 7 caracteres'
+      }));
+    } else {
+      setErrors(prev => ({
+        ...prev,
+        placa_veiculo: ''
+      }));
+    }
+  };
+
+  // === Handlers ===
   const handleChange = (e) => {
     const { name, value } = e.target;
-    const newValue = name === 'nome' ? value.toUpperCase() : value;
+
+    let newValue = value;
+
+    if (name === 'nome') {
+      newValue = value.toUpperCase();
+    } else if (name === 'placa_veiculo') {
+      newValue = formatPlaca(value); // Formata a placa
+      validatePlaca(newValue); // Valida em tempo real
+    }
+
     setForm(prev => ({ ...prev, [name]: newValue }));
   };
 
@@ -97,11 +149,11 @@ export default function EditIncident() {
   // Nova função para lidar com o bloqueio
   const handleBlockChange = async (e) => {
     if (!isAdmin) return;
-    
+
     const novoEstado = e.target.checked;
-    
+
     try {
-      await api.put(`/incidents/${id}/block`, 
+      await api.put(`/incidents/${id}/block`,
         { bloqueado: novoEstado }
       );
       setForm(prev => ({ ...prev, bloqueado: novoEstado }));
@@ -109,7 +161,6 @@ export default function EditIncident() {
     } catch (err) {
       console.error('Erro ao atualizar bloqueio:', err);
       alert(err.response?.data?.error || 'Erro ao atualizar status de bloqueio');
-      // Reverte a mudança em caso de erro
       setForm(prev => ({ ...prev, bloqueado: !novoEstado }));
     }
   };
@@ -119,6 +170,13 @@ export default function EditIncident() {
 
     const cpfClean = form.cpf.replace(/\D/g, '');
     const telefoneClean = form.telefone.replace(/\D/g, '');
+    const placaClean = form.placa_veiculo.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+
+    // Limpa erros anteriores
+    setErrors({
+      placa_veiculo: '',
+      cor_veiculo: ''
+    });
 
     if (cpfClean.length !== 11) {
       return alert('CPF inválido. Deve conter 11 dígitos.');
@@ -132,6 +190,36 @@ export default function EditIncident() {
       return alert('Empresa e setor são obrigatórios.');
     }
 
+    // ← VALIDAÇÃO: Se tem placa, deve ter cor (igual ao cadastro)
+    const hasPlaca = placaClean.trim().length > 0;
+    const hasCor = form.cor_veiculo.trim().length > 0;
+
+    if (hasPlaca && !hasCor) {
+      setErrors(prev => ({
+        ...prev,
+        cor_veiculo: 'Cor do veículo é obrigatória quando a placa é informada'
+      }));
+      return alert('Por favor, selecione a cor do veículo.');
+    }
+
+    if (hasCor && !hasPlaca) {
+      setErrors(prev => ({
+        ...prev,
+        placa_veiculo: 'Placa do veículo é obrigatória quando a cor é informada'
+      }));
+      alert('Por favor, preencha a placa do veículo.');
+      return;
+    }
+
+    // Valida formato da placa
+    if (hasPlaca && placaClean.length < 7) {
+      setErrors(prev => ({
+        ...prev,
+        placa_veiculo: 'Placa deve ter 7 caracteres'
+      }));
+      return alert('Placa do veículo deve ter 7 caracteres.');
+    }
+
     const payload = {
       nome: form.nome,
       nascimento: form.nascimento,
@@ -139,9 +227,10 @@ export default function EditIncident() {
       empresa: form.empresa,
       setor: form.setor,
       telefone: telefoneClean,
+      placa_veiculo: placaClean, // ← INCLUIR PLACA NO PAYLOAD
+      cor_veiculo: form.cor_veiculo, // ← INCLUIR COR NO PAYLOAD
       observacao: form.observacao,
-      avatar_imagem: avatar 
-      // Removido o bloqueado do payload principal
+      avatar_imagem: avatar
     };
 
     try {
@@ -224,6 +313,36 @@ export default function EditIncident() {
             ))}
           </select>
 
+          {/* ← CAMPOS DE PLACA E COR (iguais ao cadastro) */}
+          <input
+            name="placa_veiculo"
+            placeholder="Placa do Veículo (ex: ABC1D23)"
+            value={form.placa_veiculo}
+            onChange={handleChange}
+            maxLength={7}
+            className={errors.placa_veiculo ? 'error' : ''}
+          />
+          {errors.placa_veiculo && (
+            <span className="error-message">{errors.placa_veiculo}</span>
+          )}
+
+          <select
+            name="cor_veiculo"
+            value={form.cor_veiculo}
+            onChange={handleChange}
+            className={errors.cor_veiculo ? 'error' : ''}
+          >
+            <option value="">Selecione a cor</option>
+            {opcoesCores.map((cor) => (
+              <option key={cor} value={cor}>
+                {cor}
+              </option>
+            ))}
+          </select>
+          {errors.cor_veiculo && (
+            <span className="error-message">{errors.cor_veiculo}</span>
+          )}
+
           <input
             name="telefone"
             placeholder="(DD)99999-9999"
@@ -234,18 +353,18 @@ export default function EditIncident() {
           />
 
           <div className="checkbox-container">
-          <input
-            type="checkbox"
-            id="bloqueado-checkbox"
-            checked={form.bloqueado}
-            onChange={handleBlockChange}
-            disabled={!isAdmin}
-            className={!isAdmin ? 'disabled-checkbox' : ''}
-          />
-          <label htmlFor="bloqueado-checkbox">
-            {form.bloqueado ? '✅ Cadastro Bloqueado' : '⛔ Bloquear Acesso'}
-          </label>
-        </div>
+            <input
+              type="checkbox"
+              id="bloqueado-checkbox"
+              checked={form.bloqueado}
+              onChange={handleBlockChange}
+              disabled={!isAdmin}
+              className={!isAdmin ? 'disabled-checkbox' : ''}
+            />
+            <label htmlFor="bloqueado-checkbox">
+              {form.bloqueado ? '✅ Cadastro Bloqueado' : '⛔ Bloquear Acesso'}
+            </label>
+          </div>
 
           <textarea
             name="observacao"
@@ -261,7 +380,7 @@ export default function EditIncident() {
                 {fotos.map((foto, index) => (
                   <img
                     key={index}
-                    src={foto} // URL da foto
+                    src={foto}
                     alt={`Foto ${index + 1}`}
                     className={`photo-item ${avatar === foto ? 'selected' : ''}`}
                     onClick={() => setAvatar(foto)}

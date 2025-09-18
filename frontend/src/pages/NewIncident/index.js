@@ -9,6 +9,12 @@ import Loading from '../../components/Loading';
 
 
 export default function NewVisitor() {
+  // Lista de cores pré-definidas
+  const opcoesCores = [
+    'PRETO', 'BRANCO', 'PRATA', 'CINZA', 'VERMELHO', 'AZUL', 'VERDE', 'AMARELO',
+    'LARANJA',
+  ];
+
   const [form, setForm] = useState({
     nome: '',
     nascimento: '',
@@ -16,6 +22,8 @@ export default function NewVisitor() {
     empresa_id: '',
     setor_id: '',
     telefone: '',
+    placa_veiculo: '',
+    cor_veiculo: '',
     observacao: '',
     fotos: [],
   });
@@ -34,17 +42,21 @@ export default function NewVisitor() {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
 
-
   // Modal Confirmar Cadastro
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
+  const [errors, setErrors] = useState({
+    placa_veiculo: '',
+    cor_veiculo: ''
+  });
+
   const simulateProgress = () => {
-  let value = 0;
-  const interval = setInterval(() => {
-    value += 15;
-    setProgress(value);
-    if (value >= 100) clearInterval(interval);
-  }, 150);
+    let value = 0;
+    const interval = setInterval(() => {
+      value += 15;
+      setProgress(value);
+      if (value >= 100) clearInterval(interval);
+    }, 150);
   };
 
   // Busca empresas e setores do banco de dados
@@ -55,7 +67,7 @@ export default function NewVisitor() {
           api.get('/empresas-visitantes'),
           api.get('/setores-visitantes')
         ]);
-        
+
         setEmpresasVisitantes(empresasResponse.data);
         setSetoresVisitantes(setoresResponse.data);
       } catch (err) {
@@ -82,10 +94,52 @@ export default function NewVisitor() {
     return cleaned;
   };
 
+  // ← NOVA FUNÇÃO PARA FORMATAR PLACA
+  const formatPlaca = (value) => {
+    const cleaned = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 7);
+
+    if (cleaned.length <= 3) {
+      return cleaned;
+    }
+
+    // Formato Mercosul: AAA1A11 ou Formato antigo: AAA1111
+    if (cleaned.length > 3) {
+      return `${cleaned.slice(0, 3)}${cleaned.slice(3, 4)}${cleaned.slice(4, 5)}${cleaned.slice(5, 7)}`;
+    }
+
+    return cleaned;
+  };
+
+  // Adicione esta função para validar a placa em tempo real
+  const validatePlaca = (value) => {
+    const cleaned = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    if (cleaned.length > 0 && cleaned.length < 7) {
+      setErrors(prev => ({
+        ...prev,
+        placa_veiculo: 'Placa deve ter 7 caracteres'
+      }));
+    } else {
+      setErrors(prev => ({
+        ...prev,
+        placa_veiculo: ''
+      }));
+    }
+  };
+
   // === Handlers ===
   const handleChange = (e) => {
     const { name, value } = e.target;
-    const newValue = name === 'nome' ? value.toUpperCase() : value;
+
+    let newValue = value;
+
+    if (name === 'nome') {
+      newValue = value.toUpperCase();
+    } else if (name === 'placa_veiculo') {
+      newValue = formatPlaca(value); // Formata a placa
+      validatePlaca(newValue)
+    }
+    // A cor já vem formatada do select (se você mudar para select)
+
     setForm(prev => ({ ...prev, [name]: newValue }));
   };
 
@@ -101,66 +155,66 @@ export default function NewVisitor() {
 
   const handleFileChange = (e) => {
     const newFiles = Array.from(e.target.files);
-    
+
     setForm(prev => {
-      const nonDuplicateFiles = newFiles.filter(newFile => 
-        !prev.fotos.some(existingFile => 
-          existingFile.name === newFile.name && 
+      const nonDuplicateFiles = newFiles.filter(newFile =>
+        !prev.fotos.some(existingFile =>
+          existingFile.name === newFile.name &&
           existingFile.size === newFile.size &&
           existingFile.lastModified === newFile.lastModified
         )
       );
-      
+
       const combinedFiles = [...prev.fotos, ...nonDuplicateFiles].slice(0, 3);
-      
+
       if (nonDuplicateFiles.length < newFiles.length) {
         alert('Algumas imagens foram ignoradas porque já foram selecionadas.');
       }
-      
+
       return { ...prev, fotos: combinedFiles };
     });
-    
+
     e.target.value = '';
   };
 
-// === Funções da Câmera ===
-useEffect(() => {
-  const iniciarCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
+  // === Funções da Câmera ===
+  useEffect(() => {
+    const iniciarCamera = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (err) {
+        console.error("Erro ao acessar a câmera:", err);
+        alert("Não foi possível acessar a câmera.");
+        setCameraAtiva(false);
+        setShowModal(false);
       }
-    } catch (err) {
-      console.error("Erro ao acessar a câmera:", err);
-      alert("Não foi possível acessar a câmera.");
-      setCameraAtiva(false);
-      setShowModal(false);
+    };
+
+    if (cameraAtiva) {
+      iniciarCamera();
     }
-  };
 
-  if (cameraAtiva) {
-    iniciarCamera();
-  }
+    return () => {
+      const stream = videoRef.current?.srcObject;
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [cameraAtiva]);
 
-  return () => {
+  const pararCamera = () => {
     const stream = videoRef.current?.srcObject;
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
     }
+    setCameraAtiva(false);
+    setShowModal(false);
   };
-}, [cameraAtiva]);
 
-const pararCamera = () => {
-  const stream = videoRef.current?.srcObject;
-  if (stream) {
-    stream.getTracks().forEach(track => track.stop());
-  }
-  setCameraAtiva(false);
-  setShowModal(false);
-};
-
-const tirarFoto = () => {
+  const tirarFoto = () => {
     const canvas = canvasRef.current;
     const context = canvas.getContext("2d");
     context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
@@ -177,7 +231,7 @@ const tirarFoto = () => {
       // Fecha modal após tirar a foto
       pararCamera();
     }, "image/png");
-};
+  };
 
   // === Submit ===
   const handleSubmit = async (e) => {
@@ -185,6 +239,13 @@ const tirarFoto = () => {
 
     const cpfClean = form.cpf.replace(/\D/g, '');
     const telefoneClean = form.telefone.replace(/\D/g, '');
+    const placaClean = form.placa_veiculo.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+
+    // Limpa erros anteriores
+    setErrors({
+      placa_veiculo: '',
+      cor_veiculo: ''
+    });
 
     if (cpfClean.length !== 11) {
       alert('CPF inválido. Deve conter 11 dígitos.');
@@ -200,6 +261,38 @@ const tirarFoto = () => {
     }
     if (form.fotos.length === 0) {
       alert('Envie pelo menos uma imagem.');
+      return;
+    }
+
+    // ← NOVA VALIDAÇÃO: Se tem placa, deve ter cor
+    const hasPlaca = placaClean.trim().length > 0;
+    const hasCor = form.cor_veiculo.trim().length > 0;
+
+    if (hasPlaca && !hasCor) {
+      setErrors(prev => ({
+        ...prev,
+        cor_veiculo: 'Cor do veículo é obrigatória quando a placa é informada'
+      }));
+      alert('Por favor, selecione a cor do veículo.');
+      return;
+    }
+
+    if (hasCor && !hasPlaca) {
+      setErrors(prev => ({
+        ...prev,
+        placa_veiculo: 'Placa do veículo é obrigatória quando a cor é informada'
+      }));
+      alert('Por favor, preencha a placa do veículo.');
+      return;
+    }
+
+    // Valida formato da placa (opcional, se quiser)
+    if (hasPlaca && placaClean.length < 7) {
+      setErrors(prev => ({
+        ...prev,
+        placa_veiculo: 'Placa deve ter 7 caracteres'
+      }));
+      alert('Placa do veículo deve ter 7 caracteres.');
       return;
     }
 
@@ -220,7 +313,10 @@ const tirarFoto = () => {
       dataToSend.append('empresa', form.empresa_id);
       dataToSend.append('setor', form.setor_id);
       dataToSend.append('telefone', telefoneClean);
+      dataToSend.append('placa_veiculo', placaClean);
+      dataToSend.append('cor_veiculo', form.cor_veiculo);
       dataToSend.append('observacao', form.observacao);
+
       form.fotos.forEach((foto) => {
         dataToSend.append('fotos', foto);
       });
@@ -252,9 +348,9 @@ const tirarFoto = () => {
   // Função que confirma e chama o submit real
   const handleConfirmSubmit = (e) => {
     setShowConfirmModal(false);
-    handleSubmit(); 
+    handleSubmit();
   };
-  
+
   if (loading) return <Loading progress={progress} message="Cadastrando visitante..." />;
 
   return (
@@ -324,6 +420,36 @@ const tirarFoto = () => {
             ))}
           </select>
 
+
+          <input
+            name="placa_veiculo"
+            placeholder="Placa do Veículo (ex: ABC1D23)"
+            value={form.placa_veiculo}
+            onChange={handleChange}
+            maxLength={7}
+            className={errors.placa_veiculo ? 'error' : ''}
+          />
+          {errors.placa_veiculo && (
+            <span className="error-message">{errors.placa_veiculo}</span>
+          )}
+
+          <select
+            name="cor_veiculo"
+            value={form.cor_veiculo}
+            onChange={handleChange}
+            className={errors.cor_veiculo ? 'error' : ''}
+          >
+            <option value="">Selecione a cor</option>
+            {opcoesCores.map((cor) => (
+              <option key={cor} value={cor}>
+                {cor}
+              </option>
+            ))}
+          </select>
+          {errors.cor_veiculo && (
+            <span className="error-message">{errors.cor_veiculo}</span>
+          )}
+
           <input
             name="telefone"
             placeholder="(DD)99999-9999"
@@ -351,37 +477,37 @@ const tirarFoto = () => {
               disabled={form.fotos.length >= 3}
               style={{ display: 'none' }}
             />
-            
+
             {/* Container para os botões lado a lado */}
             <div className="upload-buttons-container">
               <label htmlFor="image-upload" className="upload-button">
                 <span className="button-icon">+</span>
                 <span className="button-text">Selecionar Imagens</span>
               </label>
-              
-              <button 
-                type="button" 
-                className="camera-button" 
+
+              <button
+                type="button"
+                className="camera-button"
                 onClick={() => { setCameraAtiva(true); setShowModal(true); }}
                 disabled={form.fotos.length >= 3}
               >
-                <FiCamera size={20} className='button-icon'/> Abrir Webcam
+                <FiCamera size={20} className='button-icon' /> Abrir Webcam
               </button>
             </div>
-            
+
             <div className="upload-hint">
-              {form.fotos.length < 3 
-                ? `Selecione mais ${3 - form.fotos.length} imagem(ns)` 
+              {form.fotos.length < 3
+                ? `Selecione mais ${3 - form.fotos.length} imagem(ns)`
                 : 'Máximo de 3 imagens atingido'}
             </div>
-            
+
             <div className="image-previews">
               {form.fotos.map((file, index) => (
                 <div key={`${file.name}-${file.size}-${index}`} className="image-preview">
                   <div className="image-container">
-                    <img 
-                      src={URL.createObjectURL(file)} 
-                      alt="Pré-visualização" 
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt="Pré-visualização"
                       onLoad={() => URL.revokeObjectURL(file)}
                     />
                     <button
@@ -397,7 +523,7 @@ const tirarFoto = () => {
                   </div>
                   <div className="image-info">
                     <span className="image-name">{file.name}</span>
-                    <span className="image-size">({Math.round(file.size/1024)} KB)</span>
+                    <span className="image-size">({Math.round(file.size / 1024)} KB)</span>
                   </div>
                 </div>
               ))}
@@ -408,20 +534,20 @@ const tirarFoto = () => {
           {showModal && (
             <div className="modal-webcam">
               <div className="modal-estrtura-webcam">
-                <video ref={videoRef} autoPlay width="640" height="480" />
-                <canvas ref={canvasRef} width="640" height="480" style={{ display: 'none' }} />
+                <video ref={videoRef} autoPlay width="780" height="620" />
+                <canvas ref={canvasRef} width="780" height="620" style={{ display: 'none' }} />
                 <div className="camera-webcam">
-                  <button 
-                    type="button" 
-                    className="camera-action-btn btn-capture" 
+                  <button
+                    type="button"
+                    className="camera-action-btn btn-capture"
                     onClick={tirarFoto}
                   >
                     <FiCamera className="btn-icon" />
                     Tirar Foto
                   </button>
-                  <button 
-                    type="button" 
-                    className="camera-action-btn btn-close" 
+                  <button
+                    type="button"
+                    className="camera-action-btn btn-close"
                     onClick={pararCamera}
                   >
                     <FiArrowLeft className="btn-icon" />
@@ -432,9 +558,9 @@ const tirarFoto = () => {
             </div>
           )}
 
-          <button 
-            className="button" 
-            type="button" 
+          <button
+            className="button"
+            type="button"
             onClick={handleOpenConfirm}
           >
             Cadastrar
@@ -442,25 +568,25 @@ const tirarFoto = () => {
         </form>
 
         {showConfirmModal && (
-            <div className="modal-cadastro-visitante">
-              <div className="modal-content-visitante">
-                <h3>Deseja realmente realizar o cadastro?</h3>
-                <div className="modal-actions-visistante">
-                  <button 
-                    className="button yes" 
-                    onClick={handleConfirmSubmit}
-                  >
-                    Sim
-                  </button>
-                  <button 
-                    className="button no" 
-                    onClick={() => setShowConfirmModal(false)}
-                  >
-                    Não
-                  </button>
-                </div>
+          <div className="modal-cadastro-visitante">
+            <div className="modal-content-visitante">
+              <h3>Deseja realmente realizar o cadastro?</h3>
+              <div className="modal-actions-visistante">
+                <button
+                  className="button yes"
+                  onClick={handleConfirmSubmit}
+                >
+                  Sim
+                </button>
+                <button
+                  className="button no"
+                  onClick={() => setShowConfirmModal(false)}
+                >
+                  Não
+                </button>
               </div>
             </div>
+          </div>
         )}
 
       </div>

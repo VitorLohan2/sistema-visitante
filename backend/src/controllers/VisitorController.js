@@ -29,6 +29,9 @@ module.exports = {
           'cpf',
           'company',
           'sector',
+          'placa_veiculo',
+          'cor_veiculo',
+          'responsavel',
           'entry_date',
           'created_at'
         ]);
@@ -45,14 +48,14 @@ module.exports = {
 
   // Registrar nova entrada
   async create(request, response) {
-    const { name, cpf, company, sector } = request.body;
+    const { name, cpf, company, sector, placa_veiculo, cor_veiculo, responsavel } = request.body;
     const ong_id = getBearerToken(request);
 
     if (!ong_id) {
       return response.status(401).json({ error: 'Authorization header é obrigatório' });
     }
 
-    console.log('🔍 Dados recebidos:', { name, cpf, company, sector, ong_id });
+    console.log('🔍 Dados recebidos:', { name, cpf, company, sector, placa_veiculo, cor_veiculo, responsavel, ong_id });
 
     try {
       // ✅ VERIFICAÇÃO: Confirma se a ONG existe (igual ao padrão dos outros controllers)
@@ -61,13 +64,13 @@ module.exports = {
         .first();
       
       if (!ong) {
-        console.error('❌ ONG não encontrada:', ong_id);
+        console.error('❌ LOGIN não encontrado:', ong_id);
         return response.status(404).json({ 
           error: `ONG com ID ${ong_id} não encontrada` 
         });
       }
 
-      console.log('✅ ONG encontrada:', ong.name);
+      console.log('✅ LOGIN encontrado(a):', ong.name);
 
       const [visitor] = await connection('visitors')
         .insert({
@@ -75,6 +78,9 @@ module.exports = {
           cpf,
           company,
           sector,
+          placa_veiculo,
+          cor_veiculo,
+          responsavel,
           entry_date: new Date(),
           ong_id,
         })
@@ -123,6 +129,9 @@ module.exports = {
         cpf: visitor.cpf,
         company: visitor.company,
         sector: visitor.sector,
+        placa_veiculo: visitor.placa_veiculo,
+        cor_veiculo: visitor.cor_veiculo,
+        responsavel: visitor.responsavel,
         entry_date: visitor.entry_date,
         exit_date: new Date().toISOString(),
         ong_id: visitor.ong_id
