@@ -10,6 +10,7 @@ import Loading from '../../components/Loading';
 import VisitorCard from "../../components/VisitorCard";
 import ProfileMenu from '../../components/ProfileMenu';
 import ConfigModal from '../../components/ConfigModal';
+import VisitAuthorizationModal from '../../components/VisitAuthorizationModal';
 
 import './styles.css';
 import '../../styles/dark-theme.css';
@@ -23,6 +24,11 @@ export default function Profile() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSearching, setIsSearching] = useState(false); // 🆕 Flag para controlar busca
   const history = useHistory();
+
+  // Modal de registrar Visita  
+  const [visitModalVisible, setVisitModalVisible] = useState(false);
+  const [responsaveis, setResponsaveis] = useState([]);
+  const [selectedIncident, setSelectedIncident] = useState(null);
 
   const { user, logout } = useAuth();
   const ongId = user?.id;
@@ -407,31 +413,53 @@ export default function Profile() {
     }
   }
 
-  async function handleRegisterVisit(id) {
-    try {
-      const incident = incidents.find(inc => inc.id === id);
-      if (incident.bloqueado) {
-        alert('Este visitante está bloqueado. Registro de visita não permitido.');
-        return;
-      }
+  function handleRegisterVisit(id) {
+    const incident = incidents.find(inc => inc.id === id);
+    if (incident.bloqueado) {
+      alert('Este visitante está bloqueado. Registro de visita não permitido.');
+      return;
+    }
 
+    setSelectedIncident(incident);
+    setVisitModalVisible(true);
+  }
+
+  useEffect(() => {
+    async function fetchResponsaveis() {
+      try {
+        const response = await api.get('/responsaveis');
+        setResponsaveis(response.data); // lista que vem do backend
+      } catch (err) {
+        console.error("Erro ao carregar responsáveis:", err);
+      }
+    }
+
+    fetchResponsaveis();
+  }, []);
+
+  async function handleConfirmVisit(responsavel) {
+    try {
       await api.post('/visitors', {
-        name: incident.nome,
-        cpf: incident.cpf,
-        company: incident.empresa,
-        sector: incident.setor,
-        placa_veiculo: incident.placa_veiculo,
-        cor_veiculo: incident.cor_veiculo
+        name: selectedIncident.nome,
+        cpf: selectedIncident.cpf,
+        company: selectedIncident.empresa,
+        sector: selectedIncident.setor,
+        placa_veiculo: selectedIncident.placa_veiculo,
+        cor_veiculo: selectedIncident.cor_veiculo,
+        responsavel
       }, {
         headers: { Authorization: ongId }
       });
 
       alert('Visita registrada com sucesso!');
+      setVisitModalVisible(false);
+      setSelectedIncident(null);
       history.push('/visitors');
     } catch (err) {
       alert('Erro ao registrar visita: ' + err.message);
     }
   }
+
 
   function handleEditProfile(id) {
     history.push(`/incidents/edit/${id}`);
@@ -551,7 +579,7 @@ export default function Profile() {
 
         <Link className="button" to="/incidents/new">Cadastrar Visitante</Link>
         <button onClick={handleLogout} type="button">
-          <FiPower size={18} color="#e02041" className='power'/>
+          <FiPower size={18} color="#e02041" className='power' />
         </button>
       </header>
 
@@ -689,6 +717,14 @@ export default function Profile() {
         ongId={ongId}
         ongName={ongName}
       />
+
+      <VisitAuthorizationModal
+        visible={visitModalVisible}
+        onClose={() => setVisitModalVisible(false)}
+        onConfirm={handleConfirmVisit}
+        responsaveis={responsaveis.map(r => r.nome)}
+      />
+
     </div>
   );
 }

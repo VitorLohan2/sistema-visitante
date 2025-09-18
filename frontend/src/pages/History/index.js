@@ -176,6 +176,7 @@ export default function History() {
                   <th>Setor</th>
                   <th>Placa</th>
                   <th>Cor</th>
+                  <th>Responsavel</th>
                   <th>Entrada</th>
                   <th>Saída</th>
                 </tr>
@@ -190,6 +191,7 @@ export default function History() {
                     <td>{visitor.sector || visitor.setor || 'Não informado'}</td>
                     <td className='placaendcor'>{visitor.placa_veiculo || '-'}</td>
                     <td className='placaendcor'>{visitor.cor_veiculo || '-'}</td>
+                    <td>{visitor.responsavel || 'Não informado'}</td>
                     <td>
                       {visitor.entry_date
                         ? new Date(visitor.entry_date).toLocaleString()
