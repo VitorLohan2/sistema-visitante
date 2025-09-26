@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useHistory } from 'react-router-dom';
-import { FiArrowLeft } from 'react-icons/fi';
+import { FiArrowLeft, FiSearch, FiLogOut } from 'react-icons/fi';
 
 import api from '../../services/api';
 import './styles.css';
@@ -9,6 +9,9 @@ import logoImg from '../../assets/logo.svg';
 
 export default function Visitors() {
   const [visitors, setVisitors] = useState([]);
+  const [selectedObservation, setSelectedObservation] = useState(null); // 👈 guarda obs do visitante
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const history = useHistory();
   const ongId = localStorage.getItem('ongId');
   const ongName = localStorage.getItem('ongName');
@@ -44,10 +47,16 @@ export default function Visitors() {
     }
   }
 
+  // 👇 abre modal e mostra observação
+  function handleOpenObservation(observacao) {
+    setSelectedObservation(observacao || 'Nenhuma observação cadastrada.');
+    setIsModalOpen(true);
+  }
+
   return (
-    <div className="visitors-container">
-      <header>
-        <div className="ajuste-Titulo">
+    <div className="page-container">
+      <header className="page-header">
+        <div className="page-title-wrapper">
         <img src={logoImg} alt="DIME" />
         <span>Bem-vindo(a), {ongName}</span>
         </div>
@@ -58,12 +67,12 @@ export default function Visitors() {
       </header>
 
       <div className="content">
-        <section className="visitors-history">
+        <section className="historico-visitas">
           <h1>Visitantes</h1>
           <h2>Histórico de visitas</h2>
 
           {visitors.length === 0 ? (
-            <p className="no-visitors">Nenhum visitante cadastrado ainda.</p>
+            <p className="nao-visitantes">Nenhum visitante cadastrado ainda.</p>
           ) : (
             <table>
               <thead>
@@ -77,7 +86,7 @@ export default function Visitors() {
                   <th>Cor</th>
                   <th>Responsavel</th>
                   <th>Data/Hora Entrada</th>
-                  <th>Ação</th> 
+                  <th className='placaendcor'>Observação/Finalização</th> 
                 </tr>
               </thead>
               <tbody>
@@ -97,9 +106,16 @@ export default function Visitors() {
                         new Date(visitor.created_at).toLocaleString()
                       }
                     </td>
-                    <td> 
-                      <button onClick={() => handleEndVisit(visitor.id)} className="end-visit-button">
-                        Encerrar Visita
+                    <td className='acoes-buttons'>
+                      <button 
+                        onClick={() => handleOpenObservation(visitor.observacao)} 
+                        className="observacao-button"
+                        title="Ver observação"
+                      >
+                        <FiSearch size={18} strokeWidth={3}/>
+                      </button> 
+                      <button onClick={() => handleEndVisit(visitor.id)} className="encerrar-visita-button">
+                       <FiLogOut size={18} strokeWidth={3}/> Encerrar Visita
                       </button>
                     </td>
                   </tr>
@@ -109,6 +125,19 @@ export default function Visitors() {
           )}
         </section>
       </div>
+
+      {isModalOpen && (
+        <div className="modal-observacao-visitantes" onClick={() => setIsModalOpen(false)}>
+          <div className="modal-conteudo-visitantes" onClick={e => e.stopPropagation()}>
+            <h2>Observação</h2>
+            <p>{selectedObservation}</p>
+            <button onClick={() => setIsModalOpen(false)} className="fechar-modal">
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
+      
     </div>
   );
 }

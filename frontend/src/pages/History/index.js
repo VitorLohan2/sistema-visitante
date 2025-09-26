@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FiArrowLeft, FiSearch } from 'react-icons/fi';
+import { FiArrowLeft, FiSearch, FiFileText } from 'react-icons/fi';
 
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
@@ -10,7 +10,6 @@ import Loading from '../../components/Loading';
 import './styles.css';
 
 import logoImg from '../../assets/logo.svg';
-import excel from '../../assets/xlss.png';
 
 export default function History() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -18,6 +17,9 @@ export default function History() {
   const [historyData, setHistoryData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
+
+  const [selectedObservation, setSelectedObservation] = useState(null); // 👈 guarda obs do visitante
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const ongId = localStorage.getItem('ongId');
   const ongName = localStorage.getItem('ongName');
@@ -92,6 +94,7 @@ export default function History() {
       Setor: visitor.sector || visitor.setor || 'Não informado',
       Placa: visitor.placa_veiculo || 'Não informado',
       Cor: visitor.cor_veiculo || 'Não informado',
+      Observação: visitor.observacao || 'Não informado',
       Entrada: visitor.entry_date
         ? new Date(visitor.entry_date).toLocaleString()
         : new Date(visitor.created_at).toLocaleString(),
@@ -109,18 +112,24 @@ export default function History() {
     saveAs(blob, "relatorio_visitas.xlsx");
   }
 
+  // 👇 abre modal e mostra observação
+  function handleOpenObservation(observacao) {
+    setSelectedObservation(observacao || 'Nenhuma observação cadastrada.');
+    setIsModalOpen(true);
+  }
+
   // ✅ Loading de tela cheia
   if (loading) return <Loading progress={progress} message="Carregando histórico..." />;
 
   return (
-    <div className="visitors-container">
-      <header>
-        <div className="ajuste-Titulo">
+    <div className="page-container">
+      <header className="page-header">
+        <div className="page-title-wrapper">
           <img src={logoImg} alt="DIME" />
           <span>Bem-vindo(a), {ongName}</span>
         </div>
 
-        <div className="search-container-history">
+        <div className="search-history">
           <FiSearch className="search-icon" size={16} />
           <input
             type="text"
@@ -137,12 +146,12 @@ export default function History() {
         </Link>
       </header>
 
-      <div className="page-headerhistory">
-        <button 
-          onClick={() => exportToExcel(filteredHistoryData)} 
-          className="report-button"
+      <div className="sub-lista">
+        <button
+          onClick={() => exportToExcel(filteredHistoryData)}
+          className="exportar-button excel"
         >
-          <img src={excel} alt="Excel" className="excel-icon" />
+          <FiFileText size={16} />
           Gerar Relatório
         </button>
 
@@ -159,7 +168,7 @@ export default function History() {
       </div>
 
       <div className="content">
-        <section className="visitors-history">
+        <section className="historico-visitas">
           <h1>Histórico</h1>
           <h2>Visitantes com visita encerrada</h2>
 
@@ -177,8 +186,10 @@ export default function History() {
                   <th>Placa</th>
                   <th>Cor</th>
                   <th>Responsavel</th>
+                  {/* <th>Obervação</th> */}
                   <th>Entrada</th>
                   <th>Saída</th>
+                  <th>Observação</th> 
                 </tr>
               </thead>
               <tbody>
@@ -192,15 +203,25 @@ export default function History() {
                     <td className='placaendcor'>{visitor.placa_veiculo || '-'}</td>
                     <td className='placaendcor'>{visitor.cor_veiculo || '-'}</td>
                     <td>{visitor.responsavel || 'Não informado'}</td>
+                    {/* <td>{visitor.observacao || 'Não informado'}</td> */}
                     <td>
                       {visitor.entry_date
                         ? new Date(visitor.entry_date).toLocaleString()
                         : new Date(visitor.created_at).toLocaleString()}
                     </td>
-                    <td>  
+                    <td>
                       {visitor.exit_date
                         ? new Date(visitor.exit_date).toLocaleString()
                         : 'Não informado'}
+                    </td>
+                    <td>
+                      <button
+                        onClick={() => handleOpenObservation(visitor.observacao)}
+                        className="observacao-button"
+                        title="Ver observação"
+                      >
+                        <FiSearch size={18} strokeWidth={3}/>
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -209,6 +230,19 @@ export default function History() {
           )}
         </section>
       </div>
+
+      {isModalOpen && (
+        <div className="modal-observacao-visitantes" onClick={() => setIsModalOpen(false)}>
+          <div className="modal-conteudo-visitantes" onClick={e => e.stopPropagation()}>
+            <h2>Observação</h2>
+            <p>{selectedObservation}</p>
+            <button onClick={() => setIsModalOpen(false)} className="fechar-modal">
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

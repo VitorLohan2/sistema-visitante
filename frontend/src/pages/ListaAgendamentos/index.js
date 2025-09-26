@@ -227,16 +227,16 @@ export default function Agendamentos() {
   if (loading) return <Loading progress={100} message="Carregando agendamentos..." />;
 
   return (
-    <div className="agendamentos-container">
-      <header>
-        <div className="ajuste-Titulo">
+    <div className="page-container">
+      <header className="page-header">
+        <div className="page-title-wrapper">
         <img src={logoImg} alt="DIME" />
         <span>Bem-vindo(a), {ongName}</span>
         </div>
 
-        <div className="header-actions">
+        <div className="acao-novo-agendamento">
           {ongId && userPodeCriar && (
-            <Link className="button" to="/agendamentos/novo">
+            <Link className="agendamento-button" to="/agendamentos/novo">
               <FiPlus size={16} />
               Novo Agendamento
             </Link>
@@ -249,7 +249,7 @@ export default function Agendamentos() {
         </div>
       </header>
 
-      <div className="page-content">
+      <div className="sub-informacao-agendamentos">
         <div className="page-title">
           <FiCalendar size={24} />
           <h1>Agendamentos de Visitas</h1>
@@ -258,7 +258,7 @@ export default function Agendamentos() {
             <div className="export-buttons">
               <button 
                 onClick={exportarExcel} 
-                className="export-button excel"
+                className="exportar-button excel"
               >
                 <FiFileText size={16} />
                 Excel
@@ -266,7 +266,7 @@ export default function Agendamentos() {
               
               <button 
                 onClick={exportarPDF} 
-                className="export-button pdf"
+                className="exportar-button pdf"
               >
                 <FiFileText size={16} />
                 PDF
@@ -286,7 +286,7 @@ export default function Agendamentos() {
           </div>
         ) : (
           <>
-            <div className="agendamentos-header">
+            <div className="notificacao-agendamentos">
               <p>Total de {agendamentos.length} agendamento(s)</p>
               {!ongId && ( // ✅ Mensagem para usuários não logados
                 <p className="info-text">Faça login para gerenciar agendamentos</p>

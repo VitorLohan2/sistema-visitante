@@ -364,6 +364,13 @@
   border: none;
 }
 
+.aviso-no-cadastro {
+  text-align: center;
+  color: #c00719;
+  font-weight: bold;
+  font-size: 16px;
+}
+
 
 /* Responsividade do modal */
 @media (max-width: 768px) {

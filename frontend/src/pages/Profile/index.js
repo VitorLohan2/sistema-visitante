@@ -437,7 +437,7 @@ export default function Profile() {
     fetchResponsaveis();
   }, []);
 
-  async function handleConfirmVisit(responsavel) {
+  async function handleConfirmVisit(responsavel, observacao) {
     try {
       await api.post('/visitors', {
         name: selectedIncident.nome,
@@ -446,7 +446,8 @@ export default function Profile() {
         sector: selectedIncident.setor,
         placa_veiculo: selectedIncident.placa_veiculo,
         cor_veiculo: selectedIncident.cor_veiculo,
-        responsavel
+        responsavel,
+        observacao
       }, {
         headers: { Authorization: ongId }
       });
@@ -459,7 +460,6 @@ export default function Profile() {
       alert('Erro ao registrar visita: ' + err.message);
     }
   }
-
 
   function handleEditProfile(id) {
     history.push(`/incidents/edit/${id}`);
@@ -723,6 +723,7 @@ export default function Profile() {
         onClose={() => setVisitModalVisible(false)}
         onConfirm={handleConfirmVisit}
         responsaveis={responsaveis.map(r => r.nome)}
+        incident={selectedIncident}
       />
 
     </div>

@@ -23,6 +23,7 @@ module.exports = {
     try {
       const visitors = await connection('visitors')
         //.where('ong_id', ong_id) // Ative se for multi-ONG
+        // .leftJoin('incidents', 'incidents.placa_veiculo', '=', 'visitors.placa_veiculo')
         .select([
           'id',
           'name',
@@ -32,6 +33,7 @@ module.exports = {
           'placa_veiculo',
           'cor_veiculo',
           'responsavel',
+          'observacao',
           'entry_date',
           'created_at'
         ]);
@@ -48,14 +50,14 @@ module.exports = {
 
   // Registrar nova entrada
   async create(request, response) {
-    const { name, cpf, company, sector, placa_veiculo, cor_veiculo, responsavel } = request.body;
+    const { name, cpf, company, sector, placa_veiculo, cor_veiculo, responsavel, observacao } = request.body;
     const ong_id = getBearerToken(request);
 
     if (!ong_id) {
       return response.status(401).json({ error: 'Authorization header é obrigatório' });
     }
 
-    console.log('🔍 Dados recebidos:', { name, cpf, company, sector, placa_veiculo, cor_veiculo, responsavel, ong_id });
+    console.log('🔍 Dados recebidos:', { name, cpf, company, sector, placa_veiculo, cor_veiculo, responsavel, observacao, ong_id });
 
     try {
       // ✅ VERIFICAÇÃO: Confirma se a ONG existe (igual ao padrão dos outros controllers)
@@ -81,6 +83,7 @@ module.exports = {
           placa_veiculo,
           cor_veiculo,
           responsavel,
+          observacao,
           entry_date: new Date(),
           ong_id,
         })
@@ -132,6 +135,7 @@ module.exports = {
         placa_veiculo: visitor.placa_veiculo,
         cor_veiculo: visitor.cor_veiculo,
         responsavel: visitor.responsavel,
+        observacao: visitor.observacao,
         entry_date: visitor.entry_date,
         exit_date: new Date().toISOString(),
         ong_id: visitor.ong_id
