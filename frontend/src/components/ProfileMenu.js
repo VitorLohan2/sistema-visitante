@@ -23,7 +23,7 @@ export default function ProfileMenu({ userData, unseenCount, handleOpenConfigMod
   }, []);
 
   return (
-    <div className="page-header">
+    <div className="page-profile-header">
       <button onClick={() => history.push('/visitors')} className="visitors-link">
         <FiUsers size={20} className="icone2" />
         <span>Ver Visitantes</span>

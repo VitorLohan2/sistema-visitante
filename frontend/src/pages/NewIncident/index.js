@@ -367,6 +367,7 @@ export default function NewVisitor() {
         </section>
 
         <form>
+          <p className='aviso-no-cadastro'>[ATENÇÃO] Se não houver placa, deixe em branco!!</p>
           <input
             name="nome"
             placeholder="Nome"

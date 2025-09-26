@@ -17,7 +17,7 @@ const EmpresasVisitantesController = require('./controllers/EmpresasVisitantesCo
 const SetoresVisitantesController = require('./controllers/SetoresVisitantesController');
 const AgendamentoController = require('./controllers/AgendamentoController');
 
-const ResponsibleController = require('./controllers/ResponsavelController');
+const ResponsavelController = require('./controllers/ResponsavelController');
 
 const multer = require('multer');
 const multerConfig = require('./config/multer');
@@ -152,7 +152,8 @@ routes.post('/visitors', celebrate({
     sector: Joi.string().required(),
     placa_veiculo: Joi.string().allow('', null).optional(),
     cor_veiculo: Joi.string().allow('', null).optional(),
-    responsavel: Joi.string().required()
+    responsavel: Joi.string().required(),
+    observacao: Joi.string().allow('', null).optional(),
   })
 }), VisitorController.create);
 
@@ -180,7 +181,7 @@ routes.get('/history',
 );
 
 // Buscar responsáveis (Modal de Liberar Visita)
-routes.get('/responsaveis', ResponsibleController.index);
+routes.get('/responsaveis', ResponsavelController.index);
 
 
 routes.get('/incidents/:id', IncidentController.show);

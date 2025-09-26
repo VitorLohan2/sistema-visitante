@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: 'https://sistema-visitante.onrender.com' //process.env.REACT_APP_API_URL || 'http://localhost:3333' https://visitante.dimeexperience.com.br
+  baseURL: 'http://localhost:3333' //process.env.REACT_APP_API_URL || 'http://localhost:3333' https://visitante.dimeexperience.com.br
 })
 
 //console.log('API Base URL:', api.defaults.baseURL); // Verifique no console
@@ -15,7 +15,7 @@ api.interceptors.request.use((config) => {
   }
   
   return config;
-}); 
+});   
 
 // Interceptor para tratar erros de autenticação
 api.interceptors.response.use(

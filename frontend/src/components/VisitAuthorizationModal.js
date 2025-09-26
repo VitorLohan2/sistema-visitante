@@ -1,16 +1,31 @@
 // src/components/VisitAuthorizationModal.js
-import React, { useState } from "react";
-import "../styles/visitAuthorization-Modal.css"; // estilos simples
+import React, { useState, useEffect } from "react";
+import "../styles/visitAuthorization-Modal.css";
 
 export default function VisitAuthorizationModal({ 
   visible, 
   onClose, 
   onConfirm, 
-  responsaveis = [] 
+  responsaveis = [],
+  incident = null // 🔹 Novo prop para receber dados do incidente
 }) {
   const [selected, setSelected] = useState("");
+  const [observacao, setObservacao] = useState("");
+
+  // 🔹 Quando o incidente mudar ou o modal abrir, carrega a observação existente
+  // useEffect(() => {
+  //   if (incident) {
+  //     setObservacao(incident.observacao || "");
+  //   }
+  // }, [incident]);
 
   if (!visible) return null;
+
+  const handleConfirm = () => {
+    if (selected) {
+      onConfirm(selected, observacao); // 🔹 Agora envia ambos os dados
+    }
+  };
 
   return (
     <div className="modal-authorization" onClick={onClose}>
@@ -27,9 +42,22 @@ export default function VisitAuthorizationModal({
           ))}
         </select>
 
+        {/* NOVO CAMPO PARA OBSERVAÇÃO */}
+        <div className="observacao-section">
+          <label htmlFor="observacao">Observação:</label>
+          <textarea
+            id="observacao"
+            value={observacao}
+            onChange={(e) => setObservacao(e.target.value)}
+            placeholder="Adicione uma observação para esta visita..."
+            rows={4}
+            className="observacao-textarea"
+          />
+        </div>
+
         <div className="modal-actions-authorization">
           <button 
-            onClick={() => selected && onConfirm(selected)} 
+            onClick={handleConfirm} 
             className="btn-confirm" 
             disabled={!selected}
           >

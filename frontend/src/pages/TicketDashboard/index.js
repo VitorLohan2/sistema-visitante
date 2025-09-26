@@ -142,9 +142,9 @@ const TicketDashboard = () => {
   if (loading) return <Loading progress={progress} message="Carregando Tickets..."/>;
 
   return (
-    <div className="ticket-dashboard">
-      <header>
-        <div className="ajuste-Titulo">
+    <div className="page-container">
+      <header className="page-header">
+        <div className="page-title-wrapper">
           <img src={logoImg} alt="DIME" />
           <span>Bem-vindo(a), {userData.nome}</span>
         </div>
@@ -154,13 +154,13 @@ const TicketDashboard = () => {
         </Link>
       </header>
 
-      <div className="ticket-header">
-        <div className="left-buttons">
-          <button onClick={handleNavigateToCreateTicket} className="tickets-dashboard">
+      <div className="sub-lista">
+        <div className="linha-esquerda-buttons">
+          <button onClick={handleNavigateToCreateTicket} className="ticket-button">
             <FiPlusCircle size={20} className="icone" />
             <span>Criar Ticket</span>
           </button>
-          <button onClick={exportToExcel} className="report-button">
+          <button onClick={exportToExcel} className="excel-button">
             <img src={excel} alt="Excel" className="excel-icon" />
             Gerar Relatório
           </button>
