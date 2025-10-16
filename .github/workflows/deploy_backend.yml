@@ -23,3 +23,23 @@ jobs:
 
       - name: Push da imagem para Docker Hub
         run: docker push ${{ secrets.DOCKER_USERNAME }}/liberae:latest
+
+  deploy:
+    name: Deploy via Docker Compose
+    runs-on: self-hosted
+    needs: build-and-push
+    steps:
+      - name: Atualizar containers com Docker Compose
+        working-directory: /home/dev/sistema/dev
+        run: |
+          echo "🔽 Derrubando containers antigos..."
+          docker compose down
+
+          echo "⬇️ Baixando nova imagem..."
+          docker compose pull
+
+          echo "🚀 Subindo containers atualizados..."
+          docker compose up -d
+
+          echo "🧹 Limpando imagens antigas..."
+          docker image prune -f
