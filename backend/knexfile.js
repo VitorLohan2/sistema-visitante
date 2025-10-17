@@ -21,6 +21,18 @@ module.exports = {
     useNullAsDefault: true,
   },
 
+  staging: {
+    client: 'pg',
+    connection: {
+      connectionString: process.env.DATABASE_URL_STAGING,
+      ssl: { rejectUnauthorized: false }, // necessário para o Neon
+    },
+    migrations: {
+      directory: './src/database/migrations',
+    },
+    useNullAsDefault: true,
+  },
+
   production: {
     client: 'pg',
     connection: {
@@ -32,5 +44,22 @@ module.exports = {
     },
     useNullAsDefault: true,
   },
+
+  docker: {
+    client: 'pg',
+    connection: {
+      host: process.env.DB_HOST_DOCKER || 'database', // hostname do serviço no docker-compose
+      port: process.env.DB_PORT_DOCKER || 5432,
+      user: process.env.DB_USER_DOCKER || 'neondb_owner',
+      password: process.env.DB_PASSWORD_DOCKER || 'npg_df6zhWi2aobk',
+      database: process.env.DB_NAME_DOCKER || 'neondb',
+      ssl: false,
+    },
+    migrations: {
+      directory: './src/database/migrations',
+    },
+    useNullAsDefault: true,
+  },
+
 };
 
