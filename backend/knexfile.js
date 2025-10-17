@@ -33,6 +33,23 @@ module.exports = {
     useNullAsDefault: true,
   },
 
+  // CONFIGURAÇÃO PARA PRODUÇÃO LOCAL
+  production_local: {
+    client: 'pg',
+    connection: {
+      host: process.env.DB_HOST || 'database',
+      port: process.env.DB_PORT || 5432,
+      user: process.env.DB_USER || 'neondb_owner_prod',
+      password: process.env.DB_PASSWORD || 'npg_prod_123segura',
+      database: process.env.DB_NAME || 'neondb_prod',
+      ssl: false, // ✅ SSL DESABILITADO para PostgreSQL local
+    },
+    migrations: {
+      directory: './src/database/migrations'
+    },
+    useNullAsDefault: true,
+  },
+
   production: {
     client: 'pg',
     connection: {
