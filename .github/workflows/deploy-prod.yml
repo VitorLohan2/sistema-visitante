@@ -1,11 +1,9 @@
 name: Deploy to Production
 
 on:
-  # roda automaticamente quando uma TAG é criada (ex: v1.2.0)
   push:
-    tags:
-      - 'v*'
-  # permite rodar manualmente via GitHub UI, escolhendo a tag
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       tag:
@@ -13,11 +11,61 @@ on:
         required: false
 
 jobs:
-  build-and-push:
-    name: Build and Push Image (for tag)
+  auto-tag:
+    name: Auto Semantic Version Tag
     runs-on: ubuntu-latest
     outputs:
-      tag: ${{ steps.define-tag.outputs.tag }}
+      tag: ${{ steps.set-tag.outputs.tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # necessário para ver tags
+
+      - name: Get latest tag
+        id: get-latest
+        run: |
+          LATEST_TAG=$(git describe --tags --abbrev=0 || echo "v0.0.0")
+          echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_OUTPUT
+
+      - name: Determine next version
+        id: set-tag
+        run: |
+          LATEST=${{ steps.get-latest.outputs.LATEST_TAG }}
+          MAJOR=$(echo $LATEST | cut -d. -f1 | sed 's/v//')
+          MINOR=$(echo $LATEST | cut -d. -f2)
+          PATCH=$(echo $LATEST | cut -d. -f3)
+
+          # Busca commits desde a última tag
+          COMMITS=$(git log $LATEST..HEAD --pretty=%B)
+
+          # Incrementa version conforme tipo de commit
+          if echo "$COMMITS" | grep -q -E "BREAKING CHANGE|major:"; then
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+          elif echo "$COMMITS" | grep -qE "^feat:"; then
+            MINOR=$((MINOR + 1))
+            PATCH=0
+          else
+            PATCH=$((PATCH + 1))
+          fi
+
+          NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "tag=$NEW_TAG" >> $GITHUB_OUTPUT
+
+          # Configura Git e envia a tag
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag $NEW_TAG
+          git push origin $NEW_TAG
+
+  build-and-push:
+    name: Build and Push Docker Image
+    needs: auto-tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ needs.auto-tag.outputs.tag }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -31,18 +79,9 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Define tag version
-        id: define-tag
-        run: |
-          if [ -n "${{ github.event.inputs.tag }}" ]; then
-            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
-          else
-            echo "tag=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
-          fi
-
       - name: Build and Push Docker Image
         run: |
-          IMAGE="${{ secrets.DOCKER_USERNAME }}/liberae:${{ steps.define-tag.outputs.tag }}"
+          IMAGE="${{ secrets.DOCKER_USERNAME }}/liberae:${{ needs.auto-tag.outputs.tag }}"
           echo "🏗️ Building $IMAGE"
           docker build -t "$IMAGE" ./backend
           docker push "$IMAGE"
@@ -65,11 +104,15 @@ jobs:
         working-directory: /home/dev/sistema/prod
         run: |
           set -e
+          set -a
           source /home/dev/sistema/prod/.deploy_env
+          set +a
+
           echo "🚀 Fazendo deploy da imagem: ${DOCKER_USERNAME}/liberae:${IMAGE_TAG}"
 
           docker compose -f docker-compose-prod.yml down
           docker compose -f docker-compose-prod.yml pull
           docker compose -f docker-compose-prod.yml up -d
           docker image prune -f
+
           echo "✅ Deploy de produção concluído com sucesso!"
