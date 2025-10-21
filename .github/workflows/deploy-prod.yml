@@ -1,54 +1,82 @@
-name: Deploy to Production
+name: Deploy to Production (tags only)
 
 on:
-  workflow_dispatch:  # Trigger manual pelo GitHub UI
+  # roda quando uma TAG é criada/pushada que combine com v*
   push:
-    branches: [main]  # Trigger automático ao fazer merge na main
+    tags:
+      - 'v*'
+  # ainda mantém opção manual pra deploy via UI (útil para rollback)
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag para deploy (ex: v1.2.3). Se preenchido, fará deploy dessa tag.'
+        required: false
 
 jobs:
-  build-and-deploy:
-    name: Build and Deploy to Production
+  build-and-push:
+    name: Build and Push Image (for tag)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout do código
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Login no Docker Hub
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Build da imagem de produção
+      - name: Determine release tag
+        id: tag
         run: |
-          echo "🏗️ Build da imagem de produção..."
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/liberae:prod ./backend
-          docker push ${{ secrets.DOCKER_USERNAME }}/liberae:prod
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            # github.ref_name contém o nome da tag para pushed tag events
+            echo "tag=${GITHUB_REF_NAME:-${{ github.ref_name }}}" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Atualizar imagem latest
+      - name: Build image with tag
         run: |
-          echo "🏷️ Atualizando imagem latest..."
-          docker tag ${{ secrets.DOCKER_USERNAME }}/liberae:prod ${{ secrets.DOCKER_USERNAME }}/liberae:latest
-          docker push ${{ secrets.DOCKER_USERNAME }}/liberae:latest
+          IMAGE="${{ secrets.DOCKER_USERNAME }}/liberae:${{ steps.tag.outputs.tag }}"
+          echo "Building $IMAGE"
+          docker build -t "$IMAGE" ./backend
+          docker push "$IMAGE"
+
+      # opcional: não force atualizar latest automaticamente. Se quiser, comente as linhas abaixo
+      - name: (Opcional) Update latest tag
+        if: false
+        run: |
+          IMAGE_PROD="${{ secrets.DOCKER_USERNAME }}/liberae:${{ steps.tag.outputs.tag }}"
+          docker tag "$IMAGE_PROD" "${{ secrets.DOCKER_USERNAME }}/liberae:latest"
+          docker push "${{ secrets.DOCKER_USERNAME }}/liberae:latest"
 
   deploy-prod:
     name: Deploy to Production Server
+    needs: build-and-push
     runs-on: self-hosted
-    needs: build-and-deploy
     steps:
-      - name: Deploy na produção
+      - name: Prepare .env on server
+        run: |
+          echo "IMAGE_TAG=${{ needs.build-and-push.outputs.tag || github.ref_name || github.event.inputs.tag }}" > /home/dev/sistema/prod/.deploy_env
+          echo "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}" >> /home/dev/sistema/prod/.deploy_env
+          # garante permissões
+          chmod 600 /home/dev/sistema/prod/.deploy_env
+
+      - name: Deploy na produção (EC2)
         working-directory: /home/dev/sistema/prod
         run: |
-          echo "🔽 Parando containers de produção..."
-          docker compose -f docker-compose-prod.yml down
-
-          echo "⬇️ Baixando nova imagem de produção..."
-          docker compose -f docker-compose-prod.yml pull
-
-          echo "🚀 Subindo produção atualizada..."
-          docker compose -f docker-compose-prod.yml up -d
-
-          echo "🧹 Limpando imagens antigas..."
+          set -e
+          source /home/dev/sistema/prod/.deploy_env
+          echo "Deploying image: ${DOCKER_USERNAME}/liberae:${IMAGE_TAG}"
+          # Faz pull direto da imagem com tag
+          docker compose -f docker-compose-prod.yml pull ${DOCKER_USERNAME}/liberae:${IMAGE_TAG} || true
+          # atualiza o arquivo .env usado pelo compose (se você preferir usar variáveis no compose)
+          printf "IMAGE_TAG=%s\nDOCKER_USERNAME=%s\n" "${IMAGE_TAG}" "${DOCKER_USERNAME}" > .env.deploy
+          # Subir containers apontando para a imagem com TAG - usa --no-build para garantir que use a imagem baixada
+          docker compose --env-file .env.deploy -f docker-compose-prod.yml up -d --remove-orphans
           docker image prune -f
-
-          echo "✅ Deploy de produção concluído!"
+          echo "✅ Deploy concluído: ${DOCKER_USERNAME}/liberae:${IMAGE_TAG}"
