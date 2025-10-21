@@ -1,4 +1,5 @@
-name: Deploy to Production (tags only)
+## TESTE
+name: Deploy to Production
 
 on:
   # roda automaticamente quando uma TAG é criada (ex: v1.2.0)
