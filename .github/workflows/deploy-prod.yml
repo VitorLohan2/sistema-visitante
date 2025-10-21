@@ -10,6 +10,9 @@ on:
         description: 'Tag para deploy (ex: v1.2.3). Se preenchido, fará deploy dessa tag.'
         required: false
 
+permissions:
+  contents: write  # 🔑 Permite criar e enviar tags (necessário para o git push)
+
 jobs:
   auto-tag:
     name: Auto Semantic Version Tag
@@ -21,7 +24,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0  # necessário para ver tags
-          persist-credentials: true  # permite push das tags
+          persist-credentials: true  # mantém o GITHUB_TOKEN para push
 
       - name: Get latest tag
         id: get-latest
@@ -31,6 +34,8 @@ jobs:
 
       - name: Determine next version
         id: set-tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # garante autenticação
         run: |
           LATEST=${{ steps.get-latest.outputs.LATEST_TAG }}
           MAJOR=$(echo $LATEST | cut -d. -f1 | sed 's/v//')
