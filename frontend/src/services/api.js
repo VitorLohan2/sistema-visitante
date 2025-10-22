@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: 'https://sistema-visitante.onrender.com' //process.env.REACT_APP_API_URL || 'http://localhost:3333' https://visitante.dimeexperience.com.br
+  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3001' //process.env.REACT_APP_API_URL || 'http://localhost:3001' https://visitante.dimeexperience.com.br  https://sistema-visitante.onrender.com
 })
 
 //console.log('API Base URL:', api.defaults.baseURL); // Verifique no console
