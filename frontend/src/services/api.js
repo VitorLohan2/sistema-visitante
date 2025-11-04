@@ -4,7 +4,9 @@ const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3001' //process.env.REACT_APP_API_URL || 'http://localhost:3001' https://visitante.dimeexperience.com.br  https://sistema-visitante.onrender.com
 })
 
-//console.log('API Base URL:', api.defaults.baseURL); // Verifique no console
+console.log('Variável de ambiente:', process.env.REACT_APP_API_URL);
+
+// console.log('API Base URL:', api.defaults.baseURL); // Verifique no console
 
 // Interceptor para adicionar o token automaticamente
 api.interceptors.request.use((config) => {

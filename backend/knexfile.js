@@ -5,21 +5,21 @@ require('dotenv').config();
 
 module.exports = {
 
-  development: {
-    client: process.env.DB_CLIENT || 'pg',
-    connection: {
-      host: process.env.DB_HOST || 'localhost',
-      user: process.env.DB_USER || 'postgres',
-      password: process.env.DB_PASSWORD || '',
-      database: process.env.DB_NAME || 'db_sistema_visitante',
-      port: process.env.DB_PORT || 5432,
-      ssl: { rejectUnauthorized: false },
-    },
-    migrations: {
-      directory: './src/database/migrations',
-    },
-    useNullAsDefault: true,
-  },
+  // development: {
+  //   client: process.env.DB_CLIENT || 'pg',
+  //   connection: {
+  //     host: process.env.DB_HOST || 'localhost',
+  //     user: process.env.DB_USER || 'postgres',
+  //     password: process.env.DB_PASSWORD || '',
+  //     database: process.env.DB_NAME || 'db_sistema_visitante',
+  //     port: process.env.DB_PORT || 5432,
+  //     ssl: { rejectUnauthorized: false },
+  //   },
+  //   migrations: {
+  //     directory: './src/database/migrations',
+  //   },
+  //   useNullAsDefault: true,
+  // },
 
   staging: {
     client: 'pg',
@@ -40,7 +40,7 @@ module.exports = {
       host: process.env.DB_HOST || 'database',
       port: process.env.DB_PORT || 5432,
       user: process.env.DB_USER || 'neondb_owner_prod',
-      password: process.env.DB_PASSWORD || 'npg_prod_123segura',
+      password: process.env.DB_PASSWORD || 'npg_prod_senha',
       database: process.env.DB_NAME || 'neondb_prod',
       ssl: false, // ✅ SSL DESABILITADO para PostgreSQL local
     },
