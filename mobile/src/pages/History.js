@@ -1,5 +1,5 @@
 // Página de Historico de Visitantes em React Native
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -13,40 +13,40 @@ import {
   ScrollView,
   Alert,
   Platform,
-  PermissionsAndroid
-} from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import DateTimePicker from '@react-native-community/datetimepicker';
+  PermissionsAndroid,
+} from "react-native";
+import { Feather } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
-import api from '../services/api';
-import logoImg from '../assets/logo.png';
-import pdfIcon from '../assets/file.png';
+import api from "../services/api";
+import logoImg from "../assets/logo.png";
+import pdfIcon from "../assets/file.png";
 
 export default function History() {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [filterDate, setFilterDate] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [historyData, setHistoryData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [ongName, setOngName] = useState('');
+  const [ongName, setOngName] = useState("");
 
   const navigation = useNavigation();
 
   useEffect(() => {
     async function loadData() {
-      const ongId = await AsyncStorage.getItem('@Auth:ongId');
-      const storedOngName = await AsyncStorage.getItem('@Auth:ongName');
-      
+      const ongId = await AsyncStorage.getItem("@Auth:ongId");
+      const storedOngName = await AsyncStorage.getItem("@Auth:ongName");
+
       if (storedOngName) {
         setOngName(storedOngName);
       }
 
       try {
-        const response = await api.get('history', {
+        const response = await api.get("history", {
           headers: {
             Authorization: ongId,
           },
@@ -59,8 +59,8 @@ export default function History() {
         });
         setHistoryData(sortedData);
       } catch (error) {
-        console.error('Erro ao carregar histórico:', error);
-        Alert.alert('Erro', 'Não foi possível carregar o histórico de visitas');
+        console.error("Erro ao carregar histórico:", error);
+        Alert.alert("Erro", "Não foi possível carregar o histórico de visitas");
       } finally {
         setLoading(false);
       }
@@ -70,7 +70,7 @@ export default function History() {
   }, []);
 
   const onChangeDate = (event, selectedDate) => {
-    setShowDatePicker(Platform.OS === 'ios');
+    setShowDatePicker(Platform.OS === "ios");
     if (selectedDate) {
       setFilterDate(selectedDate);
     }
@@ -84,9 +84,10 @@ export default function History() {
     setFilterDate(null);
   };
 
-  const filteredHistoryData = historyData.filter(visitor => {
+  const filteredHistoryData = historyData.filter((visitor) => {
     const matchesSearch =
-      (visitor.name && visitor.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (visitor.name &&
+        visitor.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (visitor.cpf && visitor.cpf.includes(searchTerm));
 
     if (!filterDate) return matchesSearch;
@@ -103,11 +104,11 @@ export default function History() {
   async function exportToPDF(data) {
     try {
       if (data.length === 0) {
-        Alert.alert('Aviso', 'Não há dados para exportar.');
+        Alert.alert("Aviso", "Não há dados para exportar.");
         return;
       }
 
-      if (Platform.OS === 'android') {
+      if (Platform.OS === "android") {
         const granted = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
           {
@@ -115,11 +116,14 @@ export default function History() {
             message: "O aplicativo precisa de permissão para salvar o PDF.",
             buttonNeutral: "Perguntar depois",
             buttonNegative: "Cancelar",
-            buttonPositive: "OK"
+            buttonPositive: "OK",
           }
         );
         if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-          Alert.alert('Permissão negada', 'Não foi possível salvar o PDF sem permissão.');
+          Alert.alert(
+            "Permissão negada",
+            "Não foi possível salvar o PDF sem permissão."
+          );
           return;
         }
       }
@@ -145,6 +149,9 @@ export default function History() {
                 <th>CPF</th>
                 <th>Empresa</th>
                 <th>Setor</th>
+                <th>Placa</th>
+                <th>Cor</th>
+                <th>Responsavel</th>
                 <th>Entrada</th>
                 <th>Saída</th>
               </tr>
@@ -154,10 +161,14 @@ export default function History() {
         htmlContent += `
           <tr>
             <td>${data.length - index}</td>
-            <td>${visitor.name || 'Não informado'}</td>
-            <td>${visitor.cpf || 'Não informado'}</td>
-            <td>${visitor.company || visitor.empresa || 'Não informado'}</td>
-            <td>${visitor.sector || visitor.setor || 'Não informado'}</td>
+            <td>${visitor.name || "Não informado"}</td>
+            <td>${visitor.cpf || "Não informado"}</td>
+            <td>${visitor.company || visitor.empresa || "Não informado"}</td>
+            <td>${visitor.sector || visitor.setor || "Não informado"}</td>
+            <td>${visitor.placa_veiculo || "Não informado"}</td>
+            <td>${visitor.cor_veiculo || "Não informado"}</td>
+            <td>${visitor.responsavel || "Não informado"}</td>
+            
             <td>${
               visitor.entry_date
                 ? new Date(visitor.entry_date).toLocaleString()
@@ -166,7 +177,7 @@ export default function History() {
             <td>${
               visitor.exit_date
                 ? new Date(visitor.exit_date).toLocaleString()
-                : 'Não informado'
+                : "Não informado"
             }</td>
           </tr>
         `;
@@ -183,30 +194,25 @@ export default function History() {
         html: htmlContent,
         width: 612,
         height: 792,
-        base64: false
+        base64: false,
       });
 
       if (!(await Sharing.isAvailableAsync())) {
-        Alert.alert(
-          'PDF Gerado',
-          `Arquivo salvo em: ${uri}`,
-          [{ text: 'OK' }]
-        );
+        Alert.alert("PDF Gerado", `Arquivo salvo em: ${uri}`, [{ text: "OK" }]);
         return;
       }
 
       await Sharing.shareAsync(uri, {
-        mimeType: 'application/pdf',
-        dialogTitle: 'Compartilhar Relatório PDF',
-        UTI: 'com.adobe.pdf'
+        mimeType: "application/pdf",
+        dialogTitle: "Compartilhar Relatório PDF",
+        UTI: "com.adobe.pdf",
       });
-
     } catch (error) {
-      console.error('Erro ao gerar PDF:', error);
+      console.error("Erro ao gerar PDF:", error);
       Alert.alert(
-        'Erro', 
-        'Não foi possível gerar o PDF. Por favor, tente novamente.',
-        [{ text: 'OK' }]
+        "Erro",
+        "Não foi possível gerar o PDF. Por favor, tente novamente.",
+        [{ text: "OK" }]
       );
     }
   }
@@ -214,11 +220,26 @@ export default function History() {
   function renderVisitorItem({ item, index }) {
     return (
       <View style={styles.visitorItem}>
-        <Text style={styles.visitorText}>{filteredHistoryData.length - index}</Text>
-        <Text style={styles.visitorText}>{item.name || 'Não informado'}</Text>
-        <Text style={styles.visitorText}>{item.cpf || 'Não informado'}</Text>
-        <Text style={styles.visitorText}>{item.company || item.empresa || 'Não informado'}</Text>
-        <Text style={styles.visitorText}>{item.sector || item.setor || 'Não informado'}</Text>
+        <Text style={styles.visitorText}>
+          {filteredHistoryData.length - index}
+        </Text>
+        <Text style={styles.visitorText}>{item.name || "Não informado"}</Text>
+        <Text style={styles.visitorText}>{item.cpf || "Não informado"}</Text>
+        <Text style={styles.visitorText}>
+          {item.company || item.empresa || "Não informado"}
+        </Text>
+        <Text style={styles.visitorText}>
+          {item.sector || item.setor || "Não informado"}
+        </Text>
+        <Text style={styles.visitorText}>
+          {item.placa_veiculo || "Não informado"}
+        </Text>
+        <Text style={styles.visitorText}>
+          {item.cor_veiculo || "Não informado"}
+        </Text>
+        <Text style={styles.visitorText}>
+          {item.responsavel || "Não informado"}
+        </Text>
         <Text style={styles.visitorText}>
           {item.entry_date
             ? new Date(item.entry_date).toLocaleString()
@@ -227,7 +248,7 @@ export default function History() {
         <Text style={styles.visitorText}>
           {item.exit_date
             ? new Date(item.exit_date).toLocaleString()
-            : 'Não informado'}
+            : "Não informado"}
         </Text>
       </View>
     );
@@ -244,23 +265,28 @@ export default function History() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={[styles.backButton, {flex: 1}]}
+        <TouchableOpacity
+          style={[styles.backButton, { flex: 1 }]}
           onPress={() => navigation.goBack()}
         >
           <Feather name="arrow-left" size={24} color="#E02041" />
           <Text style={styles.backText}>Voltar</Text>
         </TouchableOpacity>
-        
-        <View style={{flex: 2, alignItems: 'center'}}>
+
+        <View style={{ flex: 2, alignItems: "center" }}>
           <Text style={styles.logoText}>Histórico</Text>
         </View>
-        
-        <View style={{flex: 1}}></View>
+
+        <View style={{ flex: 1 }}></View>
       </View>
 
       <View style={styles.searchContainer}>
-        <Feather name="search" size={16} color="#999" style={styles.searchIcon} />
+        <Feather
+          name="search"
+          size={16}
+          color="#999"
+          style={styles.searchIcon}
+        />
         <TextInput
           style={styles.searchInput}
           placeholder="Consultar por nome ou CPF"
@@ -270,7 +296,7 @@ export default function History() {
       </View>
 
       <View style={styles.actionsContainer}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.reportButton}
           onPress={() => exportToPDF(filteredHistoryData)}
         >
@@ -279,18 +305,17 @@ export default function History() {
         </TouchableOpacity>
 
         <View style={styles.dateFilterContainer}>
-          <TouchableOpacity 
-            style={styles.dateButton}
-            onPress={showDatepicker}
-          >
+          <TouchableOpacity style={styles.dateButton} onPress={showDatepicker}>
             <Feather name="calendar" size={20} color="#10B981" />
             <Text style={styles.dateButtonText}>
-              {filterDate ? filterDate.toLocaleDateString('pt-BR') : 'Filtrar por data'}
+              {filterDate
+                ? filterDate.toLocaleDateString("pt-BR")
+                : "Filtrar por data"}
             </Text>
           </TouchableOpacity>
-          
+
           {filterDate && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.clearDateButton}
               onPress={clearDateFilter}
             >
@@ -304,7 +329,7 @@ export default function History() {
         <DateTimePicker
           value={filterDate || new Date()}
           mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          display={Platform.OS === "ios" ? "spinner" : "default"}
           onChange={onChangeDate}
         />
       )}
@@ -317,18 +342,23 @@ export default function History() {
             <Text style={styles.headerText}>CPF</Text>
             <Text style={styles.headerText}>Empresa</Text>
             <Text style={styles.headerText}>Setor</Text>
+            <Text style={styles.headerText}>Placa</Text>
+            <Text style={styles.headerText}>Cor</Text>
+            <Text style={styles.headerText}>Responsavel</Text>
             <Text style={styles.headerText}>Entrada</Text>
             <Text style={styles.headerText}>Saída</Text>
           </View>
 
           {filteredHistoryData.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>Nenhuma visita encerrada até o momento.</Text>
+              <Text style={styles.emptyText}>
+                Nenhuma visita encerrada até o momento.
+              </Text>
             </View>
           ) : (
             <FlatList
               data={filteredHistoryData}
-              keyExtractor={item => item.id.toString()}
+              keyExtractor={(item) => item.id.toString()}
               renderItem={renderVisitorItem}
             />
           )}
@@ -341,41 +371,41 @@ export default function History() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     paddingHorizontal: 16,
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   header: {
     marginTop: 50,
     marginBottom: 30,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 6,
   },
   backText: {
-    color: '#000',
+    color: "#000",
     fontSize: 18,
     marginLeft: 5,
   },
   logoText: {
     fontSize: 26,
-    fontWeight: 'bold',
-    color: '#000',
-    textAlign: 'center',
+    fontWeight: "bold",
+    color: "#000",
+    textAlign: "center",
   },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
     borderRadius: 8,
     paddingHorizontal: 8,
     marginBottom: 30,
@@ -388,14 +418,14 @@ const styles = StyleSheet.create({
     height: 40,
   },
   actionsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 15,
   },
   reportButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#000',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#000",
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
@@ -404,59 +434,59 @@ const styles = StyleSheet.create({
     marginRight: 5,
   },
   reportButtonText: {
-    color: '#fff',
+    color: "#fff",
   },
   dateFilterContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   dateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: '#10B981',
+    borderColor: "#10B981",
     borderRadius: 8,
     paddingVertical: 8,
     paddingHorizontal: 12,
   },
   dateButtonText: {
     marginLeft: 8,
-    color: '#10B981',
+    color: "#10B981",
   },
   clearDateButton: {
     marginLeft: 8,
     padding: 8,
   },
   blocoList: {
-    marginBottom: 50
+    marginBottom: 50,
   },
   tableHeader: {
-    flexDirection: 'row',
-    backgroundColor: '#f0f0f0',
+    flexDirection: "row",
+    backgroundColor: "#f0f0f0",
     paddingVertical: 10,
     paddingHorizontal: 5,
   },
   headerText: {
-    fontWeight: 'bold',
+    fontWeight: "bold",
     width: 120,
-    textAlign: 'center',
+    textAlign: "center",
   },
   visitorItem: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: "#eee",
     paddingVertical: 10,
     paddingHorizontal: 5,
   },
   visitorText: {
     width: 120,
-    textAlign: 'center',
+    textAlign: "center",
   },
   emptyContainer: {
     padding: 20,
-    alignItems: 'center',
+    alignItems: "center",
   },
   emptyText: {
-    color: '#666',
+    color: "#666",
   },
 });

@@ -1,37 +1,61 @@
 // src/routes.js
-import React from 'react';
-import { createStackNavigator } from '@react-navigation/stack';
+import React from "react";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-import Logon from './pages/Logon';
-import Profile from './pages/Profile';
-import Register from './pages/Register';
-import Visitors from './pages/Visitors';
-import History from './pages/History';
-import TicketDashboard from './pages/TicketDashboard';
-import Tickets from './pages/Tickets';
-import ViewVisitor from './pages/ViewVisitor';
-import EditIncident from './pages/EditIncident';
-import NewIncident from './pages/NewIncident';
-import RecuperarId from './pages/RecuperarId';
-import BiparCracha from './pages/BiparCracha';
+// 📌 Telas
+import Logon from "./pages/Logon";
+import Register from "./pages/Register";
+import RecuperarId from "./pages/RecuperarId";
 
-const Stack = createStackNavigator();
+import Profile from "./pages/Profile";
+import Visitors from "./pages/Visitors";
+import History from "./pages/History";
+
+import NewIncident from "./pages/NewIncident";
+import EditIncident from "./pages/EditIncident";
+import ViewVisitor from "./pages/ViewVisitor";
+
+import TicketDashboard from "./pages/TicketDashboard";
+import Tickets from "./pages/Tickets";
+
+import BiparCracha from "./pages/BiparCracha";
+
+import Agendamentos from "./pages/Agendamentos";
+
+const Stack = createNativeStackNavigator();
 
 export default function Routes() {
   return (
-    <Stack.Navigator initialRouteName="Logon">
-      <Stack.Screen name="Logon" component={Logon} options={{ headerShown: false }} />
-      <Stack.Screen name="Profile" component={Profile} options={{ headerShown: false }} />
-      <Stack.Screen name="Register" component={Register} options={{ headerShown: false }} />
-      <Stack.Screen name="Visitors" component={Visitors} options={{ headerShown: false }} />
-      <Stack.Screen name="History" component={History} options={{ headerShown: false }} />
-      <Stack.Screen name="TicketDashboard" component={TicketDashboard} options={{ headerShown: false }} />
-      <Stack.Screen name="Tickets" component={Tickets} options={{ headerShown: false }} />
-      <Stack.Screen name="ViewVisitor" component={ViewVisitor} options={{ headerShown: false }} />
-      <Stack.Screen name="EditIncident" component={EditIncident} options={{ headerShown: false }} />
-      <Stack.Screen name="NewIncident" component={NewIncident} options={{ headerShown: false }} />
-      <Stack.Screen name="RecuperarId" component={RecuperarId} options={{ headerShown: false }} />
-      <Stack.Screen name="BiparCracha" component={BiparCracha} options={{ headerShown: false }} />
+    <Stack.Navigator
+      initialRouteName="Logon"
+      screenOptions={{
+        headerShown: false,
+        animation: "slide_from_right",
+      }}
+    >
+      {/* ----------- ROTAS PÚBLICAS ------------ */}
+      <Stack.Screen name="Logon" component={Logon} />
+      <Stack.Screen name="Register" component={Register} />
+      <Stack.Screen name="RecuperarId" component={RecuperarId} />
+
+      {/* ----------- ROTAS INTERNAS / APÓS LOGIN ------------ */}
+      <Stack.Screen name="Profile" component={Profile} />
+      <Stack.Screen name="Visitors" component={Visitors} />
+      <Stack.Screen name="History" component={History} />
+
+      {/* ----------- INCIDENTES ------------ */}
+      <Stack.Screen name="NewIncident" component={NewIncident} />
+      <Stack.Screen name="EditIncident" component={EditIncident} />
+      <Stack.Screen name="ViewVisitor" component={ViewVisitor} />
+
+      {/* ----------- CHAMADOS / TICKETS ------------ */}
+      <Stack.Screen name="Tickets" component={Tickets} />
+      <Stack.Screen name="TicketDashboard" component={TicketDashboard} />
+
+      {/* ----------- BIPAGEM / CRACHÁ ------------ */}
+      <Stack.Screen name="BiparCracha" component={BiparCracha} />
+
+      <Stack.Screen name="Agendamentos" component={Agendamentos} />
     </Stack.Navigator>
   );
 }

@@ -1,5 +1,4 @@
-// Página de Perfil em React Native
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -11,294 +10,734 @@ import {
   Image,
   SafeAreaView,
   ActivityIndicator,
-} from 'react-native';
+  Modal,
+  Platform,
+  Animated,
+  Easing,
+  Dimensions,
+} from "react-native";
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import Feather from 'react-native-vector-icons/Feather';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { Picker } from "@react-native-picker/picker";
 
-import api from '../services/api'; // ajuste o caminho conforme seu projeto
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Feather from "react-native-vector-icons/Feather";
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 
-import logoImg from '../assets/gd.png';
-import disableImg from '../assets/disable.png'; // mesmo caminho dos assets do mobile
-import userIconImg from '../assets/user.png';
-import notificacaoSom from '../assets/notificacao.mp3'; // se usar expo-av ou react-native-sound
+import api from "../services/api";
 
-// Para tocar o som da notificação (expo-av)
-import { Audio } from 'expo-av';
+// Certifique-se de que estes assets estão corretos
+import logoImg from "../assets/gd.png";
+import userIconImg from "../assets/user.png"; // Ícone padrão para desbloqueado sem foto
+
+import notificacaoSom from "../assets/notificacao.mp3";
+import { Audio } from "expo-av";
 
 export default function Profile() {
   const [incidents, setIncidents] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [allIncidents, setAllIncidents] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [unseenCount, setUnseenCount] = useState(0);
-  const [userData, setUserData] = useState({ setor: '', nome: '' });
+  const [userData, setUserData] = useState({ setor: "", nome: "" });
+  const [empresasVisitantes, setEmpresasVisitantes] = useState([]);
+  const [setoresVisitantes, setSetoresVisitantes] = useState([]);
+
+  // ESTADOS PARA O MODAL DE VISITA
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedIncident, setSelectedIncident] = useState(null);
+  const [responsavel, setResponsavel] = useState("");
+  const [observacao, setObservacao] = useState(""); // Estado da observação
+  const [responsaveisList, setResponsaveisList] = useState([]); // Lista carregada da API
+
+  // ESTADOS PARA O MODAL DO MENU
+  const [menuModalVisible, setMenuModalVisible] = useState(false);
+  const modalPosition = useRef(new Animated.Value(-300)).current; // Inicia fora da tela (esquerda)
+  const overlayOpacity = useRef(new Animated.Value(0)).current;
+  const [isAnimating, setIsAnimating] = useState(false);
 
   const unseenRef = useRef(0);
   const isFirstLoad = useRef(true);
   const intervalRef = useRef(null);
-  const previousBlockedMapRef = useRef({});
+  const searchTimeoutRef = useRef(null);
 
   const navigation = useNavigation();
+  const { width, height } = Dimensions.get("window");
 
+  // ----------------------
+  // ANIMAÇÕES DO MENU MODAL - CORRIGIDAS
+  // ----------------------
+  const openMenuModal = () => {
+    if (isAnimating) return;
+
+    setIsAnimating(true);
+    setMenuModalVisible(true);
+
+    // Pequeno delay para garantir que o modal está montado
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(modalPosition, {
+          toValue: 0,
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(overlayOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setIsAnimating(false);
+      });
+    }, 10);
+  };
+
+  const closeMenuModal = () => {
+    if (isAnimating) return;
+
+    setIsAnimating(true);
+    Animated.parallel([
+      Animated.timing(modalPosition, {
+        toValue: -300,
+        duration: 250,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(overlayOpacity, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setMenuModalVisible(false);
+      setIsAnimating(false);
+    });
+  };
+
+  // ----------------------
+  // FORMATAR DATA
+  // ----------------------
   function formatarData(data) {
-    if (!data) return 'Data não informada';
-    const dataParte = data.split('T')[0];
-    const partes = dataParte.split('-');
+    if (!data) return "Data não informada";
+    const dataParte = data.split("T")[0];
+    const partes = dataParte.split("-");
     if (partes.length === 3) return `${partes[2]}/${partes[1]}/${partes[0]}`;
     return data;
   }
 
-  function sortIncidentsByName(array) {
-    return [...array].sort((a, b) =>
-      a.nome.toUpperCase().localeCompare(b.nome.toUpperCase())
-    );
-  }
+  // ----------------------
+  // MAPEAR DADOS COM EMPRESA/SETOR
+  // ----------------------
+  const mapIncidentsWithNames = (incidentsData) => {
+    return incidentsData.map((incident) => ({
+      ...incident,
+      empresa:
+        empresasVisitantes.find((e) => e.id === incident.empresa_id)?.nome ||
+        "Não informado",
+      setor:
+        setoresVisitantes.find((s) => s.id === incident.setor_id)?.nome ||
+        "Não informado",
+    }));
+  };
 
+  // ----------------------
+  // TOCAR SOM
+  // ----------------------
   async function playNotificationSound() {
     try {
       const { sound } = await Audio.Sound.createAsync(notificacaoSom);
       await sound.playAsync();
-      sound.setOnPlaybackStatusUpdate(status => {
+      sound.setOnPlaybackStatusUpdate((status) => {
         if (!status.isPlaying) sound.unloadAsync();
       });
-    } catch (error) {
-      console.log('Erro ao tocar som:', error);
+    } catch (err) {
+      console.log("Erro ao tocar som:", err);
     }
   }
 
-  async function fetchUnseenNotifications() {
-    const ongId = await AsyncStorage.getItem('@Auth:ongId');
-    if (!ongId) return;
-
+  // ----------------------
+  // CARREGAR RESPONSÁVEIS
+  // ----------------------
+  async function carregarResponsaveis() {
     try {
-      const unseenResponse = await api.get('/tickets/unseen', {
+      const ongId = await AsyncStorage.getItem("@Auth:ongId");
+      const response = await api.get("/responsaveis", {
         headers: { Authorization: ongId },
       });
-
-      const newCount = unseenResponse.data.count;playNotificationSound
-      if (!isFirstLoad.current && newCount > unseenRef.current) {
-        playNotificationSound();
-      }
-
-      unseenRef.current = newCount;
-      setUnseenCount(newCount);
-      isFirstLoad.current = false;
-    } catch (error) {
-      console.error('Erro ao buscar notificações:', error);
+      // Mapeia para strings
+      const nomesResponsaveis = (response.data || []).map((r) => r.nome);
+      setResponsaveisList(nomesResponsaveis);
+      setResponsavel(""); // Garante que o estado inicial seja vazio
+    } catch (err) {
+      console.error("Erro ao carregar responsáveis:", err);
+      // Fallback com lista básica de strings, se a API falhar
+      setResponsaveisList([
+        "Portaria",
+        "Recepção",
+        "Segurança",
+        "Administração",
+      ]);
+      setResponsavel("");
     }
   }
 
-  async function checkBlockedUsers() {
-    const ongId = await AsyncStorage.getItem('@Auth:ongId');
-    if (!ongId) return;
+  // ----------------------
+  // BUSCAR DADOS INICIAIS
+  // ----------------------
+  async function fetchInitialData() {
+    const ongId = await AsyncStorage.getItem("@Auth:ongId");
+    const ongName = await AsyncStorage.getItem("@Auth:ongName");
 
-    try {
-      const response = await api.get('/profile', {
-        headers: { Authorization: ongId },
-      });
-
-      const newIncidents = response.data;
-
-      const prevMap = previousBlockedMapRef.current;
-      const hasChanges = newIncidents.some(incident => {
-        const prevBlocked = prevMap[incident.id];
-        return prevBlocked !== undefined && prevBlocked !== incident.bloqueado;
-      });
-
-      previousBlockedMapRef.current = Object.fromEntries(
-        newIncidents.map(i => [i.id, i.bloqueado])
-      );
-
-      if (hasChanges) {
-        setIncidents(sortIncidentsByName(newIncidents));
-      }
-    } catch (error) {
-      console.error('Erro ao verificar bloqueios:', error);
-    }
-  }
-
-  async function fetchData() {
-    setLoading(true);
-
-    const ongId = await AsyncStorage.getItem('@Auth:ongId');
     if (!ongId) {
       setLoading(false);
-      return null;
+      return;
     }
 
     try {
+      // 1. Carrega empresas, setores e responsáveis
+      const [empresasResponse, setoresResponse] = await Promise.all([
+        api.get("/empresas-visitantes"),
+        api.get("/setores-visitantes"),
+      ]);
+
+      const empresas = empresasResponse.data || [];
+      const setores = setoresResponse.data || [];
+
+      setEmpresasVisitantes(empresas);
+      setSetoresVisitantes(setores);
+
+      // 2. Carrega responsáveis
+      await carregarResponsaveis();
+
+      // 3. Carrega dados da ONG
       const ongResponse = await api.get(`ongs/${ongId}`);
-      const setor = ongResponse.data.setor;
-      const nome = ongResponse.data.name;
+      const setor = ongResponse.data.setor || "";
+      const nome = ongResponse.data.name || ongName || "";
+
       setUserData({ setor, nome });
 
-      const profileResponse = await api.get('profile', {
+      // 4. Carrega todos os incidents
+      const profileResponse = await api.get("profile", {
         headers: { Authorization: ongId },
       });
 
-      const sorted = sortIncidentsByName(profileResponse.data);
-      setIncidents(sorted);
+      // 5. Mapeia com nomes de empresa/setor
+      const incidentsWithNames = profileResponse.data.map((incident) => ({
+        ...incident,
+        empresa:
+          empresas.find((e) => e.id === incident.empresa_id)?.nome ||
+          "Não informado",
+        setor:
+          setores.find((s) => s.id === incident.setor_id)?.nome ||
+          "Não informado",
+      }));
 
-      previousBlockedMapRef.current = Object.fromEntries(
-        sorted.map(i => [i.id, i.bloqueado])
-      );
+      // 6. Salva os dados
+      setAllIncidents(incidentsWithNames);
+      setIncidents(incidentsWithNames);
 
-      return setor;
+      // 7. Lógica de segurança
+      if (setor === "Segurança") {
+        const unseenResponse = await api.get("/tickets/unseen", {
+          headers: { Authorization: ongId },
+        });
+
+        const newCount = unseenResponse.data.count;
+        if (!isFirstLoad.current && newCount > unseenRef.current) {
+          playNotificationSound();
+        }
+
+        unseenRef.current = newCount;
+        setUnseenCount(newCount);
+        isFirstLoad.current = false;
+      }
     } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-      return null;
+      console.error("Erro ao carregar dados:", error.message);
     } finally {
       setLoading(false);
     }
   }
 
+  // ----------------------
+  // ATUALIZAÇÃO PERIÓDICA
+  // ----------------------
+  useEffect(() => {
+    if (!isSearching || allIncidents.length === 0) return;
+
+    const intervalId = setInterval(async () => {
+      try {
+        const ongId = await AsyncStorage.getItem("@Auth:ongId");
+
+        // Só atualiza se não estiver em busca ativa
+        if (!isSearching && searchTerm.trim() === "") {
+          const profileResponse = await api.get("profile", {
+            headers: { Authorization: ongId },
+          });
+
+          const incidentsWithNames = mapIncidentsWithNames(
+            profileResponse.data
+          );
+          setAllIncidents(incidentsWithNames);
+          setIncidents(incidentsWithNames);
+        }
+
+        // Sempre atualiza notificações de segurança
+        if (userData.setor === "Segurança") {
+          const unseenResponse = await api.get("/tickets/unseen", {
+            headers: { Authorization: ongId },
+          });
+
+          const newCount = unseenResponse.data.count;
+          if (newCount > unseenRef.current) {
+            playNotificationSound();
+          }
+
+          unseenRef.current = newCount;
+          setUnseenCount(newCount);
+        }
+      } catch (error) {
+        console.error("Erro na atualização automática:", error);
+      }
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [isSearching, searchTerm, userData.setor, allIncidents.length]);
+
+  // ----------------------
+  // BUSCA COM DEBOUNCE
+  // ----------------------
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      if (!searchTerm.trim()) {
+        setIsSearching(false);
+        setIncidents(allIncidents);
+        return;
+      }
+
+      setIsSearching(true);
+
+      try {
+        const searchLower = searchTerm.toLowerCase().trim();
+        const cpfNumbers = searchTerm.replace(/\D/g, "");
+
+        const localResults = allIncidents.filter((incident) => {
+          const hasName = incident.nome && typeof incident.nome === "string";
+          const hasCpf = incident.cpf && typeof incident.cpf === "string";
+
+          // Busca por nome
+          let nameMatch = false;
+          if (hasName) {
+            const nomeNormalizado = incident.nome.toLowerCase().trim();
+            nameMatch =
+              nomeNormalizado.includes(searchLower) &&
+              (nomeNormalizado.startsWith(searchLower) ||
+                nomeNormalizado.includes(" " + searchLower) ||
+                nomeNormalizado === searchLower);
+          }
+
+          // Busca por CPF
+          let cpfMatch = false;
+          if (hasCpf && cpfNumbers.length > 0) {
+            cpfMatch =
+              incident.cpf.includes(searchTerm) ||
+              incident.cpf.replace(/\D/g, "").includes(cpfNumbers);
+          }
+
+          return nameMatch || cpfMatch;
+        });
+
+        if (localResults.length > 0) {
+          setIncidents(localResults);
+        } else {
+          // Busca API
+          const response = await api.get("/search", {
+            params: { query: searchTerm },
+          });
+
+          const searchResults = mapIncidentsWithNames(response.data);
+          setIncidents(searchResults);
+        }
+      } catch (err) {
+        console.error("Erro na busca:", err);
+        // Fallback para busca local
+        const searchLower = searchTerm.toLowerCase().trim();
+        const cpfNumbers = searchTerm.replace(/\D/g, "");
+
+        const localResults = allIncidents.filter((incident) => {
+          const hasName = incident.nome && typeof incident.nome === "string";
+          const hasCpf = incident.cpf && typeof incident.cpf === "string";
+
+          let nameMatch = false;
+          if (hasName) {
+            const nomeNormalizado = incident.nome.toLowerCase().trim();
+            nameMatch =
+              nomeNormalizado.includes(searchLower) &&
+              (nomeNormalizado.startsWith(searchLower) ||
+                nomeNormalizado.includes(" " + searchLower) ||
+                nomeNormalizado === searchLower);
+          }
+
+          let cpfMatch = false;
+          if (hasCpf && cpfNumbers.length > 0) {
+            cpfMatch =
+              incident.cpf.includes(searchTerm) ||
+              incident.cpf.replace(/\D/g, "").includes(cpfNumbers);
+          }
+
+          return nameMatch || cpfMatch;
+        });
+
+        setIncidents(localResults);
+      }
+    }, 400);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchTerm, allIncidents]);
+
+  // ----------------------
+  // CICLO DE ATUALIZAÇÃO
+  // ----------------------
   useFocusEffect(
     React.useCallback(() => {
       let mounted = true;
 
-      fetchData().then(setor => {
-        if (!mounted || setor !== 'Segurança') return;
+      if (mounted) {
+        fetchInitialData();
+      }
 
-        fetchUnseenNotifications();
-        checkBlockedUsers();
+      const intervalId = setInterval(async () => {
+        if (mounted && userData.setor === "Segurança") {
+          try {
+            const ongId = await AsyncStorage.getItem("@Auth:ongId");
+            if (ongId) {
+              const unseenResponse = await api.get("/tickets/unseen", {
+                headers: { Authorization: ongId },
+              });
 
-        intervalRef.current = setInterval(() => {
-          fetchUnseenNotifications();
-          checkBlockedUsers();
-        }, 5000);
-      });
+              const newCount = unseenResponse.data.count;
+              if (newCount > unseenRef.current) {
+                playNotificationSound();
+              }
+
+              unseenRef.current = newCount;
+              setUnseenCount(newCount);
+            }
+          } catch (error) {
+            console.error("Erro na atualização automática:", error);
+          }
+        }
+      }, 2000);
 
       return () => {
         mounted = false;
-
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
-
-        isFirstLoad.current = true; // reset para não tocar som duplicado
+        clearInterval(intervalId);
       };
-    }, [])
+    }, [userData.setor])
   );
 
-  const filteredIncidents = incidents.filter(incident =>
-    incident.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    incident.cpf.includes(searchTerm)
+  // ----------------------
+  // FILTRO E ORDENAÇÃO
+  // ----------------------
+  const filteredIncidents = incidents.sort((a, b) =>
+    a.nome.localeCompare(b.nome)
   );
 
-  // navegação e ações (mantidas iguais)
+  // ----------------------
+  // AÇÕES PRINCIPAIS
+  // ----------------------
   function handleLogout() {
-    AsyncStorage.clear();
-    navigation.reset({ index: 0, routes: [{ name: 'Logon' }] });
+    Alert.alert("Sair", "Tem certeza que deseja sair?", [
+      {
+        text: "Sair",
+        style: "destructive",
+        onPress: () => {
+          AsyncStorage.clear();
+          navigation.reset({ index: 0, routes: [{ name: "Logon" }] });
+        },
+      },
+      { text: "Cancelar", style: "cancel" },
+    ]);
   }
 
   function handleNavigateToVisitors() {
-    navigation.navigate('Visitors');
+    navigation.navigate("Visitors");
   }
 
   function handleNavigateToHistory() {
-    navigation.navigate('History');
+    navigation.navigate("History");
   }
 
   function handleNavigateToTickets() {
-    navigation.navigate('TicketDashboard');
+    navigation.navigate("TicketDashboard");
   }
 
   function handleNavigateToBipagem() {
-    navigation.navigate('BiparCracha');
+    navigation.navigate("BiparCracha");
   }
 
+  // ----------------------
+  // REGISTRAR VISITA
+  // ----------------------
   async function handleRegisterVisit(id) {
     try {
-      const ongId = await AsyncStorage.getItem('@Auth:ongId');
-      const incident = incidents.find(inc => inc.id === id);
+      const incident = incidents.find((inc) => inc.id === id);
+
       if (!incident || incident.bloqueado) {
-        Alert.alert('Acesso Negado', 'Visitante bloqueado ou não encontrado.');
+        Alert.alert("Acesso Negado", "Visitante bloqueado ou não encontrado.");
         return;
       }
 
-      const response = await api.post('/visitors', {
-        name: incident.nome,
-        cpf: incident.cpf,
-        company: incident.empresa,
-        sector: incident.setor,
-      }, {
-        headers: { Authorization: ongId }
-      });
+      // Guarda o incidente selecionado
+      setSelectedIncident(incident);
+      setResponsavel("");
+      setObservacao("");
+      // Abre o modal customizado
+      setModalVisible(true);
+    } catch (err) {
+      Alert.alert("Erro", err.message);
+    }
+  }
+
+  async function confirmarVisita() {
+    // A validação agora checa se há um responsável (não a string vazia)
+    if (!selectedIncident || !responsavel.trim()) {
+      Alert.alert("Erro", "Selecione quem liberou a visita.");
+      return;
+    }
+
+    try {
+      const ongId = await AsyncStorage.getItem("@Auth:ongId");
+
+      const response = await api.post(
+        "/visitors",
+        {
+          name: selectedIncident.nome,
+          cpf: selectedIncident.cpf,
+          company: selectedIncident.empresa,
+          sector: selectedIncident.setor,
+          placa_veiculo: selectedIncident.placa_veiculo || "",
+          cor_veiculo: selectedIncident.cor_veiculo || "",
+          responsavel: responsavel,
+          observacao: observacao,
+        },
+        {
+          headers: { Authorization: ongId },
+        }
+      );
 
       if (response.status === 201) {
-        Alert.alert('Sucesso', 'Visita registrada!');
-        navigation.navigate('Visitors');
-      } else {
-        throw new Error('Resposta inesperada');
+        Alert.alert("Sucesso", "Visita registrada!");
+        setModalVisible(false);
+        setResponsavel("");
+        setObservacao("");
+        setSelectedIncident(null);
+        navigation.navigate("Visitors");
       }
     } catch (err) {
-      Alert.alert('Erro', err.message);
+      Alert.alert("Erro", err.response?.data?.error || err.message);
     }
   }
 
   function handleDeleteIncident(id) {
-    Alert.alert('Confirmação', 'Deseja deletar este cadastro?', [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert("Confirmação", "Deseja deletar este cadastro?", [
       {
-        text: 'Deletar',
-        style: 'destructive',
+        text: "Deletar",
+        style: "destructive",
         onPress: async () => {
           try {
-            const ongId = await AsyncStorage.getItem('@Auth:ongId');
-            const response = await api.delete(`incidents/${id}`, {
-              headers: { Authorization: ongId }
+            const ongId = await AsyncStorage.getItem("@Auth:ongId");
+
+            await api.delete(`incidents/${id}`, {
+              headers: { Authorization: ongId },
             });
-            if (response.status === 204) {
-              setIncidents(incidents.filter(inc => inc.id !== id));
-              Alert.alert('Sucesso', 'Cadastro deletado!');
-            }
+
+            const newAllIncidents = allIncidents.filter(
+              (incident) => incident.id !== id
+            );
+            const newIncidents = incidents.filter(
+              (incident) => incident.id !== id
+            );
+
+            setAllIncidents(newAllIncidents);
+            setIncidents(newIncidents);
+
+            Alert.alert("Sucesso", "Cadastro deletado!");
           } catch (err) {
-            Alert.alert('Erro', 'Erro ao deletar cadastro');
+            const error = err.response?.data?.error || err.message;
+            Alert.alert(`Acesso Bloqueado: ${error}`);
           }
-        }
-      }
+        },
+      },
+      { text: "Cancelar", style: "cancel" },
     ]);
   }
 
   function handleEditProfile(id) {
-    navigation.navigate('EditIncident', { id });
+    navigation.navigate("EditIncident", { id });
   }
 
   function handleViewProfile(id) {
-    navigation.navigate('ViewVisitor', { id });
+    navigation.navigate("ViewVisitor", { id });
   }
 
+  // ----------------------
+  // RENDER ITEM ATUALIZADO COM AVATAR E LAYOUT LADO A LADO
+  // ----------------------
   function renderIncident({ item }) {
+    if (item.bloqueado) {
+      console.log("🔒 Usuário bloqueado:", {
+        nome: item.nome,
+        avatar_imagem: item.avatar_imagem,
+        temAvatar: !!item.avatar_imagem,
+      });
+    }
+
+    const avatarSource = item.avatar_imagem
+      ? { uri: item.avatar_imagem }
+      : userIconImg;
+
     return (
-      <View style={styles.incidentItem}>
-        <View style={styles.incidentInfo}>
-          <Image
-            source={item.bloqueado ? disableImg : userIconImg}
-            style={styles.userIcon}
-          />
-          <Text style={[styles.incidentName, item.bloqueado && styles.blockedName]}>
-            {item.nome}
-          </Text>
+      <View
+        style={[
+          styles.incidentItem,
+          item.bloqueado && styles.incidentItemBlocked, // Estilo para card bloqueado
+        ]}
+      >
+        <View style={styles.cardLeft}>
+          {/* AVATAR DO USUÁRIO */}
+          <View style={styles.cardAvatar}>
+            <Image source={avatarSource} style={styles.avatarImage} />
+          </View>
+
+          <View style={styles.cardInfo}>
+            <View style={styles.incidentNameRow}>
+              <Text
+                style={[
+                  styles.incidentName,
+                  item.bloqueado && styles.blockedName,
+                ]}
+              >
+                {item.nome}
+              </Text>
+              {/* BADGE DE BLOQUEIO */}
+              {item.bloqueado && (
+                <View style={styles.blockedBadge}>
+                  <Text style={styles.blockedBadgeText}>BLOQUEADO</Text>
+                </View>
+              )}
+            </View>
+
+            {/* PRIMEIRA LINHA: Nascimento e CPF */}
+            <View style={styles.cardDetailRow}>
+              <View style={styles.cardDetailColumn}>
+                <Text style={styles.detailLabel}>Nascimento</Text>
+                <Text style={styles.incidentTextValue}>
+                  {formatarData(item.nascimento)}
+                </Text>
+              </View>
+              <View style={styles.cardDetailColumn}>
+                <Text style={styles.detailLabel}>CPF</Text>
+                <Text style={styles.incidentTextValue}>{item.cpf}</Text>
+              </View>
+            </View>
+
+            {/* SEGUNDA LINHA: Empresa e Setor */}
+            <View style={styles.cardDetailRow}>
+              <View style={styles.cardDetailColumn}>
+                <Text style={styles.detailLabel}>Empresa</Text>
+                <Text style={styles.incidentTextValue}>{item.empresa}</Text>
+              </View>
+              <View style={styles.cardDetailColumn}>
+                <Text style={styles.detailLabel}>Setor</Text>
+                <Text style={styles.incidentTextValue}>{item.setor}</Text>
+              </View>
+            </View>
+
+            {/* TERCEIRA LINHA: Placa e Cor */}
+            <View style={styles.cardDetailRow}>
+              <View style={styles.cardDetailColumn}>
+                <Text style={styles.detailLabel}>Placa</Text>
+                <Text style={styles.incidentTextValue}>
+                  {item.placa_veiculo || "-"}
+                </Text>
+              </View>
+              <View style={styles.cardDetailColumn}>
+                <Text style={styles.detailLabel}>Cor</Text>
+                <Text style={styles.incidentTextValue}>
+                  {item.cor_veiculo || "-"}
+                </Text>
+              </View>
+            </View>
+
+            {/* ÚLTIMA LINHA: Telefone (sozinho, largura total) */}
+            <View style={styles.cardDetailRow}>
+              <View style={styles.cardDetailColumnFull}>
+                <Text style={styles.detailLabel}>Telefone</Text>
+                <Text style={styles.incidentTextValue}>{item.telefone}</Text>
+              </View>
+            </View>
+          </View>
         </View>
-        <Text style={styles.incidentText}>Nascimento: {formatarData(item.nascimento)}</Text>
-        <Text style={styles.incidentText}>CPF: {item.cpf}</Text>
-        <Text style={styles.incidentText}>Empresa: {item.empresa}</Text>
-        <Text style={styles.incidentText}>Setor: {item.setor}</Text>
-        <Text style={styles.incidentText}>Telefone: {item.telefone}</Text>
-        <View style={styles.actionsContainer}>
-          <TouchableOpacity onPress={() => handleRegisterVisit(item.id)} style={styles.actionButton}>
-            <Feather name="user-plus" size={20} color="#34CB79" />
+
+        <View
+          style={[
+            styles.actionsContainer,
+            item.bloqueado && styles.incidentItemBlocked,
+          ]}
+        >
+          <TouchableOpacity
+            onPress={() => handleRegisterVisit(item.id)}
+            style={[styles.actionButton, styles.actionVisit]}
+            disabled={item.bloqueado}
+          >
+            <Feather
+              name="user-plus"
+              size={20}
+              color={item.bloqueado ? "#ccc" : "#34CB79"}
+            />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => handleViewProfile(item.id)} style={styles.actionButton}>
+
+          <TouchableOpacity
+            onPress={() => handleViewProfile(item.id)}
+            style={styles.actionButton}
+          >
             <Feather name="search" size={20} color="#000" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => handleEditProfile(item.id)} style={styles.actionButton}>
+
+          <TouchableOpacity
+            onPress={() => handleEditProfile(item.id)}
+            style={styles.actionButton}
+          >
             <Feather name="edit" size={20} color="#20a3e0" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => handleDeleteIncident(item.id)} style={styles.actionButton}>
+
+          {/* Botão de crachá */}
+          <TouchableOpacity
+            onPress={() => {
+              /* Lógica para Crachá aqui */ Alert.alert(
+                "Crachá",
+                "Funcionalidade de crachá."
+              );
+            }}
+            style={styles.actionButton}
+          >
+            <Feather name="user-check" size={20} color="#f9a825" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => handleDeleteIncident(item.id)}
+            style={styles.actionButton}
+          >
             <Feather name="trash-2" size={20} color="#e02041" />
           </TouchableOpacity>
         </View>
@@ -306,149 +745,948 @@ export default function Profile() {
     );
   }
 
+  // ----------------------
+  // LOADING
+  // ----------------------
   if (loading) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" color="#10B981" />
+        <Text style={styles.loadingText}>Carregando Listagem...</Text>
       </View>
     );
   }
 
+  // ----------------------
+  // INTERFACE PRINCIPAL
+  // ----------------------
   return (
     <SafeAreaView style={styles.container}>
+      {/* TOPO */}
       <View style={styles.header}>
         <View style={styles.logoRow}>
           <Image source={logoImg} style={styles.logo} />
+
           <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
             <Feather name="power" size={24} color="#e02041" />
           </TouchableOpacity>
         </View>
-        <Text style={styles.welcomeText}>Bem-vindo(a), {userData.nome || 'Usuário'}</Text>
+
+        <Text style={styles.welcomeText}>
+          Bem-vindo(a), {userData.nome || "Usuário"}
+        </Text>
+
         <View style={styles.searchContainer}>
           <Feather name="search" size={20} color="#999" />
           <TextInput
             placeholder="Consultar por nome ou CPF"
             style={styles.searchInput}
             value={searchTerm}
-            onChangeText={setSearchTerm}
+            onChangeText={(text) => {
+              setSearchTerm(text);
+              if (text.trim() === "") {
+                setIsSearching(false);
+              }
+            }}
           />
         </View>
+
         <View style={styles.navButtons}>
           <TouchableOpacity
             style={styles.navButton}
-            onPress={() => navigation.navigate('NewIncident')}>
+            onPress={() => navigation.navigate("NewIncident")}
+          >
             <Text style={styles.navButtonText}>Cadastrar Visitante</Text>
           </TouchableOpacity>
         </View>
       </View>
 
+      {/* INFO DA BUSCA */}
+      {isSearching && searchTerm && (
+        <View style={styles.searchInfo}>
+          <Text style={styles.searchInfoText}>
+            Buscando por "{searchTerm}" ({filteredIncidents.length} resultados)
+          </Text>
+        </View>
+      )}
+
+      {/* MENU COM CÍRCULOS COLORIDOS INDIVIDUAIS */}
       <View style={styles.menu}>
-        <TouchableOpacity onPress={handleNavigateToVisitors} style={styles.menuButton}>
-          <Feather name="users" size={26} color="#000" />
-          <Text>Ver Visitantes</Text>
+        {/* VISITANTES - VERDE */}
+        <TouchableOpacity
+          onPress={handleNavigateToVisitors}
+          style={styles.menuButton}
+        >
+          <View style={[styles.menuIconCircle, styles.visitantesCircle]}>
+            <Feather name="users" size={24} color="#000" />
+          </View>
+          <Text style={styles.menuButtonText}>Visitantes</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={handleNavigateToHistory} style={styles.menuButton}>
-          <Feather name="clock" size={26} color="#000" />
-          <Text>Histórico</Text>
+
+        {/* HISTÓRICO - AZUL */}
+        <TouchableOpacity
+          onPress={handleNavigateToHistory}
+          style={styles.menuButton}
+        >
+          <View style={[styles.menuIconCircle, styles.historicoCircle]}>
+            <Feather name="clock" size={24} color="#000" />
+          </View>
+          <Text style={styles.menuButtonText}>Histórico</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={handleNavigateToTickets} style={styles.menuButton}>
-          <Feather name="message-square" size={26} color="#000" />
-          <Text>Tickets</Text>
-          {userData.setor === 'Segurança' && unseenCount > 0 && (
+
+        <TouchableOpacity
+          onPress={handleNavigateToTickets}
+          style={styles.menuButton}
+        >
+          <View style={[styles.menuIconCircle, styles.ticketsCircle]}>
+            <Feather name="message-square" size={24} color="#000" />
+          </View>
+          <Text style={styles.menuButtonText}>Tickets</Text>
+          {userData.setor === "Segurança" && unseenCount > 0 && (
             <View style={styles.notificationBadge}>
-              <Text style={styles.notificationText}>{unseenCount > 9 ? '9+' : unseenCount}</Text>
+              <Text style={styles.notificationText}>
+                {unseenCount > 9 ? "9+" : unseenCount}
+              </Text>
             </View>
           )}
         </TouchableOpacity>
-        <TouchableOpacity onPress={handleNavigateToBipagem} style={styles.menuButton}>
-          <MaterialCommunityIcons name="barcode-scan" size={26} color="#000" />
-          <Text>Bipagem</Text>
+
+        {/* CRACHÁ - AMARELO */}
+        <TouchableOpacity
+          onPress={handleNavigateToBipagem}
+          style={styles.menuButton}
+        >
+          <View style={[styles.menuIconCircle, styles.crachaCircle]}>
+            <MaterialCommunityIcons
+              name="barcode-scan"
+              size={24}
+              color="#000"
+            />
+          </View>
+          <Text style={styles.menuButtonText}>Cracha</Text>
+        </TouchableOpacity>
+
+        {/* MENU - ROXO */}
+        <TouchableOpacity
+          onPress={openMenuModal}
+          style={styles.menuButton}
+          disabled={isAnimating}
+        >
+          <View style={[styles.menuIconCircle, styles.menuCircle]}>
+            <MaterialCommunityIcons name="menu" size={24} color="#000" />
+          </View>
+          <Text style={styles.menuButtonText}>Menu</Text>
         </TouchableOpacity>
       </View>
 
+      {/* TÍTULO */}
+      <Text style={styles.title}>Visitantes Cadastrados</Text>
+
+      {/* LISTA */}
       <FlatList
         data={filteredIncidents}
-        keyExtractor={item => String(item.id)}
+        keyExtractor={(item) => String(item.id)}
         renderItem={renderIncident}
         contentContainerStyle={{ paddingBottom: 20 }}
         ListEmptyComponent={() => (
           <View style={styles.emptyContainer}>
-            <Text>Nenhum cadastro encontrado.</Text>
+            <Text style={styles.emptyText}>
+              {searchTerm
+                ? `Nenhum resultado encontrado para "${searchTerm}"`
+                : "Nenhum cadastro encontrado"}
+            </Text>
           </View>
         )}
       />
+
+      {/* MODAL PARA REGISTRAR VISITA (AJUSTADO PARA PICKER) */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => {
+          setModalVisible(false);
+          setResponsavel("");
+          setObservacao("");
+          setSelectedIncident(null);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Registrar Visita</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setModalVisible(false);
+                  setResponsavel("");
+                  setObservacao("");
+                  setSelectedIncident(null);
+                }}
+                style={styles.modalCloseButton}
+              >
+                <Feather name="x" size={24} color="#000" />
+              </TouchableOpacity>
+            </View>
+
+            {selectedIncident && (
+              <>
+                <Text style={styles.modalText}>
+                  Registrar visita para:{" "}
+                  <Text style={{ fontWeight: "bold" }}>
+                    {selectedIncident.nome}
+                  </Text>
+                </Text>
+
+                <Text style={styles.modalLabel}>Quem liberou?</Text>
+
+                <View style={styles.pickerWrapper}>
+                  <Picker
+                    selectedValue={responsavel}
+                    onValueChange={(itemValue) => {
+                      // Se selecionar a opção vazia, o TextInput abaixo pode ser usado
+                      setResponsavel(itemValue);
+                    }}
+                    style={styles.pickerStyle}
+                  >
+                    <Picker.Item
+                      label="Selecione um responsável"
+                      value=""
+                      color="#999"
+                    />
+                    {responsaveisList.map((resp, index) => (
+                      <Picker.Item key={index} label={resp} value={resp} />
+                    ))}
+                  </Picker>
+                </View>
+
+                {/* CAMPO DE OBSERVAÇÃO */}
+                <Text style={styles.modalLabel}>Observação:</Text>
+                <TextInput
+                  style={[styles.responsavelInput, styles.observacaoInput]}
+                  placeholder="Adicione uma observação para esta visita..."
+                  value={observacao}
+                  onChangeText={setObservacao}
+                  multiline={true}
+                  numberOfLines={4}
+                />
+
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.modalButtonCancel]}
+                    onPress={() => {
+                      setModalVisible(false);
+                      setResponsavel("");
+                      setObservacao("");
+                      setSelectedIncident(null);
+                    }}
+                  >
+                    <Text style={styles.modalButtonCancelText}>Cancelar</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.modalButton,
+                      styles.modalButtonConfirm,
+                      !responsavel.trim() && styles.modalButtonDisabled,
+                    ]}
+                    onPress={confirmarVisita}
+                    disabled={!responsavel.trim()}
+                  >
+                    <Text style={styles.modalButtonConfirmText}>
+                      Confirmar Visita
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL DO MENU - MODERNO E TECNOLÓGICO - SEMPRE NO DOM */}
+      <Animated.View
+        style={[
+          styles.menuModalOverlay,
+          {
+            opacity: overlayOpacity,
+            display: menuModalVisible ? "flex" : "none",
+          },
+        ]}
+        pointerEvents={menuModalVisible ? "auto" : "none"}
+      >
+        <TouchableOpacity
+          style={styles.menuModalBackdrop}
+          activeOpacity={1}
+          onPress={closeMenuModal}
+        />
+        <Animated.View
+          style={[
+            styles.menuModalContainer,
+            {
+              transform: [{ translateX: modalPosition }],
+              width: width * 0.75,
+            },
+          ]}
+        >
+          {/* CABEÇALHO DO MENU */}
+          <View style={styles.menuModalHeader}>
+            <View style={styles.menuModalHeaderContent}>
+              <View style={styles.menuModalUserInfo}>
+                <View style={styles.menuModalAvatar}>
+                  <Feather name="user" size={40} color="#10B981" />
+                </View>
+                <View>
+                  <Text style={styles.menuModalUserName}>
+                    {userData.nome || "Usuário"}
+                  </Text>
+                  <Text style={styles.menuModalUserSetor}>
+                    {userData.setor || "Setor não informado"}
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={closeMenuModal}
+                style={styles.menuModalCloseButton}
+                disabled={isAnimating}
+              >
+                <Feather name="x" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* LISTA DE OPÇÕES DO MENU */}
+          <View style={styles.menuModalOptions}>
+            <TouchableOpacity
+              style={styles.menuModalOption}
+              onPress={() => {
+                closeMenuModal();
+                navigation.navigate("Agendamentos");
+              }}
+              disabled={isAnimating}
+            >
+              <View
+                style={[
+                  styles.menuModalIcon,
+                  { backgroundColor: "rgba(16, 185, 129, 0.1)" },
+                ]}
+              >
+                <Feather name="calendar" size={24} color="#10B981" />
+              </View>
+              <View style={styles.menuModalOptionContent}>
+                <Text style={styles.menuModalOptionTitle}>Agendamentos</Text>
+                <Text style={styles.menuModalOptionDescription}>
+                  Visitas Agendadas
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuModalOption}
+              onPress={() => {
+                closeMenuModal();
+                Alert.alert(
+                  "Em desenvolvimento",
+                  "Funcionalidade de Relatórios em desenvolvimento"
+                );
+              }}
+              disabled={isAnimating}
+            >
+              <View
+                style={[
+                  styles.menuModalIcon,
+                  { backgroundColor: "rgba(32, 163, 224, 0.1)" },
+                ]}
+              >
+                <Feather name="users" size={24} color="#20a3e0" />
+              </View>
+              <View style={styles.menuModalOptionContent}>
+                <Text style={styles.menuModalOptionTitle}>
+                  Gerenciador de Funcionários
+                </Text>
+                <Text style={styles.menuModalOptionDescription}>
+                  Controle de Funcionários
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuModalOption}
+              onPress={() => {
+                closeMenuModal();
+                Alert.alert(
+                  "Em desenvolvimento",
+                  "Funcionalidade de Relatórios em desenvolvimento"
+                );
+              }}
+              disabled={isAnimating}
+            >
+              <View
+                style={[
+                  styles.menuModalIcon,
+                  { backgroundColor: "rgba(32, 45, 224, 0.1)" },
+                ]}
+              >
+                <Feather name="briefcase" size={24} color="#202de0ff" />
+              </View>
+              <View style={styles.menuModalOptionContent}>
+                <Text style={styles.menuModalOptionTitle}>
+                  Cadastrar Empresas
+                </Text>
+                <Text style={styles.menuModalOptionDescription}>
+                  Empresa não cadastrado
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* CONFIGURAÇÕES */}
+            <TouchableOpacity
+              style={styles.menuModalOption}
+              onPress={() => {
+                closeMenuModal();
+                Alert.alert(
+                  "Em desenvolvimento",
+                  "Funcionalidade de Configurações em desenvolvimento"
+                );
+              }}
+              disabled={isAnimating}
+            >
+              <View
+                style={[
+                  styles.menuModalIcon,
+                  { backgroundColor: "rgba(249, 168, 37, 0.1)" },
+                ]}
+              >
+                <Feather name="settings" size={24} color="#f9a825" />
+              </View>
+              <View style={styles.menuModalOptionContent}>
+                <Text style={styles.menuModalOptionTitle}>Configurações</Text>
+                <Text style={styles.menuModalOptionDescription}>
+                  Configurações do sistema
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* SUPORTE */}
+            <TouchableOpacity
+              style={styles.menuModalOption}
+              onPress={() => {
+                closeMenuModal();
+                Alert.alert(
+                  "Em desenvolvimento",
+                  "Funcionalidade de Suporte em desenvolvimento"
+                );
+              }}
+              disabled={isAnimating}
+            >
+              <View
+                style={[
+                  styles.menuModalIcon,
+                  { backgroundColor: "rgba(224, 32, 65, 0.1)" },
+                ]}
+              >
+                <Feather name="help-circle" size={24} color="#e02041" />
+              </View>
+              <View style={styles.menuModalOptionContent}>
+                <Text style={styles.menuModalOptionTitle}>Suporte</Text>
+                <Text style={styles.menuModalOptionDescription}>
+                  Central de ajuda e suporte
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* SAIR */}
+            <TouchableOpacity
+              style={styles.menuModalOption}
+              onPress={() => {
+                closeMenuModal();
+                handleLogout();
+              }}
+              disabled={isAnimating}
+            >
+              <View
+                style={[
+                  styles.menuModalIcon,
+                  { backgroundColor: "rgba(160, 174, 192, 0.1)" },
+                ]}
+              >
+                <Feather name="log-out" size={24} color="#a0aec0" />
+              </View>
+              <View style={styles.menuModalOptionContent}>
+                <Text style={styles.menuModalOptionTitle}>Sair</Text>
+                <Text style={styles.menuModalOptionDescription}>
+                  Sair do sistema
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* RODAPÉ DO MENU */}
+          <View style={styles.menuModalFooter}>
+            <Text style={styles.menuModalVersion}>v1.0.0</Text>
+            <Text style={styles.menuModalCopyright}>
+              © 2025 Sistema Liberaê
+            </Text>
+          </View>
+        </Animated.View>
+      </Animated.View>
+
       <View style={styles.margin}></View>
     </SafeAreaView>
   );
 }
 
+// ----------------------
+// ESTILOS ATUALIZADOS
+// ----------------------
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 16, backgroundColor: '#fff' },
+  container: { flex: 1, paddingHorizontal: 16, backgroundColor: "#fff" },
   header: {},
   logo: { width: 54, height: 60 },
   welcomeText: { fontSize: 16, marginTop: 20, marginBottom: 25 },
   searchContainer: {
-    flexDirection: 'row', alignItems: 'center',
-    borderColor: '#ddd', borderWidth: 1,
-    paddingHorizontal: 8, borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    borderColor: "#ddd",
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    borderRadius: 8,
     marginBottom: 25,
   },
   searchInput: { flex: 1, height: 40, marginLeft: 8 },
-  navButtons: { alignItems: 'center' },
+  navButtons: { alignItems: "center" },
   navButton: {
-    width: '100%', backgroundColor: '#10B981',
-    padding: 15, borderRadius: 8
+    width: "100%",
+    backgroundColor: "#10B981",
+    padding: 15,
+    borderRadius: 8,
   },
-  navButtonText: { textAlign: 'center', color: '#fff', fontWeight: 'bold' },
+  navButtonText: { textAlign: "center", color: "#fff", fontWeight: "bold" },
   logoutButton: { padding: 8 },
   menu: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginVertical: 30
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginVertical: 20,
+    paddingBottom: 0,
   },
-  menuButton: { alignItems: 'center' },
+  menuButton: {
+    alignItems: "center",
+    position: "relative",
+    width: 60, // Largura fixa para melhor alinhamento
+  },
+  menuButtonText: {
+    fontSize: 12,
+    marginTop: 6,
+    textAlign: "center",
+  },
+  // NOVOS ESTILOS PARA OS CÍRCULOS DO MENU
+  menuIconCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  visitantesCircle: {
+    backgroundColor: "rgba(16, 185, 129, 0.12)",
+  },
+  historicoCircle: {
+    backgroundColor: "rgba(16, 185, 129, 0.16)",
+  },
+  ticketsCircle: {
+    backgroundColor: "rgba(16, 185, 129, 0.20)",
+  },
+  crachaCircle: {
+    backgroundColor: "rgba(16, 185, 129, 0.24)",
+  },
+  menuCircle: {
+    backgroundColor: "rgba(16, 185, 129, 0.28)",
+  },
   notificationBadge: {
-    backgroundColor: '#e02041',
+    backgroundColor: "#e02041",
     borderRadius: 12,
     paddingHorizontal: 6,
-    position: 'absolute',
-    top: -6,
-    right: -10,
+    position: "absolute",
+    top: -5,
+    right: 0,
+    minWidth: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1,
   },
   notificationText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
+  // ------------------------------------
+  // NOVOS ESTILOS PARA O CARD DE VISITANTE
+  // ------------------------------------
   incidentItem: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
     padding: 12,
     marginBottom: 12,
     borderRadius: 8,
   },
-  incidentInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  incidentItemBlocked: {
+    // Estilo para o card quando bloqueado
+    borderColor: "#e02041",
+    backgroundColor: "#ffebeb",
+    borderTopColor: "#e02041",
+  },
+  cardLeft: {
+    // Container para avatar e informações
+    flexDirection: "row",
+    alignItems: "flex-start",
     marginBottom: 8,
   },
-  userIcon: { width: 16, height: 16, marginRight: 8 },
-  incidentName: { fontSize: 16, fontWeight: 'bold', flexShrink: 1, maxWidth: '85%' },
-  blockedName: { color: 'red' },
-  incidentText: { fontSize: 14, marginBottom: 4 },
+  cardAvatar: {
+    // Container do avatar (círculo)
+    width: 55,
+    height: 55,
+    borderRadius: 27.5,
+    marginRight: 12,
+    overflow: "hidden",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f0f0f0",
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
+  cardInfo: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  incidentNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+    flexWrap: "wrap",
+    marginTop: 2, // Ajuste vertical
+  },
+  incidentName: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginRight: 8,
+  },
+  blockedName: { color: "#e02041" },
+  blockedBadge: {
+    // Estilo para o badge "BLOQUEADO"
+    backgroundColor: "#bd040a",
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    alignSelf: "flex-start",
+  },
+  blockedBadgeText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+
+  // ESTILOS NOVOS PARA O LAYOUT LADO A LADO
+  cardDetailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
+  cardDetailColumn: {
+    width: "48%",
+  },
+  cardDetailColumnFull: {
+    width: "100%",
+  },
+  detailLabel: {
+    fontSize: 12,
+    color: "#888",
+    fontWeight: "normal",
+    textTransform: "uppercase",
+  },
+  incidentTextValue: {
+    fontSize: 14,
+    color: "#000",
+    fontWeight: "600",
+  },
+
   actionsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
+    paddingTop: 8,
   },
   actionButton: { padding: 8 },
-  emptyContainer: { alignItems: 'center', marginTop: 40 },
-  loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  // ------------------------------------
+  emptyContainer: {
+    alignItems: "center",
+    marginTop: 40,
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+  },
+  loading: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: "#666",
+  },
   logoRow: {
     marginTop: 40,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-  margin: { marginBottom: 40 }
+  margin: { marginBottom: 40 },
+  title: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 15,
+    textAlign: "center",
+  },
+  searchInfo: {
+    backgroundColor: "#f0f0f0",
+    padding: 8,
+    borderRadius: 4,
+    marginBottom: 10,
+  },
+  searchInfoText: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+  },
+  // Estilos do Modal de Visita
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 20,
+    width: "100%",
+    maxWidth: 400,
+    maxHeight: "80%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    paddingBottom: 10,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  modalCloseButton: {
+    padding: 5,
+  },
+  modalText: {
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  modalLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 10,
+    color: "#333",
+  },
+  // Estilo para o Picker
+  pickerWrapper: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    overflow: "hidden",
+    marginBottom: 15,
+  },
+  pickerStyle: {
+    height: Platform.OS === "ios" ? 150 : 50,
+    width: "100%",
+  },
+  outroLabel: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 10,
+    marginBottom: 5,
+  },
+  responsavelInput: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    textAlignVertical: "top",
+  },
+  observacaoInput: {
+    minHeight: 100,
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 20,
+  },
+  modalButton: {
+    flex: 0.48,
+    padding: 15,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  modalButtonCancel: {
+    backgroundColor: "#f0f0f0",
+  },
+  modalButtonConfirm: {
+    backgroundColor: "#10B981",
+  },
+  modalButtonDisabled: {
+    backgroundColor: "#ccc",
+  },
+  modalButtonCancelText: {
+    color: "#333",
+    fontWeight: "600",
+  },
+  modalButtonConfirmText: {
+    color: "white",
+    fontWeight: "600",
+  },
+  // ESTILOS DO MODAL DO MENU - ATUALIZADOS
+  menuModalOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "flex-start",
+  },
+  menuModalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+  },
+  menuModalContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    bottom: 0,
+    backgroundColor: "#fff",
+    borderTopRightRadius: 20,
+    borderBottomRightRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 5,
+      height: 0,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 15,
+    elevation: 10,
+    overflow: "hidden",
+  },
+  menuModalHeader: {
+    // Cabeçalho Menu Lateral
+    backgroundColor: "#f8fafc",
+    paddingVertical: 20,
+    paddingTop: 50,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
+  },
+  menuModalHeaderContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  menuModalUserInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  menuModalAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#edf2f7",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  menuModalUserName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#2d3748",
+  },
+  menuModalUserSetor: {
+    fontSize: 14,
+    color: "#718096",
+    marginTop: 2,
+  },
+  menuModalCloseButton: {
+    padding: 4,
+  },
+  menuModalOptions: {
+    flex: 1,
+    paddingVertical: 16,
+  },
+  menuModalOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
+  },
+  menuModalIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  menuModalOptionContent: {
+    flex: 1,
+  },
+  menuModalOptionTitle: {
+    fontSize: 15,
+    fontWeight: "500",
+    color: "#2d3748",
+    marginBottom: 2,
+  },
+  menuModalOptionDescription: {
+    fontSize: 12,
+    color: "#718096",
+  },
+  menuModalFooter: {
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: "#e2e8f0",
+    alignItems: "center",
+  },
+  menuModalVersion: {
+    fontSize: 12,
+    color: "#a0aec0",
+    marginBottom: 4,
+  },
+  menuModalCopyright: {
+    fontSize: 11,
+    color: "#cbd5e0",
+  },
 });

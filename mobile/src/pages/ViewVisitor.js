@@ -1,5 +1,5 @@
 // Página para Visualizar Perfil do Visitante em React Native
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -10,13 +10,13 @@ import {
   TextInput,
   Modal,
   ActivityIndicator,
-  Alert
-} from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+  Alert,
+} from "react-native";
+import { Feather } from "@expo/vector-icons";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import api from '../services/api';
+import api from "../services/api";
 
 export default function ViewVisitor() {
   const route = useRoute();
@@ -24,36 +24,35 @@ export default function ViewVisitor() {
   const navigation = useNavigation();
   const [visitor, setVisitor] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
-  const [ongName, setOngName] = useState('');
+  const [ongName, setOngName] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
-      const ongId = await AsyncStorage.getItem('@Auth:ongId');
-      const storedOngName = await AsyncStorage.getItem('@Auth:ongName');
-      
+      const ongId = await AsyncStorage.getItem("@Auth:ongId");
+      const storedOngName = await AsyncStorage.getItem("@Auth:ongName");
+
       if (storedOngName) {
         setOngName(storedOngName);
       }
 
       try {
         const response = await api.get(`/incidents/${id}`, {
-          headers: { Authorization: ongId }
+          headers: { Authorization: ongId },
         });
-        
+
         // Extrai as fotos dos campos imagem1, imagem2, imagem3
         const fotos = [];
         if (response.data.imagem1) fotos.push(response.data.imagem1);
         if (response.data.imagem2) fotos.push(response.data.imagem2);
         if (response.data.imagem3) fotos.push(response.data.imagem3);
-        
+
         setVisitor({
           ...response.data,
-          fotos // Adiciona o array de fotos ao state
+          fotos, // Adiciona o array de fotos ao state
         });
-        
       } catch (err) {
-        Alert.alert('Erro', 'Erro ao buscar o cadastro.');
+        Alert.alert("Erro", "Erro ao buscar o cadastro.");
         navigation.goBack();
       } finally {
         setLoading(false);
@@ -64,13 +63,13 @@ export default function ViewVisitor() {
   }, [id, navigation]);
 
   const formatCPF = (cpf) => {
-    if (!cpf) return '';
-    return cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+    if (!cpf) return "";
+    return cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
   };
 
   const formatTelefone = (tel) => {
-    if (!tel) return '';
-    return tel.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
+    if (!tel) return "";
+    return tel.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
   };
 
   if (loading) {
@@ -92,7 +91,10 @@ export default function ViewVisitor() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, {flex: 1}]}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={[styles.backButton, { flex: 1 }]}
+        >
           <Feather name="arrow-left" size={24} color="#E02041" />
           <Text style={styles.backText}>Voltar</Text>
         </TouchableOpacity>
@@ -100,7 +102,9 @@ export default function ViewVisitor() {
 
       <View style={styles.content}>
         <Text style={styles.title}>Visualização de Cadastro</Text>
-        <Text style={styles.subtitle}>Informações detalhadas do visitante.</Text>
+        <Text style={styles.subtitle}>
+          Informações detalhadas do visitante.
+        </Text>
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>Nome</Text>
@@ -148,6 +152,24 @@ export default function ViewVisitor() {
         </View>
 
         <View style={styles.formGroup}>
+          <Text style={styles.label}>Placa do Veículo</Text>
+          <TextInput
+            style={styles.input}
+            value={visitor.placa_veiculo}
+            editable={false}
+          />
+        </View>
+
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Cor do Veículo</Text>
+          <TextInput
+            style={styles.input}
+            value={visitor.cor_veiculo}
+            editable={false}
+          />
+        </View>
+
+        <View style={styles.formGroup}>
           <Text style={styles.label}>Telefone</Text>
           <TextInput
             style={styles.input}
@@ -160,7 +182,7 @@ export default function ViewVisitor() {
           <Text style={styles.label}>Observação</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
-            value={visitor.observacao || ''}
+            value={visitor.observacao || ""}
             editable={false}
             multiline
           />
@@ -175,11 +197,11 @@ export default function ViewVisitor() {
                 style={styles.photoThumbnail}
                 onPress={() => setSelectedImage(foto)}
               >
-              <Image
-                style={styles.thumbnailImage}
-                source={{ uri: foto }}
-                onError={() => console.log('Erro ao carregar imagem', foto)}
-              />
+                <Image
+                  style={styles.thumbnailImage}
+                  source={{ uri: foto }}
+                  onError={() => console.log("Erro ao carregar imagem", foto)}
+                />
                 <Text style={styles.photoLabel}>Foto {index + 1}</Text>
               </TouchableOpacity>
             ))
@@ -198,7 +220,10 @@ export default function ViewVisitor() {
         transparent={true}
         onRequestClose={() => setSelectedImage(null)}
       >
-        <View style={styles.modalContainer} onPress={() => setSelectedImage(null)}>
+        <View
+          style={styles.modalContainer}
+          onPress={() => setSelectedImage(null)}
+        >
           <TouchableOpacity
             style={styles.closeButton}
             onPress={() => setSelectedImage(null)}
@@ -219,27 +244,27 @@ export default function ViewVisitor() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     paddingHorizontal: 16,
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginTop: 50,
     marginBottom: 30,
   },
   backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 6,
   },
   backText: {
-    color: '#000',
+    color: "#000",
     fontSize: 18,
     marginLeft: 5,
   },
@@ -248,12 +273,12 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 22,
-    fontWeight: 'bold',
-    color: '#13131a',
+    fontWeight: "bold",
+    color: "#13131a",
   },
   subtitle: {
     fontSize: 16,
-    color: '#737380',
+    color: "#737380",
     marginBottom: 20,
   },
   formGroup: {
@@ -261,68 +286,68 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    color: '#000',
+    color: "#000",
     marginBottom: 8,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    backgroundColor: '#f0f0f5',
+    borderColor: "#ccc",
+    backgroundColor: "#f0f0f5",
     borderRadius: 8,
     paddingHorizontal: 16,
     fontSize: 16,
-    color: '#000',
+    color: "#000",
   },
   textArea: {
     height: 100,
     paddingTop: 10,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
   },
   photoGallery: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
     marginTop: 10,
   },
   photoThumbnail: {
-    width: '48%',
+    width: "48%",
     marginBottom: 16,
-    alignItems: 'center',
+    alignItems: "center",
   },
   thumbnailImage: {
-    width: '100%',
+    width: "100%",
     height: 150,
     borderRadius: 8,
-    backgroundColor: '#f0f0f5',
+    backgroundColor: "#f0f0f5",
   },
   photoLabel: {
     marginTop: 8,
-    color: '#737380',
+    color: "#737380",
   },
   noPhotos: {
-    width: '100%',
-    alignItems: 'center',
+    width: "100%",
+    alignItems: "center",
     padding: 20,
-    backgroundColor: '#f0f0f5',
+    backgroundColor: "#f0f0f5",
     borderRadius: 8,
   },
   noPhotosText: {
     marginTop: 8,
-    color: '#737380',
+    color: "#737380",
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.9)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalImage: {
-    width: '90%',
-    height: '80%',
+    width: "90%",
+    height: "80%",
   },
   closeButton: {
-    position: 'absolute',
+    position: "absolute",
     top: 40,
     right: 20,
     zIndex: 1,
