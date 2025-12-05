@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -26,14 +26,18 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 
 import api from "../services/api";
 
-// Certifique-se de que estes assets estão corretos
-import logoImg from "../assets/gd.png";
-import userIconImg from "../assets/user.png"; // Ícone padrão para desbloqueado sem foto
+// Importações dos hooks do SocketContext
+import { useSocket } from "../contexts/SocketContext";
 
+// Assets
+import logoImg from "../assets/gd.png";
+import userIconImg from "../assets/user.png";
 import notificacaoSom from "../assets/notificacao.mp3";
 import { Audio } from "expo-av";
 
 export default function Profile() {
+  const socket = useSocket();
+
   const [incidents, setIncidents] = useState([]);
   const [allIncidents, setAllIncidents] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -48,131 +52,61 @@ export default function Profile() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedIncident, setSelectedIncident] = useState(null);
   const [responsavel, setResponsavel] = useState("");
-  const [observacao, setObservacao] = useState(""); // Estado da observação
-  const [responsaveisList, setResponsaveisList] = useState([]); // Lista carregada da API
+  const [observacao, setObservacao] = useState("");
+  const [responsaveisList, setResponsaveisList] = useState([]);
 
   // ESTADOS PARA O MODAL DO MENU
   const [menuModalVisible, setMenuModalVisible] = useState(false);
-  const modalPosition = useRef(new Animated.Value(-300)).current; // Inicia fora da tela (esquerda)
+  const modalPosition = useRef(new Animated.Value(-300)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const [isAnimating, setIsAnimating] = useState(false);
 
   const unseenRef = useRef(0);
   const isFirstLoad = useRef(true);
-  const intervalRef = useRef(null);
   const searchTimeoutRef = useRef(null);
+
+  // ✅ REFS para valores estáveis (NÃO causam re-render)
+  const empresasRef = useRef([]);
+  const setoresRef = useRef([]);
+  const userDataRef = useRef({ setor: "", nome: "" });
 
   const navigation = useNavigation();
   const { width, height } = Dimensions.get("window");
 
   // ----------------------
-  // ANIMAÇÕES DO MENU MODAL - CORRIGIDAS
-  // ----------------------
-  const openMenuModal = () => {
-    if (isAnimating) return;
-
-    setIsAnimating(true);
-    setMenuModalVisible(true);
-
-    // Pequeno delay para garantir que o modal está montado
-    setTimeout(() => {
-      Animated.parallel([
-        Animated.timing(modalPosition, {
-          toValue: 0,
-          duration: 300,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(overlayOpacity, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setIsAnimating(false);
-      });
-    }, 10);
-  };
-
-  const closeMenuModal = () => {
-    if (isAnimating) return;
-
-    setIsAnimating(true);
-    Animated.parallel([
-      Animated.timing(modalPosition, {
-        toValue: -300,
-        duration: 250,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(overlayOpacity, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setMenuModalVisible(false);
-      setIsAnimating(false);
-    });
-  };
-
-  // ----------------------
-  // FORMATAR DATA
-  // ----------------------
-  function formatarData(data) {
-    if (!data) return "Data não informada";
-    const dataParte = data.split("T")[0];
-    const partes = dataParte.split("-");
-    if (partes.length === 3) return `${partes[2]}/${partes[1]}/${partes[0]}`;
-    return data;
-  }
-
-  // ----------------------
-  // MAPEAR DADOS COM EMPRESA/SETOR
-  // ----------------------
-  const mapIncidentsWithNames = (incidentsData) => {
-    return incidentsData.map((incident) => ({
-      ...incident,
-      empresa:
-        empresasVisitantes.find((e) => e.id === incident.empresa_id)?.nome ||
-        "Não informado",
-      setor:
-        setoresVisitantes.find((s) => s.id === incident.setor_id)?.nome ||
-        "Não informado",
-    }));
-  };
-
-  // ----------------------
   // TOCAR SOM
   // ----------------------
-  async function playNotificationSound() {
+  const playNotificationSound = useCallback(async () => {
     try {
       const { sound } = await Audio.Sound.createAsync(notificacaoSom);
-      await sound.playAsync();
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (!status.isPlaying) sound.unloadAsync();
+
+      // ✅ Configura o callback ANTES de tocar
+      sound.setOnPlaybackStatusUpdate(async (status) => {
+        if (status.didJustFinish && !status.isLooping) {
+          await sound.unloadAsync();
+        }
       });
+
+      await sound.playAsync();
     } catch (err) {
       console.log("Erro ao tocar som:", err);
     }
-  }
+  }, []);
 
   // ----------------------
   // CARREGAR RESPONSÁVEIS
   // ----------------------
-  async function carregarResponsaveis() {
+  const carregarResponsaveis = useCallback(async () => {
     try {
       const ongId = await AsyncStorage.getItem("@Auth:ongId");
       const response = await api.get("/responsaveis", {
         headers: { Authorization: ongId },
       });
-      // Mapeia para strings
       const nomesResponsaveis = (response.data || []).map((r) => r.nome);
       setResponsaveisList(nomesResponsaveis);
-      setResponsavel(""); // Garante que o estado inicial seja vazio
+      setResponsavel("");
     } catch (err) {
       console.error("Erro ao carregar responsáveis:", err);
-      // Fallback com lista básica de strings, se a API falhar
       setResponsaveisList([
         "Portaria",
         "Recepção",
@@ -181,12 +115,12 @@ export default function Profile() {
       ]);
       setResponsavel("");
     }
-  }
+  }, []);
 
   // ----------------------
-  // BUSCAR DADOS INICIAIS
+  // ✅ BUSCAR DADOS INICIAIS - OTIMIZADA
   // ----------------------
-  async function fetchInitialData() {
+  const fetchInitialData = useCallback(async () => {
     const ongId = await AsyncStorage.getItem("@Auth:ongId");
     const ongName = await AsyncStorage.getItem("@Auth:ongName");
 
@@ -196,7 +130,7 @@ export default function Profile() {
     }
 
     try {
-      // 1. Carrega empresas, setores e responsáveis
+      // 1. Carrega empresas, setores e responsáveis em paralelo
       const [empresasResponse, setoresResponse] = await Promise.all([
         api.get("/empresas-visitantes"),
         api.get("/setores-visitantes"),
@@ -205,8 +139,11 @@ export default function Profile() {
       const empresas = empresasResponse.data || [];
       const setores = setoresResponse.data || [];
 
+      // ✅ Atualiza TANTO state QUANTO ref
       setEmpresasVisitantes(empresas);
       setSetoresVisitantes(setores);
+      empresasRef.current = empresas;
+      setoresRef.current = setores;
 
       // 2. Carrega responsáveis
       await carregarResponsaveis();
@@ -217,6 +154,7 @@ export default function Profile() {
       const nome = ongResponse.data.name || ongName || "";
 
       setUserData({ setor, nome });
+      userDataRef.current = { setor, nome };
 
       // 4. Carrega todos os incidents
       const profileResponse = await api.get("profile", {
@@ -238,6 +176,12 @@ export default function Profile() {
       setAllIncidents(incidentsWithNames);
       setIncidents(incidentsWithNames);
 
+      console.log(
+        "✅ Dados carregados:",
+        incidentsWithNames.length,
+        "registros"
+      );
+
       // 7. Lógica de segurança
       if (setor === "Segurança") {
         const unseenResponse = await api.get("/tickets/unseen", {
@@ -245,65 +189,196 @@ export default function Profile() {
         });
 
         const newCount = unseenResponse.data.count;
-        if (!isFirstLoad.current && newCount > unseenRef.current) {
-          playNotificationSound();
-        }
-
         unseenRef.current = newCount;
         setUnseenCount(newCount);
         isFirstLoad.current = false;
+
+        // ⚠️ NÃO TOQUE SOM AQUI!
+        console.log(`📊 Carregados ${newCount} tickets não vistos (sem som)`);
       }
     } catch (error) {
       console.error("Erro ao carregar dados:", error.message);
     } finally {
       setLoading(false);
     }
-  }
+  }, [carregarResponsaveis]);
 
   // ----------------------
-  // ATUALIZAÇÃO PERIÓDICA
+  // ✅ RECARREGAR TICKETS NÃO VISUALIZADOS
+  // ----------------------
+  const loadUnseenTickets = useCallback(async () => {
+    try {
+      const ongId = await AsyncStorage.getItem("@Auth:ongId");
+
+      if (userDataRef.current.setor !== "Segurança") {
+        return; // Só carrega se for Segurança
+      }
+
+      const unseenResponse = await api.get("/tickets/unseen", {
+        headers: { Authorization: ongId },
+      });
+
+      const newCount = unseenResponse.data.count;
+
+      unseenRef.current = newCount;
+      setUnseenCount(newCount);
+
+      console.log(`🎫 Tickets atualizados: ${newCount} não vistos`);
+    } catch (error) {
+      console.error("Erro ao carregar tickets não visualizados:", error);
+    }
+  }, []);
+
+  // ----------------------
+  // SOCKET.IO LISTENER
   // ----------------------
   useEffect(() => {
-    if (!isSearching || allIncidents.length === 0) return;
+    if (!socket) {
+      console.log("⚠️ Aguardando socket conectar...");
+      return;
+    }
 
-    const intervalId = setInterval(async () => {
+    if (!socket.connected) {
+      console.log("⚠️ Socket existe mas não está conectado");
+      return;
+    }
+
+    console.log("🔌 Registrando listeners do Socket no Profile:", socket.id);
+
+    // ✅ REF para controlar se já tocou o som recentemente
+    let lastSoundTime = 0;
+    const SOUND_COOLDOWN = 1000; // 1 segundo entre sons
+
+    // ✅ HANDLER PARA VISITANTES (SEM SOM)
+    const handleSocketUpdate = async (data) => {
+      console.log("═══════════════════════════════════════");
+      console.log("🔥 EVENTO SOCKET RECEBIDO - VISITANTE");
+      console.log("📦 Dados:", data);
+      console.log("═══════════════════════════════════════");
+
       try {
         const ongId = await AsyncStorage.getItem("@Auth:ongId");
+        if (!ongId) return;
 
-        // Só atualiza se não estiver em busca ativa
-        if (!isSearching && searchTerm.trim() === "") {
-          const profileResponse = await api.get("profile", {
-            headers: { Authorization: ongId },
-          });
+        const profileResponse = await api.get("profile", {
+          headers: { Authorization: ongId },
+        });
 
-          const incidentsWithNames = mapIncidentsWithNames(
-            profileResponse.data
-          );
-          setAllIncidents(incidentsWithNames);
-          setIncidents(incidentsWithNames);
-        }
+        const incidentsWithNames = profileResponse.data.map((incident) => ({
+          ...incident,
+          empresa:
+            empresasRef.current.find((e) => e.id === incident.empresa_id)
+              ?.nome || "Não informado",
+          setor:
+            setoresRef.current.find((s) => s.id === incident.setor_id)?.nome ||
+            "Não informado",
+        }));
 
-        // Sempre atualiza notificações de segurança
-        if (userData.setor === "Segurança") {
+        setAllIncidents(incidentsWithNames);
+        setIncidents(incidentsWithNames);
+
+        console.log("✅ Lista de visitantes atualizada");
+      } catch (error) {
+        console.error("❌ Erro ao atualizar visitantes:", error.message);
+      }
+    };
+
+    // ✅ HANDLER PARA NOVO TICKET (COM SOM + COOLDOWN)
+    const handleTicketCreate = async (ticketData) => {
+      console.log("🎫 NOVO TICKET CRIADO VIA SOCKET:", ticketData);
+
+      // ⚠️ Só toca se for setor Segurança
+      if (userDataRef.current.setor !== "Segurança") {
+        console.log("⏭️ Não é Segurança, som não será tocado");
+        return;
+      }
+
+      // ✅ Cooldown para evitar múltiplos sons
+      const now = Date.now();
+      if (now - lastSoundTime < SOUND_COOLDOWN) {
+        console.log("⏭️ Som bloqueado por cooldown");
+        return;
+      }
+
+      lastSoundTime = now;
+
+      // 🔊 Toca o som
+      console.log("🔊 Tocando notificação...");
+      await playNotificationSound();
+
+      // Atualiza contador
+      try {
+        const ongId = await AsyncStorage.getItem("@Auth:ongId");
+        if (ongId) {
           const unseenResponse = await api.get("/tickets/unseen", {
             headers: { Authorization: ongId },
           });
 
           const newCount = unseenResponse.data.count;
-          if (newCount > unseenRef.current) {
-            playNotificationSound();
-          }
-
           unseenRef.current = newCount;
           setUnseenCount(newCount);
+          console.log(`🔢 Contador atualizado: ${newCount} tickets`);
         }
       } catch (error) {
-        console.error("Erro na atualização automática:", error);
+        console.error("Erro ao atualizar contador:", error);
       }
-    }, 3000);
+    };
 
-    return () => clearInterval(intervalId);
-  }, [isSearching, searchTerm, userData.setor, allIncidents.length]);
+    // 🔥 HANDLERS PARA ATUALIZAÇÕES (SEM SOM)
+    const handleTicketUpdate = async (data) => {
+      console.log("📝 Ticket atualizado via Socket");
+      await loadUnseenTickets();
+    };
+
+    const handleTicketViewed = async (data) => {
+      console.log("👁️ Ticket visualizado via Socket");
+      await loadUnseenTickets();
+    };
+
+    const handleTicketAllViewed = (data) => {
+      console.log("👁️ Todos os tickets visualizados via Socket");
+      if (userDataRef.current.setor === "Segurança") {
+        setUnseenCount(0);
+        unseenRef.current = 0;
+      }
+    };
+
+    // ✅ EVENTOS DE VISITANTES
+    const eventosVisitantes = [
+      "visitante:create",
+      "visitante:update",
+      "visitante:delete",
+      "visitante:block",
+      "bloqueio:created",
+      "bloqueio:updated",
+    ];
+
+    eventosVisitantes.forEach((evento) => {
+      socket.on(evento, handleSocketUpdate);
+    });
+
+    // 🔥 EVENTOS DE TICKETS
+    socket.on("ticket:create", handleTicketCreate);
+    socket.on("ticket:update", handleTicketUpdate);
+    socket.on("ticket:viewed", handleTicketViewed);
+    socket.on("ticket:all_viewed", handleTicketAllViewed);
+
+    console.log("✅ Listeners do Socket registrados!");
+
+    // ✅ Cleanup
+    return () => {
+      console.log("🧹 Removendo listeners do Socket");
+
+      eventosVisitantes.forEach((evento) => {
+        socket.off(evento, handleSocketUpdate);
+      });
+
+      socket.off("ticket:create", handleTicketCreate);
+      socket.off("ticket:update", handleTicketUpdate);
+      socket.off("ticket:viewed", handleTicketViewed);
+      socket.off("ticket:all_viewed", handleTicketAllViewed);
+    };
+  }, [socket, playNotificationSound, loadUnseenTickets]);
 
   // ----------------------
   // BUSCA COM DEBOUNCE
@@ -330,7 +405,6 @@ export default function Profile() {
           const hasName = incident.nome && typeof incident.nome === "string";
           const hasCpf = incident.cpf && typeof incident.cpf === "string";
 
-          // Busca por nome
           let nameMatch = false;
           if (hasName) {
             const nomeNormalizado = incident.nome.toLowerCase().trim();
@@ -341,7 +415,6 @@ export default function Profile() {
                 nomeNormalizado === searchLower);
           }
 
-          // Busca por CPF
           let cpfMatch = false;
           if (hasCpf && cpfNumbers.length > 0) {
             cpfMatch =
@@ -355,16 +428,26 @@ export default function Profile() {
         if (localResults.length > 0) {
           setIncidents(localResults);
         } else {
-          // Busca API
+          // Busca na API se não encontrar localmente
           const response = await api.get("/search", {
             params: { query: searchTerm },
           });
 
-          const searchResults = mapIncidentsWithNames(response.data);
+          const searchResults = response.data.map((incident) => ({
+            ...incident,
+            empresa:
+              empresasVisitantes.find((e) => e.id === incident.empresa_id)
+                ?.nome || "Não informado",
+            setor:
+              setoresVisitantes.find((s) => s.id === incident.setor_id)?.nome ||
+              "Não informado",
+          }));
+
           setIncidents(searchResults);
         }
       } catch (err) {
         console.error("Erro na busca:", err);
+
         // Fallback para busca local
         const searchLower = searchTerm.toLowerCase().trim();
         const cpfNumbers = searchTerm.replace(/\D/g, "");
@@ -402,47 +485,15 @@ export default function Profile() {
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [searchTerm, allIncidents]);
+  }, [searchTerm, allIncidents, empresasVisitantes, setoresVisitantes]);
 
   // ----------------------
-  // CICLO DE ATUALIZAÇÃO
+  // CICLO DE ATUALIZAÇÃO (Foco na tela)
   // ----------------------
   useFocusEffect(
-    React.useCallback(() => {
-      let mounted = true;
-
-      if (mounted) {
-        fetchInitialData();
-      }
-
-      const intervalId = setInterval(async () => {
-        if (mounted && userData.setor === "Segurança") {
-          try {
-            const ongId = await AsyncStorage.getItem("@Auth:ongId");
-            if (ongId) {
-              const unseenResponse = await api.get("/tickets/unseen", {
-                headers: { Authorization: ongId },
-              });
-
-              const newCount = unseenResponse.data.count;
-              if (newCount > unseenRef.current) {
-                playNotificationSound();
-              }
-
-              unseenRef.current = newCount;
-              setUnseenCount(newCount);
-            }
-          } catch (error) {
-            console.error("Erro na atualização automática:", error);
-          }
-        }
-      }, 2000);
-
-      return () => {
-        mounted = false;
-        clearInterval(intervalId);
-      };
-    }, [userData.setor])
+    useCallback(() => {
+      fetchInitialData();
+    }, [fetchInitialData])
   );
 
   // ----------------------
@@ -497,11 +548,9 @@ export default function Profile() {
         return;
       }
 
-      // Guarda o incidente selecionado
       setSelectedIncident(incident);
       setResponsavel("");
       setObservacao("");
-      // Abre o modal customizado
       setModalVisible(true);
     } catch (err) {
       Alert.alert("Erro", err.message);
@@ -509,7 +558,6 @@ export default function Profile() {
   }
 
   async function confirmarVisita() {
-    // A validação agora checa se há um responsável (não a string vazia)
     if (!selectedIncident || !responsavel.trim()) {
       Alert.alert("Erro", "Selecione quem liberou a visita.");
       return;
@@ -591,17 +639,9 @@ export default function Profile() {
   }
 
   // ----------------------
-  // RENDER ITEM ATUALIZADO COM AVATAR E LAYOUT LADO A LADO
+  // RENDER ITEM
   // ----------------------
   function renderIncident({ item }) {
-    if (item.bloqueado) {
-      console.log("🔒 Usuário bloqueado:", {
-        nome: item.nome,
-        avatar_imagem: item.avatar_imagem,
-        temAvatar: !!item.avatar_imagem,
-      });
-    }
-
     const avatarSource = item.avatar_imagem
       ? { uri: item.avatar_imagem }
       : userIconImg;
@@ -610,11 +650,10 @@ export default function Profile() {
       <View
         style={[
           styles.incidentItem,
-          item.bloqueado && styles.incidentItemBlocked, // Estilo para card bloqueado
+          item.bloqueado && styles.incidentItemBlocked,
         ]}
       >
         <View style={styles.cardLeft}>
-          {/* AVATAR DO USUÁRIO */}
           <View style={styles.cardAvatar}>
             <Image source={avatarSource} style={styles.avatarImage} />
           </View>
@@ -629,7 +668,6 @@ export default function Profile() {
               >
                 {item.nome}
               </Text>
-              {/* BADGE DE BLOQUEIO */}
               {item.bloqueado && (
                 <View style={styles.blockedBadge}>
                   <Text style={styles.blockedBadgeText}>BLOQUEADO</Text>
@@ -637,7 +675,6 @@ export default function Profile() {
               )}
             </View>
 
-            {/* PRIMEIRA LINHA: Nascimento e CPF */}
             <View style={styles.cardDetailRow}>
               <View style={styles.cardDetailColumn}>
                 <Text style={styles.detailLabel}>Nascimento</Text>
@@ -651,7 +688,6 @@ export default function Profile() {
               </View>
             </View>
 
-            {/* SEGUNDA LINHA: Empresa e Setor */}
             <View style={styles.cardDetailRow}>
               <View style={styles.cardDetailColumn}>
                 <Text style={styles.detailLabel}>Empresa</Text>
@@ -663,7 +699,6 @@ export default function Profile() {
               </View>
             </View>
 
-            {/* TERCEIRA LINHA: Placa e Cor */}
             <View style={styles.cardDetailRow}>
               <View style={styles.cardDetailColumn}>
                 <Text style={styles.detailLabel}>Placa</Text>
@@ -679,7 +714,6 @@ export default function Profile() {
               </View>
             </View>
 
-            {/* ÚLTIMA LINHA: Telefone (sozinho, largura total) */}
             <View style={styles.cardDetailRow}>
               <View style={styles.cardDetailColumnFull}>
                 <Text style={styles.detailLabel}>Telefone</Text>
@@ -721,13 +755,9 @@ export default function Profile() {
             <Feather name="edit" size={20} color="#20a3e0" />
           </TouchableOpacity>
 
-          {/* Botão de crachá */}
           <TouchableOpacity
             onPress={() => {
-              /* Lógica para Crachá aqui */ Alert.alert(
-                "Crachá",
-                "Funcionalidade de crachá."
-              );
+              Alert.alert("Crachá", "Funcionalidade de crachá.");
             }}
             style={styles.actionButton}
           >
@@ -743,6 +773,68 @@ export default function Profile() {
         </View>
       </View>
     );
+  }
+
+  // ----------------------
+  // ANIMAÇÕES DO MENU MODAL - CORRIGIDAS
+  // ----------------------
+  const openMenuModal = () => {
+    if (isAnimating) return;
+
+    setIsAnimating(true);
+    setMenuModalVisible(true);
+
+    // Pequeno delay para garantir que o modal está montado
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(modalPosition, {
+          toValue: 0,
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(overlayOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setIsAnimating(false);
+      });
+    }, 10);
+  };
+
+  const closeMenuModal = () => {
+    if (isAnimating) return;
+
+    setIsAnimating(true);
+    Animated.parallel([
+      Animated.timing(modalPosition, {
+        toValue: -300,
+        duration: 250,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(overlayOpacity, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setMenuModalVisible(false);
+      setIsAnimating(false);
+    });
+  };
+
+  // ----------------------
+  // FORMATAR DATA
+  // ----------------------
+  function formatarData(data) {
+    if (!data) return "Data não informada";
+    const dataParte = data.split("T")[0];
+    const partes = dataParte.split("-");
+    if (partes.length === 3) return `${partes[2]}/${partes[1]}/${partes[0]}`;
+    return data;
   }
 
   // ----------------------

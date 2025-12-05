@@ -42,6 +42,7 @@
       ]
     ],
     "extra": {
+      "API_URL": "http://192.168.10.92:3001",
       "eas": {
         "projectId": "66a0d360-212e-4be5-8297-c521d0a51cfb"
       }

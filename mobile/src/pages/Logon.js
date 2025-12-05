@@ -16,10 +16,16 @@ import { Feather } from "@expo/vector-icons";
 import logoImg from "../assets/logo.png";
 import api from "../services/api";
 
+// Importa o hook para notificar o SocketProvider
+import { useAuthSocket } from "../contexts/SocketContext";
+
 export default function Logon() {
   const [id, setId] = useState("");
   const [loading, setLoading] = useState(false);
   const navigation = useNavigation();
+
+  // Obtém a função para alterar o status de autenticação no SocketContext
+  const { setAuthStatus } = useAuthSocket();
 
   async function handleLogin() {
     const trimmedId = id.trim(); // remove espaços extras
@@ -45,6 +51,9 @@ export default function Logon() {
         ["@Auth:ongName", response.data.name],
         ["@Auth:ongType", response.data.type],
       ]);
+
+      // 🔑 CORREÇÃO CHAVE: Notifica o SocketProvider para conectar
+      setAuthStatus(true);
 
       navigation.reset({
         index: 0,

@@ -1,4 +1,4 @@
-// NewIncident.js (Mobile) — atualizado e padronizado com o frontend
+// NewIncident.js (Mobile)
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
