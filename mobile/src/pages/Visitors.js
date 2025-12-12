@@ -13,6 +13,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import api from "../services/api";
+import { useSocket } from "../contexts/SocketContext"; // ✅ Usar o contexto
 
 export default function VisitorsScreen() {
   const [visitors, setVisitors] = useState([]);
@@ -20,6 +21,7 @@ export default function VisitorsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation();
   const [ongName, setOngName] = useState("");
+  const socket = useSocket(); // ✅ Obter socket do contexto
 
   const loadVisitors = async () => {
     try {
@@ -29,7 +31,7 @@ export default function VisitorsScreen() {
         AsyncStorage.getItem("@Auth:ongName"),
       ]);
 
-      console.log("ONG ID:", ongId); // Verifique se está correto
+      console.log("ONG ID:", ongId);
       console.log("ONG Name:", name);
 
       if (!ongId) {
@@ -41,8 +43,8 @@ export default function VisitorsScreen() {
         headers: { Authorization: ongId },
       });
 
-      console.log("Resposta recebida:", response); // Verifique toda a resposta
-      console.log("Dados recebidos:", response.data); // Verifique os dados
+      console.log("Resposta recebida:", response);
+      console.log("Dados recebidos:", response.data);
 
       if (!response.data) {
         throw new Error("Dados inválidos recebidos");
@@ -103,6 +105,70 @@ export default function VisitorsScreen() {
       );
     }
   };
+
+  // ✅ CONFIGURAR SOCKET LISTENERS usando o contexto
+  useEffect(() => {
+    if (!socket) {
+      console.log("⚠️ Socket não disponível ainda");
+      return;
+    }
+
+    console.log("🔌 Configurando listeners do socket para visitantes...");
+
+    // ✅ Listener para novo visitante criado
+    const handleVisitorCreate = (data) => {
+      console.log("📥 Novo visitante recebido via socket:", data);
+
+      setVisitors((prevVisitors) => {
+        // Verificar se o visitante já existe
+        const exists = prevVisitors.some((v) => v.id === data.id);
+        if (exists) {
+          console.log("⚠️ Visitante já existe na lista");
+          return prevVisitors;
+        }
+
+        // Adicionar novo visitante no início da lista
+        console.log("✅ Adicionando novo visitante à lista");
+        return [data, ...prevVisitors];
+      });
+    };
+
+    // ✅ Listener para visitante removido/encerrado
+    const handleVisitorDelete = (data) => {
+      console.log("🗑️ Visitante encerrado via socket:", data);
+
+      setVisitors((prevVisitors) => {
+        const filtered = prevVisitors.filter((v) => v.id !== data.id);
+        console.log(`✅ Visitante ${data.id} removido da lista`);
+        return filtered;
+      });
+    };
+
+    // ✅ Listener para visitante encerrado (evento alternativo)
+    const handleVisitorEnd = (data) => {
+      console.log("🚪 Visitante saiu via socket:", data);
+
+      setVisitors((prevVisitors) => {
+        const filtered = prevVisitors.filter((v) => v.id !== data.id);
+        return filtered;
+      });
+    };
+
+    // ✅ Registrar listeners
+    socket.on("visitor:create", handleVisitorCreate);
+    socket.on("visitor:delete", handleVisitorDelete);
+    socket.on("visitor:end", handleVisitorEnd);
+
+    console.log("✅ Listeners de visitantes registrados");
+
+    // ✅ Cleanup: remover listeners quando o componente desmontar
+    return () => {
+      console.log("🔌 Removendo listeners do socket de visitantes");
+      socket.off("visitor:create", handleVisitorCreate);
+      socket.off("visitor:delete", handleVisitorDelete);
+      socket.off("visitor:end", handleVisitorEnd);
+    };
+  }, [socket]); // ✅ Dependência: reconectar listeners quando socket mudar
 
   useFocusEffect(
     React.useCallback(() => {

@@ -1,4 +1,3 @@
-// NewIncident.js (Mobile)
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
@@ -21,7 +20,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
 import { MaterialIcons } from "@expo/vector-icons";
 import api from "../services/api";
-
 import { CameraView, useCameraPermissions } from "expo-camera";
 
 export default function NewVisitorMobile() {
@@ -41,20 +39,19 @@ export default function NewVisitorMobile() {
 
   const [empresasVisitantes, setEmpresasVisitantes] = useState([]);
   const [setoresVisitantes, setSetoresVisitantes] = useState([]);
-
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [modalImage, setModalImage] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState("");
 
   const [errors, setErrors] = useState({
     placa_veiculo: "",
     cor_veiculo: "",
   });
 
-  // Camera state
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [mediaPermission, setMediaPermission] = useState(null);
   const [cameraVisible, setCameraVisible] = useState(false);
@@ -62,7 +59,6 @@ export default function NewVisitorMobile() {
 
   const navigation = useNavigation();
 
-  // cores (mesma lista do frontend)
   const opcoesCores = [
     "PRETO",
     "BRANCO",
@@ -83,11 +79,9 @@ export default function NewVisitorMobile() {
       if (!cameraPermission?.granted) {
         await requestCameraPermission();
       }
-
       const media = await ImagePicker.requestMediaLibraryPermissionsAsync();
       setMediaPermission(media.status === "granted");
     })();
-
     loadOptions();
   }, []);
 
@@ -97,7 +91,6 @@ export default function NewVisitorMobile() {
         api.get("/empresas-visitantes"),
         api.get("/setores-visitantes"),
       ]);
-
       setEmpresasVisitantes(empresasResponse.data || []);
       setSetoresVisitantes(setoresResponse.data || []);
     } catch (err) {
@@ -154,9 +147,6 @@ export default function NewVisitorMobile() {
     return `${dia}/${mes}/${ano}`;
   };
 
-  // ======================
-  // Handlers gerais
-  // ======================
   const handleChange = (name, value) => {
     let newValue = value;
     if (name === "nome") newValue = value.toUpperCase();
@@ -192,7 +182,7 @@ export default function NewVisitorMobile() {
 
     try {
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.7,
+        quality: 0.5,
         base64: false,
       });
 
@@ -233,7 +223,7 @@ export default function NewVisitorMobile() {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.7,
+        quality: 0.5,
         allowsMultipleSelection: true,
         selectionLimit: 3 - form.fotos.length,
       });
@@ -264,96 +254,120 @@ export default function NewVisitorMobile() {
   };
 
   // ======================
-  // Progresso
+  // ✅ UPLOAD OTIMIZADO COM PROGRESSO REAL
   // ======================
-  const simulateProgress = () => {
-    setProgress(0);
-    let value = 0;
-    const interval = setInterval(() => {
-      value += 12;
-      setProgress(Math.min(value, 100));
-      if (value >= 100) clearInterval(interval);
-    }, 120);
+  const uploadWithProgress = (url, formData, token) => {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      let uploadComplete = false; // ✅ Flag para evitar ultrapassar 100%
+
+      // ✅ PROGRESSO DE UPLOAD (0-95%)
+      xhr.upload.onprogress = (event) => {
+        if (uploadComplete) return; // ✅ Impede atualizações após conclusão
+
+        if (event.lengthComputable) {
+          // ✅ Limita o progresso a 95% durante upload
+          const percentComplete = Math.min(
+            Math.round((event.loaded / event.total) * 95),
+            95
+          );
+
+          setProgress(percentComplete);
+
+          // ✅ Mensagens de status baseadas no progresso
+          if (percentComplete < 20) {
+            setUploadStatus("Preparando imagens...");
+          } else if (percentComplete < 50) {
+            setUploadStatus("Enviando dados...");
+          } else if (percentComplete < 80) {
+            setUploadStatus("Processando imagens...");
+          } else {
+            setUploadStatus("Finalizando...");
+          }
+        }
+      };
+
+      // ✅ INÍCIO DO UPLOAD
+      xhr.upload.onloadstart = () => {
+        uploadComplete = false;
+        setProgress(0);
+        setUploadStatus("Iniciando envio...");
+      };
+
+      // ✅ UPLOAD COMPLETO (95-100%)
+      xhr.upload.onload = () => {
+        if (uploadComplete) return;
+
+        setProgress(95);
+        setUploadStatus("Aguardando resposta do servidor...");
+      };
+
+      // ✅ RESPOSTA DO SERVIDOR (CONCLUSÃO)
+      xhr.onload = () => {
+        uploadComplete = true; // ✅ Marca como concluído
+
+        console.log("📄 Status:", xhr.status);
+
+        if (xhr.status >= 200 && xhr.status < 300) {
+          // ✅ Sucesso: 100%
+          setProgress(100);
+          setUploadStatus("Concluído!");
+
+          try {
+            const response = JSON.parse(xhr.responseText);
+            resolve(response);
+          } catch (e) {
+            resolve({ success: true });
+          }
+        } else {
+          // ✅ Erro do servidor
+          setProgress(0);
+          setUploadStatus("Erro no envio");
+
+          let errorData;
+          try {
+            errorData = JSON.parse(xhr.responseText);
+          } catch {
+            errorData = { message: xhr.responseText };
+          }
+          reject(
+            new Error(
+              errorData.message || errorData.error || `Erro ${xhr.status}`
+            )
+          );
+        }
+      };
+
+      // ✅ ERRO DE CONEXÃO
+      xhr.onerror = () => {
+        uploadComplete = true;
+        setProgress(0);
+        setUploadStatus("Erro de conexão");
+        reject(new Error("Erro de conexão"));
+      };
+
+      // ✅ TIMEOUT
+      xhr.ontimeout = () => {
+        uploadComplete = true;
+        setProgress(0);
+        setUploadStatus("Tempo excedido");
+        reject(new Error("Tempo excedido"));
+      };
+
+      // ✅ CONFIGURAÇÃO E ENVIO
+      xhr.open("POST", url);
+      xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      xhr.timeout = 60000; // 60 segundos
+      xhr.send(formData);
+    });
   };
 
   // ======================
-  // FUNÇÃO DE DEBUG - Teste de campo
-  // ======================
-  async function testMulterField() {
-    const token = await AsyncStorage.getItem("@Auth:token");
-    if (!token) {
-      Alert.alert("Erro", "Usuário não autenticado");
-      return;
-    }
-
-    console.log("🔍 Testando campo 'fotos' para multer...");
-
-    const testData = new FormData();
-    testData.append("nome", "TESTE CAMPO FOTOS");
-    testData.append("cpf", "12345678901");
-    testData.append("empresa", "1");
-    testData.append("setor", "1");
-    testData.append("telefone", "11999999999");
-    testData.append("placa_veiculo", "");
-    testData.append("cor_veiculo", "");
-    testData.append("observacao", "Teste de campo");
-
-    // Adiciona uma imagem de teste com campo 'fotos'
-    const testImage = {
-      uri: "file:///dummy/test.jpg",
-      name: "test.jpg",
-      type: "image/jpeg",
-    };
-
-    testData.append("fotos", testImage);
-
-    console.log("📦 FormData de teste:");
-    for (let pair of testData.entries()) {
-      console.log(
-        `${pair[0]}:`,
-        pair[1].name ? `[Arquivo: ${pair[1].name}]` : pair[1]
-      );
-    }
-
-    try {
-      console.log("📤 Enviando teste...");
-      const response = await fetch(`${api.defaults.baseURL}/incidents`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: testData,
-      });
-
-      const responseText = await response.text();
-      console.log("📄 Resposta:", responseText.substring(0, 200));
-
-      let result;
-      try {
-        result = JSON.parse(responseText);
-      } catch {
-        result = { raw: responseText };
-      }
-
-      Alert.alert(
-        `Teste: ${response.status}`,
-        result.error
-          ? `ERRO: ${result.error}`
-          : "Campo CORRETO! O multer aceitou."
-      );
-    } catch (err) {
-      console.error("Erro teste:", err);
-      Alert.alert("Erro Teste", err.message);
-    }
-  }
-
-  // ======================
-  // Submit principal - VERSÃO CORRIGIDA
+  // ✅ SUBMIT OTIMIZADO - SEM RECARREGAR TUDO
   // ======================
   const handleSubmit = async () => {
     setShowConfirmModal(false);
 
-    // Validações
     const cpfClean = form.cpf.replace(/\D/g, "");
     const telefoneClean = form.telefone.replace(/\D/g, "");
     const placaClean = (form.placa_veiculo || "")
@@ -362,6 +376,7 @@ export default function NewVisitorMobile() {
 
     setErrors({ placa_veiculo: "", cor_veiculo: "" });
 
+    // ✅ VALIDAÇÕES (mantidas)
     if (
       !form.nome ||
       !cpfClean ||
@@ -412,13 +427,12 @@ export default function NewVisitorMobile() {
       return Alert.alert("Erro", "Placa deve ter 7 caracteres");
     }
 
-    // Pega token
     const token = await AsyncStorage.getItem("@Auth:token");
     if (!token) {
       return Alert.alert("Erro", "Usuário não autenticado");
     }
 
-    // Monta FormData
+    // ✅ MONTA FORMDATA
     const data = new FormData();
     data.append("nome", form.nome);
     data.append("nascimento", form.nascimentoISO || "");
@@ -430,12 +444,9 @@ export default function NewVisitorMobile() {
     data.append("cor_veiculo", form.cor_veiculo || "");
     data.append("observacao", form.observacao || "");
 
-    console.log("📸 Preparando imagens para upload (campo 'fotos')...");
-
     form.fotos.forEach((img, idx) => {
       let uri = img.uri;
 
-      // Corrige URI para Android
       if (Platform.OS === "android" && !uri.startsWith("file://")) {
         uri = "file://" + uri;
       }
@@ -448,29 +459,15 @@ export default function NewVisitorMobile() {
         type: "image/jpeg",
       };
 
-      // 🔴 NOME CORRETO: 'fotos' (igual ao esperado pelo multer)
       data.append("fotos", imageFile);
-
-      console.log(`Imagem ${idx + 1}: [campo: 'fotos'] ${imageFile.name}`);
     });
-
-    // DEBUG: Mostra o FormData completo
-    console.log("=== FORM DATA COMPLETO ===");
-    const entries = [...data.entries()];
-    entries.forEach(([key, value], index) => {
-      if (value && typeof value === "object" && value.uri) {
-        console.log(`${index}. ${key}: [ARQUIVO] ${value.name}`);
-      } else {
-        console.log(`${index}. ${key}: ${value}`);
-      }
-    });
-    console.log("Total de campos:", entries.length);
 
     try {
       setLoading(true);
-      simulateProgress();
+      setProgress(0);
+      setUploadStatus("Preparando...");
 
-      // Verifica CPF duplicado (opcional)
+      // ✅ Verifica CPF duplicado (RÁPIDO)
       try {
         const { data: cpfData } = await api.get(`/cpf-existe/${cpfClean}`);
         if (cpfData && cpfData.exists) {
@@ -481,81 +478,49 @@ export default function NewVisitorMobile() {
         console.warn("Verificação CPF ignorada:", cpfErr.message);
       }
 
-      // 🔴 ENVIA COM FETCH (mais confiável para FormData)
-      console.log("📤 Enviando para /incidents via fetch...");
-      console.log("🔑 Token:", token.substring(0, 10) + "...");
-      console.log("🔗 URL:", `${api.defaults.baseURL}/incidents`);
+      // ✅ Upload com progresso REAL
+      const url = `${api.defaults.baseURL}/incidents`;
+      await uploadWithProgress(url, data, token);
 
-      const response = await fetch(`${api.defaults.baseURL}/incidents`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          // NÃO adicione Content-Type - o fetch define automaticamente
+      console.log("✅ Cadastro concluído!");
+
+      // ✅ AGUARDA 500MS PARA O SOCKET PROPAGAR
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // ✅ Feedback e navegação
+      setLoading(false);
+      Alert.alert("Sucesso", "Visitante cadastrado com sucesso!", [
+        {
+          text: "OK",
+          onPress: () => {
+            navigation.navigate("Profile");
+          },
         },
-        body: data,
-        timeout: 120000,
-      });
-
-      console.log("📄 Status HTTP:", response.status, response.statusText);
-
-      const responseText = await response.text();
-      console.log(
-        "📄 Resposta:",
-        responseText.substring(0, 300) +
-          (responseText.length > 300 ? "..." : "")
-      );
-
-      let responseData;
-      try {
-        responseData = JSON.parse(responseText);
-      } catch {
-        responseData = { raw: responseText };
-      }
-
-      if (!response.ok) {
-        // Erro detalhado
-        const errorMsg =
-          responseData.message ||
-          responseData.error ||
-          `Erro ${response.status}: ${response.statusText}`;
-
-        console.error("❌ Erro do servidor:", errorMsg);
-        throw new Error(errorMsg);
-      }
-
-      console.log("✅ Cadastro realizado com sucesso!", responseData);
-
-      setProgress(100);
-
-      setTimeout(() => {
-        setLoading(false);
-        Alert.alert("Sucesso", "Visitante cadastrado com sucesso!");
-        navigation.navigate("Profile");
-      }, 400);
+      ]);
     } catch (err) {
-      console.error("❌ Erro no cadastro:", {
-        message: err.message,
-        stack: err.stack,
-      });
-
+      console.error("❌ Erro:", err);
       setLoading(false);
 
       let errorMessage = "Falha ao cadastrar visitante";
 
-      if (
-        err.message.includes("fotos") ||
-        err.message.includes("is not allowed")
-      ) {
-        errorMessage =
-          "Erro no envio das imagens. O campo 'fotos' não foi reconhecido.";
+      if (err.message.includes("409") || err.message.includes("CPF")) {
+        errorMessage = "CPF já cadastrado no sistema.";
       } else if (err.message.includes("400")) {
-        errorMessage = "Dados inválidos enviados ao servidor.";
-      } else if (err.message.includes("Network")) {
+        errorMessage = "Dados inválidos. Verifique os campos.";
+      } else if (
+        err.message.includes("conexão") ||
+        err.message.includes("Network")
+      ) {
         errorMessage = "Erro de conexão. Verifique sua internet.";
       } else if (err.message.includes("413")) {
-        errorMessage = "Imagens muito grandes. Tente imagens menores.";
-      } else if (err.message.includes("timeout")) {
-        errorMessage = "Tempo de espera excedido. Tente novamente.";
+        errorMessage = "Imagens muito grandes. Tente reduzir o tamanho.";
+      } else if (
+        err.message.includes("Tempo") ||
+        err.message.includes("timeout")
+      ) {
+        errorMessage = "Tempo excedido. Tente novamente.";
+      } else {
+        errorMessage = err.message;
       }
 
       Alert.alert("Erro", errorMessage);
@@ -569,9 +534,13 @@ export default function NewVisitorMobile() {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" color="#10B981" />
-        <Text style={{ marginTop: 16, fontSize: 16, color: "#666" }}>
-          {`Enviando cadastro... ${Math.round(progress)}%`}
-        </Text>
+
+        <View style={styles.progressBarContainer}>
+          <View style={[styles.progressBar, { width: `${progress}%` }]} />
+        </View>
+
+        <Text style={styles.progressText}>{progress}%</Text>
+        <Text style={styles.statusText}>{uploadStatus}</Text>
       </View>
     );
   }
@@ -584,16 +553,6 @@ export default function NewVisitorMobile() {
     >
       <View style={styles.blocoCadastro}>
         <Text style={styles.title}>Cadastrar Visitante</Text>
-
-        {/* BOTÕES DE TESTE */}
-        <View style={styles.testButtons}>
-          <TouchableOpacity
-            onPress={testMulterField}
-            style={[styles.testButton, { backgroundColor: "#3498db" }]}
-          >
-            <Text style={styles.testButtonText}>Testar campo 'fotos'</Text>
-          </TouchableOpacity>
-        </View>
 
         <TextInput
           style={styles.input}
@@ -722,14 +681,8 @@ export default function NewVisitorMobile() {
           onChangeText={(text) => handleChange("observacao", text)}
         />
 
-        {/* Seção de imagens */}
         <View style={styles.imageSection}>
-          <Text style={styles.imageLabel}>
-            Imagens (mínimo 1, máximo 3) *{" "}
-            <Text style={{ color: "#666", fontSize: 12 }}>
-              (campo: 'fotos')
-            </Text>
-          </Text>
+          <Text style={styles.imageLabel}>Imagens (mínimo 1, máximo 3) *</Text>
           <View style={styles.imageRow}>
             <TouchableOpacity
               style={styles.imageButton}
@@ -788,7 +741,6 @@ export default function NewVisitorMobile() {
           <Text style={styles.submitText}>Cadastrar Visitante</Text>
         </TouchableOpacity>
 
-        {/* Modal para visualizar imagem */}
         <Modal visible={!!modalImage} transparent>
           <Pressable
             style={styles.modalOverlay}
@@ -802,7 +754,6 @@ export default function NewVisitorMobile() {
           </Pressable>
         </Modal>
 
-        {/* Camera modal */}
         <Modal visible={cameraVisible} animationType="slide">
           <View style={{ flex: 1 }}>
             <CameraView style={{ flex: 1 }} ref={cameraRef} />
@@ -820,7 +771,6 @@ export default function NewVisitorMobile() {
           </View>
         </Modal>
 
-        {/* Confirm modal */}
         <Modal visible={showConfirmModal} transparent animationType="fade">
           <Pressable
             style={styles.modalOverlay}

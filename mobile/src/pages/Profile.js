@@ -6,81 +6,121 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
-  StyleSheet,
   Image,
   SafeAreaView,
   ActivityIndicator,
   Modal,
-  Platform,
   Animated,
   Easing,
   Dimensions,
 } from "react-native";
 
+import { styles } from "./Profile/styles";
 import { Picker } from "@react-native-picker/picker";
-
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Feather from "react-native-vector-icons/Feather";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { Audio } from "expo-av";
 
 import api from "../services/api";
-
-// Importações dos hooks do SocketContext
 import { useSocket } from "../contexts/SocketContext";
+import { useIncidents } from "../contexts/IncidentsContext";
 
 // Assets
 import logoImg from "../assets/gd.png";
 import userIconImg from "../assets/user.png";
 import notificacaoSom from "../assets/notificacao.mp3";
-import { Audio } from "expo-av";
 
 export default function Profile() {
+  // ═══════════════════════════════════════════════════════════════
+  // 1. HOOKS DE CONTEXTO
+  // ═══════════════════════════════════════════════════════════════
   const socket = useSocket();
+  const navigation = useNavigation();
+  const { width } = Dimensions.get("window");
 
-  const [incidents, setIncidents] = useState([]);
-  const [allIncidents, setAllIncidents] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isSearching, setIsSearching] = useState(false);
+  // ✅ Context de Incidents (Cache Global)
+  const {
+    incidents,
+    allIncidents,
+    empresasVisitantes,
+    setoresVisitantes,
+    responsaveisList,
+    loading: contextLoading,
+    loadIncidents,
+    removeIncident,
+    syncFromSocket,
+    setIncidents,
+  } = useIncidents();
+
+  // ═══════════════════════════════════════════════════════════════
+  // 2. ESTADOS - DADOS PRINCIPAIS
+  // ═══════════════════════════════════════════════════════════════
   const [loading, setLoading] = useState(true);
   const [unseenCount, setUnseenCount] = useState(0);
   const [userData, setUserData] = useState({ setor: "", nome: "" });
-  const [empresasVisitantes, setEmpresasVisitantes] = useState([]);
-  const [setoresVisitantes, setSetoresVisitantes] = useState([]);
 
-  // ESTADOS PARA O MODAL DE VISITA
+  // ═══════════════════════════════════════════════════════════════
+  // 3. ESTADOS - UI E BUSCA
+  // ═══════════════════════════════════════════════════════════════
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+
+  // ═══════════════════════════════════════════════════════════════
+  // 4. ESTADOS - MODAL DE VISITA
+  // ═══════════════════════════════════════════════════════════════
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedIncident, setSelectedIncident] = useState(null);
   const [responsavel, setResponsavel] = useState("");
   const [observacao, setObservacao] = useState("");
-  const [responsaveisList, setResponsaveisList] = useState([]);
 
-  // ESTADOS PARA O MODAL DO MENU
+  // ═══════════════════════════════════════════════════════════════
+  // 5. ESTADOS - MODAL DO MENU
+  // ═══════════════════════════════════════════════════════════════
   const [menuModalVisible, setMenuModalVisible] = useState(false);
-  const modalPosition = useRef(new Animated.Value(-300)).current;
-  const overlayOpacity = useRef(new Animated.Value(0)).current;
   const [isAnimating, setIsAnimating] = useState(false);
 
-  const unseenRef = useRef(0);
-  const isFirstLoad = useRef(true);
-  const searchTimeoutRef = useRef(null);
-
-  // ✅ REFS para valores estáveis (NÃO causam re-render)
-  const empresasRef = useRef([]);
-  const setoresRef = useRef([]);
+  // ═══════════════════════════════════════════════════════════════
+  // 6. REFS - VALORES ESTÁVEIS (NÃO CAUSAM RE-RENDER)
+  // ═══════════════════════════════════════════════════════════════
   const userDataRef = useRef({ setor: "", nome: "" });
 
-  const navigation = useNavigation();
-  const { width, height } = Dimensions.get("window");
+  // ✅ REF para controle de cooldown do som
+  const lastSoundTimeRef = useRef(0);
+  const SOUND_COOLDOWN = 3000; // 3 segundos entre sons
 
-  // ----------------------
-  // TOCAR SOM
-  // ----------------------
+  // ✅ REF para controlar tickets já processados (PREVINE DUPLICAÇÃO)
+  const processedTicketsRef = useRef(new Set());
+
+  // ✅ REF para prevenir duplicação de listeners
+  const ticketListenersRegisteredRef = useRef(false);
+
+  // Refs para busca
+  const searchTimeoutRef = useRef(null);
+
+  // Refs para animações do menu
+  const modalPosition = useRef(new Animated.Value(-300)).current;
+  const overlayOpacity = useRef(new Animated.Value(0)).current;
+
+  // ═══════════════════════════════════════════════════════════════
+  // 7. CALLBACKS - FUNÇÕES AUXILIARES
+  // ═══════════════════════════════════════════════════════════════
+
+  // ✅ TOCAR SOM DE NOTIFICAÇÃO (COM COOLDOWN)
   const playNotificationSound = useCallback(async () => {
     try {
+      const now = Date.now();
+      if (now - lastSoundTimeRef.current < SOUND_COOLDOWN) {
+        console.log("⏭️ Som bloqueado por cooldown");
+        return;
+      }
+
+      lastSoundTimeRef.current = now;
+      console.log("🔊 Tocando som de notificação...");
+
       const { sound } = await Audio.Sound.createAsync(notificacaoSom);
 
-      // ✅ Configura o callback ANTES de tocar
       sound.setOnPlaybackStatusUpdate(async (status) => {
         if (status.didJustFinish && !status.isLooping) {
           await sound.unloadAsync();
@@ -89,38 +129,36 @@ export default function Profile() {
 
       await sound.playAsync();
     } catch (err) {
-      console.log("Erro ao tocar som:", err);
+      console.log("❌ Erro ao tocar som:", err);
     }
   }, []);
 
-  // ----------------------
-  // CARREGAR RESPONSÁVEIS
-  // ----------------------
-  const carregarResponsaveis = useCallback(async () => {
+  // ✅ RECARREGAR TICKETS NÃO VISUALIZADOS
+  const loadUnseenTickets = useCallback(async () => {
     try {
       const ongId = await AsyncStorage.getItem("@Auth:ongId");
-      const response = await api.get("/responsaveis", {
+
+      if (userDataRef.current.setor !== "Segurança") {
+        return;
+      }
+
+      const unseenResponse = await api.get("/tickets/unseen", {
         headers: { Authorization: ongId },
       });
-      const nomesResponsaveis = (response.data || []).map((r) => r.nome);
-      setResponsaveisList(nomesResponsaveis);
-      setResponsavel("");
-    } catch (err) {
-      console.error("Erro ao carregar responsáveis:", err);
-      setResponsaveisList([
-        "Portaria",
-        "Recepção",
-        "Segurança",
-        "Administração",
-      ]);
-      setResponsavel("");
+
+      const newCount = Number(unseenResponse.data.count) || 0;
+      setUnseenCount(newCount);
+
+      console.log(`🎫 Tickets sincronizados: ${newCount} não vistos`);
+    } catch (error) {
+      console.error("Erro ao carregar tickets não visualizados:", error);
     }
   }, []);
 
-  // ----------------------
-  // ✅ BUSCAR DADOS INICIAIS - OTIMIZADA
-  // ----------------------
+  // ✅ BUSCAR DADOS INICIAIS (VERSÃO OTIMIZADA)
   const fetchInitialData = useCallback(async () => {
+    console.log("🔄 fetchInitialData chamado");
+
     const ongId = await AsyncStorage.getItem("@Auth:ongId");
     const ongName = await AsyncStorage.getItem("@Auth:ongName");
 
@@ -130,25 +168,10 @@ export default function Profile() {
     }
 
     try {
-      // 1. Carrega empresas, setores e responsáveis em paralelo
-      const [empresasResponse, setoresResponse] = await Promise.all([
-        api.get("/empresas-visitantes"),
-        api.get("/setores-visitantes"),
-      ]);
+      // ✅ Carrega dados dos visitantes (apenas 1x via Context)
+      await loadIncidents();
 
-      const empresas = empresasResponse.data || [];
-      const setores = setoresResponse.data || [];
-
-      // ✅ Atualiza TANTO state QUANTO ref
-      setEmpresasVisitantes(empresas);
-      setSetoresVisitantes(setores);
-      empresasRef.current = empresas;
-      setoresRef.current = setores;
-
-      // 2. Carrega responsáveis
-      await carregarResponsaveis();
-
-      // 3. Carrega dados da ONG
+      // ✅ Carrega dados da ONG
       const ongResponse = await api.get(`ongs/${ongId}`);
       const setor = ongResponse.data.setor || "";
       const nome = ongResponse.data.name || ongName || "";
@@ -156,233 +179,372 @@ export default function Profile() {
       setUserData({ setor, nome });
       userDataRef.current = { setor, nome };
 
-      // 4. Carrega todos os incidents
-      const profileResponse = await api.get("profile", {
-        headers: { Authorization: ongId },
-      });
-
-      // 5. Mapeia com nomes de empresa/setor
-      const incidentsWithNames = profileResponse.data.map((incident) => ({
-        ...incident,
-        empresa:
-          empresas.find((e) => e.id === incident.empresa_id)?.nome ||
-          "Não informado",
-        setor:
-          setores.find((s) => s.id === incident.setor_id)?.nome ||
-          "Não informado",
-      }));
-
-      // 6. Salva os dados
-      setAllIncidents(incidentsWithNames);
-      setIncidents(incidentsWithNames);
-
-      console.log(
-        "✅ Dados carregados:",
-        incidentsWithNames.length,
-        "registros"
-      );
-
-      // 7. Lógica de segurança
+      // ✅ Carrega tickets não vistos (se for Segurança)
       if (setor === "Segurança") {
         const unseenResponse = await api.get("/tickets/unseen", {
           headers: { Authorization: ongId },
         });
 
-        const newCount = unseenResponse.data.count;
-        unseenRef.current = newCount;
+        const newCount = Number(unseenResponse.data.count) || 0;
         setUnseenCount(newCount);
-        isFirstLoad.current = false;
 
-        // ⚠️ NÃO TOQUE SOM AQUI!
-        console.log(`📊 Carregados ${newCount} tickets não vistos (sem som)`);
+        console.log(`📊 ${newCount} tickets não vistos`);
       }
     } catch (error) {
-      console.error("Erro ao carregar dados:", error.message);
+      console.error("❌ Erro ao carregar dados:", error.message);
     } finally {
       setLoading(false);
     }
-  }, [carregarResponsaveis]);
+  }, [loadIncidents]);
 
-  // ----------------------
-  // ✅ RECARREGAR TICKETS NÃO VISUALIZADOS
-  // ----------------------
-  const loadUnseenTickets = useCallback(async () => {
-    try {
-      const ongId = await AsyncStorage.getItem("@Auth:ongId");
+  // ═══════════════════════════════════════════════════════════════
+  // 8. HANDLERS - TICKETS
+  // ═══════════════════════════════════════════════════════════════
 
+  // ✅ HANDLER PARA NOVO TICKET (COM PROTEÇÃO ANTI-DUPLICAÇÃO)
+  const handleTicketCreate = useCallback(
+    async (ticketData) => {
+      console.log("🎫 Evento ticket:create recebido:", ticketData);
+
+      // Validação de setor
       if (userDataRef.current.setor !== "Segurança") {
-        return; // Só carrega se for Segurança
+        console.log("⏭️ Não é Segurança, ignorando");
+        return;
       }
 
-      const unseenResponse = await api.get("/tickets/unseen", {
-        headers: { Authorization: ongId },
+      // ✅ GERAR ID ÚNICO DO TICKET PARA CONTROLE DE DUPLICAÇÃO
+      const ticketId = ticketData?.id
+        ? `ticket-${ticketData.id}`
+        : `ticket-${ticketData?.funcionario}-${Date.now()}`;
+
+      // ✅ PREVENIR PROCESSAMENTO DUPLICADO
+      if (processedTicketsRef.current.has(ticketId)) {
+        console.log("⏭️ Ticket já processado, ignorando duplicata:", ticketId);
+        return;
+      }
+
+      // Marcar como processado
+      processedTicketsRef.current.add(ticketId);
+
+      // Limpar após 10 segundos (previne crescimento infinito da memória)
+      setTimeout(() => {
+        processedTicketsRef.current.delete(ticketId);
+      }, 10000);
+
+      console.log(`✅ Processando novo ticket: ${ticketId}`);
+
+      // Tocar som
+      await playNotificationSound();
+
+      // Incrementar contador
+      setUnseenCount((prev) => {
+        const prevNum = Number(prev) || 0;
+        const newCount = prevNum + 1;
+        console.log(`🔢 Contador: ${prevNum} → ${newCount}`);
+        return newCount;
       });
+    },
+    [playNotificationSound]
+  );
 
-      const newCount = unseenResponse.data.count;
+  // ✅ HANDLER PARA TICKET VISUALIZADO
+  const handleTicketViewed = useCallback(() => {
+    console.log("👁️ Ticket visualizado via Socket");
 
-      unseenRef.current = newCount;
-      setUnseenCount(newCount);
-
-      console.log(`🎫 Tickets atualizados: ${newCount} não vistos`);
-    } catch (error) {
-      console.error("Erro ao carregar tickets não visualizados:", error);
+    if (userDataRef.current.setor === "Segurança") {
+      setUnseenCount((prev) => {
+        const prevNum = Number(prev) || 0;
+        const newCount = Math.max(0, prevNum - 1);
+        console.log(`🔢 Contador decrementado: ${prevNum} → ${newCount}`);
+        return newCount;
+      });
     }
   }, []);
 
-  // ----------------------
-  // SOCKET.IO LISTENER
-  // ----------------------
+  // ✅ HANDLER PARA TODOS TICKETS VISUALIZADOS
+  const handleTicketAllViewed = useCallback(() => {
+    console.log("👁️ Todos tickets visualizados via Socket");
+
+    if (userDataRef.current.setor === "Segurança") {
+      console.log("🔢 Contador zerado");
+      setUnseenCount(0);
+    }
+  }, []);
+
+  // ✅ HANDLER PARA TICKET ATUALIZADO
+  const handleTicketUpdate = useCallback((ticketData) => {
+    console.log("📝 Ticket atualizado via Socket:", ticketData);
+    // Apenas log - o estado será atualizado quando entrar na tela de tickets
+  }, []);
+
+  // ═══════════════════════════════════════════════════════════════
+  // 9. HANDLERS - VISITANTES (CORRIGIDOS)
+  // ═══════════════════════════════════════════════════════════════
+
+  // ✅ HANDLER PARA VISITANTE CRIADO
+  const handleVisitanteCreate = useCallback(
+    async (data) => {
+      console.log("🔥 visitante:create recebido:", data);
+
+      // Se recebeu apenas ID ou dados incompletos, busca dados completos
+      if (data.id && (!data.nome || !data.empresa_id)) {
+        console.log(
+          "⚠️ Dados incompletos no create, buscando visitante completo..."
+        );
+
+        try {
+          const ongId = await AsyncStorage.getItem("@Auth:ongId");
+          const response = await api.get(`/incidents/${data.id}`, {
+            headers: { Authorization: ongId },
+          });
+
+          const fullData = response.data;
+
+          // Adiciona nomes de empresa e setor
+          const visitanteCompleto = {
+            ...fullData,
+            empresa:
+              empresasVisitantes.find((e) => e.id === fullData.empresa_id)
+                ?.nome || "Não informado",
+            setor:
+              setoresVisitantes.find((s) => s.id === fullData.setor_id)?.nome ||
+              "Não informado",
+          };
+
+          console.log(
+            "✅ Dados completos do create obtidos:",
+            visitanteCompleto
+          );
+
+          syncFromSocket({
+            type: "create",
+            data: visitanteCompleto,
+          });
+        } catch (err) {
+          console.error("❌ Erro ao buscar dados completos do create:", err);
+        }
+      } else {
+        // Dados já estão completos, adiciona nomes de empresa e setor se necessário
+        const visitanteCompleto = {
+          ...data,
+          empresa:
+            data.empresa ||
+            empresasVisitantes.find((e) => e.id === data.empresa_id)?.nome ||
+            "Não informado",
+          setor:
+            data.setor ||
+            setoresVisitantes.find((s) => s.id === data.setor_id)?.nome ||
+            "Não informado",
+        };
+
+        syncFromSocket({
+          type: "create",
+          data: visitanteCompleto,
+        });
+      }
+    },
+    [syncFromSocket, empresasVisitantes, setoresVisitantes]
+  );
+
+  // ✅ HANDLER PARA VISITANTE ATUALIZADO
+  const handleVisitanteUpdate = useCallback(
+    async (data) => {
+      console.log("🔥 visitante:update recebido:", data);
+
+      // Se recebeu apenas ID, busca dados completos
+      if (data.id && Object.keys(data).length <= 2) {
+        console.log("⚠️ Dados incompletos, buscando visitante completo...");
+
+        try {
+          const ongId = await AsyncStorage.getItem("@Auth:ongId");
+          const response = await api.get(`/incidents/${data.id}`, {
+            headers: { Authorization: ongId },
+          });
+
+          const fullData = response.data;
+
+          // Adiciona nomes de empresa e setor
+          const visitanteCompleto = {
+            ...fullData,
+            empresa:
+              empresasVisitantes.find((e) => e.id === fullData.empresa_id)
+                ?.nome || "Não informado",
+            setor:
+              setoresVisitantes.find((s) => s.id === fullData.setor_id)?.nome ||
+              "Não informado",
+          };
+
+          console.log("✅ Dados completos obtidos:", visitanteCompleto);
+
+          syncFromSocket({
+            type: "update",
+            data: visitanteCompleto,
+          });
+        } catch (err) {
+          console.error("❌ Erro ao buscar dados completos:", err);
+        }
+      } else {
+        // Dados já estão completos
+        syncFromSocket({
+          type: "update",
+          data: data,
+        });
+      }
+    },
+    [syncFromSocket, empresasVisitantes, setoresVisitantes]
+  );
+
+  // ✅ HANDLER PARA VISITANTE DELETADO
+  const handleVisitanteDelete = useCallback(
+    (data) => {
+      console.log("🔥 visitante:delete recebido:", data);
+
+      syncFromSocket({
+        type: "delete",
+        data: data,
+      });
+    },
+    [syncFromSocket]
+  );
+
+  // ✅ HANDLER PARA BLOQUEIO
+  const handleVisitanteBloqueio = useCallback(
+    async (data) => {
+      console.log("🔥 visitante:block/bloqueio recebido:", data);
+
+      // Bloqueio retorna dados mínimos, precisa buscar completo
+      if (data.id) {
+        console.log("🔍 Buscando dados completos do bloqueio...");
+
+        try {
+          const ongId = await AsyncStorage.getItem("@Auth:ongId");
+          const response = await api.get(`/incidents/${data.id}`, {
+            headers: { Authorization: ongId },
+          });
+
+          const fullData = response.data;
+
+          const visitanteCompleto = {
+            ...fullData,
+            empresa:
+              empresasVisitantes.find((e) => e.id === fullData.empresa_id)
+                ?.nome || "Não informado",
+            setor:
+              setoresVisitantes.find((s) => s.id === fullData.setor_id)?.nome ||
+              "Não informado",
+          };
+
+          console.log("✅ Dados completos do bloqueio:", visitanteCompleto);
+
+          syncFromSocket({
+            type: "update",
+            data: visitanteCompleto,
+          });
+        } catch (err) {
+          console.error("❌ Erro ao buscar dados do bloqueio:", err);
+        }
+      }
+    },
+    [syncFromSocket, empresasVisitantes, setoresVisitantes]
+  );
+
+  // ═══════════════════════════════════════════════════════════════
+  // 10. EFFECTS - SOCKET.IO LISTENERS
+  // ═══════════════════════════════════════════════════════════════
   useEffect(() => {
+    // ✅ Validações iniciais
     if (!socket) {
-      console.log("⚠️ Aguardando socket conectar...");
+      console.log("⚠️ Socket não existe");
       return;
     }
 
     if (!socket.connected) {
-      console.log("⚠️ Socket existe mas não está conectado");
+      console.log("⚠️ Socket não conectado");
       return;
     }
 
-    console.log("🔌 Registrando listeners do Socket no Profile:", socket.id);
+    if (ticketListenersRegisteredRef.current) {
+      console.log("⚠️ Listeners já registrados, ignorando");
+      return;
+    }
 
-    // ✅ REF para controlar se já tocou o som recentemente
-    let lastSoundTime = 0;
-    const SOUND_COOLDOWN = 1000; // 1 segundo entre sons
+    console.log("🔌 Registrando listeners do Socket:", socket.id);
+    ticketListenersRegisteredRef.current = true;
 
-    // ✅ HANDLER PARA VISITANTES (SEM SOM)
-    const handleSocketUpdate = async (data) => {
-      console.log("═══════════════════════════════════════");
-      console.log("🔥 EVENTO SOCKET RECEBIDO - VISITANTE");
-      console.log("📦 Dados:", data);
-      console.log("═══════════════════════════════════════");
+    // ✅ REMOVER TODOS OS LISTENERS ANTIGOS
+    console.log("🧹 Removendo listeners antigos...");
 
-      try {
-        const ongId = await AsyncStorage.getItem("@Auth:ongId");
-        if (!ongId) return;
+    // Tickets
+    socket.removeAllListeners("ticket:create");
+    socket.removeAllListeners("ticket:update");
+    socket.removeAllListeners("ticket:viewed");
+    socket.removeAllListeners("ticket:all_viewed");
 
-        const profileResponse = await api.get("profile", {
-          headers: { Authorization: ongId },
-        });
+    // Visitantes
+    socket.removeAllListeners("visitante:create");
+    socket.removeAllListeners("visitante:update");
+    socket.removeAllListeners("visitante:delete");
+    socket.removeAllListeners("visitante:block");
+    socket.removeAllListeners("bloqueio:created");
+    socket.removeAllListeners("bloqueio:updated");
 
-        const incidentsWithNames = profileResponse.data.map((incident) => ({
-          ...incident,
-          empresa:
-            empresasRef.current.find((e) => e.id === incident.empresa_id)
-              ?.nome || "Não informado",
-          setor:
-            setoresRef.current.find((s) => s.id === incident.setor_id)?.nome ||
-            "Não informado",
-        }));
+    // ✅ REGISTRAR NOVOS LISTENERS
+    console.log("📝 Registrando novos listeners...");
 
-        setAllIncidents(incidentsWithNames);
-        setIncidents(incidentsWithNames);
-
-        console.log("✅ Lista de visitantes atualizada");
-      } catch (error) {
-        console.error("❌ Erro ao atualizar visitantes:", error.message);
-      }
-    };
-
-    // ✅ HANDLER PARA NOVO TICKET (COM SOM + COOLDOWN)
-    const handleTicketCreate = async (ticketData) => {
-      console.log("🎫 NOVO TICKET CRIADO VIA SOCKET:", ticketData);
-
-      // ⚠️ Só toca se for setor Segurança
-      if (userDataRef.current.setor !== "Segurança") {
-        console.log("⏭️ Não é Segurança, som não será tocado");
-        return;
-      }
-
-      // ✅ Cooldown para evitar múltiplos sons
-      const now = Date.now();
-      if (now - lastSoundTime < SOUND_COOLDOWN) {
-        console.log("⏭️ Som bloqueado por cooldown");
-        return;
-      }
-
-      lastSoundTime = now;
-
-      // 🔊 Toca o som
-      console.log("🔊 Tocando notificação...");
-      await playNotificationSound();
-
-      // Atualiza contador
-      try {
-        const ongId = await AsyncStorage.getItem("@Auth:ongId");
-        if (ongId) {
-          const unseenResponse = await api.get("/tickets/unseen", {
-            headers: { Authorization: ongId },
-          });
-
-          const newCount = unseenResponse.data.count;
-          unseenRef.current = newCount;
-          setUnseenCount(newCount);
-          console.log(`🔢 Contador atualizado: ${newCount} tickets`);
-        }
-      } catch (error) {
-        console.error("Erro ao atualizar contador:", error);
-      }
-    };
-
-    // 🔥 HANDLERS PARA ATUALIZAÇÕES (SEM SOM)
-    const handleTicketUpdate = async (data) => {
-      console.log("📝 Ticket atualizado via Socket");
-      await loadUnseenTickets();
-    };
-
-    const handleTicketViewed = async (data) => {
-      console.log("👁️ Ticket visualizado via Socket");
-      await loadUnseenTickets();
-    };
-
-    const handleTicketAllViewed = (data) => {
-      console.log("👁️ Todos os tickets visualizados via Socket");
-      if (userDataRef.current.setor === "Segurança") {
-        setUnseenCount(0);
-        unseenRef.current = 0;
-      }
-    };
-
-    // ✅ EVENTOS DE VISITANTES
-    const eventosVisitantes = [
-      "visitante:create",
-      "visitante:update",
-      "visitante:delete",
-      "visitante:block",
-      "bloqueio:created",
-      "bloqueio:updated",
-    ];
-
-    eventosVisitantes.forEach((evento) => {
-      socket.on(evento, handleSocketUpdate);
-    });
-
-    // 🔥 EVENTOS DE TICKETS
+    // Listeners de tickets
     socket.on("ticket:create", handleTicketCreate);
     socket.on("ticket:update", handleTicketUpdate);
     socket.on("ticket:viewed", handleTicketViewed);
     socket.on("ticket:all_viewed", handleTicketAllViewed);
 
-    console.log("✅ Listeners do Socket registrados!");
+    // Listeners de visitantes (CORRIGIDOS)
+    socket.on("visitante:create", handleVisitanteCreate);
+    socket.on("visitante:update", handleVisitanteUpdate);
+    socket.on("visitante:delete", handleVisitanteDelete);
+    socket.on("visitante:block", handleVisitanteBloqueio);
+    socket.on("bloqueio:created", handleVisitanteBloqueio);
+    socket.on("bloqueio:updated", handleVisitanteBloqueio);
 
-    // ✅ Cleanup
+    console.log("✅ Listeners registrados com sucesso!");
+
+    // ✅ CLEANUP FUNCTION
     return () => {
-      console.log("🧹 Removendo listeners do Socket");
+      console.log("🧹 Cleanup: Removendo todos os listeners");
 
-      eventosVisitantes.forEach((evento) => {
-        socket.off(evento, handleSocketUpdate);
-      });
+      // Tickets
+      socket.removeAllListeners("ticket:create");
+      socket.removeAllListeners("ticket:update");
+      socket.removeAllListeners("ticket:viewed");
+      socket.removeAllListeners("ticket:all_viewed");
 
-      socket.off("ticket:create", handleTicketCreate);
-      socket.off("ticket:update", handleTicketUpdate);
-      socket.off("ticket:viewed", handleTicketViewed);
-      socket.off("ticket:all_viewed", handleTicketAllViewed);
+      // Visitantes
+      socket.removeAllListeners("visitante:create");
+      socket.removeAllListeners("visitante:update");
+      socket.removeAllListeners("visitante:delete");
+      socket.removeAllListeners("visitante:block");
+      socket.removeAllListeners("bloqueio:created");
+      socket.removeAllListeners("bloqueio:updated");
+
+      ticketListenersRegisteredRef.current = false;
+      processedTicketsRef.current.clear();
+
+      console.log("✅ Cleanup concluído");
     };
-  }, [socket, playNotificationSound, loadUnseenTickets]);
+  }, [
+    socket,
+    handleTicketCreate,
+    handleTicketUpdate,
+    handleTicketViewed,
+    handleTicketAllViewed,
+    handleVisitanteCreate,
+    handleVisitanteUpdate,
+    handleVisitanteDelete,
+    handleVisitanteBloqueio,
+  ]);
 
-  // ----------------------
-  // BUSCA COM DEBOUNCE
-  // ----------------------
+  // ═══════════════════════════════════════════════════════════════
+  // 11. EFFECTS - BUSCA COM DEBOUNCE
+  // ═══════════════════════════════════════════════════════════════
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
@@ -428,7 +590,7 @@ export default function Profile() {
         if (localResults.length > 0) {
           setIncidents(localResults);
         } else {
-          // Busca na API se não encontrar localmente
+          // Busca na API
           const response = await api.get("/search", {
             params: { query: searchTerm },
           });
@@ -485,27 +647,27 @@ export default function Profile() {
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [searchTerm, allIncidents, empresasVisitantes, setoresVisitantes]);
+  }, [
+    searchTerm,
+    allIncidents,
+    empresasVisitantes,
+    setoresVisitantes,
+    setIncidents,
+  ]);
 
-  // ----------------------
-  // CICLO DE ATUALIZAÇÃO (Foco na tela)
-  // ----------------------
+  // ═══════════════════════════════════════════════════════════════
+  // 12. EFFECTS - CICLO DE ATUALIZAÇÃO (FOCO NA TELA)
+  // ═══════════════════════════════════════════════════════════════
   useFocusEffect(
     useCallback(() => {
       fetchInitialData();
     }, [fetchInitialData])
   );
 
-  // ----------------------
-  // FILTRO E ORDENAÇÃO
-  // ----------------------
-  const filteredIncidents = incidents.sort((a, b) =>
-    a.nome.localeCompare(b.nome)
-  );
+  // ═══════════════════════════════════════════════════════════════
+  // 13. FUNÇÕES AUXILIARES - NAVEGAÇÃO E AÇÕES
+  // ═══════════════════════════════════════════════════════════════
 
-  // ----------------------
-  // AÇÕES PRINCIPAIS
-  // ----------------------
   function handleLogout() {
     Alert.alert("Sair", "Tem certeza que deseja sair?", [
       {
@@ -536,9 +698,7 @@ export default function Profile() {
     navigation.navigate("BiparCracha");
   }
 
-  // ----------------------
   // REGISTRAR VISITA
-  // ----------------------
   async function handleRegisterVisit(id) {
     try {
       const incident = incidents.find((inc) => inc.id === id);
@@ -609,15 +769,8 @@ export default function Profile() {
               headers: { Authorization: ongId },
             });
 
-            const newAllIncidents = allIncidents.filter(
-              (incident) => incident.id !== id
-            );
-            const newIncidents = incidents.filter(
-              (incident) => incident.id !== id
-            );
-
-            setAllIncidents(newAllIncidents);
-            setIncidents(newIncidents);
+            // ✅ Remove do cache do Context
+            removeIncident(id);
 
             Alert.alert("Sucesso", "Cadastro deletado!");
           } catch (err) {
@@ -638,9 +791,68 @@ export default function Profile() {
     navigation.navigate("ViewVisitor", { id });
   }
 
-  // ----------------------
-  // RENDER ITEM
-  // ----------------------
+  // ANIMAÇÕES DO MENU MODAL
+  const openMenuModal = () => {
+    if (isAnimating) return;
+
+    setIsAnimating(true);
+    setMenuModalVisible(true);
+
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(modalPosition, {
+          toValue: 0,
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(overlayOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setIsAnimating(false);
+      });
+    }, 10);
+  };
+
+  const closeMenuModal = () => {
+    if (isAnimating) return;
+
+    setIsAnimating(true);
+    Animated.parallel([
+      Animated.timing(modalPosition, {
+        toValue: -300,
+        duration: 250,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(overlayOpacity, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setMenuModalVisible(false);
+      setIsAnimating(false);
+    });
+  };
+
+  // FORMATAR DATA
+  function formatarData(data) {
+    if (!data) return "Data não informada";
+    const dataParte = data.split("T")[0];
+    const partes = dataParte.split("-");
+    if (partes.length === 3) return `${partes[2]}/${partes[1]}/${partes[0]}`;
+    return data;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 12. RENDER FUNCTIONS
+  // ═══════════════════════════════════════════════════════════════
+
+  // RENDER ITEM DA LISTA
   function renderIncident({ item }) {
     const avatarSource = item.avatar_imagem
       ? { uri: item.avatar_imagem }
@@ -775,71 +987,9 @@ export default function Profile() {
     );
   }
 
-  // ----------------------
-  // ANIMAÇÕES DO MENU MODAL - CORRIGIDAS
-  // ----------------------
-  const openMenuModal = () => {
-    if (isAnimating) return;
-
-    setIsAnimating(true);
-    setMenuModalVisible(true);
-
-    // Pequeno delay para garantir que o modal está montado
-    setTimeout(() => {
-      Animated.parallel([
-        Animated.timing(modalPosition, {
-          toValue: 0,
-          duration: 300,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(overlayOpacity, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setIsAnimating(false);
-      });
-    }, 10);
-  };
-
-  const closeMenuModal = () => {
-    if (isAnimating) return;
-
-    setIsAnimating(true);
-    Animated.parallel([
-      Animated.timing(modalPosition, {
-        toValue: -300,
-        duration: 250,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(overlayOpacity, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setMenuModalVisible(false);
-      setIsAnimating(false);
-    });
-  };
-
-  // ----------------------
-  // FORMATAR DATA
-  // ----------------------
-  function formatarData(data) {
-    if (!data) return "Data não informada";
-    const dataParte = data.split("T")[0];
-    const partes = dataParte.split("-");
-    if (partes.length === 3) return `${partes[2]}/${partes[1]}/${partes[0]}`;
-    return data;
-  }
-
-  // ----------------------
-  // LOADING
-  // ----------------------
+  // ═══════════════════════════════════════════════════════════════
+  // 13. LOADING STATE
+  // ═══════════════════════════════════════════════════════════════
   if (loading) {
     return (
       <View style={styles.loading}>
@@ -849,16 +999,25 @@ export default function Profile() {
     );
   }
 
-  // ----------------------
-  // INTERFACE PRINCIPAL
-  // ----------------------
+  // ═══════════════════════════════════════════════════════════════
+  // 14. RENDER PRINCIPAL
+  // ═══════════════════════════════════════════════════════════════
+
+  // Filtro e ordenação
+  const filteredIncidents = incidents.sort((a, b) => {
+    const nomeA = a.nome || "";
+    const nomeB = b.nome || "";
+    return nomeA.localeCompare(nomeB);
+  });
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* TOPO */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* CABEÇALHO */}
+      {/* ═══════════════════════════════════════════════════════ */}
       <View style={styles.header}>
         <View style={styles.logoRow}>
           <Image source={logoImg} style={styles.logo} />
-
           <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
             <Feather name="power" size={24} color="#e02041" />
           </TouchableOpacity>
@@ -893,7 +1052,9 @@ export default function Profile() {
         </View>
       </View>
 
+      {/* ═══════════════════════════════════════════════════════ */}
       {/* INFO DA BUSCA */}
+      {/* ═══════════════════════════════════════════════════════ */}
       {isSearching && searchTerm && (
         <View style={styles.searchInfo}>
           <Text style={styles.searchInfoText}>
@@ -902,9 +1063,10 @@ export default function Profile() {
         </View>
       )}
 
-      {/* MENU COM CÍRCULOS COLORIDOS INDIVIDUAIS */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* MENU PRINCIPAL COM CÍRCULOS COLORIDOS */}
+      {/* ═══════════════════════════════════════════════════════ */}
       <View style={styles.menu}>
-        {/* VISITANTES - VERDE */}
         <TouchableOpacity
           onPress={handleNavigateToVisitors}
           style={styles.menuButton}
@@ -915,7 +1077,6 @@ export default function Profile() {
           <Text style={styles.menuButtonText}>Visitantes</Text>
         </TouchableOpacity>
 
-        {/* HISTÓRICO - AZUL */}
         <TouchableOpacity
           onPress={handleNavigateToHistory}
           style={styles.menuButton}
@@ -943,7 +1104,6 @@ export default function Profile() {
           )}
         </TouchableOpacity>
 
-        {/* CRACHÁ - AMARELO */}
         <TouchableOpacity
           onPress={handleNavigateToBipagem}
           style={styles.menuButton}
@@ -958,7 +1118,6 @@ export default function Profile() {
           <Text style={styles.menuButtonText}>Cracha</Text>
         </TouchableOpacity>
 
-        {/* MENU - ROXO */}
         <TouchableOpacity
           onPress={openMenuModal}
           style={styles.menuButton}
@@ -971,10 +1130,11 @@ export default function Profile() {
         </TouchableOpacity>
       </View>
 
-      {/* TÍTULO */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* TÍTULO E LISTA DE VISITANTES */}
+      {/* ═══════════════════════════════════════════════════════ */}
       <Text style={styles.title}>Visitantes Cadastrados</Text>
 
-      {/* LISTA */}
       <FlatList
         data={filteredIncidents}
         keyExtractor={(item) => String(item.id)}
@@ -991,7 +1151,9 @@ export default function Profile() {
         )}
       />
 
-      {/* MODAL PARA REGISTRAR VISITA (AJUSTADO PARA PICKER) */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* MODAL DE REGISTRAR VISITA */}
+      {/* ═══════════════════════════════════════════════════════ */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -1035,7 +1197,6 @@ export default function Profile() {
                   <Picker
                     selectedValue={responsavel}
                     onValueChange={(itemValue) => {
-                      // Se selecionar a opção vazia, o TextInput abaixo pode ser usado
                       setResponsavel(itemValue);
                     }}
                     style={styles.pickerStyle}
@@ -1051,7 +1212,6 @@ export default function Profile() {
                   </Picker>
                 </View>
 
-                {/* CAMPO DE OBSERVAÇÃO */}
                 <Text style={styles.modalLabel}>Observação:</Text>
                 <TextInput
                   style={[styles.responsavelInput, styles.observacaoInput]}
@@ -1095,7 +1255,9 @@ export default function Profile() {
         </View>
       </Modal>
 
-      {/* MODAL DO MENU - MODERNO E TECNOLÓGICO - SEMPRE NO DOM */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* MODAL DO MENU LATERAL */}
+      {/* ═══════════════════════════════════════════════════════ */}
       <Animated.View
         style={[
           styles.menuModalOverlay,
@@ -1120,7 +1282,6 @@ export default function Profile() {
             },
           ]}
         >
-          {/* CABEÇALHO DO MENU */}
           <View style={styles.menuModalHeader}>
             <View style={styles.menuModalHeaderContent}>
               <View style={styles.menuModalUserInfo}>
@@ -1146,7 +1307,6 @@ export default function Profile() {
             </View>
           </View>
 
-          {/* LISTA DE OPÇÕES DO MENU */}
           <View style={styles.menuModalOptions}>
             <TouchableOpacity
               style={styles.menuModalOption}
@@ -1178,7 +1338,7 @@ export default function Profile() {
                 closeMenuModal();
                 Alert.alert(
                   "Em desenvolvimento",
-                  "Funcionalidade de Relatórios em desenvolvimento"
+                  "Funcionalidade em desenvolvimento"
                 );
               }}
               disabled={isAnimating}
@@ -1207,7 +1367,7 @@ export default function Profile() {
                 closeMenuModal();
                 Alert.alert(
                   "Em desenvolvimento",
-                  "Funcionalidade de Relatórios em desenvolvimento"
+                  "Funcionalidade em desenvolvimento"
                 );
               }}
               disabled={isAnimating}
@@ -1230,14 +1390,13 @@ export default function Profile() {
               </View>
             </TouchableOpacity>
 
-            {/* CONFIGURAÇÕES */}
             <TouchableOpacity
               style={styles.menuModalOption}
               onPress={() => {
                 closeMenuModal();
                 Alert.alert(
                   "Em desenvolvimento",
-                  "Funcionalidade de Configurações em desenvolvimento"
+                  "Funcionalidade em desenvolvimento"
                 );
               }}
               disabled={isAnimating}
@@ -1258,14 +1417,13 @@ export default function Profile() {
               </View>
             </TouchableOpacity>
 
-            {/* SUPORTE */}
             <TouchableOpacity
               style={styles.menuModalOption}
               onPress={() => {
                 closeMenuModal();
                 Alert.alert(
                   "Em desenvolvimento",
-                  "Funcionalidade de Suporte em desenvolvimento"
+                  "Funcionalidade em desenvolvimento"
                 );
               }}
               disabled={isAnimating}
@@ -1286,7 +1444,6 @@ export default function Profile() {
               </View>
             </TouchableOpacity>
 
-            {/* SAIR */}
             <TouchableOpacity
               style={styles.menuModalOption}
               onPress={() => {
@@ -1312,7 +1469,6 @@ export default function Profile() {
             </TouchableOpacity>
           </View>
 
-          {/* RODAPÉ DO MENU */}
           <View style={styles.menuModalFooter}>
             <Text style={styles.menuModalVersion}>v1.0.0</Text>
             <Text style={styles.menuModalCopyright}>
@@ -1326,459 +1482,3 @@ export default function Profile() {
     </SafeAreaView>
   );
 }
-
-// ----------------------
-// ESTILOS ATUALIZADOS
-// ----------------------
-const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 16, backgroundColor: "#fff" },
-  header: {},
-  logo: { width: 54, height: 60 },
-  welcomeText: { fontSize: 16, marginTop: 20, marginBottom: 25 },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderColor: "#ddd",
-    borderWidth: 1,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    marginBottom: 25,
-  },
-  searchInput: { flex: 1, height: 40, marginLeft: 8 },
-  navButtons: { alignItems: "center" },
-  navButton: {
-    width: "100%",
-    backgroundColor: "#10B981",
-    padding: 15,
-    borderRadius: 8,
-  },
-  navButtonText: { textAlign: "center", color: "#fff", fontWeight: "bold" },
-  logoutButton: { padding: 8 },
-  menu: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    marginVertical: 20,
-    paddingBottom: 0,
-  },
-  menuButton: {
-    alignItems: "center",
-    position: "relative",
-    width: 60, // Largura fixa para melhor alinhamento
-  },
-  menuButtonText: {
-    fontSize: 12,
-    marginTop: 6,
-    textAlign: "center",
-  },
-  // NOVOS ESTILOS PARA OS CÍRCULOS DO MENU
-  menuIconCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  visitantesCircle: {
-    backgroundColor: "rgba(16, 185, 129, 0.12)",
-  },
-  historicoCircle: {
-    backgroundColor: "rgba(16, 185, 129, 0.16)",
-  },
-  ticketsCircle: {
-    backgroundColor: "rgba(16, 185, 129, 0.20)",
-  },
-  crachaCircle: {
-    backgroundColor: "rgba(16, 185, 129, 0.24)",
-  },
-  menuCircle: {
-    backgroundColor: "rgba(16, 185, 129, 0.28)",
-  },
-  notificationBadge: {
-    backgroundColor: "#e02041",
-    borderRadius: 12,
-    paddingHorizontal: 6,
-    position: "absolute",
-    top: -5,
-    right: 0,
-    minWidth: 20,
-    height: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 1,
-  },
-  notificationText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  // ------------------------------------
-  // NOVOS ESTILOS PARA O CARD DE VISITANTE
-  // ------------------------------------
-  incidentItem: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    padding: 12,
-    marginBottom: 12,
-    borderRadius: 8,
-  },
-  incidentItemBlocked: {
-    // Estilo para o card quando bloqueado
-    borderColor: "#e02041",
-    backgroundColor: "#ffebeb",
-    borderTopColor: "#e02041",
-  },
-  cardLeft: {
-    // Container para avatar e informações
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 8,
-  },
-  cardAvatar: {
-    // Container do avatar (círculo)
-    width: 55,
-    height: 55,
-    borderRadius: 27.5,
-    marginRight: 12,
-    overflow: "hidden",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#f0f0f0",
-    borderWidth: 1,
-    borderColor: "#eee",
-  },
-  avatarImage: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "cover",
-  },
-  cardInfo: {
-    flex: 1,
-    paddingRight: 10,
-  },
-  incidentNameRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 4,
-    flexWrap: "wrap",
-    marginTop: 2, // Ajuste vertical
-  },
-  incidentName: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginRight: 8,
-  },
-  blockedName: { color: "#e02041" },
-  blockedBadge: {
-    // Estilo para o badge "BLOQUEADO"
-    backgroundColor: "#bd040a",
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    alignSelf: "flex-start",
-  },
-  blockedBadgeText: {
-    color: "#fff",
-    fontSize: 10,
-    fontWeight: "bold",
-  },
-
-  // ESTILOS NOVOS PARA O LAYOUT LADO A LADO
-  cardDetailRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 6,
-  },
-  cardDetailColumn: {
-    width: "48%",
-  },
-  cardDetailColumnFull: {
-    width: "100%",
-  },
-  detailLabel: {
-    fontSize: 12,
-    color: "#888",
-    fontWeight: "normal",
-    textTransform: "uppercase",
-  },
-  incidentTextValue: {
-    fontSize: 14,
-    color: "#000",
-    fontWeight: "600",
-  },
-
-  actionsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
-    paddingTop: 8,
-  },
-  actionButton: { padding: 8 },
-  // ------------------------------------
-  emptyContainer: {
-    alignItems: "center",
-    marginTop: 40,
-    padding: 20,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: "#666",
-    textAlign: "center",
-  },
-  loading: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: "#666",
-  },
-  logoRow: {
-    marginTop: 40,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  margin: { marginBottom: 40 },
-  title: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 15,
-    textAlign: "center",
-  },
-  searchInfo: {
-    backgroundColor: "#f0f0f0",
-    padding: 8,
-    borderRadius: 4,
-    marginBottom: 10,
-  },
-  searchInfoText: {
-    fontSize: 14,
-    color: "#666",
-    textAlign: "center",
-  },
-  // Estilos do Modal de Visita
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 20,
-    width: "100%",
-    maxWidth: 400,
-    maxHeight: "80%",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-    paddingBottom: 10,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-  },
-  modalCloseButton: {
-    padding: 5,
-  },
-  modalText: {
-    fontSize: 16,
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  modalLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 10,
-    color: "#333",
-  },
-  // Estilo para o Picker
-  pickerWrapper: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    overflow: "hidden",
-    marginBottom: 15,
-  },
-  pickerStyle: {
-    height: Platform.OS === "ios" ? 150 : 50,
-    width: "100%",
-  },
-  outroLabel: {
-    fontSize: 14,
-    color: "#666",
-    marginTop: 10,
-    marginBottom: 5,
-  },
-  responsavelInput: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    textAlignVertical: "top",
-  },
-  observacaoInput: {
-    minHeight: 100,
-    marginBottom: 20,
-  },
-  modalButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 20,
-  },
-  modalButton: {
-    flex: 0.48,
-    padding: 15,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  modalButtonCancel: {
-    backgroundColor: "#f0f0f0",
-  },
-  modalButtonConfirm: {
-    backgroundColor: "#10B981",
-  },
-  modalButtonDisabled: {
-    backgroundColor: "#ccc",
-  },
-  modalButtonCancelText: {
-    color: "#333",
-    fontWeight: "600",
-  },
-  modalButtonConfirmText: {
-    color: "white",
-    fontWeight: "600",
-  },
-  // ESTILOS DO MODAL DO MENU - ATUALIZADOS
-  menuModalOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: "flex-start",
-  },
-  menuModalBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.3)",
-  },
-  menuModalContainer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    bottom: 0,
-    backgroundColor: "#fff",
-    borderTopRightRadius: 20,
-    borderBottomRightRadius: 20,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 5,
-      height: 0,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 15,
-    elevation: 10,
-    overflow: "hidden",
-  },
-  menuModalHeader: {
-    // Cabeçalho Menu Lateral
-    backgroundColor: "#f8fafc",
-    paddingVertical: 20,
-    paddingTop: 50,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e2e8f0",
-  },
-  menuModalHeaderContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-  },
-  menuModalUserInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  menuModalAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#edf2f7",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  menuModalUserName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#2d3748",
-  },
-  menuModalUserSetor: {
-    fontSize: 14,
-    color: "#718096",
-    marginTop: 2,
-  },
-  menuModalCloseButton: {
-    padding: 4,
-  },
-  menuModalOptions: {
-    flex: 1,
-    paddingVertical: 16,
-  },
-  menuModalOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f1f5f9",
-  },
-  menuModalIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  menuModalOptionContent: {
-    flex: 1,
-  },
-  menuModalOptionTitle: {
-    fontSize: 15,
-    fontWeight: "500",
-    color: "#2d3748",
-    marginBottom: 2,
-  },
-  menuModalOptionDescription: {
-    fontSize: 12,
-    color: "#718096",
-  },
-  menuModalFooter: {
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: "#e2e8f0",
-    alignItems: "center",
-  },
-  menuModalVersion: {
-    fontSize: 12,
-    color: "#a0aec0",
-    marginBottom: 4,
-  },
-  menuModalCopyright: {
-    fontSize: 11,
-    color: "#cbd5e0",
-  },
-});

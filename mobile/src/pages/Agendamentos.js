@@ -14,8 +14,8 @@ export default function Agendamentos() {
   const navigation = useNavigation();
 
   const handleVisitasAgendadas = () => {
-    // Navegar para a tela de Visitas Agendadas
-    navigation.navigate("VisitasAgendadas");
+    // ✅ REDIRECIONADO PARA ListaAgendamentos
+    navigation.navigate("ListaAgendamentos");
   };
 
   const handleEmpresasAgendadas = () => {

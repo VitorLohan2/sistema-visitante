@@ -91,14 +91,11 @@ export default function TicketDashboard() {
 
     console.log("🔌 TicketDashboard: Registrando listeners do Socket");
 
-    // ✅ Handler único para todos os eventos
     const handleTicketEvent = (data) => {
       console.log("🎫 Evento de ticket recebido no Dashboard:", data);
-      fetchTickets(); // ✅ Apenas recarrega a lista, SEM SOM
+      fetchTickets();
     };
 
-    // ✅ IMPORTANTE: Não use múltiplos socket.on() para o mesmo handler
-    // Registra UMA ÚNICA VEZ cada evento
     const events = [
       "ticket:create",
       "ticket:update",

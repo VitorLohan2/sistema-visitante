@@ -21,6 +21,7 @@ import Tickets from "./pages/Tickets";
 import BiparCracha from "./pages/BiparCracha";
 
 import Agendamentos from "./pages/Agendamentos";
+import ListaAgendamentos from "./pages/ListaAgendamentos";
 
 const Stack = createNativeStackNavigator();
 
@@ -56,6 +57,7 @@ export default function Routes() {
       <Stack.Screen name="BiparCracha" component={BiparCracha} />
 
       <Stack.Screen name="Agendamentos" component={Agendamentos} />
+      <Stack.Screen name="ListaAgendamentos" component={ListaAgendamentos} />
     </Stack.Navigator>
   );
 }
