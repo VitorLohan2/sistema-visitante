@@ -1,41 +1,59 @@
 // controllers/TicketController.js
-const connection = require('../database/connection');
-const moment = require('moment-timezone'); // ✅ Importa moment com timezone
+const connection = require("../database/connection");
+const moment = require("moment-timezone");
+const { getIo } = require("../socket");
 
 // Helper para extrair token do Bearer
 function getBearerToken(req) {
   const authHeader = req.headers.authorization;
   if (!authHeader) return null;
-  const parts = authHeader.split(' ');
-  if (parts.length === 2 && parts[0] === 'Bearer') {
-    return parts[1]; // retorna só o ID
+  const parts = authHeader.split(" ");
+  if (parts.length === 2 && parts[0] === "Bearer") {
+    return parts[1];
   }
   return null;
 }
 
 module.exports = {
   async create(req, res) {
+    const io = getIo(); // ✅ OBTER INSTÂNCIA DO SOCKET
     const ong_id = getBearerToken(req);
-    const { funcionario, motivo, descricao, setorResponsavel, nomeUsuario, setorUsuario } = req.body;
-    
-    if (!funcionario || !motivo || !descricao || !setorResponsavel || !nomeUsuario || !setorUsuario) {
-      return res.status(400).json({ 
-        error: 'Todos os campos são obrigatórios',
+    const {
+      funcionario,
+      motivo,
+      descricao,
+      setorResponsavel,
+      nomeUsuario,
+      setorUsuario,
+    } = req.body;
+
+    if (
+      !funcionario ||
+      !motivo ||
+      !descricao ||
+      !setorResponsavel ||
+      !nomeUsuario ||
+      !setorUsuario
+    ) {
+      return res.status(400).json({
+        error: "Todos os campos são obrigatórios",
         campos_faltantes: {
           funcionario: !funcionario,
-          motivo: !motivo,  
+          motivo: !motivo,
           descricao: !descricao,
           setorResponsavel: !setorResponsavel,
           nomeUsuario: !nomeUsuario,
-          setorUsuario: !setorUsuario
-        }
+          setorUsuario: !setorUsuario,
+        },
       });
     }
 
     try {
-      const data_criacao = moment().tz("America/Sao_Paulo").format('YYYY-MM-DD HH:mm:ss');
+      const data_criacao = moment()
+        .tz("America/Sao_Paulo")
+        .format("YYYY-MM-DD HH:mm:ss");
 
-      const [ticket] = await connection('tickets')
+      const [ticket] = await connection("tickets")
         .insert({
           ong_id,
           funcionario,
@@ -44,28 +62,40 @@ module.exports = {
           setor_responsavel: setorResponsavel,
           nome_usuario: nomeUsuario,
           setor_usuario: setorUsuario,
-          status: 'Aberto',
-          data_criacao
+          status: "Aberto",
+          data_criacao,
         })
-        .returning('id');
+        .returning("id");
 
-      return res.status(201).json({ 
+      // 🔥 EMITIR EVENTO PARA SALA GLOBAL
+      io.to("global").emit("ticket:create", {
         id: ticket.id,
-        message: 'Ticket criado com sucesso',
+        funcionario,
+        motivo,
+        setorResponsavel,
+        criadoPor: nomeUsuario,
+        timestamp: new Date(),
+      });
+
+      console.log("📡 Evento ticket:create emitido para sala GLOBAL");
+
+      return res.status(201).json({
+        id: ticket.id,
+        message: "Ticket criado com sucesso",
         data: {
           funcionario,
           motivo,
           setorResponsavel,
           criadoPor: nomeUsuario,
-          setorUsuario
-        }
+          setorUsuario,
+        },
       });
-
     } catch (err) {
-      console.error('Erro ao criar ticket:', err);
-      return res.status(500).json({ 
-        error: 'Erro ao criar o ticket',
-        detalhes: process.env.NODE_ENV === 'development' ? err.message : undefined
+      console.error("Erro ao criar ticket:", err);
+      return res.status(500).json({
+        error: "Erro ao criar o ticket",
+        detalhes:
+          process.env.NODE_ENV === "development" ? err.message : undefined,
       });
     }
   },
@@ -74,134 +104,178 @@ module.exports = {
     const ong_id = getBearerToken(req);
 
     if (!ong_id) {
-      return res.status(401).json({ error: 'Authorization header é obrigatório' });
+      return res
+        .status(401)
+        .json({ error: "Authorization header é obrigatório" });
     }
 
     try {
-      const ong = await connection('ongs')
-        .where('id', ong_id)
-        .select('type', 'setor_id')
+      const ong = await connection("ongs")
+        .where("id", ong_id)
+        .select("type", "setor_id")
         .first();
 
-      if (!ong) return res.status(404).json({ error: 'ONG não encontrada' });
+      if (!ong) return res.status(404).json({ error: "ONG não encontrada" });
 
-      const tickets = await connection('tickets')
+      const tickets = await connection("tickets")
         .select(
-          'tickets.*',
-          'ongs.name as ong_name',
-          'ongs.setor_id as ong_setor_id'
+          "tickets.*",
+          "ongs.name as ong_name",
+          "ongs.setor_id as ong_setor_id"
         )
-        .leftJoin('ongs', 'tickets.ong_id', 'ongs.id')
-        .orderBy('tickets.data_criacao', 'desc');
+        .leftJoin("ongs", "tickets.ong_id", "ongs.id")
+        .orderBy("tickets.data_criacao", "desc");
 
       return res.json(tickets);
-
     } catch (err) {
-      console.error('Erro ao buscar tickets:', err);
-      return res.status(500).json({ 
-        error: 'Erro ao buscar tickets',
-        detalhes: process.env.NODE_ENV === 'development' ? err.message : undefined
+      console.error("Erro ao buscar tickets:", err);
+      return res.status(500).json({
+        error: "Erro ao buscar tickets",
+        detalhes:
+          process.env.NODE_ENV === "development" ? err.message : undefined,
       });
     }
   },
 
   async update(req, res) {
+    const io = getIo(); // ✅ OBTER INSTÂNCIA DO SOCKET
     const ong_id = getBearerToken(req);
     const { id } = req.params;
     const { status } = req.body;
 
-    if (isNaN(id)) return res.status(400).json({ error: 'ID do ticket deve ser numérico' });
+    if (isNaN(id))
+      return res.status(400).json({ error: "ID do ticket deve ser numérico" });
 
-    const statusValidos = ['Aberto', 'Em andamento', 'Resolvido'];
+    const statusValidos = ["Aberto", "Em andamento", "Resolvido"];
     if (!status || !statusValidos.includes(status)) {
-      return res.status(400).json({ error: 'Status inválido', status_validos: statusValidos });
+      return res
+        .status(400)
+        .json({ error: "Status inválido", status_validos: statusValidos });
     }
 
     try {
-      const ong = await connection('ongs')
-        .where('id', ong_id)
-        .select('type', 'setor_id')
+      const ong = await connection("ongs")
+        .where("id", ong_id)
+        .select("type", "setor_id")
         .first();
 
-      if (!ong) return res.status(404).json({ error: 'ONG não encontrada' });
+      if (!ong) return res.status(404).json({ error: "ONG não encontrada" });
 
-      const ticket = await connection('tickets')
-        .where('id', id)
-        .first();
+      const ticket = await connection("tickets").where("id", id).first();
 
-      if (!ticket) return res.status(404).json({ error: 'Ticket não encontrado' });
+      if (!ticket)
+        return res.status(404).json({ error: "Ticket não encontrado" });
 
-      const isAdmin = ong.type === 'ADMIN';
+      const isAdmin = ong.type === "ADMIN";
       const isSeguranca = ong.setor_id === 4;
 
       if (!isAdmin && !isSeguranca) {
-        return res.status(403).json({ error: 'Acesso permitido apenas para administradores ou setor de Segurança' });
+        return res
+          .status(403)
+          .json({
+            error:
+              "Acesso permitido apenas para administradores ou setor de Segurança",
+          });
       }
 
-      const data_atualizacao = moment().tz("America/Sao_Paulo").format('YYYY-MM-DD HH:mm:ss');
+      const data_atualizacao = moment()
+        .tz("America/Sao_Paulo")
+        .format("YYYY-MM-DD HH:mm:ss");
 
-      const updateData = { 
+      const updateData = {
         status,
         data_atualizacao,
-        visualizado: true
+        visualizado: true,
       };
 
-      if (status === 'Resolvido') {
-        updateData.data_finalizacao = moment().tz("America/Sao_Paulo").format('YYYY-MM-DD HH:mm:ss');
+      if (status === "Resolvido") {
+        updateData.data_finalizacao = moment()
+          .tz("America/Sao_Paulo")
+          .format("YYYY-MM-DD HH:mm:ss");
       }
 
-      await connection('tickets')
-        .where('id', id)
-        .update(updateData);
+      await connection("tickets").where("id", id).update(updateData);
 
-      return res.json({ success: true, message: 'Status atualizado com sucesso', ticket_id: id, novo_status: status });
+      // 🔥 EMITIR EVENTO PARA SALA GLOBAL
+      io.to("global").emit("ticket:update", {
+        id,
+        status,
+        visualizado: true,
+        timestamp: new Date(),
+      });
 
+      console.log("📡 Evento ticket:update emitido para sala GLOBAL");
+
+      return res.json({
+        success: true,
+        message: "Status atualizado com sucesso",
+        ticket_id: id,
+        novo_status: status,
+      });
     } catch (err) {
-      console.error('Erro ao atualizar ticket:', err);
-      return res.status(500).json({ error: 'Erro interno ao atualizar ticket', detalhes: process.env.NODE_ENV === 'development' ? err.message : undefined });
+      console.error("Erro ao atualizar ticket:", err);
+      return res.status(500).json({
+        error: "Erro interno ao atualizar ticket",
+        detalhes:
+          process.env.NODE_ENV === "development" ? err.message : undefined,
+      });
     }
   },
 
   async show(req, res) {
+    const io = getIo(); // ✅ OBTER INSTÂNCIA DO SOCKET
     const ong_id = getBearerToken(req);
     const { id } = req.params;
 
     try {
-      const ticket = await connection('tickets')
-        .where('tickets.id', id)
+      const ticket = await connection("tickets")
+        .where("tickets.id", id)
         .select(
-          'tickets.*',
-          'ongs.name as ong_name',
-          'ongs.setor_id as ong_setor_id'
+          "tickets.*",
+          "ongs.name as ong_name",
+          "ongs.setor_id as ong_setor_id"
         )
-        .leftJoin('ongs', 'tickets.ong_id', 'ongs.id')
+        .leftJoin("ongs", "tickets.ong_id", "ongs.id")
         .first();
 
-      if (!ticket) return res.status(404).json({ error: 'Ticket não encontrado' });
+      if (!ticket)
+        return res.status(404).json({ error: "Ticket não encontrado" });
 
-      const ong = await connection('ongs')
-        .where('id', ong_id)
-        .first();
+      const ong = await connection("ongs").where("id", ong_id).first();
 
-      if (ong.type !== 'ADMIN' && ticket.ong_id !== ong_id) {
-        return res.status(403).json({ error: 'Acesso negado ao ticket' });
+      if (ong.type !== "ADMIN" && ticket.ong_id !== ong_id) {
+        return res.status(403).json({ error: "Acesso negado ao ticket" });
       }
 
       if (!ticket.visualizado) {
-        const data_atualizacao = moment().tz("America/Sao_Paulo").format('YYYY-MM-DD HH:mm:ss');
+        const data_atualizacao = moment()
+          .tz("America/Sao_Paulo")
+          .format("YYYY-MM-DD HH:mm:ss");
 
-        await connection('tickets')
-          .where('id', id)
+        await connection("tickets")
+          .where("id", id)
           .update({ visualizado: true, data_atualizacao });
 
         ticket.visualizado = true;
+
+        // 🔥 EMITIR EVENTO QUANDO MARCAR COMO VISUALIZADO
+        io.to("global").emit("ticket:viewed", {
+          id,
+          visualizado: true,
+          timestamp: new Date(),
+        });
+
+        console.log("📡 Evento ticket:viewed emitido para sala GLOBAL");
       }
 
       return res.json(ticket);
-
     } catch (err) {
-      console.error('Erro ao buscar ticket:', err);
-      return res.status(500).json({ error: 'Erro ao buscar ticket', detalhes: process.env.NODE_ENV === 'development' ? err.message : undefined });
+      console.error("Erro ao buscar ticket:", err);
+      return res.status(500).json({
+        error: "Erro ao buscar ticket",
+        detalhes:
+          process.env.NODE_ENV === "development" ? err.message : undefined,
+      });
     }
   },
 
@@ -209,35 +283,46 @@ module.exports = {
     const ong_id = getBearerToken(req);
 
     try {
-      const ong = await connection('ongs')
-        .where('id', ong_id)
-        .first();
+      const ong = await connection("ongs").where("id", ong_id).first();
 
       if (!ong || ong.setor_id !== 4) return res.json({ count: 0 });
 
-      const count = await connection('tickets')
-        .where({ setor_responsavel: 'Segurança', visualizado: false, status: 'Aberto' })
-        .count('id as total');
+      const count = await connection("tickets")
+        .where({
+          setor_responsavel: "Segurança",
+          visualizado: false,
+          status: "Aberto",
+        })
+        .count("id as total");
 
       return res.json({ count: count[0].total || 0 });
     } catch (err) {
-      console.error('Erro ao contar tickets:', err);
-      return res.status(500).json({ error: 'Erro no servidor' });
+      console.error("Erro ao contar tickets:", err);
+      return res.status(500).json({ error: "Erro no servidor" });
     }
   },
 
   async markAllSeen(req, res) {
+    const io = getIo(); // ✅ OBTER INSTÂNCIA DO SOCKET
     const ong_id = getBearerToken(req);
 
     try {
-      await connection('tickets')
-        .where({ setor_responsavel: 'Segurança', visualizado: false })
+      await connection("tickets")
+        .where({ setor_responsavel: "Segurança", visualizado: false })
         .update({ visualizado: true });
+
+      // 🔥 EMITIR EVENTO QUANDO MARCAR TODOS COMO VISUALIZADOS
+      io.to("global").emit("ticket:all_viewed", {
+        timestamp: new Date(),
+        setor: "Segurança",
+      });
+
+      console.log("📡 Evento ticket:all_viewed emitido para sala GLOBAL");
 
       return res.json({ success: true });
     } catch (err) {
       console.error(err);
-      return res.status(500).json({ error: 'Erro ao atualizar tickets' });
+      return res.status(500).json({ error: "Erro ao atualizar tickets" });
     }
-  }
+  },
 };
