@@ -1,30 +1,21 @@
 // controllers/AgendamentoController.js
 const connection = require("../database/connection");
-const { getIo } = require("../socket"); // ✅ IMPORTAR getIo
+const { getIo } = require("../socket");
 
-// ✅ Helper para extrair token do Bearer (igual ao seu outro controller)
+// ✅ Helper para extrair token do Bearer
 function getBearerToken(req) {
   const authHeader = req.headers.authorization;
   if (!authHeader) return null;
   const parts = authHeader.split(" ");
   if (parts.length === 2 && parts[0] === "Bearer") {
-    return parts[1]; // retorna só o ID
+    return parts[1];
   }
-  return authHeader; // Se não tem Bearer, retorna como está
-}
-
-// ✅ Função para converter para horário de Brasília
-function converterParaBrasilia(dataUTC) {
-  const data = new Date(dataUTC);
-  // Brasília é UTC-3 (horário padrão) ou UTC-2 (horário de verão)
-  // Vamos usar UTC-3 como padrão
-  data.setHours(data.getHours() - 3);
-  return data.toISOString();
+  return authHeader;
 }
 
 module.exports = {
   async create(request, response) {
-    const io = getIo(); // ✅ OBTER INSTÂNCIA DO SOCKET.IO
+    const io = getIo();
     const {
       nome,
       cpf,
@@ -39,32 +30,44 @@ module.exports = {
 
     try {
       console.log("=== DEBUG CRIAR AGENDAMENTO ===");
-      console.log("Horário recebido do frontend:", horario_agendado);
-      console.log("Authorization header:", ong_id);
+      console.log("Horário recebido:", horario_agendado);
+      console.log("ong_id do token:", ong_id);
       console.log("Arquivo recebido:", request.file);
 
-      if (!ong_id) {
-        return response
-          .status(401)
-          .json({ error: "Authorization header é obrigatório" });
+      if (request.file) {
+        console.log("Detalhes do arquivo:", {
+          originalname: request.file.originalname,
+          mimetype: request.file.mimetype,
+          size: request.file.size,
+          path: request.file.path || "SEM PATH",
+        });
       }
 
-      // Buscar ONG primeiro
+      if (!ong_id) {
+        return response.status(401).json({
+          error: "Authorization header é obrigatório",
+        });
+      }
+
+      // Buscar ONG
       const ong = await connection("ongs").where("id", ong_id).first();
 
       if (!ong) {
-        return response
-          .status(404)
-          .json({ error: "ONG não encontrada", id_enviado: ong_id });
+        return response.status(404).json({
+          error: "ONG não encontrada",
+          id_enviado: ong_id,
+        });
       }
 
-      // Validações dos dados
+      // Validações
       if (!nome || nome.trim() === "") {
         return response.status(400).json({ error: "Nome é obrigatório." });
       }
 
       if (!cpf || cpf.replace(/\D/g, "").length !== 11) {
-        return response.status(400).json({ error: "CPF deve ter 11 dígitos." });
+        return response.status(400).json({
+          error: "CPF deve ter 11 dígitos.",
+        });
       }
 
       if (!setor_id) {
@@ -72,12 +75,12 @@ module.exports = {
       }
 
       if (!horario_agendado) {
-        return response
-          .status(400)
-          .json({ error: "Horário agendado é obrigatório." });
+        return response.status(400).json({
+          error: "Horário agendado é obrigatório.",
+        });
       }
 
-      // Converter para horário de Brasília (UTC-3)
+      // Converter para horário de Brasília
       const dataLocal = new Date(horario_agendado);
       const offsetBrasilia = -3;
       const dataBrasilia = new Date(
@@ -85,16 +88,21 @@ module.exports = {
       );
       const horarioAjustado = dataBrasilia.toISOString();
 
-      // Verificar se o horário é no futuro
+      // Verificar se é futuro
       const agora = new Date();
       if (dataLocal <= agora) {
-        return response
-          .status(400)
-          .json({ error: "O horário agendado deve ser no futuro." });
+        return response.status(400).json({
+          error: "O horário agendado deve ser no futuro.",
+        });
       }
 
-      // 🔹 Captura da imagem (se enviada)
-      const foto_colaborador = request.file ? request.file.path : null;
+      // ✅ PEGAR URL DO CLOUDINARY (já foi enviado pelo multer-storage-cloudinary)
+      let foto_colaborador = null;
+
+      if (request.file && request.file.path) {
+        foto_colaborador = request.file.path;
+        console.log("✅ Foto do Cloudinary (via multer):", foto_colaborador);
+      }
 
       // Salvar no banco
       const [agendamento] = await connection("agendamentos")
@@ -109,11 +117,11 @@ module.exports = {
           ong_id,
           foto_colaborador,
         })
-        .returning("*"); // ✅ RETORNAR TODOS OS DADOS
+        .returning("*");
 
       console.log("✅ Agendamento cadastrado no banco:", agendamento.id);
 
-      // ✅ EMITIR EVENTO SOCKET.IO - NOVO AGENDAMENTO
+      // Socket.IO
       const eventData = {
         id: agendamento.id,
         nome: agendamento.nome,
@@ -139,7 +147,7 @@ module.exports = {
         foto_colaborador,
       });
     } catch (error) {
-      console.error("Erro ao criar agendamento:", error);
+      console.error("❌ Erro ao criar agendamento:", error);
       return response.status(500).json({
         error: "Erro interno ao criar agendamento",
         details:
@@ -148,10 +156,8 @@ module.exports = {
     }
   },
 
-  // ✅ Método para listar agendamentos
   async index(request, response) {
     try {
-      // ✅ Qualquer pessoa pode visualizar, sem necessidade de autenticação
       const agendamentos = await connection("agendamentos")
         .select("*")
         .orderBy("horario_agendado", "desc");
@@ -165,7 +171,6 @@ module.exports = {
     }
   },
 
-  // ✅ Método para buscar agendamento específico
   async show(request, response) {
     const { id } = request.params;
 
@@ -189,9 +194,8 @@ module.exports = {
     }
   },
 
-  // ✅ Método adicional para confirmar agendamento
   async confirmar(request, response) {
-    const io = getIo(); // ✅ OBTER INSTÂNCIA DO SOCKET.IO
+    const io = getIo();
     const { id } = request.params;
     const ong_id = getBearerToken(request);
 
@@ -206,14 +210,12 @@ module.exports = {
           .json({ error: "Authorization header é obrigatório" });
       }
 
-      // Buscar a ONG
       const ong = await connection("ongs").where("id", ong_id).first();
 
       if (!ong) {
         return response.status(404).json({ error: "ONG não encontrada" });
       }
 
-      // ✅ VERIFICAR PERMISSÕES: Segurança (setor_id = 4) ou ADM
       const podeConfirmar = ong.type === "ADM" || ong.setor_id === 4;
 
       if (!podeConfirmar) {
@@ -223,7 +225,6 @@ module.exports = {
         });
       }
 
-      // Buscar o agendamento
       const agendamento = await connection("agendamentos")
         .where("id", id)
         .first();
@@ -234,14 +235,12 @@ module.exports = {
           .json({ error: "Agendamento não encontrado" });
       }
 
-      // Verificar se já está confirmado
       if (agendamento.confirmado) {
         return response
           .status(400)
           .json({ error: "Agendamento já confirmado" });
       }
 
-      // Atualizar como confirmado
       const [agendamentoAtualizado] = await connection("agendamentos")
         .where("id", id)
         .update({
@@ -249,11 +248,10 @@ module.exports = {
           confirmado_em: new Date().toISOString(),
           confirmado_por: ong.name,
         })
-        .returning("*"); // ✅ RETORNAR TODOS OS DADOS
+        .returning("*");
 
       console.log("✅ Agendamento confirmado por:", ong.name);
 
-      // ✅ EMITIR EVENTO SOCKET.IO - AGENDAMENTO ATUALIZADO
       io.to("global").emit("agendamento:update", agendamentoAtualizado);
       console.log("📡 Evento agendamento:update emitido (confirmação)");
 
@@ -269,9 +267,8 @@ module.exports = {
     }
   },
 
-  // ✅ Método para excluir agendamento
   async delete(request, response) {
-    const io = getIo(); // ✅ OBTER INSTÂNCIA DO SOCKET.IO
+    const io = getIo();
     const { id } = request.params;
     const ong_id = getBearerToken(request);
 
@@ -282,7 +279,6 @@ module.exports = {
           .json({ error: "Authorization header é obrigatório" });
       }
 
-      // Verificar se o agendamento pertence à ONG ou se é ADM
       const ong = await connection("ongs").where("id", ong_id).first();
 
       if (!ong) {
@@ -299,7 +295,6 @@ module.exports = {
           .json({ error: "Agendamento não encontrado" });
       }
 
-      // Verificar se é o criador ou ADM
       if (agendamento.ong_id !== ong_id && ong.type !== "ADM") {
         return response
           .status(403)
@@ -310,7 +305,6 @@ module.exports = {
 
       console.log("✅ Agendamento excluído do banco:", id);
 
-      // ✅ EMITIR EVENTO SOCKET.IO - AGENDAMENTO DELETADO
       io.to("global").emit("agendamento:delete", { id });
       console.log("📡 Evento agendamento:delete emitido");
 
@@ -323,9 +317,8 @@ module.exports = {
     }
   },
 
-  // ✅ Método para registrar presença
   async presenca(request, response) {
-    const io = getIo(); // ✅ OBTER INSTÂNCIA DO SOCKET.IO
+    const io = getIo();
     const { id } = request.params;
     const ong_id = getBearerToken(request);
 
@@ -342,7 +335,6 @@ module.exports = {
         return response.status(404).json({ error: "PERFIL não encontrada" });
       }
 
-      // Buscar agendamento
       const agendamento = await connection("agendamentos")
         .where("id", id)
         .first();
@@ -353,7 +345,6 @@ module.exports = {
           .json({ error: "Agendamento não encontrado" });
       }
 
-      // Antes de registrar presença, verifica se está confirmado
       if (!agendamento.confirmado) {
         return response.status(400).json({
           error:
@@ -372,11 +363,10 @@ module.exports = {
           presente_em: new Date().toISOString(),
           presente_por: ong.name,
         })
-        .returning("*"); // ✅ RETORNAR TODOS OS DADOS
+        .returning("*");
 
       console.log("✅ Presença registrada por:", ong.name);
 
-      // ✅ EMITIR EVENTO SOCKET.IO - AGENDAMENTO ATUALIZADO
       io.to("global").emit("agendamento:update", agendamentoAtualizado);
       console.log("📡 Evento agendamento:update emitido (presença)");
 
@@ -390,10 +380,9 @@ module.exports = {
     }
   },
 
-  // ✅ Relatório de presenças
   async relatorioPresencas(request, response) {
     try {
-      const { data } = request.query; // filtro opcional por data
+      const { data } = request.query;
 
       let query = connection("agendamentos")
         .where("presente", true)

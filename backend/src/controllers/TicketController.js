@@ -70,11 +70,15 @@ module.exports = {
       // 🔥 EMITIR EVENTO PARA SALA GLOBAL
       io.to("global").emit("ticket:create", {
         id: ticket.id,
+        ong_id,
         funcionario,
         motivo,
-        setorResponsavel,
-        criadoPor: nomeUsuario,
-        timestamp: new Date(),
+        descricao,
+        setor_responsavel: setorResponsavel,
+        nome_usuario: nomeUsuario,
+        setor_usuario: setorUsuario,
+        status: "Aberto",
+        data_criacao,
       });
 
       console.log("📡 Evento ticket:create emitido para sala GLOBAL");
@@ -170,12 +174,10 @@ module.exports = {
       const isSeguranca = ong.setor_id === 4;
 
       if (!isAdmin && !isSeguranca) {
-        return res
-          .status(403)
-          .json({
-            error:
-              "Acesso permitido apenas para administradores ou setor de Segurança",
-          });
+        return res.status(403).json({
+          error:
+            "Acesso permitido apenas para administradores ou setor de Segurança",
+        });
       }
 
       const data_atualizacao = moment()
@@ -200,6 +202,7 @@ module.exports = {
       io.to("global").emit("ticket:update", {
         id,
         status,
+        data_atualizacao,
         visualizado: true,
         timestamp: new Date(),
       });
