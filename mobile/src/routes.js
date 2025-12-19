@@ -22,6 +22,7 @@ import BiparCracha from "./pages/BiparCracha";
 
 import Agendamentos from "./pages/Agendamentos";
 import ListaAgendamentos from "./pages/ListaAgendamentos";
+import CadastrarAgendamentos from "./pages/CadastrarAgendamentos";
 
 const Stack = createNativeStackNavigator();
 
@@ -58,6 +59,10 @@ export default function Routes() {
 
       <Stack.Screen name="Agendamentos" component={Agendamentos} />
       <Stack.Screen name="ListaAgendamentos" component={ListaAgendamentos} />
+      <Stack.Screen
+        name="CadastrarAgendamentos"
+        component={CadastrarAgendamentos}
+      />
     </Stack.Navigator>
   );
 }

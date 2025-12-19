@@ -213,7 +213,6 @@ export default function ListaAgendamentos() {
   // ═══════════════════════════════════════════════════════════════
   const handleConfirmarAgendamento = async (id) => {
     Alert.alert("Confirmar Agendamento", "Deseja confirmar este agendamento?", [
-      { text: "Cancelar", style: "cancel" },
       {
         text: "Confirmar",
         onPress: async () => {
@@ -260,6 +259,7 @@ export default function ListaAgendamentos() {
           }
         },
       },
+      { text: "Cancelar", style: "cancel" },
     ]);
   };
 
@@ -268,7 +268,6 @@ export default function ListaAgendamentos() {
       "Registrar Presença",
       "Deseja registrar a presença deste visitante?",
       [
-        { text: "Cancelar", style: "cancel" },
         {
           text: "Registrar",
           onPress: async () => {
@@ -298,6 +297,7 @@ export default function ListaAgendamentos() {
             }
           },
         },
+        { text: "Cancelar", style: "cancel" },
       ]
     );
   };
@@ -307,7 +307,6 @@ export default function ListaAgendamentos() {
       "Excluir Agendamento",
       "Tem certeza que deseja excluir este agendamento?",
       [
-        { text: "Cancelar", style: "cancel" },
         {
           text: "Excluir",
           style: "destructive",
@@ -329,6 +328,7 @@ export default function ListaAgendamentos() {
             }
           },
         },
+        { text: "Cancelar", style: "cancel" },
       ]
     );
   };
@@ -372,7 +372,7 @@ export default function ListaAgendamentos() {
             <Text style={styles.cardTitle}>{item.nome}</Text>
           </View>
           <View style={styles.cardTimeRow}>
-            <Feather name="clock" size={16} color="#666" />
+            <Feather name="clock" size={16} color="#000" />
             <Text style={styles.cardTime}>
               {formatarData(item.horario_agendado)}
             </Text>
@@ -532,6 +532,17 @@ export default function ListaAgendamentos() {
           <Feather name="arrow-left" size={24} color="#E02041" />
           <Text style={styles.backText}>Voltar</Text>
         </TouchableOpacity>
+
+        {/* ✅ BOTÃO CADASTRAR - Apenas para setor 6 ADM */}
+        {userPodeCriar && (
+          <TouchableOpacity
+            style={styles.createButton}
+            onPress={() => navigation.navigate("CadastrarAgendamentos")}
+          >
+            <Feather name="plus" size={20} color="#fff" />
+            <Text style={styles.createButtonText}>Cadastrar</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.titleContainer}>
@@ -551,10 +562,10 @@ export default function ListaAgendamentos() {
           <Text style={styles.emptyText}>Nenhum agendamento encontrado</Text>
           {userPodeCriar && (
             <TouchableOpacity
-              style={styles.createButton}
-              onPress={() => navigation.navigate("NovoAgendamento")}
+              style={styles.emptyCreateButton}
+              onPress={() => navigation.navigate("CadastrarAgendamentos")}
             >
-              <Text style={styles.createButtonText}>
+              <Text style={styles.emptyCreateButtonText}>
                 Criar Primeiro Agendamento
               </Text>
             </TouchableOpacity>
@@ -590,6 +601,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between", // ✅ Distribui espaço entre voltar e cadastrar
   },
   backButton: {
     flexDirection: "row",
@@ -600,6 +612,21 @@ const styles = StyleSheet.create({
     color: "#000",
     fontSize: 18,
     marginLeft: 5,
+  },
+  // ✅ NOVO: Botão Cadastrar no Header
+  createButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#303030ff",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 6,
+  },
+  createButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
   },
   titleContainer: {
     flexDirection: "row",
@@ -647,14 +674,15 @@ const styles = StyleSheet.create({
     marginTop: 20,
     textAlign: "center",
   },
-  createButton: {
-    backgroundColor: "#10B981",
+  // ✅ Renomeado para evitar conflito
+  emptyCreateButton: {
+    backgroundColor: "#303030ff",
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 8,
     marginTop: 20,
   },
-  createButtonText: {
+  emptyCreateButtonText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
@@ -665,6 +693,8 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: "#fff",
+    borderColor: "#dbdadaff",
+    borderWidth: 1,
     borderRadius: 12,
     marginBottom: 16,
     padding: 16,
@@ -697,7 +727,7 @@ const styles = StyleSheet.create({
   },
   cardTime: {
     fontSize: 14,
-    color: "#666",
+    color: "#000",
     marginLeft: 6,
   },
   cardPhoto: {
@@ -717,7 +747,7 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 14,
-    color: "#666",
+    color: "#000",
     fontWeight: "600",
     marginRight: 8,
   },

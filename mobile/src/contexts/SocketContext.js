@@ -6,24 +6,24 @@ import React, {
   useRef,
   useState,
   useCallback,
+  useMemo,
 } from "react";
 import { io } from "socket.io-client";
 import Constants from "expo-constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const API_URL =
-  Constants.expoConfig?.extra?.API_URL || "http://192.168.10.92:3001";
+  Constants.expoConfig?.extra?.API_URL || "http://192.168.10.90:3001";
 
 const SocketContext = createContext(null);
 
 export function SocketProvider({ children }) {
   const socketRef = useRef(null);
-  const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [shouldConnect, setShouldConnect] = useState(false);
 
-  // ✅ Ref para evitar cleanup prematuro
   const isInitialized = useRef(false);
+  const connectionAttemptRef = useRef(0);
 
   const setAuthStatus = useCallback((status) => {
     console.log("🔥 setAuthStatus:", status);
@@ -35,9 +35,9 @@ export function SocketProvider({ children }) {
         socketRef.current.disconnect();
         socketRef.current = null;
       }
-      setSocket(null);
       setIsConnected(false);
       isInitialized.current = false;
+      connectionAttemptRef.current = 0;
     }
 
     setShouldConnect(status);
@@ -45,35 +45,35 @@ export function SocketProvider({ children }) {
 
   const getSocket = useCallback(() => socketRef.current, []);
 
-  const subscribe = useCallback((eventName, handler) => {
-    if (!socketRef.current) {
-      console.log("⚠ Socket não disponível para:", eventName);
-      return () => {};
-    }
-
-    console.log("📡 Registrando listener via subscribe:", eventName);
-    socketRef.current.on(eventName, handler);
-
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.off(eventName, handler);
-      }
-    };
-  }, []);
-
   useEffect(() => {
     console.log("🔄 useEffect socket | shouldConnect =", shouldConnect);
 
-    // Se não deve conectar, apenas retorna
     if (!shouldConnect) {
       return;
     }
 
-    // Se já foi inicializado, não recria
-    if (isInitialized.current && socketRef.current) {
-      console.log("✅ Socket já inicializado:", socketRef.current.id);
+    // ✅ PREVINE RECRIAÇÃO
+    if (isInitialized.current && socketRef.current?.connected) {
+      console.log("✅ Socket já conectado:", socketRef.current.id);
       return;
     }
+
+    if (
+      isInitialized.current &&
+      socketRef.current &&
+      !socketRef.current.connected
+    ) {
+      console.log("🔄 Reconectando socket existente...");
+      socketRef.current.connect();
+      return;
+    }
+
+    if (connectionAttemptRef.current > 0) {
+      console.log("⏳ Conexão já em andamento");
+      return;
+    }
+
+    connectionAttemptRef.current++;
 
     const connectSocket = async () => {
       try {
@@ -81,13 +81,12 @@ export function SocketProvider({ children }) {
         const ongName = await AsyncStorage.getItem("@Auth:ongName");
 
         if (!ongId) {
-          console.log("❌ Sem ongId. Abortando conexão.");
+          console.log("❌ Sem ongId");
+          connectionAttemptRef.current = 0;
           return;
         }
 
-        console.log("🔌 Criando conexão socket...");
-        console.log("📡 URL:", API_URL);
-        console.log("🆔 ONG:", ongId);
+        console.log("🔌 Criando socket...");
 
         const newSocket = io(API_URL, {
           transports: ["websocket"],
@@ -105,91 +104,69 @@ export function SocketProvider({ children }) {
         newSocket.on("connect", () => {
           console.log("✅ Socket conectado:", newSocket.id);
           setIsConnected(true);
-          setSocket(newSocket);
+          connectionAttemptRef.current = 0;
 
-          newSocket.emit("mobile_ready", {
-            ongId,
-            ongName,
-            time: Date.now(),
-          });
-
-          console.log("📨 Evento mobile_ready enviado");
+          newSocket.emit("mobile_ready", { ongId, ongName, time: Date.now() });
         });
 
         newSocket.on("teste:conexao", (data) => {
-          console.log("🎉 TESTE RECEBIDO NO MOBILE:", data);
+          console.log("🎉 TESTE RECEBIDO:", data);
         });
 
         newSocket.on("connect_error", (err) => {
-          console.log("❌ Erro de conexão:", err?.message || err);
+          console.log("❌ Erro de conexão:", err?.message);
           setIsConnected(false);
+          connectionAttemptRef.current = 0;
         });
 
         newSocket.on("disconnect", (reason) => {
-          console.log("🔴 Socket desconectado:", reason);
+          console.log("🔴 Desconectado:", reason);
           setIsConnected(false);
 
-          // Não limpa o socket no estado para permitir reconexão
           if (reason === "io server disconnect") {
-            // Servidor desconectou - tentar reconectar
             newSocket.connect();
           }
         });
 
         newSocket.on("reconnect", (attemptNumber) => {
-          console.log(
-            "🔄 Socket reconectado após",
-            attemptNumber,
-            "tentativas"
-          );
+          console.log("🔄 Reconectado após", attemptNumber, "tentativas");
           setIsConnected(true);
-          setSocket(newSocket);
-        });
-
-        newSocket.on("reconnect_attempt", (attemptNumber) => {
-          console.log("🔄 Tentativa de reconexão:", attemptNumber);
-        });
-
-        newSocket.on("reconnect_error", (error) => {
-          console.log("❌ Erro na reconexão:", error.message);
-        });
-
-        newSocket.on("reconnect_failed", () => {
-          console.log("❌ Falha ao reconectar após todas as tentativas");
+          connectionAttemptRef.current = 0;
         });
       } catch (error) {
         console.error("❌ Erro ao criar socket:", error);
+        connectionAttemptRef.current = 0;
       }
     };
 
     connectSocket();
 
-    // ✅ Cleanup APENAS quando o componente for realmente desmontado
     return () => {
-      if (!shouldConnect) {
-        console.log("🧹 Limpando conexão socket (componente desmontado)");
-        if (socketRef.current) {
-          socketRef.current.removeAllListeners();
-          socketRef.current.disconnect();
-          socketRef.current = null;
-        }
-        setSocket(null);
+      if (!shouldConnect && socketRef.current) {
+        console.log("🧹 Cleanup socket");
+        socketRef.current.removeAllListeners();
+        socketRef.current.disconnect();
+        socketRef.current = null;
         setIsConnected(false);
         isInitialized.current = false;
+        connectionAttemptRef.current = 0;
       }
     };
-  }, [shouldConnect]); // ✅ APENAS shouldConnect como dependência
+  }, [shouldConnect]);
+
+  // ✅ MEMOIZA O CONTEXTO - NÃO RECRIA A CADA RENDER
+  const contextValue = useMemo(
+    () => ({
+      socket: socketRef.current,
+      isConnected,
+      setAuthStatus,
+      getSocket,
+    }),
+    [isConnected, setAuthStatus, getSocket]
+  );
 
   return (
-    <SocketContext.Provider
-      value={{
-        socket,
-        isConnected,
-        setAuthStatus,
-        subscribe,
-        getSocket,
-      }}
-    >
+    <SocketContext.Provider value={contextValue}>
       {children}
     </SocketContext.Provider>
   );
