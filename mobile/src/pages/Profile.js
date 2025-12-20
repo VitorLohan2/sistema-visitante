@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   View,
   Text,
@@ -60,11 +66,12 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [unseenCount, setUnseenCount] = useState(0);
   const [userData, setUserData] = useState({ setor: "", nome: "" });
-
+  const [displayedIncidents, setDisplayedIncidents] = useState([]);
   // ═══════════════════════════════════════════════════════════════
   // 3. ESTADOS - UI E BUSCA
   // ═══════════════════════════════════════════════════════════════
   const [searchTerm, setSearchTerm] = useState("");
+  // const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
 
   // ═══════════════════════════════════════════════════════════════
@@ -98,6 +105,11 @@ export default function Profile() {
 
   // Refs para busca
   const searchTimeoutRef = useRef(null);
+
+  // ✅ REF para controlar o scroll da FlatList
+  const flatListRef = useRef(null);
+
+  // const shouldScrollToTopRef = useRef(false);
 
   // Refs para animações do menu
   const modalPosition = useRef(new Animated.Value(-300)).current;
@@ -543,117 +555,94 @@ export default function Profile() {
   ]);
 
   // ═══════════════════════════════════════════════════════════════
-  // 11. EFFECTS - BUSCA COM DEBOUNCE
+  // 11. EFFECTS - BUSCA ULTRA-RÁPIDA (INSTANTÂNEA LOCAL + API DEBOUNCE)
   // ═══════════════════════════════════════════════════════════════
-  useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
+
+  // ✅ REF para controlar última busca API
+  // const lastAPISearchRef = useRef("");
+  // const apiSearchTimeoutRef = useRef(null);
+  // const searchStartTimeRef = useRef(0);
+
+  const executeSearch = useCallback(async () => {
+    const query = searchTerm.trim();
+
+    // Limpar busca
+    if (!query) {
+      setDisplayedIncidents(allIncidents);
+      setIsSearching(false);
+      return;
     }
 
-    searchTimeoutRef.current = setTimeout(async () => {
-      if (!searchTerm.trim()) {
-        setIsSearching(false);
-        setIncidents(allIncidents);
-        return;
-      }
+    console.log(`🔍 Executando busca: "${query}"`);
 
-      setIsSearching(true);
-
-      try {
-        const searchLower = searchTerm.toLowerCase().trim();
-        const cpfNumbers = searchTerm.replace(/\D/g, "");
-
-        const localResults = allIncidents.filter((incident) => {
-          const hasName = incident.nome && typeof incident.nome === "string";
-          const hasCpf = incident.cpf && typeof incident.cpf === "string";
-
-          let nameMatch = false;
-          if (hasName) {
-            const nomeNormalizado = incident.nome.toLowerCase().trim();
-            nameMatch =
-              nomeNormalizado.includes(searchLower) &&
-              (nomeNormalizado.startsWith(searchLower) ||
-                nomeNormalizado.includes(" " + searchLower) ||
-                nomeNormalizado === searchLower);
-          }
-
-          let cpfMatch = false;
-          if (hasCpf && cpfNumbers.length > 0) {
-            cpfMatch =
-              incident.cpf.includes(searchTerm) ||
-              incident.cpf.replace(/\D/g, "").includes(cpfNumbers);
-          }
-
-          return nameMatch || cpfMatch;
+    // Scroll para o topo com pequeno delay para garantir que a lista já foi atualizada
+    setTimeout(() => {
+      if (flatListRef.current) {
+        flatListRef.current.scrollToOffset({
+          offset: 0,
+          animated: false,
         });
-
-        if (localResults.length > 0) {
-          setIncidents(localResults);
-        } else {
-          // Busca na API
-          const response = await api.get("/search", {
-            params: { query: searchTerm },
-          });
-
-          const searchResults = response.data.map((incident) => ({
-            ...incident,
-            empresa:
-              empresasVisitantes.find((e) => e.id === incident.empresa_id)
-                ?.nome || "Não informado",
-            setor:
-              setoresVisitantes.find((s) => s.id === incident.setor_id)?.nome ||
-              "Não informado",
-          }));
-
-          setIncidents(searchResults);
-        }
-      } catch (err) {
-        console.error("Erro na busca:", err);
-
-        // Fallback para busca local
-        const searchLower = searchTerm.toLowerCase().trim();
-        const cpfNumbers = searchTerm.replace(/\D/g, "");
-
-        const localResults = allIncidents.filter((incident) => {
-          const hasName = incident.nome && typeof incident.nome === "string";
-          const hasCpf = incident.cpf && typeof incident.cpf === "string";
-
-          let nameMatch = false;
-          if (hasName) {
-            const nomeNormalizado = incident.nome.toLowerCase().trim();
-            nameMatch =
-              nomeNormalizado.includes(searchLower) &&
-              (nomeNormalizado.startsWith(searchLower) ||
-                nomeNormalizado.includes(" " + searchLower) ||
-                nomeNormalizado === searchLower);
-          }
-
-          let cpfMatch = false;
-          if (hasCpf && cpfNumbers.length > 0) {
-            cpfMatch =
-              incident.cpf.includes(searchTerm) ||
-              incident.cpf.replace(/\D/g, "").includes(cpfNumbers);
-          }
-
-          return nameMatch || cpfMatch;
-        });
-
-        setIncidents(localResults);
       }
-    }, 400);
+    }, 100);
 
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
+    // Busca local INSTANTÂNEA
+    const cpfNumbers = query.replace(/\D/g, "");
+    const localResults = allIncidents.filter((item) => {
+      if (item.nome && item.nome.toLowerCase().includes(query.toLowerCase())) {
+        return true;
       }
-    };
-  }, [
-    searchTerm,
-    allIncidents,
-    empresasVisitantes,
-    setoresVisitantes,
-    setIncidents,
-  ]);
+      if (
+        item.cpf &&
+        cpfNumbers.length > 0 &&
+        item.cpf.replace(/\D/g, "").includes(cpfNumbers)
+      ) {
+        return true;
+      }
+      return false;
+    });
+
+    if (localResults.length > 0) {
+      setDisplayedIncidents(localResults);
+      setIsSearching(false);
+      console.log(`⚡ ${localResults.length} resultados locais`);
+      return;
+    }
+
+    // Busca na API se não encontrou localmente
+    setIsSearching(true);
+    try {
+      const response = await api.get("/search", {
+        params: { query },
+        timeout: 5000,
+      });
+
+      const apiResults = response.data.map((incident) => ({
+        ...incident,
+        empresa:
+          empresasVisitantes.find((e) => e.id === incident.empresa_id)?.nome ||
+          "Não informado",
+        setor:
+          setoresVisitantes.find((s) => s.id === incident.setor_id)?.nome ||
+          "Não informado",
+      }));
+
+      setDisplayedIncidents(apiResults);
+      console.log(`🌐 ${apiResults.length} resultados da API`);
+    } catch (err) {
+      console.error("❌ Erro na busca:", err);
+      setDisplayedIncidents([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [searchTerm, allIncidents, empresasVisitantes, setoresVisitantes]);
+
+  // Sincroniza displayedIncidents com allIncidents APENAS quando allIncidents muda
+  useEffect(() => {
+    // Só atualiza se não há termo de busca ativo
+    if (!searchTerm.trim()) {
+      setDisplayedIncidents(allIncidents);
+    }
+  }, [allIncidents]);
 
   // ═══════════════════════════════════════════════════════════════
   // 12. EFFECTS - CICLO DE ATUALIZAÇÃO (FOCO NA TELA)
@@ -987,6 +976,43 @@ export default function Profile() {
     );
   }
 
+  const sortedAllIncidents = useMemo(() => {
+    return [...allIncidents].sort((a, b) =>
+      (a.nome || "").localeCompare(b.nome || "")
+    );
+  }, [allIncidents]);
+
+  const filteredIncidents = useMemo(() => {
+    // Se displayedIncidents estiver vazio E não houver busca ativa, mostra tudo ordenado
+    if (displayedIncidents.length === 0 && !searchTerm.trim()) {
+      return sortedAllIncidents;
+    }
+
+    // Se há resultados em displayedIncidents (de uma busca), ordena e retorna
+    if (displayedIncidents.length > 0) {
+      return [...displayedIncidents].sort((a, b) =>
+        (a.nome || "").localeCompare(b.nome || "")
+      );
+    }
+
+    // Caso contrário, retorna array vazio (nenhum resultado)
+    return [];
+  }, [displayedIncidents, searchTerm, sortedAllIncidents]);
+
+  // useEffect(() => {
+  //   if (!shouldScrollToTopRef.current || !flatListRef.current) return;
+
+  //   const timer = setTimeout(() => {
+  //     flatListRef.current?.scrollToOffset({
+  //       offset: 0,
+  //       animated: false,
+  //     });
+  //     shouldScrollToTopRef.current = false;
+  //   }, 50);
+
+  //   return () => clearTimeout(timer);
+  // }, [searchTerm]);
+
   // ═══════════════════════════════════════════════════════════════
   // 13. LOADING STATE
   // ═══════════════════════════════════════════════════════════════
@@ -998,17 +1024,6 @@ export default function Profile() {
       </View>
     );
   }
-
-  // ═══════════════════════════════════════════════════════════════
-  // 14. RENDER PRINCIPAL
-  // ═══════════════════════════════════════════════════════════════
-
-  // Filtro e ordenação
-  const filteredIncidents = incidents.sort((a, b) => {
-    const nomeA = a.nome || "";
-    const nomeB = b.nome || "";
-    return nomeA.localeCompare(nomeB);
-  });
 
   return (
     <SafeAreaView style={styles.container}>
@@ -1035,10 +1050,15 @@ export default function Profile() {
             value={searchTerm}
             onChangeText={(text) => {
               setSearchTerm(text);
+              // Se limpar o campo, restaura lista completa
               if (text.trim() === "") {
+                setDisplayedIncidents(allIncidents);
                 setIsSearching(false);
               }
             }}
+            onSubmitEditing={executeSearch}
+            returnKeyType="search"
+            blurOnSubmit={false}
           />
         </View>
 
@@ -1055,10 +1075,11 @@ export default function Profile() {
       {/* ═══════════════════════════════════════════════════════ */}
       {/* INFO DA BUSCA */}
       {/* ═══════════════════════════════════════════════════════ */}
-      {isSearching && searchTerm && (
+      {searchTerm.trim() && (
         <View style={styles.searchInfo}>
           <Text style={styles.searchInfoText}>
-            Buscando por "{searchTerm}" ({filteredIncidents.length} resultados)
+            Buscando por "{searchTerm.trim()}" ({filteredIncidents.length}{" "}
+            resultados)
           </Text>
         </View>
       )}
@@ -1136,15 +1157,21 @@ export default function Profile() {
       <Text style={styles.title}>Visitantes Cadastrados</Text>
 
       <FlatList
+        ref={flatListRef}
         data={filteredIncidents}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderIncident}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews={true}
+        updateCellsBatchingPeriod={50}
         contentContainerStyle={{ paddingBottom: 20 }}
         ListEmptyComponent={() => (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>
-              {searchTerm
-                ? `Nenhum resultado encontrado para "${searchTerm}"`
+              {searchTerm.trim()
+                ? `Nenhum resultado encontrado para "${searchTerm.trim()}"`
                 : "Nenhum cadastro encontrado"}
             </Text>
           </View>

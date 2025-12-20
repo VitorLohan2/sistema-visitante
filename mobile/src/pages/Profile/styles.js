@@ -23,7 +23,12 @@ export const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 8,
   },
-  navButtonText: { textAlign: "center", color: "#fff", fontWeight: "bold" },
+  navButtonText: {
+    textAlign: "center",
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 20,
+  },
   logoutButton: { padding: 8 },
   menu: {
     flexDirection: "row",
@@ -212,8 +217,9 @@ export const styles = StyleSheet.create({
   searchInfo: {
     backgroundColor: "#f0f0f0",
     padding: 8,
-    borderRadius: 4,
-    marginBottom: 10,
+    borderRadius: 8,
+    marginBottom: 0,
+    marginTop: 10,
   },
   searchInfoText: {
     fontSize: 14,
