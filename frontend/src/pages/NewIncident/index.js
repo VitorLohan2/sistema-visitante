@@ -1,30 +1,36 @@
 // src/pages/NewIncident/index.js
-import React, { useState, useEffect, useRef } from 'react';
-import { Link, useHistory } from 'react-router-dom';
-import { FiArrowLeft, FiCamera } from 'react-icons/fi';
-import api from '../../services/api';
-import './styles.css';
-import logoImg from '../../assets/logo.svg';
-import Loading from '../../components/Loading';
-
+import React, { useState, useEffect, useRef } from "react";
+import { Link, useHistory } from "react-router-dom";
+import { FiArrowLeft, FiCamera } from "react-icons/fi";
+import api from "../../services/api";
+import "./styles.css";
+import logoImg from "../../assets/logo.svg";
+import Loading from "../../components/Loading";
 
 export default function NewVisitor() {
   // Lista de cores pré-definidas
   const opcoesCores = [
-    'PRETO', 'BRANCO', 'PRATA', 'CINZA', 'VERMELHO', 'AZUL', 'VERDE', 'AMARELO',
-    'LARANJA',
+    "PRETO",
+    "BRANCO",
+    "PRATA",
+    "CINZA",
+    "VERMELHO",
+    "AZUL",
+    "VERDE",
+    "AMARELO",
+    "LARANJA",
   ];
 
   const [form, setForm] = useState({
-    nome: '',
-    nascimento: '',
-    cpf: '',
-    empresa_id: '',
-    setor_id: '',
-    telefone: '',
-    placa_veiculo: '',
-    cor_veiculo: '',
-    observacao: '',
+    nome: "",
+    nascimento: "",
+    cpf: "",
+    empresa_id: "",
+    setor_id: "",
+    telefone: "",
+    placa_veiculo: "",
+    cor_veiculo: "",
+    observacao: "",
     fotos: [],
   });
 
@@ -46,8 +52,8 @@ export default function NewVisitor() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const [errors, setErrors] = useState({
-    placa_veiculo: '',
-    cor_veiculo: ''
+    placa_veiculo: "",
+    cor_veiculo: "",
   });
 
   const simulateProgress = () => {
@@ -64,15 +70,15 @@ export default function NewVisitor() {
     async function loadData() {
       try {
         const [empresasResponse, setoresResponse] = await Promise.all([
-          api.get('/empresas-visitantes'),
-          api.get('/setores-visitantes')
+          api.get("/empresas-visitantes"),
+          api.get("/setores-visitantes"),
         ]);
 
         setEmpresasVisitantes(empresasResponse.data);
         setSetoresVisitantes(setoresResponse.data);
       } catch (err) {
-        console.error('Erro ao carregar dados:', err);
-        alert('Erro ao carregar opções de empresa e setor');
+        console.error("Erro ao carregar dados:", err);
+        alert("Erro ao carregar opções de empresa e setor");
       }
     }
 
@@ -81,22 +87,25 @@ export default function NewVisitor() {
 
   // === Funções de formatação ===
   const formatCPF = (value) => {
-    const cleaned = value.replace(/\D/g, '').slice(0, 11);
+    const cleaned = value.replace(/\D/g, "").slice(0, 11);
     const match = cleaned.match(/(\d{3})(\d{3})(\d{3})(\d{2})/);
     return match ? `${match[1]}.${match[2]}.${match[3]}-${match[4]}` : cleaned;
   };
 
   const formatTelefone = (value) => {
-    const cleaned = value.replace(/\D/g, '').slice(0, 11);
+    const cleaned = value.replace(/\D/g, "").slice(0, 11);
     if (cleaned.length === 11) {
-      return cleaned.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+      return cleaned.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
     }
     return cleaned;
   };
 
   // ← NOVA FUNÇÃO PARA FORMATAR PLACA
   const formatPlaca = (value) => {
-    const cleaned = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 7);
+    const cleaned = value
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .toUpperCase()
+      .slice(0, 7);
 
     if (cleaned.length <= 3) {
       return cleaned;
@@ -112,16 +121,16 @@ export default function NewVisitor() {
 
   // Adicione esta função para validar a placa em tempo real
   const validatePlaca = (value) => {
-    const cleaned = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    const cleaned = value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
     if (cleaned.length > 0 && cleaned.length < 7) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        placa_veiculo: 'Placa deve ter 7 caracteres'
+        placa_veiculo: "Placa deve ter 7 caracteres",
       }));
     } else {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        placa_veiculo: ''
+        placa_veiculo: "",
       }));
     }
   };
@@ -132,56 +141,60 @@ export default function NewVisitor() {
 
     let newValue = value;
 
-    if (name === 'nome') {
+    if (name === "nome") {
       newValue = value.toUpperCase();
-    } else if (name === 'placa_veiculo') {
+    } else if (name === "placa_veiculo") {
       newValue = formatPlaca(value); // Formata a placa
-      validatePlaca(newValue)
+      validatePlaca(newValue);
     }
     // A cor já vem formatada do select (se você mudar para select)
 
-    setForm(prev => ({ ...prev, [name]: newValue }));
+    setForm((prev) => ({ ...prev, [name]: newValue }));
   };
 
   const handleCpfChange = (e) => {
     const formatted = formatCPF(e.target.value);
-    setForm(prev => ({ ...prev, cpf: formatted }));
+    setForm((prev) => ({ ...prev, cpf: formatted }));
   };
 
   const handleTelefoneChange = (e) => {
     const formatted = formatTelefone(e.target.value);
-    setForm(prev => ({ ...prev, telefone: formatted }));
+    setForm((prev) => ({ ...prev, telefone: formatted }));
   };
 
   const handleFileChange = (e) => {
     const newFiles = Array.from(e.target.files);
 
-    setForm(prev => {
-      const nonDuplicateFiles = newFiles.filter(newFile =>
-        !prev.fotos.some(existingFile =>
-          existingFile.name === newFile.name &&
-          existingFile.size === newFile.size &&
-          existingFile.lastModified === newFile.lastModified
-        )
+    setForm((prev) => {
+      const nonDuplicateFiles = newFiles.filter(
+        (newFile) =>
+          !prev.fotos.some(
+            (existingFile) =>
+              existingFile.name === newFile.name &&
+              existingFile.size === newFile.size &&
+              existingFile.lastModified === newFile.lastModified
+          )
       );
 
       const combinedFiles = [...prev.fotos, ...nonDuplicateFiles].slice(0, 3);
 
       if (nonDuplicateFiles.length < newFiles.length) {
-        alert('Algumas imagens foram ignoradas porque já foram selecionadas.');
+        alert("Algumas imagens foram ignoradas porque já foram selecionadas.");
       }
 
       return { ...prev, fotos: combinedFiles };
     });
 
-    e.target.value = '';
+    e.target.value = "";
   };
 
   // === Funções da Câmera ===
   useEffect(() => {
     const iniciarCamera = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
@@ -200,7 +213,7 @@ export default function NewVisitor() {
     return () => {
       const stream = videoRef.current?.srcObject;
       if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach((track) => track.stop());
       }
     };
   }, [cameraAtiva]);
@@ -208,7 +221,7 @@ export default function NewVisitor() {
   const pararCamera = () => {
     const stream = videoRef.current?.srcObject;
     if (stream) {
-      stream.getTracks().forEach(track => track.stop());
+      stream.getTracks().forEach((track) => track.stop());
     }
     setCameraAtiva(false);
     setShowModal(false);
@@ -220,8 +233,10 @@ export default function NewVisitor() {
     context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
     canvas.toBlob((blob) => {
       if (!blob) return;
-      const file = new File([blob], `webcam_${Date.now()}.png`, { type: "image/png" });
-      setForm(prev => {
+      const file = new File([blob], `webcam_${Date.now()}.png`, {
+        type: "image/png",
+      });
+      setForm((prev) => {
         if (prev.fotos.length >= 3) {
           alert("Máximo de 3 imagens atingido.");
           return prev;
@@ -237,30 +252,32 @@ export default function NewVisitor() {
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
 
-    const cpfClean = form.cpf.replace(/\D/g, '');
-    const telefoneClean = form.telefone.replace(/\D/g, '');
-    const placaClean = form.placa_veiculo.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    const cpfClean = form.cpf.replace(/\D/g, "");
+    const telefoneClean = form.telefone.replace(/\D/g, "");
+    const placaClean = form.placa_veiculo
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .toUpperCase();
 
     // Limpa erros anteriores
     setErrors({
-      placa_veiculo: '',
-      cor_veiculo: ''
+      placa_veiculo: "",
+      cor_veiculo: "",
     });
 
     if (cpfClean.length !== 11) {
-      alert('CPF inválido. Deve conter 11 dígitos.');
+      alert("CPF inválido. Deve conter 11 dígitos.");
       return;
     }
     if (telefoneClean.length !== 11) {
-      alert('Telefone inválido. Deve conter 11 dígitos com DDD.');
+      alert("Telefone inválido. Deve conter 11 dígitos com DDD.");
       return;
     }
     if (!form.empresa_id || !form.setor_id) {
-      alert('Empresa e setor são obrigatórios.');
+      alert("Empresa e setor são obrigatórios.");
       return;
     }
     if (form.fotos.length === 0) {
-      alert('Envie pelo menos uma imagem.');
+      alert("Envie pelo menos uma imagem.");
       return;
     }
 
@@ -269,30 +286,31 @@ export default function NewVisitor() {
     const hasCor = form.cor_veiculo.trim().length > 0;
 
     if (hasPlaca && !hasCor) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        cor_veiculo: 'Cor do veículo é obrigatória quando a placa é informada'
+        cor_veiculo: "Cor do veículo é obrigatória quando a placa é informada",
       }));
-      alert('Por favor, selecione a cor do veículo.');
+      alert("Por favor, selecione a cor do veículo.");
       return;
     }
 
     if (hasCor && !hasPlaca) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        placa_veiculo: 'Placa do veículo é obrigatória quando a cor é informada'
+        placa_veiculo:
+          "Placa do veículo é obrigatória quando a cor é informada",
       }));
-      alert('Por favor, preencha a placa do veículo.');
+      alert("Por favor, preencha a placa do veículo.");
       return;
     }
 
     // Valida formato da placa (opcional, se quiser)
     if (hasPlaca && placaClean.length < 7) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        placa_veiculo: 'Placa deve ter 7 caracteres'
+        placa_veiculo: "Placa deve ter 7 caracteres",
       }));
-      alert('Placa do veículo deve ter 7 caracteres.');
+      alert("Placa do veículo deve ter 7 caracteres.");
       return;
     }
 
@@ -303,39 +321,39 @@ export default function NewVisitor() {
       const { data } = await api.get(`/cpf-existe/${cpfClean}`);
       if (data.exists) {
         setLoading(false);
-        return alert('CPF já cadastrado. Verifique antes de continuar.');
+        return alert("CPF já cadastrado. Verifique antes de continuar.");
       }
 
       const dataToSend = new FormData();
-      dataToSend.append('nome', form.nome);
-      dataToSend.append('nascimento', form.nascimento);
-      dataToSend.append('cpf', cpfClean);
-      dataToSend.append('empresa', form.empresa_id);
-      dataToSend.append('setor', form.setor_id);
-      dataToSend.append('telefone', telefoneClean);
-      dataToSend.append('placa_veiculo', placaClean);
-      dataToSend.append('cor_veiculo', form.cor_veiculo);
-      dataToSend.append('observacao', form.observacao);
+      dataToSend.append("nome", form.nome);
+      dataToSend.append("nascimento", form.nascimento);
+      dataToSend.append("cpf", cpfClean);
+      dataToSend.append("empresa", form.empresa_id);
+      dataToSend.append("setor", form.setor_id);
+      dataToSend.append("telefone", telefoneClean);
+      dataToSend.append("placa_veiculo", placaClean);
+      dataToSend.append("cor_veiculo", form.cor_veiculo);
+      dataToSend.append("observacao", form.observacao);
 
       form.fotos.forEach((foto) => {
-        dataToSend.append('fotos', foto);
+        dataToSend.append("fotos", foto);
       });
 
-      await api.post('/incidents', dataToSend, {
+      await api.post("/incidents", dataToSend, {
         headers: {
-          'Content-Type': 'multipart/form-data',
-          Authorization: localStorage.getItem('ongId')
-        }
+          "Content-Type": "multipart/form-data",
+          Authorization: localStorage.getItem("ongId"),
+        },
       });
 
       setTimeout(() => {
         setLoading(false);
-        history.push('/profile');
+        history.push("/profile");
       }, 1200);
     } catch (err) {
-      console.error('Erro detalhado:', err.response?.data);
+      console.error("Erro detalhado:", err.response?.data);
       setLoading(false);
-      alert(`Erro: ${err.response?.data?.error || 'Falha no cadastro'}`);
+      alert(`Erro: ${err.response?.data?.error || "Falha no cadastro"}`);
     }
   };
 
@@ -351,7 +369,8 @@ export default function NewVisitor() {
     handleSubmit();
   };
 
-  if (loading) return <Loading progress={progress} message="Cadastrando visitante..." />;
+  if (loading)
+    return <Loading progress={progress} message="Cadastrando visitante..." />;
 
   return (
     <div className="new-incident-container">
@@ -367,7 +386,9 @@ export default function NewVisitor() {
         </section>
 
         <form>
-          <p className='aviso-no-cadastro'>[ATENÇÃO] Se não houver placa, deixe em branco!!</p>
+          <p className="aviso-no-cadastro">
+            [ATENÇÃO] Se não houver placa, deixe em branco!!
+          </p>
           <input
             name="nome"
             placeholder="Nome"
@@ -421,14 +442,13 @@ export default function NewVisitor() {
             ))}
           </select>
 
-
           <input
             name="placa_veiculo"
             placeholder="Placa do Veículo (ex: ABC1D23)"
             value={form.placa_veiculo}
             onChange={handleChange}
             maxLength={7}
-            className={errors.placa_veiculo ? 'error' : ''}
+            className={errors.placa_veiculo ? "error" : ""}
           />
           {errors.placa_veiculo && (
             <span className="error-message">{errors.placa_veiculo}</span>
@@ -438,7 +458,7 @@ export default function NewVisitor() {
             name="cor_veiculo"
             value={form.cor_veiculo}
             onChange={handleChange}
-            className={errors.cor_veiculo ? 'error' : ''}
+            className={errors.cor_veiculo ? "error" : ""}
           >
             <option value="">Selecione a cor</option>
             {opcoesCores.map((cor) => (
@@ -476,7 +496,7 @@ export default function NewVisitor() {
               multiple
               onChange={handleFileChange}
               disabled={form.fotos.length >= 3}
-              style={{ display: 'none' }}
+              style={{ display: "none" }}
             />
 
             {/* Container para os botões lado a lado */}
@@ -489,22 +509,28 @@ export default function NewVisitor() {
               <button
                 type="button"
                 className="camera-button"
-                onClick={() => { setCameraAtiva(true); setShowModal(true); }}
+                onClick={() => {
+                  setCameraAtiva(true);
+                  setShowModal(true);
+                }}
                 disabled={form.fotos.length >= 3}
               >
-                <FiCamera size={20} className='button-icon' /> Abrir Webcam
+                <FiCamera size={20} className="button-icon" /> Abrir Webcam
               </button>
             </div>
 
             <div className="upload-hint">
               {form.fotos.length < 3
                 ? `Selecione mais ${3 - form.fotos.length} imagem(ns)`
-                : 'Máximo de 3 imagens atingido'}
+                : "Máximo de 3 imagens atingido"}
             </div>
 
             <div className="image-previews">
               {form.fotos.map((file, index) => (
-                <div key={`${file.name}-${file.size}-${index}`} className="image-preview">
+                <div
+                  key={`${file.name}-${file.size}-${index}`}
+                  className="image-preview"
+                >
                   <div className="image-container">
                     <img
                       src={URL.createObjectURL(file)}
@@ -513,10 +539,12 @@ export default function NewVisitor() {
                     />
                     <button
                       type="button"
-                      onClick={() => setForm(prev => ({
-                        ...prev,
-                        fotos: prev.fotos.filter((_, i) => i !== index)
-                      }))}
+                      onClick={() =>
+                        setForm((prev) => ({
+                          ...prev,
+                          fotos: prev.fotos.filter((_, i) => i !== index),
+                        }))
+                      }
                       className="remove-image"
                     >
                       ×
@@ -524,7 +552,9 @@ export default function NewVisitor() {
                   </div>
                   <div className="image-info">
                     <span className="image-name">{file.name}</span>
-                    <span className="image-size">({Math.round(file.size / 1024)} KB)</span>
+                    <span className="image-size">
+                      ({Math.round(file.size / 1024)} KB)
+                    </span>
                   </div>
                 </div>
               ))}
@@ -536,7 +566,12 @@ export default function NewVisitor() {
             <div className="modal-webcam">
               <div className="modal-estrtura-webcam">
                 <video ref={videoRef} autoPlay width="780" height="620" />
-                <canvas ref={canvasRef} width="780" height="620" style={{ display: 'none' }} />
+                <canvas
+                  ref={canvasRef}
+                  width="780"
+                  height="620"
+                  style={{ display: "none" }}
+                />
                 <div className="camera-webcam">
                   <button
                     type="button"
@@ -559,11 +594,7 @@ export default function NewVisitor() {
             </div>
           )}
 
-          <button
-            className="button"
-            type="button"
-            onClick={handleOpenConfirm}
-          >
+          <button className="button" type="button" onClick={handleOpenConfirm}>
             Cadastrar
           </button>
         </form>
@@ -573,10 +604,7 @@ export default function NewVisitor() {
             <div className="modal-content-visitante">
               <h3>Deseja realmente realizar o cadastro?</h3>
               <div className="modal-actions-visistante">
-                <button
-                  className="button yes"
-                  onClick={handleConfirmSubmit}
-                >
+                <button className="button yes" onClick={handleConfirmSubmit}>
                   Sim
                 </button>
                 <button
@@ -589,7 +617,6 @@ export default function NewVisitor() {
             </div>
           </div>
         )}
-
       </div>
     </div>
   );

@@ -1,29 +1,36 @@
 // src/pages/EditIncident/index.js
-import React, { useState, useEffect } from 'react';
-import { Link, useHistory, useParams } from 'react-router-dom';
-import { FiArrowLeft } from 'react-icons/fi';
-import api from '../../services/api';
-import './styles.css';
-import logoImg from '../../assets/logo.svg';
+import React, { useState, useEffect } from "react";
+import { Link, useHistory, useParams } from "react-router-dom";
+import { FiArrowLeft } from "react-icons/fi";
+import api from "../../services/api";
+import "./styles.css";
+import logoImg from "../../assets/logo.svg";
 
 export default function EditIncident() {
   // Lista de cores pré-definidas (mesmo do cadastro)
   const opcoesCores = [
-    'PRETO', 'BRANCO', 'PRATA', 'CINZA', 'VERMELHO', 'AZUL', 'VERDE', 'AMARELO',
-    'LARANJA',
+    "PRETO",
+    "BRANCO",
+    "PRATA",
+    "CINZA",
+    "VERMELHO",
+    "AZUL",
+    "VERDE",
+    "AMARELO",
+    "LARANJA",
   ];
 
   const [form, setForm] = useState({
-    nome: '',
-    nascimento: '',
-    cpf: '',
-    empresa: '',
-    setor: '',
-    telefone: '',
-    placa_veiculo: '',
-    cor_veiculo: '',
-    observacao: '',
-    bloqueado: false
+    nome: "",
+    nascimento: "",
+    cpf: "",
+    empresa: "",
+    setor: "",
+    telefone: "",
+    placa_veiculo: "",
+    cor_veiculo: "",
+    observacao: "",
+    bloqueado: false,
   });
 
   const [isAdmin, setIsAdmin] = useState(false);
@@ -32,41 +39,40 @@ export default function EditIncident() {
   const [empresas, setEmpresas] = useState([]);
   const [setores, setSetores] = useState([]);
   const [fotos, setFotos] = useState([]);
-  const [avatar, setAvatar] = useState('');
+  const [avatar, setAvatar] = useState("");
   const [errors, setErrors] = useState({
-    placa_veiculo: '',
-    cor_veiculo: ''
+    placa_veiculo: "",
+    cor_veiculo: "",
   });
 
   useEffect(() => {
-    setIsAdmin(localStorage.getItem('ongType') === 'ADM');
+    setIsAdmin(localStorage.getItem("ongType") === "ADM");
 
     async function loadData() {
       try {
         const [incidentRes, empresasRes, setoresRes] = await Promise.all([
           api.get(`/incidents/${id}`),
-          api.get('/empresas-visitantes'),
-          api.get('/setores-visitantes')
+          api.get("/empresas-visitantes"),
+          api.get("/setores-visitantes"),
         ]);
 
         const data = incidentRes.data;
 
         setForm({
           ...data,
-          cpf: formatCPF(data.cpf || ''),
-          telefone: formatTelefone(data.telefone || ''),
-          placa_veiculo: formatPlaca(data.placa_veiculo || ''), // Formatar placa
-          bloqueado: Boolean(data.bloqueado)
+          cpf: formatCPF(data.cpf || ""),
+          telefone: formatTelefone(data.telefone || ""),
+          placa_veiculo: formatPlaca(data.placa_veiculo || ""), // Formatar placa
+          bloqueado: Boolean(data.bloqueado),
         });
 
         setFotos(data.fotos || []);
-        setAvatar(data.avatar_imagem || (data.fotos?.[0] || ''));
+        setAvatar(data.avatar_imagem || data.fotos?.[0] || "");
         setEmpresas(empresasRes.data);
         setSetores(setoresRes.data);
-
       } catch (err) {
-        alert('Erro ao carregar dados do incidente');
-        history.push('/profile');
+        alert("Erro ao carregar dados do incidente");
+        history.push("/profile");
       }
     }
 
@@ -75,22 +81,25 @@ export default function EditIncident() {
 
   // === Funções de formatação (iguais ao cadastro) ===
   const formatCPF = (value) => {
-    const cleaned = value.replace(/\D/g, '');
+    const cleaned = value.replace(/\D/g, "");
     const match = cleaned.match(/(\d{3})(\d{3})(\d{3})(\d{2})/);
     return match ? `${match[1]}.${match[2]}.${match[3]}-${match[4]}` : value;
   };
 
   const formatTelefone = (value) => {
-    const cleaned = value.replace(/\D/g, '').slice(0, 11);
+    const cleaned = value.replace(/\D/g, "").slice(0, 11);
     if (cleaned.length === 11) {
-      return cleaned.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+      return cleaned.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
     }
     return value;
   };
 
   // ← FUNÇÃO PARA FORMATAR PLACA (igual ao cadastro)
   const formatPlaca = (value) => {
-    const cleaned = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 7);
+    const cleaned = value
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .toUpperCase()
+      .slice(0, 7);
 
     if (cleaned.length <= 3) {
       return cleaned;
@@ -106,16 +115,16 @@ export default function EditIncident() {
 
   // ← VALIDAÇÃO DE PLACA EM TEMPO REAL (igual ao cadastro)
   const validatePlaca = (value) => {
-    const cleaned = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    const cleaned = value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
     if (cleaned.length > 0 && cleaned.length < 7) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        placa_veiculo: 'Placa deve ter 7 caracteres'
+        placa_veiculo: "Placa deve ter 7 caracteres",
       }));
     } else {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        placa_veiculo: ''
+        placa_veiculo: "",
       }));
     }
   };
@@ -126,24 +135,24 @@ export default function EditIncident() {
 
     let newValue = value;
 
-    if (name === 'nome') {
+    if (name === "nome") {
       newValue = value.toUpperCase();
-    } else if (name === 'placa_veiculo') {
+    } else if (name === "placa_veiculo") {
       newValue = formatPlaca(value); // Formata a placa
       validatePlaca(newValue); // Valida em tempo real
     }
 
-    setForm(prev => ({ ...prev, [name]: newValue }));
+    setForm((prev) => ({ ...prev, [name]: newValue }));
   };
 
   const handleCpfChange = (e) => {
     const formatted = formatCPF(e.target.value);
-    setForm(prev => ({ ...prev, cpf: formatted }));
+    setForm((prev) => ({ ...prev, cpf: formatted }));
   };
 
   const handleTelefoneChange = (e) => {
     const formatted = formatTelefone(e.target.value);
-    setForm(prev => ({ ...prev, telefone: formatted }));
+    setForm((prev) => ({ ...prev, telefone: formatted }));
   };
 
   // Nova função para lidar com o bloqueio
@@ -153,41 +162,45 @@ export default function EditIncident() {
     const novoEstado = e.target.checked;
 
     try {
-      await api.put(`/incidents/${id}/block`,
-        { bloqueado: novoEstado }
+      await api.put(`/incidents/${id}/block`, { bloqueado: novoEstado });
+      setForm((prev) => ({ ...prev, bloqueado: novoEstado }));
+      alert(
+        `Cadastro ${novoEstado ? "bloqueado" : "desbloqueado"} com sucesso!`
       );
-      setForm(prev => ({ ...prev, bloqueado: novoEstado }));
-      alert(`Cadastro ${novoEstado ? 'bloqueado' : 'desbloqueado'} com sucesso!`);
     } catch (err) {
-      console.error('Erro ao atualizar bloqueio:', err);
-      alert(err.response?.data?.error || 'Erro ao atualizar status de bloqueio');
-      setForm(prev => ({ ...prev, bloqueado: !novoEstado }));
+      console.error("Erro ao atualizar bloqueio:", err);
+      alert(
+        err.response?.data?.error || "Erro ao atualizar status de bloqueio"
+      );
+      setForm((prev) => ({ ...prev, bloqueado: !novoEstado }));
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const cpfClean = form.cpf.replace(/\D/g, '');
-    const telefoneClean = form.telefone.replace(/\D/g, '');
-    const placaClean = form.placa_veiculo.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    const cpfClean = form.cpf.replace(/\D/g, "");
+    const telefoneClean = form.telefone.replace(/\D/g, "");
+    const placaClean = form.placa_veiculo
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .toUpperCase();
 
     // Limpa erros anteriores
     setErrors({
-      placa_veiculo: '',
-      cor_veiculo: ''
+      placa_veiculo: "",
+      cor_veiculo: "",
     });
 
     if (cpfClean.length !== 11) {
-      return alert('CPF inválido. Deve conter 11 dígitos.');
+      return alert("CPF inválido. Deve conter 11 dígitos.");
     }
 
     if (telefoneClean.length !== 11) {
-      return alert('Telefone inválido. Deve conter 11 dígitos com DDD.');
+      return alert("Telefone inválido. Deve conter 11 dígitos com DDD.");
     }
 
     if (!form.empresa || !form.setor) {
-      return alert('Empresa e setor são obrigatórios.');
+      return alert("Empresa e setor são obrigatórios.");
     }
 
     // ← VALIDAÇÃO: Se tem placa, deve ter cor (igual ao cadastro)
@@ -195,29 +208,30 @@ export default function EditIncident() {
     const hasCor = form.cor_veiculo.trim().length > 0;
 
     if (hasPlaca && !hasCor) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        cor_veiculo: 'Cor do veículo é obrigatória quando a placa é informada'
+        cor_veiculo: "Cor do veículo é obrigatória quando a placa é informada",
       }));
-      return alert('Por favor, selecione a cor do veículo.');
+      return alert("Por favor, selecione a cor do veículo.");
     }
 
     if (hasCor && !hasPlaca) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        placa_veiculo: 'Placa do veículo é obrigatória quando a cor é informada'
+        placa_veiculo:
+          "Placa do veículo é obrigatória quando a cor é informada",
       }));
-      alert('Por favor, preencha a placa do veículo.');
+      alert("Por favor, preencha a placa do veículo.");
       return;
     }
 
     // Valida formato da placa
     if (hasPlaca && placaClean.length < 7) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        placa_veiculo: 'Placa deve ter 7 caracteres'
+        placa_veiculo: "Placa deve ter 7 caracteres",
       }));
-      return alert('Placa do veículo deve ter 7 caracteres.');
+      return alert("Placa do veículo deve ter 7 caracteres.");
     }
 
     const payload = {
@@ -230,20 +244,20 @@ export default function EditIncident() {
       placa_veiculo: placaClean, // ← INCLUIR PLACA NO PAYLOAD
       cor_veiculo: form.cor_veiculo, // ← INCLUIR COR NO PAYLOAD
       observacao: form.observacao,
-      avatar_imagem: avatar
+      avatar_imagem: avatar,
     };
 
     try {
       await api.put(`/incidents/${id}`, payload, {
         headers: {
-          authorization: localStorage.getItem('ongId')
-        }
+          authorization: localStorage.getItem("ongId"),
+        },
       });
-      alert('Dados atualizados com sucesso!');
-      history.push('/profile');
+      alert("Dados atualizados com sucesso!");
+      history.push("/profile");
     } catch (err) {
-      console.error('Erro na atualização:', err.response?.data || err);
-      alert(err.response?.data?.error || 'Erro ao atualizar incidente');
+      console.error("Erro na atualização:", err.response?.data || err);
+      alert(err.response?.data?.error || "Erro ao atualizar incidente");
     }
   };
 
@@ -297,7 +311,9 @@ export default function EditIncident() {
           >
             <option value="">Empresa</option>
             {empresas.map((opt) => (
-              <option key={opt.id} value={opt.nome}>{opt.nome}</option>
+              <option key={opt.id} value={opt.nome}>
+                {opt.nome}
+              </option>
             ))}
           </select>
 
@@ -309,7 +325,9 @@ export default function EditIncident() {
           >
             <option value="">Setor</option>
             {setores.map((opt) => (
-              <option key={opt.id} value={opt.nome}>{opt.nome}</option>
+              <option key={opt.id} value={opt.nome}>
+                {opt.nome}
+              </option>
             ))}
           </select>
 
@@ -320,7 +338,7 @@ export default function EditIncident() {
             value={form.placa_veiculo}
             onChange={handleChange}
             maxLength={7}
-            className={errors.placa_veiculo ? 'error' : ''}
+            className={errors.placa_veiculo ? "error" : ""}
           />
           {errors.placa_veiculo && (
             <span className="error-message">{errors.placa_veiculo}</span>
@@ -330,7 +348,7 @@ export default function EditIncident() {
             name="cor_veiculo"
             value={form.cor_veiculo}
             onChange={handleChange}
-            className={errors.cor_veiculo ? 'error' : ''}
+            className={errors.cor_veiculo ? "error" : ""}
           >
             <option value="">Selecione a cor</option>
             {opcoesCores.map((cor) => (
@@ -359,10 +377,10 @@ export default function EditIncident() {
               checked={form.bloqueado}
               onChange={handleBlockChange}
               disabled={!isAdmin}
-              className={!isAdmin ? 'disabled-checkbox' : ''}
+              className={!isAdmin ? "disabled-checkbox" : ""}
             />
             <label htmlFor="bloqueado-checkbox">
-              {form.bloqueado ? '✅ Cadastro Bloqueado' : '⛔ Bloquear Acesso'}
+              {form.bloqueado ? "✅ Cadastro Bloqueado" : "⛔ Bloquear Acesso"}
             </label>
           </div>
 
@@ -382,7 +400,7 @@ export default function EditIncident() {
                     key={index}
                     src={foto}
                     alt={`Foto ${index + 1}`}
-                    className={`photo-item ${avatar === foto ? 'selected' : ''}`}
+                    className={`photo-item ${avatar === foto ? "selected" : ""}`}
                     onClick={() => setAvatar(foto)}
                   />
                 ))}

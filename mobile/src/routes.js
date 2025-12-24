@@ -24,6 +24,16 @@ import Agendamentos from "./pages/Agendamentos";
 import ListaAgendamentos from "./pages/ListaAgendamentos";
 import CadastrarAgendamentos from "./pages/CadastrarAgendamentos";
 
+import Admin from "./pages/Admin";
+
+import Cadastro from "./pages/Cadastro";
+import CadastrarEmpresa from "./pages/CadastrarEmpresaVisitantes";
+import GerenciarUsuarios from "./pages/GerenciarUsuarios";
+import EditarUsuario from "./pages/EditarUsuario";
+import GerenciarEmpresas from "./pages/GerenciarEmpresas";
+import EditarEmpresa from "./pages/EditarEmpresa";
+import ComunicadoAdmin from "./pages/ComunicadoAdmin";
+
 const Stack = createNativeStackNavigator();
 
 export default function Routes() {
@@ -63,6 +73,16 @@ export default function Routes() {
         name="CadastrarAgendamentos"
         component={CadastrarAgendamentos}
       />
+
+      <Stack.Screen name="Admin" component={Admin} />
+
+      <Stack.Screen name="Cadastro" component={Cadastro} />
+      <Stack.Screen name="CadastrarEmpresa" component={CadastrarEmpresa} />
+      <Stack.Screen name="GerenciarUsuarios" component={GerenciarUsuarios} />
+      <Stack.Screen name="EditarUsuario" component={EditarUsuario} />
+      <Stack.Screen name="GerenciarEmpresas" component={GerenciarEmpresas} />
+      <Stack.Screen name="EditarEmpresa" component={EditarEmpresa} />
+      <Stack.Screen name="ComunicadoAdmin" component={ComunicadoAdmin} />
     </Stack.Navigator>
   );
 }

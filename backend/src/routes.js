@@ -19,6 +19,8 @@ const AgendamentoController = require("./controllers/AgendamentoController");
 
 const ResponsavelController = require("./controllers/ResponsavelController");
 
+const ComunicadoController = require("./controllers/ComunicadoController");
+
 const multer = require("multer");
 const multerConfig = require("./config/multer");
 const uploadAgendamento = require("./config/multerAgendamentos");
@@ -94,6 +96,12 @@ routes.get(
   }),
   OngController.show
 );
+
+// Atualizar usuário (PUT)
+routes.put("/ongs/:id", OngController.update);
+
+// Deletar usuário (DELETE)
+routes.delete("/ongs/:id", OngController.delete);
 
 routes.get(
   "/profile",
@@ -533,6 +541,9 @@ routes.get("/setores", SetoresController.index); //Setores
 
 routes.get("/empresas-visitantes", EmpresasVisitantesController.index); //Empresas Visitantes
 routes.post("/empresas-visitantes", EmpresasVisitantesController.create);
+routes.get("/empresas-visitantes/:id", EmpresasVisitantesController.show);
+routes.put("/empresas-visitantes/:id", EmpresasVisitantesController.update);
+routes.delete("/empresas-visitantes/:id", EmpresasVisitantesController.delete);
 
 routes.get("/setores-visitantes", SetoresVisitantesController.index); //Setores Visitantes
 
@@ -599,6 +610,80 @@ routes.put("/agendamentos/:id/presenca", AgendamentoController.presenca);
 routes.get(
   "/agendamentos/relatorio/presencas",
   AgendamentoController.relatorioPresencas
+);
+
+// ─────────────────────────────────────────────────────────────
+// ROTAS DE COMUNICADOS (CRUD COMPLETO)
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * LISTAR TODOS OS COMUNICADOS
+ */
+routes.get(
+  "/comunicados",
+  celebrate({
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown(),
+  }),
+  ComunicadoController.list
+);
+
+/**
+ * CRIAR NOVO COMUNICADO
+ */
+routes.post(
+  "/comunicados",
+  celebrate({
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown(),
+    [Segments.BODY]: Joi.object({
+      titulo: Joi.string().required().max(100),
+      mensagem: Joi.string().required().max(500),
+      prioridade: Joi.string().valid("normal", "urgente").default("normal"),
+      ativo: Joi.boolean().default(false),
+    }),
+  }),
+  ComunicadoController.create
+);
+
+/**
+ * ATUALIZAR / ATIVAR / DESATIVAR COMUNICADO
+ */
+routes.put(
+  "/comunicados/:id",
+  celebrate({
+    [Segments.PARAMS]: Joi.object({
+      id: Joi.number().required(),
+    }),
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown(),
+    [Segments.BODY]: Joi.object({
+      titulo: Joi.string().max(100),
+      mensagem: Joi.string().max(500),
+      prioridade: Joi.string().valid("normal", "urgente"),
+      ativo: Joi.boolean(),
+    }).min(1), // garante que pelo menos um campo seja enviado
+  }),
+  ComunicadoController.update
+);
+
+/**
+ * EXCLUIR COMUNICADO
+ */
+routes.delete(
+  "/comunicados/:id",
+  celebrate({
+    [Segments.PARAMS]: Joi.object({
+      id: Joi.number().required(),
+    }),
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown(),
+  }),
+  ComunicadoController.delete
 );
 
 module.exports = routes;

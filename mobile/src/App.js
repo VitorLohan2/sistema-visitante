@@ -5,16 +5,22 @@ import Routes from "./routes";
 import { SocketProvider } from "./contexts/SocketContext";
 import { IncidentsProvider } from "./contexts/IncidentsContext";
 import { TicketsProvider } from "./contexts/TicketsContext";
+import { EmpresasProvider } from "./contexts/EmpresasContext";
+import { UsuariosProvider } from "./contexts/UsuariosContext";
 
 export default function App() {
   return (
     <SocketProvider>
       <IncidentsProvider>
-        <NavigationContainer>
-          <TicketsProvider>
-            <Routes />
-          </TicketsProvider>
-        </NavigationContainer>
+        <TicketsProvider>
+          <EmpresasProvider>
+            <UsuariosProvider>
+              <NavigationContainer>
+                <Routes />
+              </NavigationContainer>
+            </UsuariosProvider>
+          </EmpresasProvider>
+        </TicketsProvider>
       </IncidentsProvider>
     </SocketProvider>
   );

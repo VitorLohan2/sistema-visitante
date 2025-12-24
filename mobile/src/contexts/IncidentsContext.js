@@ -20,7 +20,7 @@ export function IncidentsProvider({ children }) {
   const [setoresVisitantes, setSetoresVisitantes] = useState([]);
   const [responsaveisList, setResponsaveisList] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [isDataLoaded, setIsDataLoaded] = useState(false); // ✅ AGORA É STATE
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   // ═══════════════════════════════════════════════════════════════
   // REFS - Controle de carregamento

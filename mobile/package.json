@@ -41,6 +41,7 @@
     "react-native-gesture-handler": "~2.24.0",
     "react-native-html-to-pdf": "^0.12.0",
     "react-native-keyboard-aware-scroll-view": "^0.9.5",
+    "react-native-masked-text": "^1.13.0",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
     "react-native-vector-icons": "^10.2.0",

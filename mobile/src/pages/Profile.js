@@ -71,9 +71,9 @@ export default function Profile() {
   // 3. ESTADOS - UI E BUSCA
   // ═══════════════════════════════════════════════════════════════
   const [searchTerm, setSearchTerm] = useState("");
-  // const [searchQuery, setSearchQuery] = useState("");
+  const [searchExecuted, setSearchExecuted] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-
+  const [lastSearchedTerm, setLastSearchedTerm] = useState("");
   // ═══════════════════════════════════════════════════════════════
   // 4. ESTADOS - MODAL DE VISITA
   // ═══════════════════════════════════════════════════════════════
@@ -570,10 +570,24 @@ export default function Profile() {
     if (!query) {
       setDisplayedIncidents(allIncidents);
       setIsSearching(false);
+      setSearchExecuted(false); // ✅ MARCA QUE NÃO HÁ BUSCA ATIVA
+
+      // ✅ SCROLL PARA O TOPO QUANDO LIMPAR
+      setTimeout(() => {
+        if (flatListRef.current) {
+          flatListRef.current.scrollToOffset({
+            offset: 0,
+            animated: true,
+          });
+        }
+      }, 100);
+
       return;
     }
 
     console.log(`🔍 Executando busca: "${query}"`);
+    setSearchExecuted(true); // ✅ MARCA QUE BUSCA FOI EXECUTADA
+    setLastSearchedTerm(query);
 
     // Scroll para o topo com pequeno delay para garantir que a lista já foi atualizada
     setTimeout(() => {
@@ -999,20 +1013,6 @@ export default function Profile() {
     return [];
   }, [displayedIncidents, searchTerm, sortedAllIncidents]);
 
-  // useEffect(() => {
-  //   if (!shouldScrollToTopRef.current || !flatListRef.current) return;
-
-  //   const timer = setTimeout(() => {
-  //     flatListRef.current?.scrollToOffset({
-  //       offset: 0,
-  //       animated: false,
-  //     });
-  //     shouldScrollToTopRef.current = false;
-  //   }, 50);
-
-  //   return () => clearTimeout(timer);
-  // }, [searchTerm]);
-
   // ═══════════════════════════════════════════════════════════════
   // 13. LOADING STATE
   // ═══════════════════════════════════════════════════════════════
@@ -1050,10 +1050,21 @@ export default function Profile() {
             value={searchTerm}
             onChangeText={(text) => {
               setSearchTerm(text);
-              // Se limpar o campo, restaura lista completa
+              // ✅ Se limpar o campo, executa a limpeza imediatamente
               if (text.trim() === "") {
                 setDisplayedIncidents(allIncidents);
                 setIsSearching(false);
+                setSearchExecuted(false); // ✅ MARCA QUE NÃO HÁ BUSCA
+
+                // ✅ SCROLL PARA O TOPO AO LIMPAR
+                setTimeout(() => {
+                  if (flatListRef.current) {
+                    flatListRef.current.scrollToOffset({
+                      offset: 0,
+                      animated: true,
+                    });
+                  }
+                }, 100);
               }
             }}
             onSubmitEditing={executeSearch}
@@ -1075,10 +1086,10 @@ export default function Profile() {
       {/* ═══════════════════════════════════════════════════════ */}
       {/* INFO DA BUSCA */}
       {/* ═══════════════════════════════════════════════════════ */}
-      {searchTerm.trim() && (
+      {searchExecuted && lastSearchedTerm && (
         <View style={styles.searchInfo}>
           <Text style={styles.searchInfoText}>
-            Buscando por "{searchTerm.trim()}" ({filteredIncidents.length}{" "}
+            Buscando por "{lastSearchedTerm}" ({filteredIncidents.length}{" "}
             resultados)
           </Text>
         </View>
@@ -1339,6 +1350,30 @@ export default function Profile() {
               style={styles.menuModalOption}
               onPress={() => {
                 closeMenuModal();
+                navigation.navigate("Admin");
+              }}
+              disabled={isAnimating}
+            >
+              <View
+                style={[
+                  styles.menuModalIcon,
+                  { backgroundColor: "rgba(249, 168, 37, 0.1)" },
+                ]}
+              >
+                <Feather name="globe" size={24} color="#f9a825" />
+              </View>
+              <View style={styles.menuModalOptionContent}>
+                <Text style={styles.menuModalOptionTitle}>Painel Admin</Text>
+                <Text style={styles.menuModalOptionDescription}>
+                  Sistema Administrador
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuModalOption}
+              onPress={() => {
+                closeMenuModal();
                 navigation.navigate("Agendamentos");
               }}
               disabled={isAnimating}
@@ -1413,6 +1448,35 @@ export default function Profile() {
                 </Text>
                 <Text style={styles.menuModalOptionDescription}>
                   Empresa não cadastrado
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuModalOption}
+              onPress={() => {
+                closeMenuModal();
+                Alert.alert(
+                  "Em desenvolvimento",
+                  "Funcionalidade em desenvolvimento"
+                );
+              }}
+              disabled={isAnimating}
+            >
+              <View
+                style={[
+                  styles.menuModalIcon,
+                  { backgroundColor: "rgba(249, 168, 37, 0.1)" },
+                ]}
+              >
+                <Feather name="check-square" size={24} color="#f9a825" />
+              </View>
+              <View style={styles.menuModalOptionContent}>
+                <Text style={styles.menuModalOptionTitle}>
+                  Marcador de Ponto
+                </Text>
+                <Text style={styles.menuModalOptionDescription}>
+                  Marque seu ponto
                 </Text>
               </View>
             </TouchableOpacity>

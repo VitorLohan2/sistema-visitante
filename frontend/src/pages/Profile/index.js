@@ -1,31 +1,36 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Link, useHistory } from 'react-router-dom';
-import { FiPower, FiSearch, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import React, { useState, useEffect, useRef } from "react";
+import { Link, useHistory } from "react-router-dom";
+import {
+  FiPower,
+  FiSearch,
+  FiChevronLeft,
+  FiChevronRight,
+} from "react-icons/fi";
 
-import notificacaoSom from '../../assets/notificacao.mp3';
-import api from '../../services/api';
-import { useAuth } from '../../hooks/useAuth';
-import Loading from '../../components/Loading';
+import notificacaoSom from "../../assets/notificacao.mp3";
+import api from "../../services/api";
+import { useAuth } from "../../hooks/useAuth";
+import Loading from "../../components/Loading";
 
 import VisitorCard from "../../components/VisitorCard";
-import ProfileMenu from '../../components/ProfileMenu';
-import ConfigModal from '../../components/ConfigModal';
-import VisitAuthorizationModal from '../../components/VisitAuthorizationModal';
+import ProfileMenu from "../../components/ProfileMenu";
+import ConfigModal from "../../components/ConfigModal";
+import VisitAuthorizationModal from "../../components/VisitAuthorizationModal";
 
-import './styles.css';
-import '../../styles/dark-theme.css';
-import '../../styles/visitorcard.css';
+import "./styles.css";
+import "../../styles/dark-theme.css";
+import "../../styles/visitorcard.css";
 
-import logo from '../../assets/logo.svg';
+import logo from "../../assets/logo.svg";
 
 export default function Profile() {
   const [incidents, setIncidents] = useState([]);
-  const [allIncidents, setAllIncidents] = useState([]); // lista completa original
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isSearching, setIsSearching] = useState(false); // 🆕 Flag para controlar busca
+  const [allIncidents, setAllIncidents] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
   const history = useHistory();
 
-  // Modal de registrar Visita  
+  // Modal de registrar Visita
   const [visitModalVisible, setVisitModalVisible] = useState(false);
   const [responsaveis, setResponsaveis] = useState([]);
   const [selectedIncident, setSelectedIncident] = useState(null);
@@ -36,7 +41,7 @@ export default function Profile() {
 
   const [unseenCount, setUnseenCount] = useState(0);
   const unseenRef = useRef(0);
-  const [userData, setUserData] = useState({ setor: '' });
+  const [userData, setUserData] = useState({ setor: "" });
   const isFirstLoad = useRef(true);
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -58,18 +63,18 @@ export default function Profile() {
 
   // Carregar tema do localStorage na inicialização
   useEffect(() => {
-    const savedTheme = localStorage.getItem('darkTheme');
+    const savedTheme = localStorage.getItem("darkTheme");
     if (savedTheme) {
       setDarkTheme(JSON.parse(savedTheme));
-      document.body.classList.toggle('dark-theme', JSON.parse(savedTheme));
+      document.body.classList.toggle("dark-theme", JSON.parse(savedTheme));
     }
   }, []);
 
   function toggleTheme() {
     const newTheme = !darkTheme;
     setDarkTheme(newTheme);
-    localStorage.setItem('darkTheme', JSON.stringify(newTheme));
-    document.body.classList.toggle('dark-theme', newTheme);
+    localStorage.setItem("darkTheme", JSON.stringify(newTheme));
+    document.body.classList.toggle("dark-theme", newTheme);
   }
 
   async function handleOpenConfigModal() {
@@ -78,7 +83,7 @@ export default function Profile() {
       setUserDetails(response.data);
       setConfigModalVisible(true);
     } catch (err) {
-      alert('Erro ao carregar informações do usuário: ' + err.message);
+      alert("Erro ao carregar informações do usuário: " + err.message);
     }
   }
 
@@ -88,10 +93,10 @@ export default function Profile() {
   }
 
   function formatarData(data) {
-    if (!data) return 'Data não informada';
+    if (!data) return "Data não informada";
 
-    const dataParte = data.split('T')[0];
-    const partes = dataParte.split('-');
+    const dataParte = data.split("T")[0];
+    const partes = dataParte.split("-");
 
     if (partes.length === 3) {
       return `${partes[2]}/${partes[1]}/${partes[0]}`;
@@ -102,10 +107,14 @@ export default function Profile() {
 
   // 🔹 FUNÇÃO PARA MAPEAR DADOS COM EMPRESA/SETOR
   const mapIncidentsWithNames = (incidentsData) => {
-    return incidentsData.map(incident => ({
+    return incidentsData.map((incident) => ({
       ...incident,
-      empresa: empresasVisitantes.find(e => e.id === incident.empresa_id)?.nome || 'Não informado',
-      setor: setoresVisitantes.find(s => s.id === incident.setor_id)?.nome || 'Não informado'
+      empresa:
+        empresasVisitantes.find((e) => e.id === incident.empresa_id)?.nome ||
+        "Não informado",
+      setor:
+        setoresVisitantes.find((s) => s.id === incident.setor_id)?.nome ||
+        "Não informado",
     }));
   };
 
@@ -124,8 +133,8 @@ export default function Profile() {
 
         // 1. Carrega empresas e setores primeiro
         const [empresasResponse, setoresResponse] = await Promise.all([
-          api.get('/empresas-visitantes'),
-          api.get('/setores-visitantes')
+          api.get("/empresas-visitantes"),
+          api.get("/setores-visitantes"),
         ]);
 
         const empresas = empresasResponse.data;
@@ -140,15 +149,19 @@ export default function Profile() {
         setUserData({ setor, type, setor_id });
 
         // 3. Carrega todos os incidents
-        const profileResponse = await api.get('profile', {
-          headers: { Authorization: ongId }
+        const profileResponse = await api.get("profile", {
+          headers: { Authorization: ongId },
         });
 
         // 4. Mapeia com nomes de empresa/setor
-        const incidentsWithNames = profileResponse.data.map(incident => ({
+        const incidentsWithNames = profileResponse.data.map((incident) => ({
           ...incident,
-          empresa: empresas.find(e => e.id === incident.empresa_id)?.nome || 'Não informado',
-          setor: setores.find(s => s.id === incident.setor_id)?.nome || 'Não informado'
+          empresa:
+            empresas.find((e) => e.id === incident.empresa_id)?.nome ||
+            "Não informado",
+          setor:
+            setores.find((s) => s.id === incident.setor_id)?.nome ||
+            "Não informado",
         }));
 
         // 5. Salva os dados
@@ -156,15 +169,17 @@ export default function Profile() {
         setIncidents(incidentsWithNames);
 
         // Lógica de segurança (mantida igual)
-        if (setor === 'Segurança') {
-          const unseenResponse = await api.get('/tickets/unseen', {
-            headers: { Authorization: ongId }
+        if (setor === "Segurança") {
+          const unseenResponse = await api.get("/tickets/unseen", {
+            headers: { Authorization: ongId },
           });
 
           const newCount = unseenResponse.data.count;
           if (!isFirstLoad.current && newCount > unseenRef.current) {
             const audio = new Audio(notificacaoSom);
-            audio.play().catch(err => console.error("Erro ao tocar som:", err));
+            audio
+              .play()
+              .catch((err) => console.error("Erro ao tocar som:", err));
           }
 
           unseenRef.current = newCount;
@@ -172,7 +187,10 @@ export default function Profile() {
           isFirstLoad.current = false;
         }
       } catch (error) {
-        console.error('Erro ao carregar dados:', error.response?.data || error.message);
+        console.error(
+          "Erro ao carregar dados:",
+          error.response?.data || error.message
+        );
       } finally {
         setTimeout(() => {
           setLoading(false);
@@ -191,33 +209,37 @@ export default function Profile() {
     const intervalId = setInterval(async () => {
       try {
         // Só atualiza se não estiver em busca ativa
-        if (!isSearching && searchTerm.trim() === '') {
-          const profileResponse = await api.get('profile', {
-            headers: { Authorization: ongId }
+        if (!isSearching && searchTerm.trim() === "") {
+          const profileResponse = await api.get("profile", {
+            headers: { Authorization: ongId },
           });
 
-          const incidentsWithNames = mapIncidentsWithNames(profileResponse.data);
+          const incidentsWithNames = mapIncidentsWithNames(
+            profileResponse.data
+          );
           setAllIncidents(incidentsWithNames);
           setIncidents(incidentsWithNames);
         }
 
         // Sempre atualiza notificações de segurança
-        if (userData.setor === 'Segurança') {
-          const unseenResponse = await api.get('/tickets/unseen', {
-            headers: { Authorization: ongId }
+        if (userData.setor === "Segurança") {
+          const unseenResponse = await api.get("/tickets/unseen", {
+            headers: { Authorization: ongId },
           });
 
           const newCount = unseenResponse.data.count;
           if (newCount > unseenRef.current) {
             const audio = new Audio(notificacaoSom);
-            audio.play().catch(err => console.error("Erro ao tocar som:", err));
+            audio
+              .play()
+              .catch((err) => console.error("Erro ao tocar som:", err));
           }
 
           unseenRef.current = newCount;
           setUnseenCount(newCount);
         }
       } catch (error) {
-        console.error('Erro na atualização automática:', error);
+        console.error("Erro na atualização automática:", error);
       }
     }, 3000); // 🔹 Aumentei para 3 segundos para reduzir carga
 
@@ -247,32 +269,33 @@ export default function Profile() {
 
         // Busca localmente primeiro (mais rápido) - BUSCA MAIS PRECISA
         const searchLower = searchTerm.toLowerCase().trim();
-        const cpfNumbers = searchTerm.replace(/\D/g, ''); // Remove formatação do CPF
+        const cpfNumbers = searchTerm.replace(/\D/g, ""); // Remove formatação do CPF
 
         //console.log('🔍 Termo de busca processado:', { original: searchTerm, lower: searchLower, cpfNumbers }); // Debug
 
-        const localResults = allIncidents.filter(incident => {
+        const localResults = allIncidents.filter((incident) => {
           // Verificações mais rigorosas
-          const hasName = incident.nome && typeof incident.nome === 'string';
-          const hasCpf = incident.cpf && typeof incident.cpf === 'string';
+          const hasName = incident.nome && typeof incident.nome === "string";
+          const hasCpf = incident.cpf && typeof incident.cpf === "string";
 
           // 🔹 BUSCA POR NOME - Busca por palavras inteiras, não apenas substring
           let nameMatch = false;
           if (hasName) {
             const nomeNormalizado = incident.nome.toLowerCase().trim();
             // Verifica se o termo de busca existe como palavra completa ou início de palavra
-            nameMatch = nomeNormalizado.includes(searchLower) && (
-              nomeNormalizado.startsWith(searchLower) || // Começa com o termo
-              nomeNormalizado.includes(' ' + searchLower) || // Palavra inteira no meio
-              nomeNormalizado === searchLower // Nome exato
-            );
+            nameMatch =
+              nomeNormalizado.includes(searchLower) &&
+              (nomeNormalizado.startsWith(searchLower) || // Começa com o termo
+                nomeNormalizado.includes(" " + searchLower) || // Palavra inteira no meio
+                nomeNormalizado === searchLower); // Nome exato
           }
 
           // 🔹 BUSCA POR CPF - Só busca se o termo tem números
           let cpfMatch = false;
           if (hasCpf && cpfNumbers.length > 0) {
-            cpfMatch = incident.cpf.includes(searchTerm) ||
-              incident.cpf.replace(/\D/g, '').includes(cpfNumbers);
+            cpfMatch =
+              incident.cpf.includes(searchTerm) ||
+              incident.cpf.replace(/\D/g, "").includes(cpfNumbers);
           }
 
           // console.log(`👤 ${incident.nome}:`, {
@@ -293,10 +316,10 @@ export default function Profile() {
         if (localResults.length > 0) {
           setIncidents(localResults);
         } else {
-          console.log('🌐 Buscando na API...'); // Debug
+          console.log("🌐 Buscando na API..."); // Debug
           // Se não encontrar localmente, busca na API
-          const response = await api.get('/search', {
-            params: { query: searchTerm }
+          const response = await api.get("/search", {
+            params: { query: searchTerm },
           });
 
           //console.log('📡 Resposta da API:', response.data); // Debug
@@ -306,31 +329,32 @@ export default function Profile() {
           setIncidents(searchResults);
         }
       } catch (err) {
-        console.error('❌ Erro na busca:', err);
+        console.error("❌ Erro na busca:", err);
         // Se der erro, busca localmente como fallback - BUSCA MAIS PRECISA
         const searchLower = searchTerm.toLowerCase().trim();
-        const cpfNumbers = searchTerm.replace(/\D/g, '');
+        const cpfNumbers = searchTerm.replace(/\D/g, "");
 
-        const localResults = allIncidents.filter(incident => {
-          const hasName = incident.nome && typeof incident.nome === 'string';
-          const hasCpf = incident.cpf && typeof incident.cpf === 'string';
+        const localResults = allIncidents.filter((incident) => {
+          const hasName = incident.nome && typeof incident.nome === "string";
+          const hasCpf = incident.cpf && typeof incident.cpf === "string";
 
           // Busca mais precisa por nome
           let nameMatch = false;
           if (hasName) {
             const nomeNormalizado = incident.nome.toLowerCase().trim();
-            nameMatch = nomeNormalizado.includes(searchLower) && (
-              nomeNormalizado.startsWith(searchLower) ||
-              nomeNormalizado.includes(' ' + searchLower) ||
-              nomeNormalizado === searchLower
-            );
+            nameMatch =
+              nomeNormalizado.includes(searchLower) &&
+              (nomeNormalizado.startsWith(searchLower) ||
+                nomeNormalizado.includes(" " + searchLower) ||
+                nomeNormalizado === searchLower);
           }
 
           // Busca por CPF só se tiver números
           let cpfMatch = false;
           if (hasCpf && cpfNumbers.length > 0) {
-            cpfMatch = incident.cpf.includes(searchTerm) ||
-              incident.cpf.replace(/\D/g, '').includes(cpfNumbers);
+            cpfMatch =
+              incident.cpf.includes(searchTerm) ||
+              incident.cpf.replace(/\D/g, "").includes(cpfNumbers);
           }
 
           return nameMatch || cpfMatch;
@@ -348,24 +372,29 @@ export default function Profile() {
     const value = e.target.value;
     setSearchTerm(value);
 
-    if (value.trim() === '') {
+    if (value.trim() === "") {
       setIsSearching(false);
     }
   };
 
   // 🆕 EFEITO PARA ATUALIZAR A LISTA QUANDO allIncidents MUDA (mas não está buscando)
   useEffect(() => {
-    if (!isSearching && searchTerm.trim() === '' && allIncidents.length > 0) {
+    if (!isSearching && searchTerm.trim() === "" && allIncidents.length > 0) {
       setIncidents(allIncidents);
     }
   }, [allIncidents, isSearching, searchTerm]);
 
-  const filteredIncidents = incidents.sort((a, b) => a.nome.localeCompare(b.nome));
+  const filteredIncidents = incidents.sort((a, b) =>
+    a.nome.localeCompare(b.nome)
+  );
 
   // Cálculos de paginação
   const indexOfLastRecord = currentPage * recordsPerPage;
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
-  const currentRecords = filteredIncidents.slice(indexOfFirstRecord, indexOfLastRecord);
+  const currentRecords = filteredIncidents.slice(
+    indexOfFirstRecord,
+    indexOfLastRecord
+  );
   const totalPages = Math.ceil(filteredIncidents.length / recordsPerPage);
 
   // 🔹 FUNÇÕES DE PAGINAÇÃO COM DEBUG
@@ -389,22 +418,25 @@ export default function Profile() {
   };
 
   async function handleDeleteIncident(id) {
-    if (!window.confirm('Tem certeza que deseja deletar este cadastro?')) return;
+    if (!window.confirm("Tem certeza que deseja deletar este cadastro?"))
+      return;
 
     try {
       const response = await api.delete(`incidents/${id}`, {
-        headers: { Authorization: ongId }
+        headers: { Authorization: ongId },
       });
 
       if (response.status === 204) {
         // Remove da lista principal e da lista filtrada
-        const newAllIncidents = allIncidents.filter(incident => incident.id !== id);
-        const newIncidents = incidents.filter(incident => incident.id !== id);
+        const newAllIncidents = allIncidents.filter(
+          (incident) => incident.id !== id
+        );
+        const newIncidents = incidents.filter((incident) => incident.id !== id);
 
         setAllIncidents(newAllIncidents);
         setIncidents(newIncidents);
 
-        alert('Cadastro deletado com sucesso!');
+        alert("Cadastro deletado com sucesso!");
       }
     } catch (err) {
       const error = err.response?.data?.error || err.message;
@@ -413,9 +445,9 @@ export default function Profile() {
   }
 
   function handleRegisterVisit(id) {
-    const incident = incidents.find(inc => inc.id === id);
+    const incident = incidents.find((inc) => inc.id === id);
     if (incident.bloqueado) {
-      alert('Este visitante está bloqueado. Registro de visita não permitido.');
+      alert("Este visitante está bloqueado. Registro de visita não permitido.");
       return;
     }
 
@@ -426,7 +458,7 @@ export default function Profile() {
   useEffect(() => {
     async function fetchResponsaveis() {
       try {
-        const response = await api.get('/responsaveis');
+        const response = await api.get("/responsaveis");
         setResponsaveis(response.data); // lista que vem do backend
       } catch (err) {
         console.error("Erro ao carregar responsáveis:", err);
@@ -438,25 +470,29 @@ export default function Profile() {
 
   async function handleConfirmVisit(responsavel, observacao) {
     try {
-      await api.post('/visitors', {
-        name: selectedIncident.nome,
-        cpf: selectedIncident.cpf,
-        company: selectedIncident.empresa,
-        sector: selectedIncident.setor,
-        placa_veiculo: selectedIncident.placa_veiculo,
-        cor_veiculo: selectedIncident.cor_veiculo,
-        responsavel,
-        observacao
-      }, {
-        headers: { Authorization: ongId }
-      });
+      await api.post(
+        "/visitors",
+        {
+          name: selectedIncident.nome,
+          cpf: selectedIncident.cpf,
+          company: selectedIncident.empresa,
+          sector: selectedIncident.setor,
+          placa_veiculo: selectedIncident.placa_veiculo,
+          cor_veiculo: selectedIncident.cor_veiculo,
+          responsavel,
+          observacao,
+        },
+        {
+          headers: { Authorization: ongId },
+        }
+      );
 
-      alert('Visita registrada com sucesso!');
+      alert("Visita registrada com sucesso!");
       setVisitModalVisible(false);
       setSelectedIncident(null);
-      history.push('/visitors');
+      history.push("/visitors");
     } catch (err) {
-      alert('Erro ao registrar visita: ' + err.message);
+      alert("Erro ao registrar visita: " + err.message);
     }
   }
 
@@ -469,7 +505,7 @@ export default function Profile() {
   }
 
   function handleLogout() {
-    if (window.confirm('Tem certeza que deseja sair?')) {
+    if (window.confirm("Tem certeza que deseja sair?")) {
       logout();
     }
   }
@@ -479,17 +515,17 @@ export default function Profile() {
       const response = await api.get(`incidents/${id}/badge`);
       setBadgeData({
         ...response.data,
-        imagem: response.data.avatar_imagem || response.data.imagem1 || null
+        imagem: response.data.avatar_imagem || response.data.imagem1 || null,
       });
       setBadgeModalVisible(true);
     } catch (err) {
-      alert('Erro ao abrir crachá: ' + err.message);
+      alert("Erro ao abrir crachá: " + err.message);
     }
   }
 
   function handlePrintBadge() {
-  if (!badgeData) return;
-    const printWindow = window.open('', 'PRINT', 'height=600,width=720');
+    if (!badgeData) return;
+    const printWindow = window.open("", "PRINT", "height=600,width=720");
     printWindow.document.write(`
     <html>
       <head>
@@ -556,7 +592,8 @@ export default function Profile() {
 
   //const logoAtual = darkTheme ? logoImgWhite : logoImgBlack;
 
-  if (loading) return <Loading progress={progress} message="Carregando Listagem..." />;
+  if (loading)
+    return <Loading progress={progress} message="Carregando Listagem..." />;
 
   return (
     <div className="profile-container">
@@ -575,9 +612,11 @@ export default function Profile() {
           />
         </div>
 
-        <Link className="button" to="/incidents/new">Cadastrar Visitante</Link>
+        <Link className="button" to="/incidents/new">
+          Cadastrar Visitante
+        </Link>
         <button onClick={handleLogout} type="button">
-          <FiPower size={18} color="#e02041" className='power' />
+          <FiPower size={18} color="#e02041" className="power" />
         </button>
       </header>
 
@@ -591,14 +630,15 @@ export default function Profile() {
         Visitantes Cadastrados
         {isSearching && searchTerm && (
           <span className="search-results-info">
-            - Buscando por "{searchTerm}" ({filteredIncidents.length} resultados)
+            - Buscando por "{searchTerm}" ({filteredIncidents.length}{" "}
+            resultados)
           </span>
         )}
       </h1>
 
       {/* CARDS CONTAINER */}
       <div className="visitors-list">
-        {currentRecords.map(incident => (
+        {currentRecords.map((incident) => (
           <VisitorCard
             key={incident.id}
             incident={incident}
@@ -612,14 +652,12 @@ export default function Profile() {
         ))}
       </div>
 
-
       {/* Mensagem quando não há resultados */}
       {filteredIncidents.length === 0 && !loading && (
         <div className="no-results">
-          {searchTerm ?
-            `Nenhum resultado encontrado para "${searchTerm}"` :
-            'Nenhum cadastro encontrado'
-          }
+          {searchTerm
+            ? `Nenhum resultado encontrado para "${searchTerm}"`
+            : "Nenhum cadastro encontrado"}
         </div>
       )}
 
@@ -636,7 +674,7 @@ export default function Profile() {
 
           <button
             onClick={() => goToPage(1)}
-            className={`pagination-button ${currentPage === 1 ? 'active' : ''}`}
+            className={`pagination-button ${currentPage === 1 ? "active" : ""}`}
           >
             1
           </button>
@@ -650,18 +688,21 @@ export default function Profile() {
             </button>
           )}
 
-          {Array.from({ length: Math.min(pagesPerGroup, totalPages - 2) }, (_, i) => {
-            const pageNumber = 2 + i + (pageGroup * pagesPerGroup);
-            return pageNumber <= totalPages - 1 ? (
-              <button
-                key={pageNumber}
-                onClick={() => goToPage(pageNumber)}
-                className={`pagination-button ${currentPage === pageNumber ? 'active' : ''}`}
-              >
-                {pageNumber}
-              </button>
-            ) : null;
-          })}
+          {Array.from(
+            { length: Math.min(pagesPerGroup, totalPages - 2) },
+            (_, i) => {
+              const pageNumber = 2 + i + pageGroup * pagesPerGroup;
+              return pageNumber <= totalPages - 1 ? (
+                <button
+                  key={pageNumber}
+                  onClick={() => goToPage(pageNumber)}
+                  className={`pagination-button ${currentPage === pageNumber ? "active" : ""}`}
+                >
+                  {pageNumber}
+                </button>
+              ) : null;
+            }
+          )}
 
           {2 + (pageGroup + 1) * pagesPerGroup < totalPages && (
             <button
@@ -675,7 +716,7 @@ export default function Profile() {
           {totalPages > 1 && (
             <button
               onClick={() => goToPage(totalPages)}
-              className={`pagination-button ${currentPage === totalPages ? 'active' : ''}`}
+              className={`pagination-button ${currentPage === totalPages ? "active" : ""}`}
             >
               {totalPages}
             </button>
@@ -694,18 +735,27 @@ export default function Profile() {
       {/* MODAL DO CRACHÁ */}
       {badgeModalVisible && badgeData && (
         <div className="modal-overlay" onClick={handleCloseBadgeModal}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <button className="modal-close" onClick={handleCloseBadgeModal}>X</button>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={handleCloseBadgeModal}>
+              X
+            </button>
             <h2>Crachá de Visitante</h2>
-            <p><strong>Nome:</strong> {badgeData.nome}</p>
-            <p><strong>Empresa:</strong> {badgeData.empresa}</p>
-            <p><strong>Setor:</strong> {badgeData.setor}</p>
-            <button onClick={handlePrintBadge} className="modal-print-btn">Imprimir Crachá</button>
+            <p>
+              <strong>Nome:</strong> {badgeData.nome}
+            </p>
+            <p>
+              <strong>Empresa:</strong> {badgeData.empresa}
+            </p>
+            <p>
+              <strong>Setor:</strong> {badgeData.setor}
+            </p>
+            <button onClick={handlePrintBadge} className="modal-print-btn">
+              Imprimir Crachá
+            </button>
           </div>
         </div>
       )}
 
-      {/* MODAL DE CONFIGURAÇÃO */}
       <ConfigModal
         visible={configModalVisible}
         onClose={handleCloseConfigModal}
@@ -720,10 +770,9 @@ export default function Profile() {
         visible={visitModalVisible}
         onClose={() => setVisitModalVisible(false)}
         onConfirm={handleConfirmVisit}
-        responsaveis={responsaveis.map(r => r.nome)}
+        responsaveis={responsaveis.map((r) => r.nome)}
         incident={selectedIncident}
       />
-
     </div>
   );
 }
