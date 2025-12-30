@@ -302,29 +302,26 @@ export default function GerenciarEmpresas() {
       {/* ═══════════════════════════════════════════════════════ */}
       {/* CABEÇALHO */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <View style={styles.header}>
-        <View style={styles.logoRow}>
-          <Image source={logoImg} style={styles.logo} />
+      <View style={styles.headerGeral}>
+        <View style={styles.header}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
             style={styles.backButton}
           >
             <Feather name="arrow-left" size={24} color="#10B981" />
           </TouchableOpacity>
-        </View>
 
-        <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>Gerenciar Empresas</Text>
-          <Text style={styles.headerSubtitle}>
-            {empresasFiltradas.length} empresa(s) encontrada(s)
-          </Text>
-          {deletando && (
-            <View style={styles.deletingIndicator}>
-              <ActivityIndicator size="small" color="#ef4444" />
-              <Text style={styles.deletingText}>Excluindo empresa...</Text>
-            </View>
-          )}
         </View>
+        <Text style={styles.headerSubtitle}>
+          {empresasFiltradas.length} empresa(s) encontrada(s)
+        </Text>
+        {deletando && (
+          <View style={styles.deletingIndicator}>
+            <ActivityIndicator size="small" color="#ef4444" />
+            <Text style={styles.deletingText}>Excluindo empresa...</Text>
+          </View>
+        )}
 
         {/* Barra de Pesquisa */}
         <View style={styles.searchContainer}>

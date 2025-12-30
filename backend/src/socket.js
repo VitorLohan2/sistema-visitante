@@ -15,10 +15,17 @@ function init(server) {
     console.log("🟢 Novo socket conectado:", socket.id);
 
     const ongId = socket.handshake.query?.ongId;
+    const ongName = socket.handshake.query?.ongName;
+
     console.log("📋 Query handshake:", socket.handshake.query);
     console.log("🆔 ongId recebido:", ongId);
+    console.log("👤 ongName recebido:", ongName);
 
     if (ongId) {
+      // ✅ ARMAZENAR DADOS DO USUÁRIO NO SOCKET
+      socket.userId = ongId;
+      socket.userName = ongName;
+
       // Entra na sala GLOBAL compartilhada
       socket.join("global");
       console.log(`🌐 Socket ${socket.id} entrou na sala GLOBAL`);
@@ -27,6 +34,9 @@ function init(server) {
       setTimeout(() => {
         console.log("📊 Salas disponíveis:", Array.from(socket.rooms));
       }, 100);
+
+      // ✅ BUSCAR TIPO DO USUÁRIO E ATUALIZAR EQUIPE ONLINE
+      buscarTipoUsuarioEAtualizar(socket);
     }
 
     // Teste agora na sala global
@@ -38,12 +48,104 @@ function init(server) {
       console.log(`🧪 Evento de teste enviado para sala GLOBAL`);
     }, 3000);
 
-    socket.on("disconnect", () => {
+    // 👉 ENTRAR NA CONVERSA
+    socket.on("entrar_conversa", (conversa_id) => {
+      socket.join(`conversa:${conversa_id}`);
+      console.log(`👥 Socket ${socket.id} entrou na conversa ${conversa_id}`);
+    });
+
+    // 👉 SAIR DA CONVERSA
+    socket.on("sair_conversa", (conversa_id) => {
+      socket.leave(`conversa:${conversa_id}`);
+      console.log(`👤 Socket ${socket.id} saiu da conversa ${conversa_id}`);
+    });
+
+    socket.on("disconnect", async () => {
       console.log("🔴 Socket desconectado:", socket.id);
+
+      // ✅ SE FOR ADM, ATUALIZAR EQUIPE ONLINE
+      if (socket.userType === "ADM") {
+        await emitirEquipeOnlineAtualizada();
+      }
     });
   });
 
   return io;
+}
+
+// ✅ FUNÇÃO PARA BUSCAR TIPO DO USUÁRIO E ATUALIZAR EQUIPE
+async function buscarTipoUsuarioEAtualizar(socket) {
+  try {
+    const connection = require("./database/connection");
+
+    const usuario = await connection("ongs")
+      .where("id", socket.userId)
+      .select("type", "name", "email")
+      .first();
+
+    if (usuario) {
+      socket.userType = usuario.type;
+      socket.userEmail = usuario.email;
+
+      console.log(`✅ Usuário ${socket.userName} é do tipo: ${usuario.type}`);
+
+      // Se for ADM, atualizar lista de equipe online
+      if (usuario.type === "ADM") {
+        await emitirEquipeOnlineAtualizada();
+      }
+    }
+  } catch (error) {
+    console.error("❌ Erro ao buscar tipo do usuário:", error);
+  }
+}
+
+// ✅ FUNÇÃO PARA EMITIR EQUIPE ONLINE ATUALIZADA
+async function emitirEquipeOnlineAtualizada() {
+  try {
+    const connection = require("./database/connection");
+
+    // Buscar todos os ADMs do banco
+    const equipeADM = await connection("ongs")
+      .where("type", "ADM")
+      .select("id", "name", "email")
+      .orderBy("name", "asc");
+
+    // Verificar quais ADMs estão online
+    const onlineUsers = [];
+
+    if (io && io.sockets && io.sockets.sockets) {
+      io.sockets.sockets.forEach((socket) => {
+        if (socket.userId && socket.userType === "ADM") {
+          // Verificar se já não foi adicionado (evitar duplicatas)
+          if (!onlineUsers.find((u) => u.id === socket.userId)) {
+            const userInfo = equipeADM.find((u) => u.id === socket.userId);
+            if (userInfo) {
+              onlineUsers.push({
+                id: userInfo.id,
+                nome: userInfo.name,
+                email: userInfo.email,
+              });
+            }
+          }
+        }
+      });
+    }
+
+    // Emitir para sala global
+    io.to("global").emit("equipe:atualizada", {
+      equipe: onlineUsers,
+    });
+
+    console.log(
+      `👥 Equipe online atualizada: ${onlineUsers.length} membros ADM online`
+    );
+    console.log(
+      "📋 Membros online:",
+      onlineUsers.map((u) => u.nome).join(", ")
+    );
+  } catch (error) {
+    console.error("❌ Erro ao emitir equipe online:", error);
+  }
 }
 
 function getIo() {
@@ -53,4 +155,9 @@ function getIo() {
   return io;
 }
 
-module.exports = { init, getIo };
+// ✅ EXPORTAR FUNÇÃO PARA USO NO CONTROLLER
+function emitirEquipeOnline() {
+  return emitirEquipeOnlineAtualizada();
+}
+
+module.exports = { init, getIo, emitirEquipeOnline };

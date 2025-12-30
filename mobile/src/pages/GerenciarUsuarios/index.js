@@ -339,23 +339,20 @@ export default function GerenciarUsuarios() {
       {/* ═══════════════════════════════════════════════════════ */}
       {/* CABEÇALHO */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <View style={styles.header}>
-        <View style={styles.logoRow}>
-          <Image source={logoImg} style={styles.logo} />
+      <View style={styles.headerGeral}>
+        <View style={styles.header}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
             style={styles.backButton}
           >
             <Feather name="arrow-left" size={24} color="#10B981" />
           </TouchableOpacity>
-        </View>
 
-        <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>Gerenciar Usuários</Text>
-          <Text style={styles.headerSubtitle}>
-            {usuariosFiltrados.length} usuário(s) encontrado(s)
-          </Text>
         </View>
+        <Text style={styles.headerSubtitle}>
+          {usuariosFiltrados.length} usuário(s) encontrado(s)
+        </Text>
 
         {/* Barra de Pesquisa */}
         <View style={styles.searchContainer}>

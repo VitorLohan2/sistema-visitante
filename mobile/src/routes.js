@@ -34,6 +34,9 @@ import GerenciarEmpresas from "./pages/GerenciarEmpresas";
 import EditarEmpresa from "./pages/EditarEmpresa";
 import ComunicadoAdmin from "./pages/ComunicadoAdmin";
 
+import ChatLista from "./pages/ChatLista";
+import ChatConversa from "./pages/ChatConversa";
+
 const Stack = createNativeStackNavigator();
 
 export default function Routes() {
@@ -83,6 +86,9 @@ export default function Routes() {
       <Stack.Screen name="GerenciarEmpresas" component={GerenciarEmpresas} />
       <Stack.Screen name="EditarEmpresa" component={EditarEmpresa} />
       <Stack.Screen name="ComunicadoAdmin" component={ComunicadoAdmin} />
+
+      <Stack.Screen name="ChatLista" component={ChatLista} />
+      <Stack.Screen name="ChatConversa" component={ChatConversa} />
     </Stack.Navigator>
   );
 }

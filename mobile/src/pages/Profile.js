@@ -67,6 +67,8 @@ export default function Profile() {
   const [unseenCount, setUnseenCount] = useState(0);
   const [userData, setUserData] = useState({ setor: "", nome: "" });
   const [displayedIncidents, setDisplayedIncidents] = useState([]);
+  const [comunicadoAtivo, setComunicadoAtivo] = useState(null);
+  const [comunicadoVisible, setComunicadoVisible] = useState(false);
   // ═══════════════════════════════════════════════════════════════
   // 3. ESTADOS - UI E BUSCA
   // ═══════════════════════════════════════════════════════════════
@@ -145,6 +147,25 @@ export default function Profile() {
     }
   }, []);
 
+  // ✅ BUSCAR COMUNICADO ATIVO
+  const loadComunicadoAtivo = useCallback(async () => {
+    try {
+      const ongId = await AsyncStorage.getItem("@Auth:ongId");
+
+      const response = await api.get("/comunicados/ativo", {
+        headers: { Authorization: `Bearer ${ongId}` },
+      });
+
+      if (response.data) {
+        setComunicadoAtivo(response.data);
+        setComunicadoVisible(true);
+        console.log("📢 Comunicado ativo carregado:", response.data);
+      }
+    } catch (error) {
+      console.log("Erro ao carregar comunicado:", error);
+    }
+  }, []);
+
   // ✅ RECARREGAR TICKETS NÃO VISUALIZADOS
   const loadUnseenTickets = useCallback(async () => {
     try {
@@ -180,10 +201,8 @@ export default function Profile() {
     }
 
     try {
-      // ✅ Carrega dados dos visitantes (apenas 1x via Context)
       await loadIncidents();
 
-      // ✅ Carrega dados da ONG
       const ongResponse = await api.get(`ongs/${ongId}`);
       const setor = ongResponse.data.setor || "";
       const nome = ongResponse.data.name || ongName || "";
@@ -191,7 +210,6 @@ export default function Profile() {
       setUserData({ setor, nome });
       userDataRef.current = { setor, nome };
 
-      // ✅ Carrega tickets não vistos (se for Segurança)
       if (setor === "Segurança") {
         const unseenResponse = await api.get("/tickets/unseen", {
           headers: { Authorization: ongId },
@@ -202,12 +220,15 @@ export default function Profile() {
 
         console.log(`📊 ${newCount} tickets não vistos`);
       }
+
+      // ✅ ADICIONAR ESTA LINHA
+      await loadComunicadoAtivo();
     } catch (error) {
       console.error("❌ Erro ao carregar dados:", error.message);
     } finally {
       setLoading(false);
     }
-  }, [loadIncidents]);
+  }, [loadIncidents, loadComunicadoAtivo]);
 
   // ═══════════════════════════════════════════════════════════════
   // 8. HANDLERS - TICKETS
@@ -500,6 +521,10 @@ export default function Profile() {
     socket.removeAllListeners("bloqueio:created");
     socket.removeAllListeners("bloqueio:updated");
 
+    socket.removeAllListeners("comunicado:new");
+    socket.removeAllListeners("comunicado:update");
+    socket.removeAllListeners("comunicado:delete");
+
     // ✅ REGISTRAR NOVOS LISTENERS
     console.log("📝 Registrando novos listeners...");
 
@@ -516,6 +541,32 @@ export default function Profile() {
     socket.on("visitante:block", handleVisitanteBloqueio);
     socket.on("bloqueio:created", handleVisitanteBloqueio);
     socket.on("bloqueio:updated", handleVisitanteBloqueio);
+
+    socket.on("comunicado:new", (data) => {
+      console.log("🔥 comunicado:new recebido:", data);
+      if (data.ativo) {
+        setComunicadoAtivo(data);
+        setComunicadoVisible(true);
+      }
+    });
+
+    socket.on("comunicado:update", (data) => {
+      console.log("🔥 comunicado:update recebido:", data);
+      if (data.ativo) {
+        setComunicadoAtivo(data);
+        setComunicadoVisible(true);
+      } else if (comunicadoAtivo?.id === data.id) {
+        setComunicadoVisible(false);
+      }
+    });
+
+    socket.on("comunicado:delete", (id) => {
+      console.log("🔥 comunicado:delete recebido:", id);
+      if (comunicadoAtivo?.id === id) {
+        setComunicadoVisible(false);
+        setComunicadoAtivo(null);
+      }
+    });
 
     console.log("✅ Listeners registrados com sucesso!");
 
@@ -536,6 +587,10 @@ export default function Profile() {
       socket.removeAllListeners("visitante:block");
       socket.removeAllListeners("bloqueio:created");
       socket.removeAllListeners("bloqueio:updated");
+
+      socket.removeAllListeners("comunicado:new");
+      socket.removeAllListeners("comunicado:update");
+      socket.removeAllListeners("comunicado:delete");
 
       ticketListenersRegisteredRef.current = false;
       processedTicketsRef.current.clear();
@@ -661,11 +716,9 @@ export default function Profile() {
   // ═══════════════════════════════════════════════════════════════
   // 12. EFFECTS - CICLO DE ATUALIZAÇÃO (FOCO NA TELA)
   // ═══════════════════════════════════════════════════════════════
-  useFocusEffect(
-    useCallback(() => {
-      fetchInitialData();
-    }, [fetchInitialData])
-  );
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
 
   // ═══════════════════════════════════════════════════════════════
   // 13. FUNÇÕES AUXILIARES - NAVEGAÇÃO E AÇÕES
@@ -1081,19 +1134,16 @@ export default function Profile() {
             <Text style={styles.navButtonText}>Cadastrar Visitante</Text>
           </TouchableOpacity>
         </View>
+        {/* INFO DA BUSCA */}
+        {searchExecuted && lastSearchedTerm && (
+          <View style={styles.searchInfo}>
+            <Text style={styles.searchInfoText}>
+              Buscando por "{lastSearchedTerm}" ({filteredIncidents.length}{" "}
+              resultados)
+            </Text>
+          </View>
+        )}
       </View>
-
-      {/* ═══════════════════════════════════════════════════════ */}
-      {/* INFO DA BUSCA */}
-      {/* ═══════════════════════════════════════════════════════ */}
-      {searchExecuted && lastSearchedTerm && (
-        <View style={styles.searchInfo}>
-          <Text style={styles.searchInfoText}>
-            Buscando por "{lastSearchedTerm}" ({filteredIncidents.length}{" "}
-            resultados)
-          </Text>
-        </View>
-      )}
 
       {/* ═══════════════════════════════════════════════════════ */}
       {/* MENU PRINCIPAL COM CÍRCULOS COLORIDOS */}
@@ -1512,10 +1562,7 @@ export default function Profile() {
               style={styles.menuModalOption}
               onPress={() => {
                 closeMenuModal();
-                Alert.alert(
-                  "Em desenvolvimento",
-                  "Funcionalidade em desenvolvimento"
-                );
+                navigation.navigate("ChatLista");
               }}
               disabled={isAnimating}
             >
@@ -1570,6 +1617,60 @@ export default function Profile() {
       </Animated.View>
 
       <View style={styles.margin}></View>
+
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* MODAL DE COMUNICADO */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      {comunicadoVisible && comunicadoAtivo && (
+        <View style={styles.comunicadoOverlay}>
+          <View
+            style={[
+              styles.comunicadoCard,
+              comunicadoAtivo.prioridade === "urgente" &&
+                styles.comunicadoCardUrgent,
+            ]}
+          >
+            <View style={styles.comunicadoHeader}>
+              <View style={styles.comunicadoHeaderLeft}>
+                <Feather
+                  name={
+                    comunicadoAtivo.prioridade === "urgente"
+                      ? "alert-triangle"
+                      : "info"
+                  }
+                  size={24}
+                  color={
+                    comunicadoAtivo.prioridade === "urgente"
+                      ? "#e02041"
+                      : "#10B981"
+                  }
+                />
+                <Text style={styles.comunicadoTitulo}>
+                  {comunicadoAtivo.titulo}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setComunicadoVisible(false)}
+                style={styles.comunicadoCloseButton}
+              >
+                <Feather name="x" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.comunicadoMensagem}>
+              {comunicadoAtivo.mensagem}
+            </Text>
+
+            <View style={styles.comunicadoFooter}>
+              <Text style={styles.comunicadoData}>
+                {new Date(comunicadoAtivo.created_at).toLocaleDateString(
+                  "pt-BR"
+                )}
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }

@@ -21,6 +21,8 @@ const ResponsavelController = require("./controllers/ResponsavelController");
 
 const ComunicadoController = require("./controllers/ComunicadoController");
 
+const ChatController = require("./controllers/ChatController");
+
 const multer = require("multer");
 const multerConfig = require("./config/multer");
 const uploadAgendamento = require("./config/multerAgendamentos");
@@ -617,6 +619,20 @@ routes.get(
 // ─────────────────────────────────────────────────────────────
 
 /**
+ * BUSCAR COMUNICADO ATIVO (PARA EXIBIÇÃO NA TELA INICIAL)
+ * Esta rota deve vir ANTES de "/comunicados/:id"
+ */
+routes.get(
+  "/comunicados/ativo",
+  celebrate({
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown(),
+  }),
+  ComunicadoController.getAtivo
+);
+
+/**
  * LISTAR TODOS OS COMUNICADOS
  */
 routes.get(
@@ -665,7 +681,7 @@ routes.put(
       mensagem: Joi.string().max(500),
       prioridade: Joi.string().valid("normal", "urgente"),
       ativo: Joi.boolean(),
-    }).min(1), // garante que pelo menos um campo seja enviado
+    }).min(1),
   }),
   ComunicadoController.update
 );
@@ -685,5 +701,119 @@ routes.delete(
   }),
   ComunicadoController.delete
 );
+
+// Listar conversas do usuário
+routes.get(
+  "/chat/conversas",
+  celebrate({
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown(),
+  }),
+  ChatController.listarConversas
+);
+
+// Criar nova conversa
+routes.post(
+  "/chat/conversas",
+  celebrate({
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown(),
+    [Segments.BODY]: Joi.object().keys({
+      assunto: Joi.string().max(255),
+    }),
+  }),
+  ChatController.criarConversa
+);
+
+// Buscar mensagens de uma conversa
+routes.get(
+  "/chat/conversas/:conversa_id/mensagens",
+  celebrate({
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown(),
+    [Segments.PARAMS]: Joi.object().keys({
+      conversa_id: Joi.number().integer().required(),
+    }),
+  }),
+  ChatController.buscarMensagens
+);
+
+// Enviar mensagem
+routes.post(
+  "/chat/conversas/:conversa_id/mensagens",
+  celebrate({
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown(),
+    [Segments.PARAMS]: Joi.object().keys({
+      conversa_id: Joi.number().integer().required(),
+    }),
+    [Segments.BODY]: Joi.object().keys({
+      mensagem: Joi.string().required().max(1000),
+    }),
+  }),
+  ChatController.enviarMensagem
+);
+
+routes.put(
+  "/chat/conversas/:conversa_id/visualizar",
+  celebrate({
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown(),
+    [Segments.PARAMS]: Joi.object().keys({
+      conversa_id: Joi.number().integer().required(),
+    }),
+  }),
+  ChatController.marcarComoVisualizada
+);
+
+// Atualizar status da conversa
+routes.put(
+  "/chat/conversas/:conversa_id/status",
+  celebrate({
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown(),
+    [Segments.PARAMS]: Joi.object().keys({
+      conversa_id: Joi.number().integer().required(),
+    }),
+    [Segments.BODY]: Joi.object().keys({
+      status: Joi.string()
+        .valid("aberto", "em_atendimento", "resolvido", "fechado")
+        .required(),
+    }),
+  }),
+  ChatController.atualizarStatus
+);
+
+// Contar mensagens não lidas (ADM)
+routes.get(
+  "/chat/nao-lidas",
+  celebrate({
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown(),
+  }),
+  ChatController.contarNaoLidas
+);
+
+routes.get(
+  "/chat/conversas/:conversa_id/detalhes",
+  celebrate({
+    [Segments.HEADERS]: Joi.object({
+      authorization: Joi.string().required(),
+    }).unknown(),
+    [Segments.PARAMS]: Joi.object().keys({
+      conversa_id: Joi.number().integer().required(),
+    }),
+  }),
+  ChatController.buscarDetalhesConversa
+);
+
+routes.get("/chat/equipe-online", ChatController.listarEquipeOnline);
 
 module.exports = routes;

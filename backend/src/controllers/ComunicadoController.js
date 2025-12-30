@@ -12,7 +12,7 @@ function getBearerToken(request) {
   const [scheme, token] = parts;
   if (!/^Bearer$/i.test(scheme)) return null;
 
-  return token; // Este token é o ong_id (string)
+  return token;
 }
 
 async function isAdmin(ong_id) {
@@ -29,32 +29,81 @@ async function isAdmin(ong_id) {
   }
 }
 
+// ✅ FUNÇÃO AUXILIAR: Desativar todos os comunicados
+async function desativarTodosComunicados() {
+  try {
+    await connection("comunicados")
+      .where({ ativo: true })
+      .update({ ativo: false, updated_at: new Date() });
+
+    console.log("🔄 Todos os comunicados foram desativados");
+  } catch (error) {
+    console.error("❌ Erro ao desativar comunicados:", error);
+    throw error;
+  }
+}
+
 module.exports = {
-  // LISTAR TODOS OS COMUNICADOS
-  async list(request, response) {
+  // ✅ BUSCAR COMUNICADO ATIVO (GLOBAL - PARA TODOS)
+  async getAtivo(request, response) {
     try {
       const ong_id = getBearerToken(request);
-      console.log("Ong ID recebido:", ong_id); // Debug
+      console.log("📢 Buscando comunicado ativo global");
 
       if (!ong_id) {
         return response.status(401).json({ error: "Não autorizado" });
       }
 
-      // Verificar se a ONG existe
       const ongExists = await connection("ongs").where("id", ong_id).first();
       if (!ongExists) {
         return response.status(404).json({ error: "ONG não encontrada" });
       }
 
-      // Buscar comunicados
-      const comunicados = await connection("comunicados")
-        .where({ ong_id })
-        .orderBy("created_at", "desc");
+      const comunicadoAtivo = await connection("comunicados")
+        .where({ ativo: true })
+        .orderBy("created_at", "desc")
+        .first();
 
-      console.log("Comunicados encontrados:", comunicados.length); // Debug
+      console.log("📦 Comunicado ativo encontrado:", comunicadoAtivo);
+
+      if (!comunicadoAtivo) {
+        return response.json(null);
+      }
+
+      return response.json(comunicadoAtivo);
+    } catch (error) {
+      console.error("❌ Erro ao buscar comunicado ativo:", error);
+      return response.status(500).json({
+        error: "Erro ao buscar comunicado ativo",
+        details: error.message,
+      });
+    }
+  },
+
+  // ✅ LISTAR TODOS OS COMUNICADOS (GLOBAL)
+  async list(request, response) {
+    try {
+      const ong_id = getBearerToken(request);
+      console.log("📋 Listando todos os comunicados (global)");
+
+      if (!ong_id) {
+        return response.status(401).json({ error: "Não autorizado" });
+      }
+
+      const ongExists = await connection("ongs").where("id", ong_id).first();
+      if (!ongExists) {
+        return response.status(404).json({ error: "ONG não encontrada" });
+      }
+
+      const comunicados = await connection("comunicados").orderBy(
+        "created_at",
+        "desc"
+      );
+
+      console.log("📦 Comunicados encontrados:", comunicados.length);
       return response.json(comunicados);
     } catch (error) {
-      console.error("Erro ao listar comunicados:", error);
+      console.error("❌ Erro ao listar comunicados:", error);
       return response.status(500).json({
         error: "Erro ao listar comunicados",
         details: error.message,
@@ -62,29 +111,32 @@ module.exports = {
     }
   },
 
-  // POST - CRIAR COMUNICADO
+  // ✅ CRIAR COMUNICADO (COM CONTROLE DE ÚNICO ATIVO)
   async create(request, response) {
     try {
       const io = getIo();
       const ong_id = getBearerToken(request);
       const { titulo, mensagem, prioridade, ativo } = request.body;
 
+      console.log("📝 Criando comunicado:", {
+        ong_id,
+        titulo,
+        prioridade,
+        ativo,
+      });
+
       if (!ong_id) {
         return response.status(401).json({ error: "Não autorizado" });
       }
 
-      // Verificar se é admin
       const adminCheck = await isAdmin(ong_id);
       if (!adminCheck) {
-        return response
-          .status(403)
-          .json({
-            error:
-              "Acesso negado. Apenas administradores podem criar comunicados.",
-          });
+        return response.status(403).json({
+          error:
+            "Acesso negado. Apenas administradores podem criar comunicados.",
+        });
       }
 
-      // Validar campos obrigatórios
       if (!titulo || !mensagem) {
         return response.status(400).json({
           error: "Campos obrigatórios faltando",
@@ -92,30 +144,55 @@ module.exports = {
         });
       }
 
-      // Criar comunicado
-      const [id] = await connection("comunicados")
+      const ativarComunicado =
+        ativo === true || ativo === "true" || ativo === 1;
+
+      // ✅ SE ESTIVER CRIANDO COMO ATIVO, DESATIVA TODOS OS OUTROS
+      if (ativarComunicado) {
+        await desativarTodosComunicados();
+        console.log(
+          "✅ Outros comunicados desativados antes de criar novo ativo"
+        );
+      }
+
+      const result = await connection("comunicados")
         .insert({
           ong_id,
           titulo: titulo.trim(),
           mensagem: mensagem.trim(),
           prioridade: prioridade || "normal",
-          ativo: ativo === true || ativo === "true" || ativo === 1,
+          ativo: ativarComunicado,
           created_at: new Date(),
           updated_at: new Date(),
         })
         .returning("id");
 
-      // Buscar comunicado criado
-      const comunicado = await connection("comunicados").where({ id }).first();
+      const comunicadoId =
+        typeof result[0] === "object" ? result[0].id : result[0];
 
-      // Emitir via socket
-      if (io) {
+      console.log("✅ ID do comunicado criado:", comunicadoId);
+
+      const comunicado = await connection("comunicados")
+        .where({ id: comunicadoId })
+        .first();
+
+      console.log("📦 Comunicado recuperado:", comunicado);
+
+      // ✅ EMITIR EVENTO VIA SOCKET
+      if (io && comunicado) {
         io.to("global").emit("comunicado:new", comunicado);
+
+        // Se criou um comunicado ativo, notifica que os outros foram desativados
+        if (ativarComunicado) {
+          io.to("global").emit("comunicado:single_active", comunicado.id);
+        }
+
+        console.log("🔔 Evento socket emitido: comunicado:new");
       }
 
       return response.status(201).json(comunicado);
     } catch (error) {
-      console.error("Erro ao criar comunicado:", error);
+      console.error("❌ Erro ao criar comunicado:", error);
       return response.status(500).json({
         error: "Erro ao criar comunicado",
         details: error.message,
@@ -123,7 +200,7 @@ module.exports = {
     }
   },
 
-  // PUT - ATUALIZAR COMUNICADO
+  // ✅ ATUALIZAR COMUNICADO (COM CONTROLE DE ÚNICO ATIVO)
   async update(request, response) {
     try {
       const io = getIo();
@@ -131,19 +208,19 @@ module.exports = {
       const { id } = request.params;
       const updates = request.body;
 
+      console.log("🔄 Atualizando comunicado:", { id, ong_id, updates });
+
       if (!ong_id) {
         return response.status(401).json({ error: "Não autorizado" });
       }
 
-      // Verificar se é admin
       const adminCheck = await isAdmin(ong_id);
       if (!adminCheck) {
         return response.status(403).json({ error: "Acesso negado" });
       }
 
-      // Verificar se o comunicado existe e pertence à ONG
       const comunicadoExistente = await connection("comunicados")
-        .where({ id, ong_id })
+        .where({ id })
         .first();
 
       if (!comunicadoExistente) {
@@ -152,30 +229,48 @@ module.exports = {
           .json({ error: "Comunicado não encontrado" });
       }
 
-      // Preparar atualizações
+      // ✅ SE ESTÁ ATIVANDO ESTE COMUNICADO, DESATIVA TODOS OS OUTROS
+      const ativarComunicado =
+        updates.ativo === true ||
+        updates.ativo === "true" ||
+        updates.ativo === 1;
+
+      if (ativarComunicado && !comunicadoExistente.ativo) {
+        await desativarTodosComunicados();
+        console.log("✅ Outros comunicados desativados antes de ativar este");
+      }
+
       const dadosAtualizados = {
         ...updates,
         updated_at: new Date(),
       };
 
-      // Atualizar
-      await connection("comunicados")
-        .where({ id, ong_id })
-        .update(dadosAtualizados);
+      await connection("comunicados").where({ id }).update(dadosAtualizados);
 
-      // Buscar comunicado atualizado
       const comunicadoAtualizado = await connection("comunicados")
         .where({ id })
         .first();
 
-      // Emitir via socket
-      if (io) {
+      console.log("✅ Comunicado atualizado:", comunicadoAtualizado);
+
+      // ✅ EMITIR EVENTO VIA SOCKET
+      if (io && comunicadoAtualizado) {
         io.to("global").emit("comunicado:update", comunicadoAtualizado);
+
+        // Se ativou este comunicado, notifica que é o único ativo
+        if (ativarComunicado && !comunicadoExistente.ativo) {
+          io.to("global").emit(
+            "comunicado:single_active",
+            comunicadoAtualizado.id
+          );
+        }
+
+        console.log("🔔 Evento socket emitido: comunicado:update");
       }
 
       return response.json(comunicadoAtualizado);
     } catch (error) {
-      console.error("Erro ao atualizar comunicado:", error);
+      console.error("❌ Erro ao atualizar comunicado:", error);
       return response.status(500).json({
         error: "Erro ao atualizar comunicado",
         details: error.message,
@@ -183,26 +278,26 @@ module.exports = {
     }
   },
 
-  // DELETE - EXCLUIR COMUNICADO
+  // ✅ DELETAR COMUNICADO
   async delete(request, response) {
     try {
       const io = getIo();
       const ong_id = getBearerToken(request);
       const { id } = request.params;
 
+      console.log("🗑️ Deletando comunicado:", { id, ong_id });
+
       if (!ong_id) {
         return response.status(401).json({ error: "Não autorizado" });
       }
 
-      // Verificar se é admin
       const adminCheck = await isAdmin(ong_id);
       if (!adminCheck) {
         return response.status(403).json({ error: "Acesso negado" });
       }
 
-      // Verificar se o comunicado existe
       const comunicadoExistente = await connection("comunicados")
-        .where({ id, ong_id })
+        .where({ id })
         .first();
 
       if (!comunicadoExistente) {
@@ -211,12 +306,13 @@ module.exports = {
           .json({ error: "Comunicado não encontrado" });
       }
 
-      // Excluir
-      await connection("comunicados").where({ id, ong_id }).delete();
+      await connection("comunicados").where({ id }).delete();
 
-      // Emitir via socket
+      console.log("✅ Comunicado deletado com sucesso");
+
       if (io) {
         io.to("global").emit("comunicado:delete", id);
+        console.log("🔔 Evento socket emitido: comunicado:delete");
       }
 
       return response.json({
@@ -224,7 +320,7 @@ module.exports = {
         deletedId: id,
       });
     } catch (error) {
-      console.error("Erro ao excluir comunicado:", error);
+      console.error("❌ Erro ao excluir comunicado:", error);
       return response.status(500).json({
         error: "Erro ao excluir comunicado",
         details: error.message,

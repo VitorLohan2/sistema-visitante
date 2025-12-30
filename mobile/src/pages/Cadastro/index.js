@@ -277,17 +277,17 @@ export default function Cadastro() {
       >
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.logoRow}>
-              <Image source={logoImg} style={styles.logo} />
+          <View style={styles.headerGeral}>
+            <View style={styles.header}>
               <TouchableOpacity
                 onPress={() => navigation.goBack()}
                 style={styles.backButton}
               >
                 <Feather name="arrow-left" size={24} color="#10B981" />
               </TouchableOpacity>
+
+              <Text style={styles.pageTitle}>Cadastro de Funcionário</Text>
             </View>
-            <Text style={styles.pageTitle}>Cadastro de Funcionário</Text>
             <Text style={styles.pageDescription}>
               Solicite o código de cadastro ao setor de alta performance
             </Text>
@@ -477,9 +477,16 @@ export default function Cadastro() {
 const styles = {
   container: { flex: 1, backgroundColor: "#f8fafc" },
   header: {
-    backgroundColor: "#fff",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    position: "relative",
+  },
+  headerGeral: {
     paddingHorizontal: 16,
+    paddingTop: 50,
     paddingBottom: 20,
+    backgroundColor: "#fff",
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
     shadowColor: "#000",
@@ -488,17 +495,24 @@ const styles = {
     shadowRadius: 8,
     elevation: 3,
   },
-  logoRow: {
-    marginTop: 40,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
   logo: { width: 54, height: 60 },
-  backButton: { padding: 8, borderRadius: 8, backgroundColor: "#f0fdf4" },
-  pageTitle: { fontSize: 24, fontWeight: "bold", color: "#1e293b" },
-  pageDescription: { fontSize: 14, color: "#64748b", marginTop: 4 },
+  backButton: {
+    padding: 10,
+    borderRadius: 8,
+    left: 0,
+    zIndex: 10,
+    backgroundColor: "#f0fdf4",
+  },
+  pageTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#1e293b",
+    position: "absolute",
+    left: 0,
+    right: 0,
+    textAlign: "center",
+  },
+  pageDescription: { fontSize: 14, color: "#64748b", marginTop: 10 },
   form: { padding: 16, paddingTop: 24 },
   inputGroup: { marginBottom: 20 },
   label: {

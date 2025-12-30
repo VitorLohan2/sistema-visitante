@@ -23,20 +23,32 @@ export const styles = StyleSheet.create({
   // ═══════════════════════════════════════════════════════════════
   // CABEÇALHO
   // ═══════════════════════════════════════════════════════════════
+  headerGeral: {
+    paddingHorizontal: 16,
+    paddingTop: 50,
+    paddingBottom: 20,
+    backgroundColor: "#fff",
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e2e8f0",
+    position: "relative",
   },
 
   backButton: {
-    padding: 8,
+    padding: 10,
     borderRadius: 8,
+    left: 0,
+    zIndex: 10,
     backgroundColor: "#f0fdf4",
   },
 
@@ -44,6 +56,34 @@ export const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     color: "#1e293b",
+    position: "absolute",
+    left: 0,
+    right: 0,
+    textAlign: "center",
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // FORMULÁRIO NOVO COMUNICADO
+  // ═══════════════════════════════════════════════════════════════
+  formContainer: {
+    backgroundColor: "#fff",
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 20,
+    padding: 20,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+
+  formTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#1e293b",
+    marginBottom: 16,
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -52,11 +92,11 @@ export const styles = StyleSheet.create({
   infoCard: {
     flexDirection: "row",
     backgroundColor: "#e0f2fe",
-    margin: 16,
     padding: 16,
     borderRadius: 12,
     borderLeftWidth: 4,
     borderLeftColor: "#20a3e0",
+    marginBottom: 16,
   },
 
   infoIcon: {
@@ -77,16 +117,12 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#fff",
-    marginHorizontal: 16,
-    marginBottom: 16,
+    backgroundColor: "#f8fafc",
     padding: 16,
     borderRadius: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
   },
 
   switchInfo: {
@@ -110,7 +146,6 @@ export const styles = StyleSheet.create({
   // SEÇÕES
   // ═══════════════════════════════════════════════════════════════
   section: {
-    marginHorizontal: 16,
     marginBottom: 16,
   },
 
@@ -126,6 +161,7 @@ export const styles = StyleSheet.create({
   // ═══════════════════════════════════════════════════════════════
   prioridadeContainer: {
     flexDirection: "row",
+    gap: 12,
   },
 
   prioridadeButton: {
@@ -138,11 +174,6 @@ export const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 2,
     borderColor: "#e2e8f0",
-    marginRight: 12,
-  },
-
-  prioridadeButtonLast: {
-    marginRight: 0,
   },
 
   prioridadeButtonActive: {
@@ -184,7 +215,7 @@ export const styles = StyleSheet.create({
   },
 
   textArea: {
-    minHeight: 150,
+    minHeight: 120,
     textAlignVertical: "top",
   },
 
@@ -235,7 +266,7 @@ export const styles = StyleSheet.create({
   // BOTÕES
   // ═══════════════════════════════════════════════════════════════
   buttonsContainer: {
-    marginHorizontal: 16,
+    marginTop: 8,
   },
 
   button: {
@@ -262,6 +293,173 @@ export const styles = StyleSheet.create({
     marginLeft: 8,
   },
 
+  // ═══════════════════════════════════════════════════════════════
+  // LISTA DE COMUNICADOS
+  // ═══════════════════════════════════════════════════════════════
+  listContainer: {
+    marginHorizontal: 16,
+    marginTop: 10,
+  },
+
+  listTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#1e293b",
+    marginBottom: 16,
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // ESTADO VAZIO
+  // ═══════════════════════════════════════════════════════════════
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+
+  emptyText: {
+    fontSize: 16,
+    color: "#64748b",
+    marginTop: 16,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+
+  emptySubtext: {
+    fontSize: 14,
+    color: "#94a3b8",
+    marginTop: 8,
+    textAlign: "center",
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // CARD DE COMUNICADO
+  // ═══════════════════════════════════════════════════════════════
+  comunicadoCard: {
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: "#20a3e0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+
+  comunicadoCardUrgent: {
+    borderLeftColor: "#e02041",
+  },
+
+  comunicadoHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 12,
+  },
+
+  comunicadoHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    marginRight: 12,
+  },
+
+  comunicadoTitulo: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#1e293b",
+    marginLeft: 8,
+    flex: 1,
+  },
+
+  comunicadoMensagem: {
+    fontSize: 14,
+    color: "#64748b",
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+
+  comunicadoData: {
+    fontSize: 12,
+    color: "#94a3b8",
+    marginBottom: 16,
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // BADGES
+  // ═══════════════════════════════════════════════════════════════
+  badge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+
+  badgeActive: {
+    backgroundColor: "#d1fae5",
+  },
+
+  badgeInactive: {
+    backgroundColor: "#f1f5f9",
+  },
+
+  badgeText: {
+    fontSize: 11,
+    fontWeight: "bold",
+    letterSpacing: 0.5,
+  },
+
+  badgeTextActive: {
+    color: "#059669",
+  },
+
+  badgeTextInactive: {
+    color: "#64748b",
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // AÇÕES DO COMUNICADO
+  // ═══════════════════════════════════════════════════════════════
+  comunicadoActions: {
+    flexDirection: "row",
+    gap: 10,
+  },
+
+  actionButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    gap: 6,
+  },
+
+  actionButtonActivate: {
+    backgroundColor: "#10B981",
+  },
+
+  actionButtonDeactivate: {
+    backgroundColor: "#F59E0B",
+  },
+
+  actionButtonDelete: {
+    backgroundColor: "#e02041",
+  },
+
+  actionButtonText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // MARGEM FINAL
+  // ═══════════════════════════════════════════════════════════════
   margin: {
     marginBottom: 40,
   },
