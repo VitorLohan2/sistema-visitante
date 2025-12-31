@@ -26,6 +26,16 @@ function getBearerToken(request) {
   return token;
 }
 
+// ✅ Função auxiliar para verificar se é ADM de TI
+async function isAdmTI(usuario_id) {
+  const usuario = await connection("ongs")
+    .where("id", usuario_id)
+    .select("type", "setor_id")
+    .first();
+
+  return usuario && usuario.type === "ADM" && usuario.setor_id === 7;
+}
+
 module.exports = {
   async listarConversas(req, res) {
     const usuario_id = getBearerToken(req);
@@ -38,7 +48,7 @@ module.exports = {
 
       const usuario = await connection("ongs")
         .where("id", usuario_id)
-        .select("type")
+        .select("type", "setor_id")
         .first();
 
       if (!usuario) {
@@ -48,7 +58,8 @@ module.exports = {
 
       let conversas;
 
-      if (usuario.type === "ADM") {
+      // ✅ Apenas ADM do setor TI (setor_id = 7) pode ver todas as conversas
+      if (usuario.type === "ADM" && usuario.setor_id === 7) {
         conversas = await connection("conversas_suporte")
           .select(
             "conversas_suporte.*",
@@ -65,6 +76,7 @@ module.exports = {
           )
           .orderBy("data_atualizacao", "desc");
       } else {
+        // Usuários comuns veem apenas suas próprias conversas
         conversas = await connection("conversas_suporte")
           .where("usuario_id", usuario_id)
           .select(
@@ -105,7 +117,7 @@ module.exports = {
 
       const usuario = await connection("ongs")
         .where("id", usuario_id)
-        .select("name", "type")
+        .select("name", "type", "setor_id")
         .first();
 
       if (!usuario) {
@@ -155,7 +167,6 @@ module.exports = {
     }
   },
 
-  // ✅ ATUALIZADO: Marca como visualizada e emite evento socket
   async buscarMensagens(req, res) {
     const io = getIo();
     const usuario_id = getBearerToken(req);
@@ -178,10 +189,12 @@ module.exports = {
 
       const usuario = await connection("ongs")
         .where("id", usuario_id)
-        .select("type")
+        .select("type", "setor_id")
         .first();
 
-      if (usuario.type !== "ADM" && conversa.usuario_id !== usuario_id) {
+      // ✅ Verifica se é ADM de TI ou dono da conversa
+      const isAdmTI = usuario.type === "ADM" && usuario.setor_id === 7;
+      if (!isAdmTI && conversa.usuario_id !== usuario_id) {
         return res
           .status(403)
           .json({ error: "Sem permissão para acessar esta conversa" });
@@ -191,7 +204,7 @@ module.exports = {
         .where("conversa_id", conversa_id)
         .orderBy("data_envio", "asc");
 
-      // ✅ Marcar como visualizada e contar quantas foram atualizadas
+      // ✅ Marcar como visualizada
       const totalMarcadas = await connection("mensagens_suporte")
         .where("conversa_id", conversa_id)
         .where("remetente_id", "!=", usuario_id)
@@ -201,7 +214,6 @@ module.exports = {
       console.log(`✅ ${mensagens.length} mensagens encontradas`);
       console.log(`✅ ${totalMarcadas} mensagens marcadas como lidas`);
 
-      // ✅ EMITIR EVENTO SOCKET PARA ATUALIZAR LISTA
       if (io && totalMarcadas > 0) {
         io.to("global").emit("mensagens:visualizadas", {
           conversa_id,
@@ -251,14 +263,17 @@ module.exports = {
 
       const remetente = await connection("ongs")
         .where("id", usuario_id)
-        .select("name", "type")
+        .select("name", "type", "setor_id")
         .first();
 
       if (!remetente) {
         return res.status(404).json({ error: "Usuário não encontrado" });
       }
 
-      if (remetente.type !== "ADM" && conversa.usuario_id !== usuario_id) {
+      // ✅ Verifica se é ADM de TI ou dono da conversa
+      const isAdmTI = remetente.type === "ADM" && remetente.setor_id === 7;
+
+      if (!isAdmTI && conversa.usuario_id !== usuario_id) {
         return res
           .status(403)
           .json({ error: "Sem permissão para enviar mensagem nesta conversa" });
@@ -271,7 +286,7 @@ module.exports = {
           conversa_id,
           remetente_id: usuario_id,
           remetente_nome: remetente.name,
-          remetente_tipo: remetente.type,
+          remetente_tipo: isAdmTI ? "ADM" : "USER",
           mensagem: mensagem.trim(),
           data_envio: brasiliaTime,
         })
@@ -281,7 +296,7 @@ module.exports = {
         data_atualizacao: brasiliaTime,
       };
 
-      if (remetente.type === "ADM" && conversa.status === "aberto") {
+      if (isAdmTI && conversa.status === "aberto") {
         updateData.status = "em_atendimento";
         updateData.atendente_id = usuario_id;
         updateData.atendente_nome = remetente.name;
@@ -294,9 +309,28 @@ module.exports = {
       console.log("✅ Mensagem enviada:", novaMensagem.id);
 
       if (io) {
+        // Emitir nova mensagem
         io.to(`conversa:${conversa_id}`).emit("mensagem:nova", novaMensagem);
-        io.to("global").emit("conversa:atualizada", { id: conversa_id });
-        console.log("🔔 Eventos emitidos via Socket");
+
+        // ✅ CORRIGIDO: Emitir evento com TODOS os dados da atualização
+        const eventoAtualizacao = {
+          id: parseInt(conversa_id),
+          status: updateData.status || conversa.status,
+          data_atualizacao: brasiliaTime,
+          atendente_id: updateData.atendente_id,
+          atendente_nome: updateData.atendente_nome,
+        };
+
+        io.to(`conversa:${conversa_id}`).emit(
+          "conversa:atualizada",
+          eventoAtualizacao
+        );
+        io.to("global").emit("conversa:atualizada", eventoAtualizacao);
+
+        console.log(
+          "🔔 Eventos emitidos via Socket com dados:",
+          eventoAtualizacao
+        );
       }
 
       return res.status(201).json(novaMensagem);
@@ -343,10 +377,12 @@ module.exports = {
 
       const usuario = await connection("ongs")
         .where("id", usuario_id)
-        .select("type", "name")
+        .select("type", "name", "setor_id")
         .first();
 
-      if (usuario.type !== "ADM" && conversa.usuario_id !== usuario_id) {
+      // ✅ Verifica se é ADM de TI ou dono da conversa
+      const isAdmTI = usuario.type === "ADM" && usuario.setor_id === 7;
+      if (!isAdmTI && conversa.usuario_id !== usuario_id) {
         return res.status(403).json({ error: "Sem permissão" });
       }
 
@@ -406,13 +442,13 @@ module.exports = {
         return res.status(401).json({ error: "Não autorizado" });
       }
 
-      const usuario = await connection("ongs")
-        .where("id", usuario_id)
-        .select("type")
-        .first();
+      // ✅ Verifica se é ADM de TI
+      const isAdmTIUser = await isAdmTI(usuario_id);
 
-      if (usuario.type !== "ADM") {
-        return res.status(403).json({ error: "Apenas ADMs podem acessar" });
+      if (!isAdmTIUser) {
+        return res
+          .status(403)
+          .json({ error: "Apenas ADMs de TI podem acessar" });
       }
 
       const resultado = await connection("mensagens_suporte")
@@ -435,7 +471,6 @@ module.exports = {
     }
   },
 
-  // ✅ ENDPOINT ADICIONAL (caso queira marcar manualmente)
   async marcarComoVisualizada(req, res) {
     const io = getIo();
     const usuario_id = getBearerToken(req);
@@ -466,6 +501,7 @@ module.exports = {
       return res.status(500).json({ error: "Erro ao marcar mensagens" });
     }
   },
+
   async buscarDetalhesConversa(req, res) {
     const usuario_id = getBearerToken(req);
     const { conversa_id } = req.params;
@@ -479,14 +515,13 @@ module.exports = {
 
       const usuario = await connection("ongs")
         .where("id", usuario_id)
-        .select("type")
+        .select("type", "setor_id")
         .first();
 
       if (!usuario) {
         return res.status(404).json({ error: "Usuário não encontrado" });
       }
 
-      // Buscar conversa com contador de mensagens não lidas
       const conversa = await connection("conversas_suporte")
         .where("id", conversa_id)
         .select(
@@ -508,8 +543,9 @@ module.exports = {
         return res.status(404).json({ error: "Conversa não encontrada" });
       }
 
-      // Verificar permissão
-      if (usuario.type !== "ADM" && conversa.usuario_id !== usuario_id) {
+      // ✅ Verifica permissão
+      const isAdmTI = usuario.type === "ADM" && usuario.setor_id === 7;
+      if (!isAdmTI && conversa.usuario_id !== usuario_id) {
         return res
           .status(403)
           .json({ error: "Sem permissão para acessar esta conversa" });
@@ -533,38 +569,43 @@ module.exports = {
       const connection = require("../database/connection");
       const { getIo } = require("../socket");
 
-      // Buscar todos os usuários do tipo ADM
+      // ✅ Buscar apenas usuários ADM do setor TI (setor_id = 7)
       const equipeADM = await connection("ongs")
         .where("type", "ADM")
+        .where("setor_id", 7)
         .select("id", "name", "email")
         .orderBy("name", "asc");
 
-      console.log(`✅ ${equipeADM.length} membros ADM encontrados no banco`);
+      console.log(
+        `✅ ${equipeADM.length} membros ADM de TI encontrados no banco`
+      );
 
       // Verificar quais estão online via socket
       const io = getIo();
       const onlineUsers = [];
 
       if (io && io.sockets && io.sockets.sockets) {
-        // Percorrer todos os sockets conectados
         io.sockets.sockets.forEach((socket) => {
-          if (socket.userId && socket.userType === "ADM") {
-            // Verificar se já não foi adicionado (evitar duplicatas)
-            if (!onlineUsers.find((u) => u.id === socket.userId)) {
-              const userInfo = equipeADM.find((u) => u.id === socket.userId);
-              if (userInfo) {
-                onlineUsers.push({
-                  id: userInfo.id,
-                  nome: userInfo.name,
-                  email: userInfo.email,
-                });
-              }
+          // ✅ VERIFICA TIPO E SETOR_ID
+          if (
+            socket.userId &&
+            socket.userType === "ADM" &&
+            socket.setorId === 7
+          ) {
+            // Verificar se o usuário pertence ao setor TI
+            const userInfo = equipeADM.find((u) => u.id === socket.userId);
+            if (userInfo && !onlineUsers.find((u) => u.id === socket.userId)) {
+              onlineUsers.push({
+                id: userInfo.id,
+                nome: userInfo.name,
+                email: userInfo.email,
+              });
             }
           }
         });
       }
 
-      console.log(`✅ ${onlineUsers.length} membros ADM online`);
+      console.log(`✅ ${onlineUsers.length} membros ADM de TI online`);
       console.log(
         "📋 Membros online:",
         onlineUsers.map((u) => u.nome).join(", ") || "Nenhum"

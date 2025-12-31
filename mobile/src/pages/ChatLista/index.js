@@ -16,6 +16,8 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 
 import api from "../../services/api";
 import { useSocket } from "../../contexts/SocketContext";
+import { useEquipeOnline } from "./hooks/useEquipeOnline";
+import EquipeOnline from "./components/EquipeOnline";
 
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -36,7 +38,13 @@ export default function ChatLista() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingUser, setLoadingUser] = useState(true);
-  const [userData, setUserData] = useState({ type: "USER" });
+  const [userData, setUserData] = useState({ type: "USER", setor_id: null });
+
+  // ✅ Hook customizado para gerenciar equipe online
+  const { equipeOnline, loadingEquipe, carregarEquipeOnline } = useEquipeOnline(
+    socket,
+    socket?.connected
+  );
 
   // ✅ Carregar dados do usuário
   useEffect(() => {
@@ -54,10 +62,15 @@ export default function ChatLista() {
         const response = await api.get(`ongs/${ongId}`);
 
         const userType = response.data.type || "USER";
+        const setorId = response.data.setor_id || null;
+
         console.log("✅ Tipo de usuário:", userType);
+        console.log("✅ Setor do usuário:", setorId);
 
         setUserData({
+          id: ongId,
           type: userType,
+          setor_id: setorId,
         });
       } catch (err) {
         console.error("❌ Erro ao buscar dados do usuário:", err.message);
@@ -69,7 +82,12 @@ export default function ChatLista() {
     fetchUserData();
   }, []);
 
-  // ✅ Carregar conversas (apenas na primeira vez e no pull-to-refresh)
+  // ✅ Verifica se é ADM de TI
+  const isAdmTI = useMemo(() => {
+    return userData.type === "ADM" && userData.setor_id === 7;
+  }, [userData]);
+
+  // ✅ Carregar conversas
   const carregarConversas = useCallback(async () => {
     try {
       setLoading(true);
@@ -83,29 +101,28 @@ export default function ChatLista() {
     }
   }, []);
 
-  // ✅ Pull to refresh (manual)
+  // ✅ Pull to refresh
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await carregarConversas();
+    await Promise.all([carregarConversas(), carregarEquipeOnline()]);
     setRefreshing(false);
-  }, [carregarConversas]);
+  }, [carregarConversas, carregarEquipeOnline]);
 
-  // ✅ Socket listeners - OTIMIZADO SEM RECARREGAR TUDO
+  // ✅ Socket listeners para conversas - OTIMIZADO
   useEffect(() => {
     if (!socket?.connected) return;
 
-    // 🆕 Nova conversa criada - Adiciona no topo da lista
+    // 🆕 Nova conversa criada
     const handleNovaConversa = (novaConversa) => {
       console.log("🆕 Nova conversa criada via socket:", novaConversa.id);
       setConversas((prev) => [novaConversa, ...prev]);
     };
 
-    // 🔄 Conversa atualizada - Atualiza apenas a conversa específica
+    // 🔄 Conversa atualizada
     const handleConversaAtualizada = async (data) => {
       console.log("🔄 Conversa atualizada via socket:", data.id);
 
       try {
-        // Busca apenas os dados atualizados desta conversa
         const response = await api.get(`/chat/conversas/${data.id}/detalhes`);
         const conversaAtualizada = response.data;
 
@@ -121,7 +138,6 @@ export default function ChatLista() {
         );
       } catch (error) {
         console.error("❌ Erro ao buscar detalhes da conversa:", error);
-        // Fallback: atualiza apenas os campos que vieram no evento
         setConversas((prev) =>
           prev
             .map((c) =>
@@ -137,7 +153,7 @@ export default function ChatLista() {
       }
     };
 
-    // 👁️ Mensagens visualizadas - Zera contador
+    // 👁️ Mensagens visualizadas
     const handleMensagensVisualizadas = ({ conversa_id }) => {
       console.log("👁️ Mensagens visualizadas na conversa:", conversa_id);
 
@@ -150,7 +166,7 @@ export default function ChatLista() {
       );
     };
 
-    // 💬 Nova mensagem - Incrementa contador e atualiza timestamp
+    // 💬 Nova mensagem
     const handleNovaMensagem = ({ conversa_id, remetente_id }) => {
       console.log("💬 Nova mensagem na conversa:", conversa_id);
 
@@ -158,7 +174,6 @@ export default function ChatLista() {
         prev
           .map((conversa) => {
             if (conversa.id === conversa_id) {
-              // Se a mensagem não é do usuário atual, incrementa o contador
               const isOutrasPessoas = remetente_id !== userData.id;
 
               return {
@@ -189,21 +204,30 @@ export default function ChatLista() {
       socket.off("mensagens:visualizadas", handleMensagensVisualizadas);
       socket.off("mensagem:nova", handleNovaMensagem);
     };
-  }, [socket, userData.id]);
+  }, [socket?.connected, userData.id]);
 
-  // ✅ Recarregar APENAS ao focar na tela (não sempre)
+  // ✅ Recarregar ao focar
   useFocusEffect(
     useCallback(() => {
-      // Só recarrega se a lista estiver vazia
       if (conversas.length === 0) {
         carregarConversas();
       }
-    }, [conversas.length, carregarConversas])
+      // Solicitar lista atualizada da equipe ao focar
+      if (socket?.connected) {
+        console.log(
+          "🔄 Solicitando atualização da equipe online ao focar na tela"
+        );
+        socket.emit("equipe:solicitar");
+      } else {
+        carregarEquipeOnline();
+      }
+    }, [conversas.length, carregarConversas, carregarEquipeOnline, socket])
   );
 
-  // ✅ Carregar na montagem inicial
+  // ✅ Carregar na montagem
   useEffect(() => {
     carregarConversas();
+    carregarEquipeOnline(); // Fallback inicial
   }, []);
 
   // ✅ Criar nova conversa
@@ -364,7 +388,7 @@ export default function ChatLista() {
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Suporte TI</Text>
 
-            {!loadingUser && userData.type !== "ADM" && (
+            {!loadingUser && !isAdmTI && (
               <TouchableOpacity
                 onPress={criarNovaConversa}
                 style={styles.backButton}
@@ -373,9 +397,7 @@ export default function ChatLista() {
               </TouchableOpacity>
             )}
 
-            {!loadingUser && userData.type === "ADM" && (
-              <View style={styles.backButton} />
-            )}
+            {!loadingUser && isAdmTI && <View style={styles.backButton} />}
 
             {loadingUser && (
               <View style={styles.backButton}>
@@ -384,6 +406,14 @@ export default function ChatLista() {
             )}
           </View>
         </View>
+
+        {/* ✅ SEÇÃO DE EQUIPE ONLINE - Apenas para usuários comuns */}
+        {!loadingUser && !isAdmTI && (
+          <EquipeOnline
+            equipeOnline={equipeOnline}
+            loadingEquipe={loadingEquipe}
+          />
+        )}
 
         {/* LISTA DE CONVERSAS */}
         <View style={styles.listContainer}>
@@ -419,7 +449,7 @@ export default function ChatLista() {
               <Feather name="message-circle" size={64} color="#ccc" />
               <Text style={styles.emptyText}>Nenhuma conversa ainda</Text>
 
-              {!loadingUser && userData.type !== "ADM" && (
+              {!loadingUser && !isAdmTI && (
                 <>
                   <Text style={styles.emptySubtext}>
                     Clique no + para iniciar um atendimento
@@ -434,7 +464,7 @@ export default function ChatLista() {
                 </>
               )}
 
-              {!loadingUser && userData.type === "ADM" && (
+              {!loadingUser && isAdmTI && (
                 <Text style={styles.emptySubtext}>
                   Aguardando solicitações de suporte dos usuários
                 </Text>
@@ -464,7 +494,7 @@ export default function ChatLista() {
                         color={getStatusColor(conversa.status)}
                       />
                       <Text style={styles.conversaTitulo} numberOfLines={1}>
-                        {userData.type === "ADM"
+                        {isAdmTI
                           ? conversa.usuario_nome
                           : conversa.assunto || "Suporte Técnico"}
                       </Text>

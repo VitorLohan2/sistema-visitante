@@ -42,8 +42,15 @@ export default function ChatConversa() {
   const [novaMensagem, setNovaMensagem] = useState("");
   const [loading, setLoading] = useState(true);
   const [enviando, setEnviando] = useState(false);
-  const [userData, setUserData] = useState({ id: "", type: "USER" });
+  const [userData, setUserData] = useState({
+    id: "",
+    type: "USER",
+    setor_id: null,
+  });
   const [conversaAtual, setConversaAtual] = useState(conversa || {});
+
+  // ✅ Verifica se é ADM de TI
+  const isAdmTI = userData.type === "ADM" && userData.setor_id === 7;
 
   // ✅ Buscar dados do usuário
   useEffect(() => {
@@ -56,6 +63,12 @@ export default function ChatConversa() {
         setUserData({
           id: ongId,
           type: response.data.type || "USER",
+          setor_id: response.data.setor_id || null,
+        });
+
+        console.log("✅ Dados do usuário carregados:", {
+          type: response.data.type,
+          setor_id: response.data.setor_id,
         });
       } catch (err) {
         console.error("❌ Erro ao buscar dados do usuário:", err.message);
@@ -116,7 +129,6 @@ export default function ChatConversa() {
 
       // ✅ Se a mensagem não é do usuário atual, marcar como lida automaticamente
       if (msg.remetente_id !== userData.id) {
-        // Pequeno delay para garantir que a mensagem foi inserida no banco
         setTimeout(async () => {
           try {
             await api.put(`/chat/conversas/${conversa_id}/visualizar`);
@@ -136,13 +148,18 @@ export default function ChatConversa() {
     const handleConversaAtualizada = (data) => {
       console.log("🔄 Status da conversa atualizado via socket:", data);
 
-      // Se é a conversa atual, atualiza o estado
-      if (data.id === conversa_id) {
+      if (data.id === conversa_id || data.id === parseInt(conversa_id)) {
         setConversaAtual((prev) => ({
           ...prev,
           status: data.status || prev.status,
           data_atualizacao: data.data_atualizacao || prev.data_atualizacao,
+          atendente_id: data.atendente_id || prev.atendente_id,
+          atendente_nome: data.atendente_nome || prev.atendente_nome,
         }));
+        console.log("✅ Estado da conversa atualizado localmente:", {
+          status: data.status,
+          atendente: data.atendente_nome,
+        });
       }
     };
 
@@ -167,7 +184,6 @@ export default function ChatConversa() {
       await api.post(`/chat/conversas/${conversa_id}/mensagens`, {
         mensagem: mensagemTexto,
       });
-      // Socket vai atualizar automaticamente
     } catch (error) {
       console.error("❌ Erro ao enviar mensagem:", error);
       Alert.alert("Erro", "Não foi possível enviar a mensagem");
@@ -183,7 +199,6 @@ export default function ChatConversa() {
       "Finalizar Conversa",
       "Deseja marcar esta conversa como resolvida?",
       [
-        { text: "Cancelar", style: "cancel" },
         {
           text: "Finalizar",
           style: "default",
@@ -204,6 +219,7 @@ export default function ChatConversa() {
             }
           },
         },
+        { text: "Cancelar", style: "cancel" },
       ]
     );
   }, [conversa_id, navigation]);
@@ -282,12 +298,8 @@ export default function ChatConversa() {
     conversaAtual.status !== "resolvido" && conversaAtual.status !== "fechado";
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
-      >
+    <View style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -300,9 +312,7 @@ export default function ChatConversa() {
 
           <View style={{ flex: 1 }}>
             <Text style={styles.headerTitle} numberOfLines={1}>
-              {userData.type === "ADM"
-                ? conversaAtual.usuario_nome
-                : "Suporte TI"}
+              {isAdmTI ? conversaAtual.usuario_nome : "Suporte TI"}
             </Text>
             <View style={styles.headerSubtitleContainer}>
               <View
@@ -330,7 +340,14 @@ export default function ChatConversa() {
             </TouchableOpacity>
           )}
         </View>
+      </SafeAreaView>
 
+      {/* KeyboardAvoidingView */}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+      >
         {/* Lista de Mensagens */}
         <FlatList
           ref={flatListRef}
@@ -376,6 +393,11 @@ export default function ChatConversa() {
             multiline
             maxLength={1000}
             editable={podeEnviar}
+            onFocus={() => {
+              setTimeout(() => {
+                flatListRef.current?.scrollToEnd({ animated: true });
+              }, 300);
+            }}
           />
 
           <TouchableOpacity
@@ -396,7 +418,7 @@ export default function ChatConversa() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -404,6 +426,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8fafc",
+  },
+
+  safeArea: {
+    backgroundColor: "#fff",
+  },
+
+  flex: {
+    flex: 1,
   },
 
   loading: {
@@ -427,12 +457,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderBottomWidth: 1,
     borderBottomColor: "#e2e8f0",
-    marginTop: 40,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
+    paddingTop: 50,
   },
 
   backButton: {
@@ -475,8 +505,8 @@ const styles = StyleSheet.create({
 
   mensagensContainer: {
     padding: 16,
-    paddingBottom: 8,
     flexGrow: 1,
+    justifyContent: "flex-end",
   },
 
   mensagemContainer: {
@@ -498,7 +528,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
-    elevation: 1,
+    elevation: 2,
   },
 
   remetenteHeader: {
@@ -581,7 +611,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 26,
     backgroundColor: "#fff",
     borderTopWidth: 1,
     borderTopColor: "#e2e8f0",

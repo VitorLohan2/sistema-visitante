@@ -30,7 +30,7 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Audio } from "expo-av";
 
 import api from "../services/api";
-import { useSocket } from "../contexts/SocketContext";
+import { useSocket, useAuthSocket } from "../contexts/SocketContext";
 import { useIncidents } from "../contexts/IncidentsContext";
 
 // Assets
@@ -43,6 +43,7 @@ export default function Profile() {
   // 1. HOOKS DE CONTEXTO
   // ═══════════════════════════════════════════════════════════════
   const socket = useSocket();
+  const { setAuthStatus } = useAuthSocket();
   const navigation = useNavigation();
   const { width } = Dimensions.get("window");
 
@@ -729,9 +730,30 @@ export default function Profile() {
       {
         text: "Sair",
         style: "destructive",
-        onPress: () => {
-          AsyncStorage.clear();
-          navigation.reset({ index: 0, routes: [{ name: "Logon" }] });
+        onPress: async () => {
+          try {
+            if (socket?.connected) {
+              console.log("🚪 Emitindo logout explícito");
+              socket.emit("user:logout");
+            }
+
+            // 🔴 Isso aqui é FUNDAMENTAL
+            setAuthStatus(false);
+
+            // 🔐 Limpa dados
+            await AsyncStorage.multiRemove([
+              "@Auth:token",
+              "@Auth:ongId",
+              "@Auth:ongName",
+            ]);
+          } catch (error) {
+            console.warn("⚠️ Erro no logout:", error);
+          } finally {
+            navigation.reset({
+              index: 0,
+              routes: [{ name: "Logon" }],
+            });
+          }
         },
       },
       { text: "Cancelar", style: "cancel" },

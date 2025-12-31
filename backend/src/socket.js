@@ -39,15 +39,6 @@ function init(server) {
       buscarTipoUsuarioEAtualizar(socket);
     }
 
-    // Teste agora na sala global
-    setTimeout(() => {
-      io.to("global").emit("teste:conexao", {
-        mensagem: "Socket funcionando na sala GLOBAL!",
-        sala: "global",
-      });
-      console.log(`🧪 Evento de teste enviado para sala GLOBAL`);
-    }, 3000);
-
     // 👉 ENTRAR NA CONVERSA
     socket.on("entrar_conversa", (conversa_id) => {
       socket.join(`conversa:${conversa_id}`);
@@ -60,11 +51,25 @@ function init(server) {
       console.log(`👤 Socket ${socket.id} saiu da conversa ${conversa_id}`);
     });
 
+    // 🆕 SOLICITAR LISTA DE EQUIPE ONLINE
     socket.on("disconnect", async () => {
       console.log("🔴 Socket desconectado:", socket.id);
 
-      // ✅ SE FOR ADM, ATUALIZAR EQUIPE ONLINE
-      if (socket.userType === "ADM") {
+      // ✅ SE FOR ADM DE TI, ATUALIZAR EQUIPE ONLINE
+      if (socket.userType === "ADM" && socket.setorId === 7) {
+        console.log(`➖ ADM de TI desconectou: ${socket.userName}`);
+
+        // Emitir evento GENÉRICO que o frontend escuta
+        io.to("global").emit("user:disconnected", {
+          id: socket.userId,
+          nome: socket.userName,
+          type: socket.userType,
+          setorId: socket.setorId,
+        });
+
+        // Emitir evento específico da equipe
+        io.to("global").emit("equipe:membro_desconectou", socket.userId);
+
         await emitirEquipeOnlineAtualizada();
       }
     });
@@ -80,17 +85,38 @@ async function buscarTipoUsuarioEAtualizar(socket) {
 
     const usuario = await connection("ongs")
       .where("id", socket.userId)
-      .select("type", "name", "email")
+      .select("type", "name", "email", "setor_id")
       .first();
 
     if (usuario) {
       socket.userType = usuario.type;
       socket.userEmail = usuario.email;
+      socket.setorId = usuario.setor_id;
 
-      console.log(`✅ Usuário ${socket.userName} é do tipo: ${usuario.type}`);
+      console.log(
+        `✅ Usuário ${socket.userName} é do tipo: ${usuario.type}, Setor: ${usuario.setor_id}`
+      );
 
-      // Se for ADM, atualizar lista de equipe online
-      if (usuario.type === "ADM") {
+      // ✅ Se for ADM do setor TI (setor_id = 7), atualizar lista de equipe online
+      if (usuario.type === "ADM" && usuario.setor_id === 7) {
+        console.log(`➕ ADM de TI conectou: ${socket.userName}`);
+
+        // Emitir evento GENÉRICO que o frontend escuta
+        io.to("global").emit("user:connected", {
+          id: socket.userId,
+          nome: usuario.name,
+          email: usuario.email,
+          type: usuario.type,
+          setorId: usuario.setor_id,
+        });
+
+        // Emitir evento específico da equipe
+        io.to("global").emit("equipe:membro_conectou", {
+          id: socket.userId,
+          nome: usuario.name,
+          email: usuario.email,
+        });
+
         await emitirEquipeOnlineAtualizada();
       }
     }
@@ -99,24 +125,71 @@ async function buscarTipoUsuarioEAtualizar(socket) {
   }
 }
 
-// ✅ FUNÇÃO PARA EMITIR EQUIPE ONLINE ATUALIZADA
+// ✅ ENVIAR LISTA DE EQUIPE ONLINE PARA UM SOCKET ESPECÍFICO
+async function enviarEquipeOnlineParaSocket(socket) {
+  try {
+    const connection = require("./database/connection");
+
+    // Buscar todos os ADMs do setor TI (setor_id = 7)
+    const equipeADM = await connection("ongs")
+      .where("type", "ADM")
+      .where("setor_id", 7)
+      .select("id", "name", "email")
+      .orderBy("name", "asc");
+
+    // Verificar quais ADMs de TI estão online
+    const onlineUsers = [];
+
+    if (io && io.sockets && io.sockets.sockets) {
+      io.sockets.sockets.forEach((s) => {
+        if (s.userId && s.userType === "ADM" && s.setorId === 7) {
+          if (!onlineUsers.find((u) => u.id === s.userId)) {
+            const userInfo = equipeADM.find((u) => u.id === s.userId);
+            if (userInfo) {
+              onlineUsers.push({
+                id: userInfo.id,
+                nome: userInfo.name,
+                email: userInfo.email,
+              });
+            }
+          }
+        }
+      });
+    }
+
+    // Enviar para o socket específico que solicitou
+    socket.emit("equipe:online", onlineUsers);
+
+    console.log(
+      `👥 Lista de equipe online enviada para socket ${socket.id}: ${onlineUsers.length} membros ADM de TI online`
+    );
+  } catch (error) {
+    console.error("❌ Erro ao enviar equipe online:", error);
+  }
+}
+
+// ✅ FUNÇÃO PARA EMITIR EQUIPE ONLINE ATUALIZADA PARA TODOS
 async function emitirEquipeOnlineAtualizada() {
   try {
     const connection = require("./database/connection");
 
-    // Buscar todos os ADMs do banco
+    // Buscar todos os ADMs do setor TI (setor_id = 7)
     const equipeADM = await connection("ongs")
       .where("type", "ADM")
+      .where("setor_id", 7)
       .select("id", "name", "email")
       .orderBy("name", "asc");
 
-    // Verificar quais ADMs estão online
+    // Verificar quais ADMs de TI estão online
     const onlineUsers = [];
 
     if (io && io.sockets && io.sockets.sockets) {
       io.sockets.sockets.forEach((socket) => {
-        if (socket.userId && socket.userType === "ADM") {
-          // Verificar se já não foi adicionado (evitar duplicatas)
+        if (
+          socket.userId &&
+          socket.userType === "ADM" &&
+          socket.setorId === 7
+        ) {
           if (!onlineUsers.find((u) => u.id === socket.userId)) {
             const userInfo = equipeADM.find((u) => u.id === socket.userId);
             if (userInfo) {
@@ -132,16 +205,14 @@ async function emitirEquipeOnlineAtualizada() {
     }
 
     // Emitir para sala global
-    io.to("global").emit("equipe:atualizada", {
-      equipe: onlineUsers,
-    });
+    io.to("global").emit("equipe:online", onlineUsers);
 
     console.log(
-      `👥 Equipe online atualizada: ${onlineUsers.length} membros ADM online`
+      `👥 Equipe online atualizada (broadcast): ${onlineUsers.length} membros ADM de TI online`
     );
     console.log(
       "📋 Membros online:",
-      onlineUsers.map((u) => u.nome).join(", ")
+      onlineUsers.map((u) => u.nome).join(", ") || "Nenhum"
     );
   } catch (error) {
     console.error("❌ Erro ao emitir equipe online:", error);
