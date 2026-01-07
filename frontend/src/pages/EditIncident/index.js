@@ -51,7 +51,7 @@ export default function EditIncident() {
     async function loadData() {
       try {
         const [incidentRes, empresasRes, setoresRes] = await Promise.all([
-          api.get(`/incidents/${id}`),
+          api.get(`/cadastro-visitantes/${id}`),
           api.get("/empresas-visitantes"),
           api.get("/setores-visitantes"),
         ]);
@@ -162,7 +162,9 @@ export default function EditIncident() {
     const novoEstado = e.target.checked;
 
     try {
-      await api.put(`/incidents/${id}/block`, { bloqueado: novoEstado });
+      await api.put(`/cadastro-visitantes/${id}/bloquear`, {
+        bloqueado: novoEstado,
+      });
       setForm((prev) => ({ ...prev, bloqueado: novoEstado }));
       alert(
         `Cadastro ${novoEstado ? "bloqueado" : "desbloqueado"} com sucesso!`
@@ -248,7 +250,7 @@ export default function EditIncident() {
     };
 
     try {
-      await api.put(`/incidents/${id}`, payload, {
+      await api.put(`/cadastro-visitantes/${id}`, payload, {
         headers: {
           authorization: localStorage.getItem("ongId"),
         },

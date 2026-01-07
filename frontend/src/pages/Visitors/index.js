@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useHistory } from 'react-router-dom';
-import { FiArrowLeft, FiSearch, FiLogOut } from 'react-icons/fi';
+import React, { useState, useEffect } from "react";
+import { Link, useHistory } from "react-router-dom";
+import { FiArrowLeft, FiSearch, FiLogOut } from "react-icons/fi";
 
-import api from '../../services/api';
-import './styles.css';
+import api from "../../services/api";
+import "./styles.css";
 
-import logoImg from '../../assets/logo.svg';
+import logoImg from "../../assets/logo.svg";
 
 export default function Visitors() {
   const [visitors, setVisitors] = useState([]);
@@ -13,18 +13,19 @@ export default function Visitors() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const history = useHistory();
-  const ongId = localStorage.getItem('ongId');
-  const ongName = localStorage.getItem('ongName');
+  const ongId = localStorage.getItem("ongId");
+  const ongName = localStorage.getItem("ongName");
 
   useEffect(() => {
     // ✅ CORREÇÃO: REMOVER header manual - o interceptor já adiciona Bearer automaticamente
-    api.get('visitors')
-      .then(response => {
+    api
+      .get("visitantes")
+      .then((response) => {
         setVisitors(response.data);
       })
-      .catch(error => {
-        console.error('Erro ao carregar visitantes:', error);
-        alert('Erro ao carregar visitantes. Verifique sua conexão.');
+      .catch((error) => {
+        console.error("Erro ao carregar visitantes:", error);
+        alert("Erro ao carregar visitantes. Verifique sua conexão.");
       });
   }, [ongId]);
 
@@ -32,24 +33,23 @@ export default function Visitors() {
   async function handleEndVisit(id) {
     try {
       // ✅ CORREÇÃO: REMOVER header manual - o interceptor já adiciona Bearer automaticamente
-      await api.put(`visitors/${id}/exit`, {});
-      
-      alert('Visita Finalizada com sucesso!');
+      await api.put(`visitantes/${id}/finalizar`, {});
+
+      alert("Visita Finalizada com sucesso!");
       // Atualiza o estado removendo o visitante da lista
-      setVisitors(visitors.filter(visitor => visitor.id !== id));
+      setVisitors(visitors.filter((visitor) => visitor.id !== id));
 
       // Opcional: redirecionar para histórico
       // history.push('/history');
-      
     } catch (err) {
-      console.error('Erro ao encerrar visita:', err);
-      alert('Erro ao encerrar visita, tente novamente.');
+      console.error("Erro ao encerrar visita:", err);
+      alert("Erro ao encerrar visita, tente novamente.");
     }
   }
 
   // 👇 abre modal e mostra observação
   function handleOpenObservation(observacao) {
-    setSelectedObservation(observacao || 'Nenhuma observação cadastrada.');
+    setSelectedObservation(observacao || "Nenhuma observação cadastrada.");
     setIsModalOpen(true);
   }
 
@@ -57,8 +57,8 @@ export default function Visitors() {
     <div className="page-container">
       <header className="page-header">
         <div className="page-title-wrapper">
-        <img src={logoImg} alt="DIME" />
-        <span>Bem-vindo(a), {ongName}</span>
+          <img src={logoImg} alt="DIME" />
+          <span>Bem-vindo(a), {ongName}</span>
         </div>
         <Link className="back-link" to="/profile">
           <FiArrowLeft size={16} color="#E02041" />
@@ -86,36 +86,48 @@ export default function Visitors() {
                   <th>Cor</th>
                   <th>Responsavel</th>
                   <th>Data/Hora Entrada</th>
-                  <th className='placaendcor'>Observação/Finalização</th> 
+                  <th className="placaendcor">Observação/Finalização</th>
                 </tr>
               </thead>
               <tbody>
                 {visitors.map((visitor, index) => (
                   <tr key={visitor.id}>
                     <td>{index + 1}</td>
-                    <td>{visitor.name || 'Não informado'}</td>
-                    <td>{visitor.cpf || 'Não informado'}</td>
-                    <td>{visitor.company || visitor.empresa || 'Não informado'}</td>
-                    <td>{visitor.sector || visitor.setor || 'Não informado'}</td>
-                    <td className='placaendcor'>{visitor.placa_veiculo || '-'}</td>
-                    <td className='placaendcor'>{visitor.cor_veiculo || '-'}</td>
-                    <td>{visitor.responsavel || 'Não informado'}</td>
+                    <td>{visitor.name || "Não informado"}</td>
+                    <td>{visitor.cpf || "Não informado"}</td>
                     <td>
-                      {visitor.entry_date ? 
-                        new Date(visitor.entry_date).toLocaleString() : 
-                        new Date(visitor.created_at).toLocaleString()
-                      }
+                      {visitor.company || visitor.empresa || "Não informado"}
                     </td>
-                    <td className='acoes-buttons'>
-                      <button 
-                        onClick={() => handleOpenObservation(visitor.observacao)} 
+                    <td>
+                      {visitor.sector || visitor.setor || "Não informado"}
+                    </td>
+                    <td className="placaendcor">
+                      {visitor.placa_veiculo || "-"}
+                    </td>
+                    <td className="placaendcor">
+                      {visitor.cor_veiculo || "-"}
+                    </td>
+                    <td>{visitor.responsavel || "Não informado"}</td>
+                    <td>
+                      {visitor.entry_date
+                        ? new Date(visitor.entry_date).toLocaleString()
+                        : new Date(visitor.created_at).toLocaleString()}
+                    </td>
+                    <td className="acoes-buttons">
+                      <button
+                        onClick={() =>
+                          handleOpenObservation(visitor.observacao)
+                        }
                         className="observacao-button"
                         title="Ver observação"
                       >
-                        <FiSearch size={18} strokeWidth={3}/>
-                      </button> 
-                      <button onClick={() => handleEndVisit(visitor.id)} className="encerrar-visita-button">
-                       <FiLogOut size={18} strokeWidth={3}/> Encerrar Visita
+                        <FiSearch size={18} strokeWidth={3} />
+                      </button>
+                      <button
+                        onClick={() => handleEndVisit(visitor.id)}
+                        className="encerrar-visita-button"
+                      >
+                        <FiLogOut size={18} strokeWidth={3} /> Encerrar Visita
                       </button>
                     </td>
                   </tr>
@@ -127,17 +139,25 @@ export default function Visitors() {
       </div>
 
       {isModalOpen && (
-        <div className="modal-observacao-visitantes" onClick={() => setIsModalOpen(false)}>
-          <div className="modal-conteudo-visitantes" onClick={e => e.stopPropagation()}>
+        <div
+          className="modal-observacao-visitantes"
+          onClick={() => setIsModalOpen(false)}
+        >
+          <div
+            className="modal-conteudo-visitantes"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2>Observação</h2>
             <p>{selectedObservation}</p>
-            <button onClick={() => setIsModalOpen(false)} className="fechar-modal">
+            <button
+              onClick={() => setIsModalOpen(false)}
+              className="fechar-modal"
+            >
               Fechar
             </button>
           </div>
         </div>
       )}
-      
     </div>
   );
 }

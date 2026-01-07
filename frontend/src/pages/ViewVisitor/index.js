@@ -1,36 +1,35 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useHistory, Link } from 'react-router-dom';
-import { FiArrowLeft, FiImage, FiX } from 'react-icons/fi';
-import './styles.css';
-import logoImg from '../../assets/logo.svg';
-import api from '../../services/api';
+import React, { useEffect, useState } from "react";
+import { useParams, useHistory, Link } from "react-router-dom";
+import { FiArrowLeft, FiImage, FiX } from "react-icons/fi";
+import "./styles.css";
+import logoImg from "../../assets/logo.svg";
+import api from "../../services/api";
 
 export default function ViewVisitor() {
   const { id } = useParams();
   const history = useHistory();
   const [visitor, setVisitor] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
-  const ongId = localStorage.getItem('ongId');
+  const ongId = localStorage.getItem("ongId");
 
   useEffect(() => {
     async function fetchVisitor() {
       try {
-        const response = await api.get(`/incidents/${id}`);
-        
+        const response = await api.get(`/cadastro-visitantes/${id}`);
+
         // Extrai as fotos dos campos imagem1, imagem2, imagem3
         const fotos = [];
         if (response.data.imagem1) fotos.push(response.data.imagem1);
         if (response.data.imagem2) fotos.push(response.data.imagem2);
         if (response.data.imagem3) fotos.push(response.data.imagem3);
-        
+
         setVisitor({
           ...response.data,
-          fotos // Adiciona o array de fotos ao state
+          fotos, // Adiciona o array de fotos ao state
         });
-        
       } catch (err) {
-        alert('Erro ao buscar o cadastro.');
-        history.push('/profile');
+        alert("Erro ao buscar o cadastro.");
+        history.push("/profile");
       }
     }
 
@@ -38,10 +37,10 @@ export default function ViewVisitor() {
   }, [id, history]);
 
   const formatCPF = (cpf) =>
-    cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+    cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
 
   const formatTelefone = (tel) =>
-    tel.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
+    tel.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
 
   if (!visitor) return <div className="loading">Carregando...</div>;
 
@@ -50,10 +49,10 @@ export default function ViewVisitor() {
       <header>
         <div className="ajuste-Titulo">
           <img src={logoImg} alt="Logo" />
-          <span>Bem-vindo(a), {localStorage.getItem('ongName')}</span>
+          <span>Bem-vindo(a), {localStorage.getItem("ongName")}</span>
         </div>
         <Link className="back-link" to="/profile">
-          <FiArrowLeft size={16} color="#E02041"/>
+          <FiArrowLeft size={16} color="#E02041" />
           Voltar
         </Link>
       </header>
@@ -78,35 +77,36 @@ export default function ViewVisitor() {
 
             <label>Setor</label>
             <input value={visitor.setor} readOnly />
-            
+
             <label>Placa do Veículo</label>
-            <input value={visitor.placa_veiculo || 'Não informado'} readOnly />
-            
+            <input value={visitor.placa_veiculo || "Não informado"} readOnly />
+
             <label>Cor do Veículo</label>
-            <input value={visitor.cor_veiculo  || 'Não informado'} readOnly />
+            <input value={visitor.cor_veiculo || "Não informado"} readOnly />
 
             <label>Telefone</label>
             <input value={formatTelefone(visitor.telefone)} readOnly />
 
             <label>Observação</label>
-            <textarea value={visitor.observacao || ''} readOnly />
+            <textarea value={visitor.observacao || ""} readOnly />
 
             {/* Seção de visualização de fotos */}
             <label>Fotos do Visitante</label>
             <div className="photo-gallery">
               {visitor.fotos && visitor.fotos.length > 0 ? (
                 visitor.fotos.map((foto, index) => (
-                  <div 
-                    key={index} 
+                  <div
+                    key={index}
                     className="photo-thumbnail"
                     onClick={() => setSelectedImage(foto)}
                   >
-                    <img 
+                    <img
                       src={foto}
                       alt={`Foto ${index + 1}`}
                       onError={(e) => {
                         e.target.onerror = null;
-                        e.target.src = 'https://via.placeholder.com/150?text=Imagem+não+encontrada';
+                        e.target.src =
+                          "https://via.placeholder.com/150?text=Imagem+não+encontrada";
                       }}
                     />
                     <span className="photo-label">Foto {index + 1}</span>
@@ -125,20 +125,27 @@ export default function ViewVisitor() {
 
       {/* Modal para visualização ampliada */}
       {selectedImage && (
-        <div className="image-modal-visualizacao" onClick={() => setSelectedImage(null)}>
-          <div className="modal-content-visualizacao" onClick={(e) => e.stopPropagation()}>
-            <button 
+        <div
+          className="image-modal-visualizacao"
+          onClick={() => setSelectedImage(null)}
+        >
+          <div
+            className="modal-content-visualizacao"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
               className="close-button"
               onClick={() => setSelectedImage(null)}
             >
               <FiX size={24} />
             </button>
-            <img 
+            <img
               src={selectedImage}
               alt="Ampliada"
               onError={(e) => {
                 e.target.onerror = null;
-                e.target.src = 'https://via.placeholder.com/600?text=Imagem+não+encontrada';
+                e.target.src =
+                  "https://via.placeholder.com/600?text=Imagem+não+encontrada";
               }}
               onContextMenu={(e) => e.preventDefault()} // 🔹 Impede clique direito
             />

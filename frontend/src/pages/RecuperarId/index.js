@@ -1,34 +1,34 @@
 // src/pages/RecuperarId/index.js
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import api from '../../services/api';
-import './styles.css';
-import { FiArrowLeft, FiCopy } from 'react-icons/fi';
-import logoImg from '../../assets/logo.svg';
-import Loading from '../../components/Loading';
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
+import api from "../../services/api";
+import "./styles.css";
+import { FiArrowLeft, FiCopy } from "react-icons/fi";
+import logoImg from "../../assets/logo.svg";
+import Loading from "../../components/Loading";
 
 export default function RecuperarId() {
-  const [email, setEmail] = useState('');
-  const [dataNascimento, setDataNascimento] = useState('');
+  const [email, setEmail] = useState("");
+  const [dataNascimento, setDataNascimento] = useState("");
   const [idRecuperado, setIdRecuperado] = useState(null);
-  const [erro, setErro] = useState('');
+  const [erro, setErro] = useState("");
   const [loading, setLoading] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setErro('');
+    setErro("");
     setIdRecuperado(null);
     setLoading(true);
 
     try {
-      const response = await api.post('/recuperar-id', {
+      const response = await api.post("/auth/recuperar-id", {
         email,
         data_nascimento: dataNascimento,
       });
       setIdRecuperado(response.data.id);
     } catch (err) {
-      setErro(err.response?.data?.error || 'Erro ao recuperar ID');
+      setErro(err.response?.data?.error || "Erro ao recuperar ID");
     } finally {
       setLoading(false);
     }
@@ -57,20 +57,22 @@ export default function RecuperarId() {
             type="email"
             placeholder="Seu e-mail"
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.target.value)}
             required
           />
           <input
             type="date"
             value={dataNascimento}
-            onChange={e => setDataNascimento(e.target.value)}
+            onChange={(e) => setDataNascimento(e.target.value)}
             required
           />
-          <button className="button-recuperar" type="submit">Recuperar</button>
+          <button className="button-recuperar" type="submit">
+            Recuperar
+          </button>
 
           {idRecuperado && (
             <p className="resultado-id">
-              <span className="texto-preto">Seu ID é:</span>{' '}
+              <span className="texto-preto">Seu ID é:</span>{" "}
               <strong className="texto-vermelho">{idRecuperado}</strong>
               <FiCopy
                 className="icone-copiar"
@@ -94,11 +96,12 @@ export default function RecuperarId() {
         <div className="modal-overlay">
           <div className="modal-box">
             <p>ID copiado com Sucesso!</p>
-            <button onClick={fecharNotificacao} className="modal-button">OK</button>
+            <button onClick={fecharNotificacao} className="modal-button">
+              OK
+            </button>
           </div>
         </div>
       )}
     </div>
   );
 }
-

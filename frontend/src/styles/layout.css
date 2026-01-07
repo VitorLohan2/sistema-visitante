@@ -1,0 +1,38 @@
+/* Layout com Sidebar */
+.layout-container {
+  display: flex;
+  min-height: 100vh;
+  background: #f8fafc;
+}
+
+.layout-main {
+  flex: 1;
+  overflow-y: auto;
+  background: #f8fafc;
+}
+
+.layout-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-size: 18px;
+  color: #64748b;
+}
+
+/* Responsividade */
+@media (min-width: 1024px) {
+  .layout-main {
+    margin-left: 280px;
+  }
+}
+
+@media (max-width: 1023px) {
+  .layout-container {
+    flex-direction: column;
+  }
+
+  .layout-main {
+    margin-left: 0;
+  }
+}

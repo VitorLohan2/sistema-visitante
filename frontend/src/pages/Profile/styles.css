@@ -9,23 +9,45 @@
 .profile-container header {
   display: flex;
   align-items: center;
-  flex-wrap: wrap; /* Permite quebra controlada */
+  flex-wrap: wrap;
+  gap: 16px;
+  width: 100%;
+  justify-content: space-between;
 }
 
 .profile-container header span {
   font-size: 20px;
-  margin-left: 24px;
-  max-width: 300px;;
+  margin-left: 0;
+  max-width: 300px;
+  flex: 0 0 auto;
 }
 
 .profile-container header img {
   height: 64px;
+  margin-right: 0;
+  flex: 0 0 auto;
+}
+
+.profile-container header .search-container {
+  flex: 1;
+  min-width: 250px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-container header .search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .profile-container header a {
-  width: 260px;
-  margin-left: auto;
-  margin-top: 0;
+  width: 200px;
+  margin: 0;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .profile-container header button {
@@ -34,12 +56,96 @@
   border-radius: 4px;
   border: 1px solid #646464;
   background: transparent;
-  margin-left: 16px;
+  margin: 0;
   transition: border-color 0.2s;
+  flex: 0 0 auto;
 }
 
 .profile-container header button:hover {
   border-color: #999;
+}
+
+/* RESPONSIVIDADE DESKTOP */
+@media (max-width: 1024px) {
+  .profile-container header {
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+
+  .profile-container header span {
+    order: 2;
+    min-width: 100%;
+    margin-bottom: 12px;
+  }
+
+  .profile-container header img {
+    order: 1;
+    margin-right: 0;
+  }
+
+  .profile-container header .search-container {
+    order: 3;
+    flex: 1;
+    min-width: 200px;
+    margin-left: 0;
+  }
+
+  .profile-container header a {
+    order: 4;
+    width: 100%;
+    text-align: center;
+    margin-top: 8px;
+  }
+
+  .profile-container header button {
+    order: 5;
+    align-self: flex-start;
+  }
+}
+
+/* RESPONSIVIDADE MOBILE */
+@media (max-width: 768px) {
+  .profile-container {
+    padding: 0 16px;
+    margin: 16px auto;
+  }
+
+  .profile-container header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .profile-container header img {
+    align-self: center;
+    margin-right: 0;
+  }
+
+  .profile-container header span {
+    text-align: center;
+    margin: 0;
+    order: unset;
+    min-width: unset;
+  }
+
+  .profile-container header .search-container {
+    width: 100%;
+    order: unset;
+    margin: 0;
+  }
+
+  .profile-container header a {
+    width: 100%;
+    order: unset;
+    text-align: center;
+    margin: 0;
+  }
+
+  .profile-container header button {
+    align-self: center;
+    width: 100%;
+    order: unset;
+  }
 }
 
 .profile-container h1 {
@@ -189,13 +295,13 @@
 }
 
 .card-action-btn.visit {
-  color: #4CAF50;
+  color: #4caf50;
   border-color: rgba(76, 175, 80, 0.3);
 }
 
 .card-action-btn.visit:hover {
   background: rgba(76, 175, 80, 0.1);
-  border-color: #4CAF50;
+  border-color: #4caf50;
 }
 
 .card-action-btn.edit {
@@ -250,7 +356,7 @@
   border-collapse: collapse;
 }
 
-.simple-table th, 
+.simple-table th,
 .simple-table td {
   padding: 12px 16px;
   text-align: left;
@@ -278,17 +384,17 @@
 
 .actions {
   display: flex;
-  align-items:center;
+  align-items: center;
   justify-content: left;
   gap: 8px;
   height: 100%;
 }
 
 .visit-button {
-  color: #4CAF50;
+  color: #4caf50;
 }
 .visit-button:hover {
-  border-color: #4CAF50;
+  border-color: #4caf50;
 }
 
 .delete-button {
@@ -331,7 +437,8 @@ td .user-info {
   gap: 6px;
 }
 
-.user-icon, .lock-icon {
+.user-icon,
+.lock-icon {
   position: relative;
   top: 0px;
 }
@@ -379,9 +486,9 @@ td .user-info {
 }
 
 .pagination-button.active {
-  background: #10B981;
+  background: #10b981;
   color: #fff;
-  border-color: #10B981;
+  border-color: #10b981;
 }
 
 .pagination-button svg {
@@ -394,7 +501,7 @@ td .user-info {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -434,7 +541,7 @@ td .user-info {
   color: rgba(0, 0, 0, 0.3);
 }
 
-.modal-print-btn{
+.modal-print-btn {
   background-color: #13976b;
   color: white;
   border: none;
@@ -507,7 +614,7 @@ td .user-info {
 }
 
 .theme-slider::before {
-  content: '';
+  content: "";
   position: absolute;
   width: 24px;
   height: 24px;
@@ -564,15 +671,15 @@ td .user-info {
     align-items: flex-start;
     gap: 16px;
   }
-  
+
   .card-left {
     width: 100%;
   }
-  
+
   .card-details {
     gap: 12px;
   }
-  
+
   .card-actions {
     align-self: flex-end;
   }

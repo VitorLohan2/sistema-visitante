@@ -1,11 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useHistory } from "react-router-dom";
-import {
-  FiPower,
-  FiSearch,
-  FiChevronLeft,
-  FiChevronRight,
-} from "react-icons/fi";
+import { FiSearch, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 
 import notificacaoSom from "../../assets/notificacao.mp3";
 import api from "../../services/api";
@@ -13,7 +8,6 @@ import { useAuth } from "../../hooks/useAuth";
 import Loading from "../../components/Loading";
 
 import VisitorCard from "../../components/VisitorCard";
-import ProfileMenu from "../../components/ProfileMenu";
 import ConfigModal from "../../components/ConfigModal";
 import VisitAuthorizationModal from "../../components/VisitAuthorizationModal";
 
@@ -79,7 +73,7 @@ export default function Profile() {
 
   async function handleOpenConfigModal() {
     try {
-      const response = await api.get(`ongs/${ongId}`);
+      const response = await api.get(`usuarios/${ongId}`);
       setUserDetails(response.data);
       setConfigModalVisible(true);
     } catch (err) {
@@ -144,12 +138,12 @@ export default function Profile() {
         setSetoresVisitantes(setores);
 
         // 2. Carrega dados da ONG
-        const ongResponse = await api.get(`ongs/${ongId}`);
+        const ongResponse = await api.get(`usuarios/${ongId}`);
         const { setor, type, setor_id } = ongResponse.data;
         setUserData({ setor, type, setor_id });
 
-        // 3. Carrega todos os incidents
-        const profileResponse = await api.get("profile", {
+        // 3. Carrega todos os cadastros de visitantes
+        const profileResponse = await api.get("cadastro-visitantes", {
           headers: { Authorization: ongId },
         });
 
@@ -210,7 +204,7 @@ export default function Profile() {
       try {
         // Só atualiza se não estiver em busca ativa
         if (!isSearching && searchTerm.trim() === "") {
-          const profileResponse = await api.get("profile", {
+          const profileResponse = await api.get("cadastro-visitantes", {
             headers: { Authorization: ongId },
           });
 
@@ -318,7 +312,7 @@ export default function Profile() {
         } else {
           console.log("🌐 Buscando na API..."); // Debug
           // Se não encontrar localmente, busca na API
-          const response = await api.get("/search", {
+          const response = await api.get("/cadastro-visitantes/buscar", {
             params: { query: searchTerm },
           });
 
@@ -422,7 +416,7 @@ export default function Profile() {
       return;
 
     try {
-      const response = await api.delete(`incidents/${id}`, {
+      const response = await api.delete(`cadastro-visitantes/${id}`, {
         headers: { Authorization: ongId },
       });
 
@@ -497,11 +491,11 @@ export default function Profile() {
   }
 
   function handleEditProfile(id) {
-    history.push(`/incidents/edit/${id}`);
+    history.push(`/cadastro-visitantes/edit/${id}`);
   }
 
   function handleViewProfile(id) {
-    history.push(`/incidents/view/${id}`);
+    history.push(`/cadastro-visitantes/view/${id}`);
   }
 
   function handleLogout() {
@@ -512,7 +506,7 @@ export default function Profile() {
 
   async function handleOpenBadgeModal(id) {
     try {
-      const response = await api.get(`incidents/${id}/badge`);
+      const response = await api.get(`cadastro-visitantes/${id}/badge`);
       setBadgeData({
         ...response.data,
         imagem: response.data.avatar_imagem || response.data.imagem1 || null,
@@ -599,32 +593,24 @@ export default function Profile() {
     <div className="profile-container">
       <header>
         <img src={logo} alt="DIME" />
-        <span> Bem-vindo(a), {ongName} </span>
 
         <div className="search-container">
-          <FiSearch className="search-icon" size={16} />
-          <input
-            type="text"
-            placeholder="Consultar por nome ou CPF"
-            className="search-input"
-            value={searchTerm}
-            onChange={handleSearchChange} // 🔹 Função atualizada
-          />
+          <div className="search-wrapper">
+            <FiSearch className="search-icon" size={16} />
+            <input
+              type="text"
+              placeholder="Consultar por nome ou CPF"
+              className="search-input"
+              value={searchTerm}
+              onChange={handleSearchChange}
+            />
+          </div>
         </div>
 
-        <Link className="button" to="/incidents/new">
+        <Link className="button" to="/cadastro-visitantes/new">
           Cadastrar Visitante
         </Link>
-        <button onClick={handleLogout} type="button">
-          <FiPower size={18} color="#e02041" className="power" />
-        </button>
       </header>
-
-      <ProfileMenu
-        userData={userData}
-        unseenCount={unseenCount}
-        handleOpenConfigModal={handleOpenConfigModal}
-      />
 
       <h1>
         Visitantes Cadastrados

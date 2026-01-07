@@ -1,5 +1,4 @@
-import { useState, useEffect, useContext, createContext } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useState, useEffect, useContext, createContext } from "react";
 
 const AuthContext = createContext({});
 
@@ -13,69 +12,87 @@ export function AuthProvider({ children }) {
   }, []);
 
   const checkAuthStatus = () => {
-    const ongId = localStorage.getItem('ongId');
-    const ongName = localStorage.getItem('ongName');
-    const ongType = localStorage.getItem('ongType');
-    const ongSetorId = localStorage.getItem('ongSetorId'); // 🔹 novo
-    
-    //console.log('Verificando autenticação:', { ongId, ongName, ongType, ongSetorId });
-    
-    if (ongId && ongName) {
-      setIsAuthenticated(true);
-      setUser({
-        id: ongId,
-        name: ongName,
-        type: ongType,
-        setor_id: ongSetorId ? parseInt(ongSetorId, 10) : null, // 🔹 converter para número
-      });
+    const token = localStorage.getItem("token");
+    const usuarioStr = localStorage.getItem("usuario");
+
+    if (token && usuarioStr) {
+      try {
+        const usuario = JSON.parse(usuarioStr);
+        setIsAuthenticated(true);
+        setUser({
+          id: usuario.id,
+          nome: usuario.nome,
+          email: usuario.email,
+          tipo: usuario.tipo,
+          empresa_id: usuario.empresa_id,
+          setor_id: usuario.setor_id,
+        });
+      } catch (error) {
+        console.error("Erro ao fazer parse do usuário:", error);
+        localStorage.removeItem("token");
+        localStorage.removeItem("usuario");
+        setIsAuthenticated(false);
+        setUser(null);
+      }
     } else {
       setIsAuthenticated(false);
       setUser(null);
     }
-    
+
     setLoading(false);
   };
 
-  const login = (userData) => {
-    console.log('Fazendo login com:', userData);
-    
-    localStorage.setItem('token', userData.id);
-    localStorage.setItem('ongId', userData.id);
-    localStorage.setItem('ongName', userData.name);
-    localStorage.setItem('ongType', userData.type);
-    localStorage.setItem('ongSetorId', userData.setor_id); // 🔹 novo
+  const login = (token, usuario) => {
+    console.log("Fazendo login com:", usuario.email);
 
-    
+    localStorage.setItem("token", token);
+    localStorage.setItem(
+      "usuario",
+      JSON.stringify({
+        id: usuario.id,
+        nome: usuario.nome,
+        email: usuario.email,
+        tipo: usuario.tipo,
+        empresa_id: usuario.empresa_id,
+        setor_id: usuario.setor_id,
+      })
+    );
+
     setIsAuthenticated(true);
-    setUser(userData);
+    setUser({
+      id: usuario.id,
+      nome: usuario.nome,
+      email: usuario.email,
+      tipo: usuario.tipo,
+      empresa_id: usuario.empresa_id,
+      setor_id: usuario.setor_id,
+    });
   };
 
   const logout = () => {
-    console.log('Fazendo logout');
-    
-    localStorage.removeItem('token');
-    localStorage.removeItem('ongId');
-    localStorage.removeItem('ongName');
-    localStorage.removeItem('ongType');
-    localStorage.removeItem('ongSetorId'); // 🔹 limpar setor
+    console.log("Fazendo logout");
 
-    
+    localStorage.removeItem("token");
+    localStorage.removeItem("usuario");
+
     setIsAuthenticated(false);
     setUser(null);
-    
+
     // Redireciona para a página inicial
-    window.location.href = '/';
+    window.location.href = "/";
   };
 
   return (
-    <AuthContext.Provider value={{
-      isAuthenticated,
-      loading,
-      user,
-      login,
-      logout,
-      checkAuthStatus
-    }}>
+    <AuthContext.Provider
+      value={{
+        isAuthenticated,
+        loading,
+        user,
+        login,
+        logout,
+        checkAuthStatus,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -84,7 +101,7 @@ export function AuthProvider({ children }) {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth deve ser usado dentro de AuthProvider');
+    throw new Error("useAuth deve ser usado dentro de AuthProvider");
   }
   return context;
 };

@@ -4,6 +4,7 @@ import { BrowserRouter, Route, Switch } from "react-router-dom";
 
 import Logon from "../pages/Logon";
 import Register from "../pages/Register";
+import Dashboard from "../pages/Dashboard";
 import Profile from "../pages/Profile";
 import NewIncident from "../pages/NewIncident";
 import Visitors from "../pages/Visitors";
@@ -36,11 +37,15 @@ export default function Routes() {
         <Route path="/helpdesk" exact component={HelpDesk} />
 
         {/* Rotas protegidas */}
+        <ProtectedRoute path="/dashboard">
+          <Dashboard />
+        </ProtectedRoute>
+
         <ProtectedRoute path="/profile">
           <Profile />
         </ProtectedRoute>
 
-        <ProtectedRoute path="/incidents/new">
+        <ProtectedRoute path="/cadastro-visitantes/new">
           <NewIncident />
         </ProtectedRoute>
 
@@ -52,11 +57,11 @@ export default function Routes() {
           <History />
         </ProtectedRoute>
 
-        <ProtectedRoute path="/incidents/edit/:id">
+        <ProtectedRoute path="/cadastro-visitantes/edit/:id">
           <EditIncident />
         </ProtectedRoute>
 
-        <ProtectedRoute path="/incidents/view/:id">
+        <ProtectedRoute path="/cadastro-visitantes/view/:id">
           <ViewVisitor />
         </ProtectedRoute>
 
@@ -95,7 +100,7 @@ export default function Routes() {
         <ProtectedRoute path="/agendamentos/novo">
           <CadastrarAgendamentos />
         </ProtectedRoute>
-        
+
         <ProtectedRoute path="/agendamentos">
           <ListaAgendamentos />
         </ProtectedRoute>

@@ -339,7 +339,7 @@ export default function NewVisitor() {
         dataToSend.append("fotos", foto);
       });
 
-      await api.post("/incidents", dataToSend, {
+      await api.post("/cadastro-visitantes", dataToSend, {
         headers: {
           "Content-Type": "multipart/form-data",
           Authorization: localStorage.getItem("ongId"),

@@ -1,101 +1,106 @@
 // src/pages/Ticket/index.js
-import React, { useState, useEffect } from 'react';
-import { Link, useHistory } from 'react-router-dom';
-import { FiArrowLeft } from 'react-icons/fi';
+import React, { useState, useEffect } from "react";
+import { Link, useHistory } from "react-router-dom";
+import { FiArrowLeft } from "react-icons/fi";
 
-import './styles.css';
-import api from '../../services/api';
+import "./styles.css";
+import api from "../../services/api";
 
-import logoImg from '../../assets/logo.svg';
+import logoImg from "../../assets/logo.svg";
 
 const TicketPage = () => {
   const history = useHistory();
 
   const [formData, setFormData] = useState({
-    funcionario: '',
-    motivo: '',
-    descricao: '',
-    setorResponsavel: '',
+    funcionario: "",
+    motivo: "",
+    descricao: "",
+    setorResponsavel: "",
   });
 
   const [userData, setUserData] = useState({
-    nome: '',
-    setor: '',
-    id: ''
+    nome: "",
+    setor: "",
+    id: "",
   });
 
   // Carrega os dados do usuário ao montar o componente
-    useEffect(() => {
+  useEffect(() => {
     const loadUserData = async () => {
-        try {
-        const ongId = localStorage.getItem('ongId');
-        const response = await api.get(`/ongs/${ongId}`);
+      try {
+        const ongId = localStorage.getItem("ongId");
+        const response = await api.get(`/usuarios/${ongId}`);
 
         setUserData({
-            nome: response.data.name,
-            setor: response.data.setor,
-            id: response.data.id
+          nome: response.data.name,
+          setor: response.data.setor,
+          id: response.data.id,
         });
-        } catch (error) {
-        console.error('Erro ao carregar dados da ONG:', error);
+      } catch (error) {
+        console.error("Erro ao carregar dados da ONG:", error);
         setUserData({
-            nome: 'Erro ao carregar',
-            setor: 'Erro ao carregar',
-            id: ''
+          nome: "Erro ao carregar",
+          setor: "Erro ao carregar",
+          id: "",
         });
-        }
+      }
     };
-        loadUserData();
-    }, []);
-
+    loadUserData();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const ongId = localStorage.getItem('ongId');
+    const ongId = localStorage.getItem("ongId");
 
     // Validação básica dos campos
-    if (!formData.funcionario || !formData.motivo || !formData.descricao || !formData.setorResponsavel) {
-      alert('Por favor, preencha todos os campos obrigatórios.');
+    if (
+      !formData.funcionario ||
+      !formData.motivo ||
+      !formData.descricao ||
+      !formData.setorResponsavel
+    ) {
+      alert("Por favor, preencha todos os campos obrigatórios.");
       return;
     }
 
-        try {
-            const response = await api.post(
-        '/tickets',
+    try {
+      const response = await api.post(
+        "/tickets",
         {
-            ...formData,
-            nomeUsuario: userData.nome,
-            setorUsuario: userData.setor
-        },  
-        {  
-        headers: {
-        Authorization: ongId
+          ...formData,
+          nomeUsuario: userData.nome,
+          setorUsuario: userData.setor,
+        },
+        {
+          headers: {
+            Authorization: ongId,
+          },
         }
-        }
-        );
+      );
 
-      alert(`✅ Ticket criado por ${userData.nome} com ID: ${response.data.id}`);
+      alert(
+        `✅ Ticket criado por ${userData.nome} com ID: ${response.data.id}`
+      );
 
       // Reseta o formulário após sucesso
       setFormData({
-        funcionario: '',
-        motivo: '',
-        descricao: '',
-        setorResponsavel: '',
+        funcionario: "",
+        motivo: "",
+        descricao: "",
+        setorResponsavel: "",
       });
 
       // ✅ Redirecionamento usando useHistory
-      history.push('/ticket-dashboard');
-
+      history.push("/ticket-dashboard");
     } catch (err) {
-      console.error('Erro ao criar ticket:', err);
-      alert('❌ Erro ao criar ticket. Verifique os dados e tente novamente.');
+      console.error("Erro ao criar ticket:", err);
+      alert("❌ Erro ao criar ticket. Verifique os dados e tente novamente.");
     }
   };
 
@@ -178,7 +183,9 @@ const TicketPage = () => {
             </select>
           </div>
 
-          <button type="submit" className="submit-button">Abrir Ticket</button>
+          <button type="submit" className="submit-button">
+            Abrir Ticket
+          </button>
         </form>
       </section>
     </div>

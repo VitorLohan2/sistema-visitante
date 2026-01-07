@@ -1,0 +1,394 @@
+/* Dashboard Estilos */
+.dashboard-container {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.header-content h1 {
+  margin: 0;
+  font-size: 32px;
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.header-content p {
+  margin: 0.5rem 0 0 0;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.refresh-btn {
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #059669, #047857);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2);
+}
+
+.refresh-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(5, 150, 105, 0.3);
+}
+
+.refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.refresh-btn svg.rotating {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Mensagem de erro */
+.error-message {
+  background: #fee2e2;
+  color: #dc2626;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid #dc2626;
+}
+
+/* Grid de estatísticas */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+/* Card de estatística */
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  border: 1px solid #e2e8f0;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+  border-color: #cbd5e1;
+}
+
+/* Ícone do card */
+.stat-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: white;
+  font-size: 28px;
+}
+
+.stat-icon.visitors {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.stat-icon.today {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.stat-icon.schedules {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.stat-icon.support {
+  background: linear-gradient(135deg, #ec4899, #db2777);
+}
+
+.stat-icon.employees {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+}
+
+/* Conteúdo do card */
+.stat-content {
+  flex: 1;
+}
+
+.stat-content h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0.5rem 0;
+}
+
+.stat-sublabel {
+  margin: 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* Seções */
+.dashboard-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Ações Rápidas */
+.quick-actions {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e2e8f0;
+}
+
+.quick-actions h2 {
+  margin: 0 0 1.5rem 0;
+  font-size: 20px;
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.action-btn {
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #f0fdf4, #e0f2fe);
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  text-decoration: none;
+  color: #059669;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  font-size: 14px;
+  text-align: center;
+}
+
+.action-btn:hover {
+  border-color: #059669;
+  background: linear-gradient(135deg, #ecfdf5, #e0f2fe);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(5, 150, 105, 0.2);
+}
+
+.action-btn svg {
+  width: 32px;
+  height: 32px;
+  color: #059669;
+}
+
+/* Footer do Dashboard */
+.dashboard-footer {
+  text-align: center;
+  padding: 1.5rem;
+  color: #94a3b8;
+  font-size: 13px;
+  border-top: 1px solid #e2e8f0;
+  margin-top: 1rem;
+}
+
+/* === RESPONSIVIDADE === */
+
+/* Tablets */
+@media (max-width: 1024px) {
+  .dashboard-container {
+    padding: 1.5rem;
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-content h1 {
+    font-size: 28px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+  }
+
+  .actions-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 1rem;
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .header-content h1 {
+    font-size: 24px;
+  }
+
+  .refresh-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .stat-card {
+    padding: 1.25rem;
+    gap: 1rem;
+  }
+
+  .stat-icon {
+    width: 50px;
+    height: 50px;
+    min-width: 50px;
+    min-height: 50px;
+  }
+
+  .stat-value {
+    font-size: 28px;
+  }
+
+  .quick-actions {
+    padding: 1.5rem;
+  }
+
+  .quick-actions h2 {
+    font-size: 18px;
+    margin-bottom: 1rem;
+  }
+
+  .actions-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .action-btn {
+    padding: 1.25rem;
+    font-size: 13px;
+  }
+
+  .action-btn svg {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+/* Mobile pequeno */
+@media (max-width: 480px) {
+  .dashboard-container {
+    padding: 0.75rem;
+  }
+
+  .header-content h1 {
+    font-size: 20px;
+  }
+
+  .header-content p {
+    font-size: 12px;
+  }
+
+  .stat-card {
+    padding: 1rem;
+    gap: 0.75rem;
+  }
+
+  .stat-icon {
+    width: 45px;
+    height: 45px;
+    min-width: 45px;
+    min-height: 45px;
+  }
+
+  .stat-content h3 {
+    font-size: 12px;
+  }
+
+  .stat-value {
+    font-size: 24px;
+  }
+
+  .stat-sublabel {
+    font-size: 11px;
+  }
+
+  .quick-actions {
+    padding: 1rem;
+  }
+
+  .action-btn {
+    padding: 1rem;
+    font-size: 12px;
+  }
+
+  .action-btn svg {
+    width: 24px;
+    height: 24px;
+  }
+}

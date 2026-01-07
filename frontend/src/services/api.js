@@ -1,14 +1,12 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || "http://localhost:3001", //process.env.REACT_APP_API_URL || 'http://localhost:3001' https://visitante.dimeexperience.com.br  https://sistema-visitante.onrender.com
+  baseURL: process.env.REACT_APP_API_URL || "http://localhost:3001",
 });
 
-console.log("Variável de ambiente:", process.env.REACT_APP_API_URL);
+console.log("API Base URL:", api.defaults.baseURL);
 
-// console.log('API Base URL:', api.defaults.baseURL); // Verifique no console
-
-// Interceptor para adicionar o token automaticamente
+// Interceptor para adicionar o token JWT automaticamente
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
 
@@ -25,9 +23,9 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Token expirado ou inválido
+      console.log("Token inválido ou expirado, redirecionando para login");
       localStorage.removeItem("token");
-      localStorage.removeItem("ongId");
-      localStorage.removeItem("ongName");
+      localStorage.removeItem("usuario");
       window.location.href = "/";
     }
     return Promise.reject(error);
