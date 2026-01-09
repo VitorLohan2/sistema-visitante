@@ -1,5 +1,10 @@
 const connection = require("../database/connection");
 const { getIo } = require("../socket");
+const { getUsuarioId } = require("../utils/authHelper");
+const {
+  isAdmin: verificarAdmin,
+  temPermissao,
+} = require("../middleware/permissaoMiddleware");
 
 // ✅ FUNÇÃO PARA OBTER DATA/HORA NO HORÁRIO DE BRASÍLIA
 function getBrasiliaDateTime() {
@@ -12,33 +17,22 @@ function getBrasiliaDateTime() {
   return brasiliaTime.toISOString();
 }
 
-// ✅ Função auxiliar para extrair token
-function getBearerToken(request) {
-  const authHeader = request.headers.authorization;
-  if (!authHeader) return null;
-
-  const parts = authHeader.split(" ");
-  if (parts.length !== 2) return null;
-
-  const [scheme, token] = parts;
-  if (!/^Bearer$/i.test(scheme)) return null;
-
-  return token;
-}
-
-// ✅ Função auxiliar para verificar se é ADM de TI
+// ✅ Função auxiliar para verificar se é ADM de TI (agora usa RBAC)
 async function isAdmTI(usuario_id) {
-  const usuario = await connection("ongs")
+  const usuario = await connection("usuarios")
     .where("id", usuario_id)
-    .select("type", "setor_id")
+    .select("setor_id")
     .first();
 
-  return usuario && usuario.type === "ADM" && usuario.setor_id === 7;
+  if (!usuario) return false;
+
+  const userIsAdmin = await verificarAdmin(usuario_id);
+  return userIsAdmin && usuario.setor_id === 7;
 }
 
 module.exports = {
   async listarConversas(req, res) {
-    const usuario_id = getBearerToken(req);
+    const usuario_id = getUsuarioId(req);
     console.log("📋 Listando conversas para usuário:", usuario_id);
 
     try {
@@ -46,7 +40,7 @@ module.exports = {
         return res.status(401).json({ error: "Não autorizado" });
       }
 
-      const usuario = await connection("ongs")
+      const usuario = await connection("usuarios")
         .where("id", usuario_id)
         .select("type", "setor_id")
         .first();
@@ -59,7 +53,8 @@ module.exports = {
       let conversas;
 
       // ✅ Apenas ADM do setor TI (setor_id = 7) pode ver todas as conversas
-      if (usuario.type === "ADM" && usuario.setor_id === 7) {
+      const userIsAdmTI = await isAdmTI(usuario_id);
+      if (userIsAdmTI) {
         conversas = await connection("conversas_suporte")
           .select(
             "conversas_suporte.*",
@@ -105,7 +100,7 @@ module.exports = {
 
   async criarConversa(req, res) {
     const io = getIo();
-    const usuario_id = getBearerToken(req);
+    const usuario_id = getUsuarioId(req);
     const { assunto } = req.body;
 
     console.log("📝 Criando conversa:", { usuario_id, assunto });
@@ -115,7 +110,7 @@ module.exports = {
         return res.status(401).json({ error: "Não autorizado" });
       }
 
-      const usuario = await connection("ongs")
+      const usuario = await connection("usuarios")
         .where("id", usuario_id)
         .select("name", "type", "setor_id")
         .first();
@@ -169,7 +164,7 @@ module.exports = {
 
   async buscarMensagens(req, res) {
     const io = getIo();
-    const usuario_id = getBearerToken(req);
+    const usuario_id = getUsuarioId(req);
     const { conversa_id } = req.params;
 
     console.log("💬 Buscando mensagens:", { usuario_id, conversa_id });
@@ -187,14 +182,14 @@ module.exports = {
         return res.status(404).json({ error: "Conversa não encontrada" });
       }
 
-      const usuario = await connection("ongs")
+      const usuario = await connection("usuarios")
         .where("id", usuario_id)
-        .select("type", "setor_id")
+        .select("setor_id")
         .first();
 
       // ✅ Verifica se é ADM de TI ou dono da conversa
-      const isAdmTI = usuario.type === "ADM" && usuario.setor_id === 7;
-      if (!isAdmTI && conversa.usuario_id !== usuario_id) {
+      const userIsAdmTI = await isAdmTI(usuario_id);
+      if (!userIsAdmTI && conversa.usuario_id !== usuario_id) {
         return res
           .status(403)
           .json({ error: "Sem permissão para acessar esta conversa" });
@@ -238,7 +233,7 @@ module.exports = {
 
   async enviarMensagem(req, res) {
     const io = getIo();
-    const usuario_id = getBearerToken(req);
+    const usuario_id = getUsuarioId(req);
     const { conversa_id } = req.params;
     const { mensagem } = req.body;
 
@@ -261,9 +256,9 @@ module.exports = {
         return res.status(404).json({ error: "Conversa não encontrada" });
       }
 
-      const remetente = await connection("ongs")
+      const remetente = await connection("usuarios")
         .where("id", usuario_id)
-        .select("name", "type", "setor_id")
+        .select("name", "setor_id")
         .first();
 
       if (!remetente) {
@@ -271,9 +266,9 @@ module.exports = {
       }
 
       // ✅ Verifica se é ADM de TI ou dono da conversa
-      const isAdmTI = remetente.type === "ADM" && remetente.setor_id === 7;
+      const userIsAdmTI = await isAdmTI(usuario_id);
 
-      if (!isAdmTI && conversa.usuario_id !== usuario_id) {
+      if (!userIsAdmTI && conversa.usuario_id !== usuario_id) {
         return res
           .status(403)
           .json({ error: "Sem permissão para enviar mensagem nesta conversa" });
@@ -286,7 +281,7 @@ module.exports = {
           conversa_id,
           remetente_id: usuario_id,
           remetente_nome: remetente.name,
-          remetente_tipo: isAdmTI ? "ADM" : "USER",
+          remetente_tipo: userIsAdmTI ? "ADM" : "USER",
           mensagem: mensagem.trim(),
           data_envio: brasiliaTime,
         })
@@ -346,7 +341,7 @@ module.exports = {
 
   async atualizarStatus(req, res) {
     const io = getIo();
-    const usuario_id = getBearerToken(req);
+    const usuario_id = getUsuarioId(req);
     const { conversa_id } = req.params;
     const { status } = req.body;
 
@@ -375,14 +370,14 @@ module.exports = {
         return res.status(404).json({ error: "Conversa não encontrada" });
       }
 
-      const usuario = await connection("ongs")
+      const usuario = await connection("usuarios")
         .where("id", usuario_id)
-        .select("type", "name", "setor_id")
+        .select("name", "setor_id")
         .first();
 
       // ✅ Verifica se é ADM de TI ou dono da conversa
-      const isAdmTI = usuario.type === "ADM" && usuario.setor_id === 7;
-      if (!isAdmTI && conversa.usuario_id !== usuario_id) {
+      const userIsAdmTI = await isAdmTI(usuario_id);
+      if (!userIsAdmTI && conversa.usuario_id !== usuario_id) {
         return res.status(403).json({ error: "Sem permissão" });
       }
 
@@ -433,7 +428,7 @@ module.exports = {
   },
 
   async contarNaoLidas(req, res) {
-    const usuario_id = getBearerToken(req);
+    const usuario_id = getUsuarioId(req);
 
     console.log("📊 Contando mensagens não lidas para:", usuario_id);
 
@@ -473,7 +468,7 @@ module.exports = {
 
   async marcarComoVisualizada(req, res) {
     const io = getIo();
-    const usuario_id = getBearerToken(req);
+    const usuario_id = getUsuarioId(req);
     const { conversa_id } = req.params;
 
     if (!usuario_id) {
@@ -503,7 +498,7 @@ module.exports = {
   },
 
   async buscarDetalhesConversa(req, res) {
-    const usuario_id = getBearerToken(req);
+    const usuario_id = getUsuarioId(req);
     const { conversa_id } = req.params;
 
     console.log("🔍 Buscando detalhes da conversa:", conversa_id);
@@ -513,9 +508,9 @@ module.exports = {
         return res.status(401).json({ error: "Não autorizado" });
       }
 
-      const usuario = await connection("ongs")
+      const usuario = await connection("usuarios")
         .where("id", usuario_id)
-        .select("type", "setor_id")
+        .select("setor_id")
         .first();
 
       if (!usuario) {
@@ -544,8 +539,8 @@ module.exports = {
       }
 
       // ✅ Verifica permissão
-      const isAdmTI = usuario.type === "ADM" && usuario.setor_id === 7;
-      if (!isAdmTI && conversa.usuario_id !== usuario_id) {
+      const userIsAdmTI = await isAdmTI(usuario_id);
+      if (!userIsAdmTI && conversa.usuario_id !== usuario_id) {
         return res
           .status(403)
           .json({ error: "Sem permissão para acessar esta conversa" });
@@ -570,7 +565,7 @@ module.exports = {
       const { getIo } = require("../socket");
 
       // ✅ Buscar apenas usuários ADM do setor TI (setor_id = 7)
-      const equipeADM = await connection("ongs")
+      const equipeADM = await connection("usuarios")
         .where("type", "ADM")
         .where("setor_id", 7)
         .select("id", "name", "email")

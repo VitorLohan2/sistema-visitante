@@ -3,6 +3,7 @@ let io;
 
 function init(server) {
   const { Server } = require("socket.io");
+  const { verificarToken } = require("./utils/jwt");
 
   io = new Server(server, {
     cors: {
@@ -14,17 +15,34 @@ function init(server) {
   io.on("connection", (socket) => {
     console.log("🟢 Novo socket conectado:", socket.id);
 
-    const ongId = socket.handshake.query?.ongId;
-    const ongName = socket.handshake.query?.ongName;
+    // ✅ VALIDAR JWT - Busca em auth (preferencial) ou headers
+    let token = socket.handshake.auth?.token;
 
-    console.log("📋 Query handshake:", socket.handshake.query);
-    console.log("🆔 ongId recebido:", ongId);
-    console.log("👤 ongName recebido:", ongName);
+    // Fallback para headers (caso venha de polling)
+    if (!token) {
+      token = socket.handshake.headers.authorization?.replace("Bearer ", "");
+    }
 
-    if (ongId) {
+    if (!token) {
+      console.log("❌ Socket rejeitado: Sem token JWT");
+      console.log("   - Auth:", socket.handshake.auth);
+      console.log("   - Headers:", socket.handshake.headers.authorization);
+      socket.disconnect(true);
+      return;
+    }
+
+    try {
+      const usuario = verificarToken(token);
+
       // ✅ ARMAZENAR DADOS DO USUÁRIO NO SOCKET
-      socket.userId = ongId;
-      socket.userName = ongName;
+      socket.userId = usuario.id;
+      socket.userName = usuario.nome;
+      socket.userEmail = usuario.email;
+      socket.userType = usuario.tipo;
+      socket.setorId = usuario.setor_id;
+      socket.empresaId = usuario.empresa_id;
+
+      console.log(`✅ Socket autenticado: ${usuario.nome} (${usuario.email})`);
 
       // Entra na sala GLOBAL compartilhada
       socket.join("global");
@@ -37,6 +55,13 @@ function init(server) {
 
       // ✅ BUSCAR TIPO DO USUÁRIO E ATUALIZAR EQUIPE ONLINE
       buscarTipoUsuarioEAtualizar(socket);
+    } catch (error) {
+      console.log(
+        "❌ Socket rejeitado: Token inválido ou expirado",
+        error.message
+      );
+      socket.disconnect(true);
+      return;
     }
 
     // 👉 ENTRAR NA CONVERSA
@@ -78,50 +103,35 @@ function init(server) {
   return io;
 }
 
-// ✅ FUNÇÃO PARA BUSCAR TIPO DO USUÁRIO E ATUALIZAR EQUIPE
+// ✅ FUNÇÃO PARA ATUALIZAR EQUIPE ONLINE
 async function buscarTipoUsuarioEAtualizar(socket) {
   try {
-    const connection = require("./database/connection");
+    // Os dados já estão no socket através do JWT validado
+    // Apenas precisamos emitir eventos se for ADM de TI (setor_id = 7)
 
-    const usuario = await connection("ongs")
-      .where("id", socket.userId)
-      .select("type", "name", "email", "setor_id")
-      .first();
+    if (socket.userType === "ADM" && socket.setorId === 7) {
+      console.log(`➕ ADM de TI conectou: ${socket.userName}`);
 
-    if (usuario) {
-      socket.userType = usuario.type;
-      socket.userEmail = usuario.email;
-      socket.setorId = usuario.setor_id;
+      // Emitir evento GENÉRICO que o frontend escuta
+      io.to("global").emit("user:connected", {
+        id: socket.userId,
+        nome: socket.userName,
+        email: socket.userEmail,
+        type: socket.userType,
+        setorId: socket.setorId,
+      });
 
-      console.log(
-        `✅ Usuário ${socket.userName} é do tipo: ${usuario.type}, Setor: ${usuario.setor_id}`
-      );
+      // Emitir evento específico da equipe
+      io.to("global").emit("equipe:membro_conectou", {
+        id: socket.userId,
+        nome: socket.userName,
+        email: socket.userEmail,
+      });
 
-      // ✅ Se for ADM do setor TI (setor_id = 7), atualizar lista de equipe online
-      if (usuario.type === "ADM" && usuario.setor_id === 7) {
-        console.log(`➕ ADM de TI conectou: ${socket.userName}`);
-
-        // Emitir evento GENÉRICO que o frontend escuta
-        io.to("global").emit("user:connected", {
-          id: socket.userId,
-          nome: usuario.name,
-          email: usuario.email,
-          type: usuario.type,
-          setorId: usuario.setor_id,
-        });
-
-        // Emitir evento específico da equipe
-        io.to("global").emit("equipe:membro_conectou", {
-          id: socket.userId,
-          nome: usuario.name,
-          email: usuario.email,
-        });
-
-        await emitirEquipeOnlineAtualizada();
-      }
+      await emitirEquipeOnlineAtualizada();
     }
   } catch (error) {
-    console.error("❌ Erro ao buscar tipo do usuário:", error);
+    console.error("❌ Erro ao atualizar equipe online:", error);
   }
 }
 
@@ -131,7 +141,7 @@ async function enviarEquipeOnlineParaSocket(socket) {
     const connection = require("./database/connection");
 
     // Buscar todos os ADMs do setor TI (setor_id = 7)
-    const equipeADM = await connection("ongs")
+    const equipeADM = await connection("usuarios")
       .where("type", "ADM")
       .where("setor_id", 7)
       .select("id", "name", "email")
@@ -174,7 +184,7 @@ async function emitirEquipeOnlineAtualizada() {
     const connection = require("./database/connection");
 
     // Buscar todos os ADMs do setor TI (setor_id = 7)
-    const equipeADM = await connection("ongs")
+    const equipeADM = await connection("usuarios")
       .where("type", "ADM")
       .where("setor_id", 7)
       .select("id", "name", "email")

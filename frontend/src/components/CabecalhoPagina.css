@@ -1,0 +1,59 @@
+/* Estilos do componente CabecalhoPagina */
+.cabecalho-pagina {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: #f0f0f5;
+  border-bottom: 1px solid #ddd;
+}
+
+.cabecalho-pagina .ajuste-Titulo {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.cabecalho-pagina .ajuste-Titulo img {
+  height: 40px;
+}
+
+.cabecalho-pagina .ajuste-Titulo span {
+  font-size: 16px;
+  color: #41414d;
+  font-weight: 500;
+}
+
+.cabecalho-pagina .cabecalho-acoes {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.cabecalho-pagina .back-link {
+  display: flex;
+  align-items: center;
+  color: #e02041;
+  font-size: 14px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+.cabecalho-pagina .back-link:hover {
+  opacity: 0.7;
+}
+
+.cabecalho-pagina .back-link svg {
+  margin-right: 8px;
+}
+
+/* Suporte a tema escuro */
+[data-theme="dark"] .cabecalho-pagina {
+  background: #1a1a2e;
+  border-bottom-color: #16213e;
+}
+
+[data-theme="dark"] .cabecalho-pagina .ajuste-Titulo span {
+  color: #e0e0e0;
+}

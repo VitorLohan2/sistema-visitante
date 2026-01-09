@@ -2,22 +2,16 @@
 const connection = require("../database/connection");
 const moment = require("moment-timezone");
 const { getIo } = require("../socket");
-
-// Helper para extrair token do Bearer
-function getBearerToken(req) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return null;
-  const parts = authHeader.split(" ");
-  if (parts.length === 2 && parts[0] === "Bearer") {
-    return parts[1];
-  }
-  return null;
-}
+const { getUsuarioId } = require("../utils/authHelper");
+const {
+  isAdmin: verificarAdmin,
+  temPermissao,
+} = require("../middleware/permissaoMiddleware");
 
 module.exports = {
   async create(req, res) {
     const io = getIo(); // ✅ OBTER INSTÂNCIA DO SOCKET
-    const ong_id = getBearerToken(req);
+    const usuario_id = getUsuarioId(req);
     const {
       funcionario,
       motivo,
@@ -55,7 +49,7 @@ module.exports = {
 
       const [ticket] = await connection("tickets")
         .insert({
-          ong_id,
+          usuario_id,
           funcionario,
           motivo,
           descricao,
@@ -70,7 +64,7 @@ module.exports = {
       // 🔥 EMITIR EVENTO PARA SALA GLOBAL
       io.to("global").emit("ticket:create", {
         id: ticket.id,
-        ong_id,
+        usuario_id,
         funcionario,
         motivo,
         descricao,
@@ -105,29 +99,30 @@ module.exports = {
   },
 
   async index(req, res) {
-    const ong_id = getBearerToken(req);
+    const usuario_id = getUsuarioId(req);
 
-    if (!ong_id) {
+    if (!usuario_id) {
       return res
         .status(401)
         .json({ error: "Authorization header é obrigatório" });
     }
 
     try {
-      const ong = await connection("ongs")
-        .where("id", ong_id)
+      const usuario = await connection("usuarios")
+        .where("id", usuario_id)
         .select("type", "setor_id")
         .first();
 
-      if (!ong) return res.status(404).json({ error: "ONG não encontrada" });
+      if (!usuario)
+        return res.status(404).json({ error: "Usuário não encontrado" });
 
       const tickets = await connection("tickets")
         .select(
           "tickets.*",
-          "ongs.name as ong_name",
-          "ongs.setor_id as ong_setor_id"
+          "usuarios.name as usuario_name",
+          "usuarios.setor_id as usuario_setor_id"
         )
-        .leftJoin("ongs", "tickets.ong_id", "ongs.id")
+        .leftJoin("usuarios", "tickets.usuario_id", "usuarios.id")
         .orderBy("tickets.data_criacao", "desc");
 
       return res.json(tickets);
@@ -143,7 +138,7 @@ module.exports = {
 
   async update(req, res) {
     const io = getIo(); // ✅ OBTER INSTÂNCIA DO SOCKET
-    const ong_id = getBearerToken(req);
+    const usuario_id = getUsuarioId(req);
     const { id } = req.params;
     const { status } = req.body;
 
@@ -158,22 +153,23 @@ module.exports = {
     }
 
     try {
-      const ong = await connection("ongs")
-        .where("id", ong_id)
+      const usuario = await connection("usuarios")
+        .where("id", usuario_id)
         .select("type", "setor_id")
         .first();
 
-      if (!ong) return res.status(404).json({ error: "ONG não encontrada" });
+      if (!usuario)
+        return res.status(404).json({ error: "Usuário não encontrado" });
 
       const ticket = await connection("tickets").where("id", id).first();
 
       if (!ticket)
         return res.status(404).json({ error: "Ticket não encontrado" });
 
-      const isAdmin = ong.type === "ADMIN";
-      const isSeguranca = ong.setor_id === 4;
+      const userIsAdmin = await verificarAdmin(usuario_id);
+      const isSeguranca = usuario.setor_id === 4;
 
-      if (!isAdmin && !isSeguranca) {
+      if (!userIsAdmin && !isSeguranca) {
         return res.status(403).json({
           error:
             "Acesso permitido apenas para administradores ou setor de Segurança",
@@ -227,7 +223,7 @@ module.exports = {
 
   async show(req, res) {
     const io = getIo(); // ✅ OBTER INSTÂNCIA DO SOCKET
-    const ong_id = getBearerToken(req);
+    const usuario_id = getUsuarioId(req);
     const { id } = req.params;
 
     try {
@@ -235,18 +231,20 @@ module.exports = {
         .where("tickets.id", id)
         .select(
           "tickets.*",
-          "ongs.name as ong_name",
-          "ongs.setor_id as ong_setor_id"
+          "usuarios.name as usuario_name",
+          "usuarios.setor_id as usuario_setor_id"
         )
-        .leftJoin("ongs", "tickets.ong_id", "ongs.id")
+        .leftJoin("usuarios", "tickets.usuario_id", "usuarios.id")
         .first();
 
       if (!ticket)
         return res.status(404).json({ error: "Ticket não encontrado" });
 
-      const ong = await connection("ongs").where("id", ong_id).first();
+      const usuario = await connection("usuarios")
+        .where("id", usuario_id)
+        .first();
 
-      if (ong.type !== "ADMIN" && ticket.ong_id !== ong_id) {
+      if (usuario.type !== "ADMIN" && ticket.usuario_id !== usuario_id) {
         return res.status(403).json({ error: "Acesso negado ao ticket" });
       }
 
@@ -283,12 +281,14 @@ module.exports = {
   },
 
   async countUnseen(req, res) {
-    const ong_id = getBearerToken(req);
+    const usuario_id = getUsuarioId(req);
 
     try {
-      const ong = await connection("ongs").where("id", ong_id).first();
+      const usuario = await connection("usuarios")
+        .where("id", usuario_id)
+        .first();
 
-      if (!ong || ong.setor_id !== 4) return res.json({ count: 0 });
+      if (!usuario || usuario.setor_id !== 4) return res.json({ count: 0 });
 
       const count = await connection("tickets")
         .where({
@@ -307,7 +307,7 @@ module.exports = {
 
   async markAllSeen(req, res) {
     const io = getIo(); // ✅ OBTER INSTÂNCIA DO SOCKET
-    const ong_id = getBearerToken(req);
+    const usuario_id = getUsuarioId(req);
 
     try {
       await connection("tickets")

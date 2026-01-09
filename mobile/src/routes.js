@@ -36,6 +36,12 @@ import ComunicadoAdmin from "./pages/ComunicadoAdmin";
 
 import ChatLista from "./pages/ChatLista";
 import ChatConversa from "./pages/ChatConversa";
+import GerenciarFuncionarios from "./pages/GerenciarFuncionarios";
+import CadastrarFuncionarios from "./pages/CadastrarFuncionarios";
+import HistoricoFuncionario from "./pages/HistoricoFuncionario";
+
+import MarcadorPontoUsuario from "./pages/MarcadorPontoUsuario";
+import HistoricoPontoUsuario from "./pages/HistoricoPontoUsuario";
 
 const Stack = createNativeStackNavigator();
 
@@ -89,6 +95,27 @@ export default function Routes() {
 
       <Stack.Screen name="ChatLista" component={ChatLista} />
       <Stack.Screen name="ChatConversa" component={ChatConversa} />
+      <Stack.Screen
+        name="GerenciarFuncionarios"
+        component={GerenciarFuncionarios}
+      />
+      <Stack.Screen
+        name="CadastrarFuncionarios"
+        component={CadastrarFuncionarios}
+      />
+      <Stack.Screen
+        name="HistoricoFuncionario"
+        component={HistoricoFuncionario}
+      />
+
+      <Stack.Screen
+        name="MarcadorPontoUsuario"
+        component={MarcadorPontoUsuario}
+      />
+      <Stack.Screen
+        name="HistoricoPontoUsuario"
+        component={HistoricoPontoUsuario}
+      />
     </Stack.Navigator>
   );
 }

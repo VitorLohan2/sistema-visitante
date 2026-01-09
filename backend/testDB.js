@@ -1,10 +1,10 @@
-const connection = require('./src/database/connection'); // ajuste o caminho se necessário
+const connection = require("./src/database/connection"); // ajuste o caminho se necessário
 
-connection('ongs')
-  .select('*')
+connection("usuarios")
+  .select("*")
   .then((res) => {
-    console.log('ONGS encontradas:', res);
+    console.log("USUARIOS encontradas:", res);
   })
   .catch((err) => {
-    console.error('Erro ao buscar ONGs:', err);
+    console.error("Erro ao buscar USUARIOS:", err);
   });

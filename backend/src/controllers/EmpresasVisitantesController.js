@@ -1,26 +1,16 @@
 const connection = require("../database/connection");
 const { getIo } = require("../socket");
-
-// ✅ Helper para extrair token do Bearer
-function getBearerToken(req) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return null;
-  const parts = authHeader.split(" ");
-  if (parts.length === 2 && parts[0] === "Bearer") {
-    return parts[1];
-  }
-  return authHeader;
-}
+const { getUsuarioId } = require("../utils/authHelper");
 
 // ✅ Helper para verificar se usuário é ADM
-async function verificarAdmin(ongId) {
-  const ong = await connection("ongs").where("id", ongId).first();
+async function verificarAdmin(usuarioId) {
+  const usuario = await connection("usuarios").where("id", usuarioId).first();
 
-  if (!ong) {
-    return { error: "ONG não encontrada", status: 404 };
+  if (!usuario) {
+    return { error: "usuario não encontrada", status: 404 };
   }
 
-  if (ong.type !== "ADM" && ong.type !== "ADMIN") {
+  if (usuario.type !== "ADM" && usuario.type !== "ADMIN") {
     return {
       error: "Somente administradores podem realizar esta ação!",
       status: 403,
@@ -77,7 +67,7 @@ module.exports = {
   // ═══════════════════════════════════════════════════════════════
   async create(request, response) {
     const { nome, cnpj, telefone, email, endereco } = request.body;
-    const criado_por = getBearerToken(request);
+    const criado_por = getUsuarioId(request);
 
     try {
       console.log("=== DEBUG CADASTRAR EMPRESA VISITANTE ===");
@@ -152,7 +142,7 @@ module.exports = {
   async update(request, response) {
     const { id } = request.params;
     const { nome, cnpj, telefone, email, endereco } = request.body;
-    const atualizado_por = getBearerToken(request);
+    const atualizado_por = getUsuarioId(request);
 
     try {
       console.log("=== DEBUG ATUALIZAR EMPRESA ===");
@@ -242,7 +232,7 @@ module.exports = {
   // ═══════════════════════════════════════════════════════════════
   async delete(request, response) {
     const { id } = request.params;
-    const deletado_por = getBearerToken(request);
+    const deletado_por = getUsuarioId(request);
 
     try {
       console.log("=== DEBUG DELETAR EMPRESA ===");
@@ -273,7 +263,7 @@ module.exports = {
       }
 
       // Verificar se há usuários vinculados a esta empresa
-      const usuariosVinculados = await connection("ongs")
+      const usuariosVinculados = await connection("usuarios")
         .where("empresa_id", id)
         .count("id as count")
         .first();

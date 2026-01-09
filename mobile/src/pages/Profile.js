@@ -25,6 +25,7 @@ import { styles } from "./Profile/styles";
 import { Picker } from "@react-native-picker/picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Feather from "react-native-vector-icons/Feather";
+import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Audio } from "expo-av";
@@ -66,7 +67,7 @@ export default function Profile() {
   // ═══════════════════════════════════════════════════════════════
   const [loading, setLoading] = useState(true);
   const [unseenCount, setUnseenCount] = useState(0);
-  const [userData, setUserData] = useState({ setor: "", nome: "" });
+  const [userData, setUserData] = useState({ setor: "", nome: "", type: "" });
   const [displayedIncidents, setDisplayedIncidents] = useState([]);
   const [comunicadoAtivo, setComunicadoAtivo] = useState(null);
   const [comunicadoVisible, setComunicadoVisible] = useState(false);
@@ -207,8 +208,9 @@ export default function Profile() {
       const ongResponse = await api.get(`ongs/${ongId}`);
       const setor = ongResponse.data.setor || "";
       const nome = ongResponse.data.name || ongName || "";
+      const type = ongResponse.data.type || "";
 
-      setUserData({ setor, nome });
+      setUserData({ setor, nome, type });
       userDataRef.current = { setor, nome };
 
       if (setor === "Segurança") {
@@ -1418,29 +1420,35 @@ export default function Profile() {
           </View>
 
           <View style={styles.menuModalOptions}>
-            <TouchableOpacity
-              style={styles.menuModalOption}
-              onPress={() => {
-                closeMenuModal();
-                navigation.navigate("Admin");
-              }}
-              disabled={isAnimating}
-            >
-              <View
-                style={[
-                  styles.menuModalIcon,
-                  { backgroundColor: "rgba(249, 168, 37, 0.1)" },
-                ]}
+            {userData.type === "ADM" && (
+              <TouchableOpacity
+                style={styles.menuModalOption}
+                onPress={() => {
+                  closeMenuModal();
+                  navigation.navigate("Admin");
+                }}
+                disabled={isAnimating}
               >
-                <Feather name="globe" size={24} color="#f9a825" />
-              </View>
-              <View style={styles.menuModalOptionContent}>
-                <Text style={styles.menuModalOptionTitle}>Painel Admin</Text>
-                <Text style={styles.menuModalOptionDescription}>
-                  Sistema Administrador
-                </Text>
-              </View>
-            </TouchableOpacity>
+                <View
+                  style={[
+                    styles.menuModalIcon,
+                    { backgroundColor: "rgba(249, 168, 37, 0.1)" },
+                  ]}
+                >
+                  <MaterialIcons
+                    name="admin-panel-settings"
+                    size={24}
+                    color="#f94f25ff"
+                  />
+                </View>
+                <View style={styles.menuModalOptionContent}>
+                  <Text style={styles.menuModalOptionTitle}>Painel Admin</Text>
+                  <Text style={styles.menuModalOptionDescription}>
+                    Sistema Administrador
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               style={styles.menuModalOption}
@@ -1528,10 +1536,7 @@ export default function Profile() {
               style={styles.menuModalOption}
               onPress={() => {
                 closeMenuModal();
-                Alert.alert(
-                  "Em desenvolvimento",
-                  "Funcionalidade em desenvolvimento"
-                );
+                navigation.navigate("MarcadorPontoUsuario");
               }}
               disabled={isAnimating}
             >
@@ -1541,14 +1546,18 @@ export default function Profile() {
                   { backgroundColor: "rgba(249, 168, 37, 0.1)" },
                 ]}
               >
-                <Feather name="check-square" size={24} color="#f9a825" />
+                <MaterialIcons
+                  name="location-pin"
+                  size={24}
+                  color="#f94f25ff"
+                />
               </View>
               <View style={styles.menuModalOptionContent}>
                 <Text style={styles.menuModalOptionTitle}>
                   Marcador de Ponto
                 </Text>
                 <Text style={styles.menuModalOptionDescription}>
-                  Marque seu ponto
+                  Registre seu ponto
                 </Text>
               </View>
             </TouchableOpacity>

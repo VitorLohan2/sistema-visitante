@@ -154,7 +154,7 @@ const TicketDashboard = () => {
           <img src={logoImg} alt="DIME" />
           <span>Bem-vindo(a), {userData.nome}</span>
         </div>
-        <Link className="back-link" to="/profile">
+        <Link className="back-link" to="/listagem-visitante">
           <FiArrowLeft size={16} color="#E02041" />
           Voltar
         </Link>

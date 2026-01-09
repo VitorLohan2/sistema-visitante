@@ -114,6 +114,21 @@
   color: #059669;
 }
 
+/* Item Admin destacado */
+.nav-item.admin-item {
+  background: rgba(239, 68, 68, 0.1);
+  border-left-color: #ef4444;
+}
+
+.nav-item.admin-item:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-left-color: #ef4444;
+}
+
+.nav-item.admin-item svg {
+  color: #ef4444;
+}
+
 /* Badge de notificações */
 .notification-badge {
   position: absolute;

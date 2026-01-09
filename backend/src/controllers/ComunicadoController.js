@@ -1,33 +1,8 @@
 // src/controllers/ComunicadoController.js
 const connection = require("../database/connection");
 const { getIo } = require("../socket");
-
-function getBearerToken(request) {
-  const authHeader = request.headers.authorization;
-  if (!authHeader) return null;
-
-  const parts = authHeader.split(" ");
-  if (parts.length !== 2) return null;
-
-  const [scheme, token] = parts;
-  if (!/^Bearer$/i.test(scheme)) return null;
-
-  return token;
-}
-
-async function isAdmin(ong_id) {
-  try {
-    const ong = await connection("ongs")
-      .where("id", ong_id)
-      .where("type", "ADM")
-      .first();
-
-    return !!ong;
-  } catch (error) {
-    console.error("Erro ao verificar admin:", error);
-    return false;
-  }
-}
+const { getUsuarioId } = require("../utils/authHelper");
+const { isAdmin } = require("../middleware/permissaoMiddleware");
 
 // ✅ FUNÇÃO AUXILIAR: Desativar todos os comunicados
 async function desativarTodosComunicados() {
@@ -47,16 +22,18 @@ module.exports = {
   // ✅ BUSCAR COMUNICADO ATIVO (GLOBAL - PARA TODOS)
   async getAtivo(request, response) {
     try {
-      const ong_id = getBearerToken(request);
+      const usuario_id = getUsuarioId(request);
       console.log("📢 Buscando comunicado ativo global");
 
-      if (!ong_id) {
+      if (!usuario_id) {
         return response.status(401).json({ error: "Não autorizado" });
       }
 
-      const ongExists = await connection("ongs").where("id", ong_id).first();
-      if (!ongExists) {
-        return response.status(404).json({ error: "ONG não encontrada" });
+      const usuarioExists = await connection("usuarios")
+        .where("id", usuario_id)
+        .first();
+      if (!usuarioExists) {
+        return response.status(404).json({ error: "Usuário não encontrado" });
       }
 
       const comunicadoAtivo = await connection("comunicados")
@@ -83,16 +60,18 @@ module.exports = {
   // ✅ LISTAR TODOS OS COMUNICADOS (GLOBAL)
   async list(request, response) {
     try {
-      const ong_id = getBearerToken(request);
+      const usuario_id = getUsuarioId(request);
       console.log("📋 Listando todos os comunicados (global)");
 
-      if (!ong_id) {
+      if (!usuario_id) {
         return response.status(401).json({ error: "Não autorizado" });
       }
 
-      const ongExists = await connection("ongs").where("id", ong_id).first();
-      if (!ongExists) {
-        return response.status(404).json({ error: "ONG não encontrada" });
+      const usuarioExists = await connection("usuarios")
+        .where("id", usuario_id)
+        .first();
+      if (!usuarioExists) {
+        return response.status(404).json({ error: "Usuário não encontrado" });
       }
 
       const comunicados = await connection("comunicados").orderBy(
@@ -115,21 +94,21 @@ module.exports = {
   async create(request, response) {
     try {
       const io = getIo();
-      const ong_id = getBearerToken(request);
+      const usuario_id = getUsuarioId(request);
       const { titulo, mensagem, prioridade, ativo } = request.body;
 
       console.log("📝 Criando comunicado:", {
-        ong_id,
+        usuario_id,
         titulo,
         prioridade,
         ativo,
       });
 
-      if (!ong_id) {
+      if (!usuario_id) {
         return response.status(401).json({ error: "Não autorizado" });
       }
 
-      const adminCheck = await isAdmin(ong_id);
+      const adminCheck = await isAdmin(usuario_id);
       if (!adminCheck) {
         return response.status(403).json({
           error:
@@ -157,7 +136,7 @@ module.exports = {
 
       const result = await connection("comunicados")
         .insert({
-          ong_id,
+          usuario_id,
           titulo: titulo.trim(),
           mensagem: mensagem.trim(),
           prioridade: prioridade || "normal",
@@ -204,17 +183,17 @@ module.exports = {
   async update(request, response) {
     try {
       const io = getIo();
-      const ong_id = getBearerToken(request);
+      const usuario_id = getUsuarioId(request);
       const { id } = request.params;
       const updates = request.body;
 
-      console.log("🔄 Atualizando comunicado:", { id, ong_id, updates });
+      console.log("🔄 Atualizando comunicado:", { id, usuario_id, updates });
 
-      if (!ong_id) {
+      if (!usuario_id) {
         return response.status(401).json({ error: "Não autorizado" });
       }
 
-      const adminCheck = await isAdmin(ong_id);
+      const adminCheck = await isAdmin(usuario_id);
       if (!adminCheck) {
         return response.status(403).json({ error: "Acesso negado" });
       }
@@ -282,16 +261,16 @@ module.exports = {
   async delete(request, response) {
     try {
       const io = getIo();
-      const ong_id = getBearerToken(request);
+      const usuario_id = getUsuarioId(request);
       const { id } = request.params;
 
-      console.log("🗑️ Deletando comunicado:", { id, ong_id });
+      console.log("🗑️ Deletando comunicado:", { id, usuario_id });
 
-      if (!ong_id) {
+      if (!usuario_id) {
         return response.status(401).json({ error: "Não autorizado" });
       }
 
-      const adminCheck = await isAdmin(ong_id);
+      const adminCheck = await isAdmin(usuario_id);
       if (!adminCheck) {
         return response.status(403).json({ error: "Acesso negado" });
       }

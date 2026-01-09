@@ -161,7 +161,7 @@ export default function Dashboard() {
               <FiUsers size={24} />
               <span>Adicionar Funcionário</span>
             </a>
-            <a href="/empresa-visitantes" className="action-btn">
+            <a href="/cadastrar-empresa-visitante" className="action-btn">
               <FiClipboard size={24} />
               <span>Cadastrar Empresa</span>
             </a>

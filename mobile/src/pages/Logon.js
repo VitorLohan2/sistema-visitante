@@ -40,19 +40,40 @@ export default function Logon() {
     try {
       const response = await api.post("/sessions", { id: trimmedId });
 
+      console.log("📥 Resposta do login:", response.data); // ✅ Debug
+
+      // ✅ CORREÇÃO: Salvar o token primeiro
       if (response.data.token) {
         await AsyncStorage.setItem("@Auth:token", response.data.token);
       } else {
         console.warn("⚠️ Nenhum token retornado pelo backend!");
       }
 
-      await AsyncStorage.multiSet([
+      // ✅ CORREÇÃO PRINCIPAL: Adicionar setor_id ao AsyncStorage
+      const dadosParaSalvar = [
         ["@Auth:ongId", trimmedId],
         ["@Auth:ongName", response.data.name],
         ["@Auth:ongType", response.data.type],
-      ]);
+      ];
 
-      // 🔑 CORREÇÃO CHAVE: Notifica o SocketProvider para conectar
+      // ✅ Salvar setor_id se existir
+      if (response.data.setor_id) {
+        dadosParaSalvar.push([
+          "@Auth:userSetor",
+          String(response.data.setor_id),
+        ]);
+        console.log("✅ Setor salvo:", response.data.setor_id);
+      } else {
+        console.warn("⚠️ Setor não encontrado no response");
+      }
+
+      await AsyncStorage.multiSet(dadosParaSalvar);
+
+      // Verificação (apenas para debug - pode remover depois)
+      const setorSalvo = await AsyncStorage.getItem("@Auth:userSetor");
+      console.log("🔍 Verificação - Setor no AsyncStorage:", setorSalvo);
+
+      // 🔑 Notifica o SocketProvider para conectar
       setAuthStatus(true);
 
       navigation.reset({
@@ -60,6 +81,8 @@ export default function Logon() {
         routes: [{ name: "Profile" }],
       });
     } catch (error) {
+      console.error("❌ Erro no login:", error);
+
       let errorMessage = "Falha no login, tente novamente";
       if (error.response?.status === 400) errorMessage = "ID não encontrada";
       else if (error.response?.status === 500)
@@ -83,12 +106,12 @@ export default function Logon() {
           style={styles.input}
           placeholder="Sua ID"
           value={id}
-          onChangeText={(text) => setId(text)} // mantemos o texto original
+          onChangeText={(text) => setId(text)}
           autoCapitalize="none"
           autoCorrect={false}
           editable={!loading}
           returnKeyType="done"
-          onSubmitEditing={handleLogin} // login ao pressionar enter
+          onSubmitEditing={handleLogin}
         />
 
         <TouchableOpacity

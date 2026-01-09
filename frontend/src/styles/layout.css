@@ -20,6 +20,47 @@
   color: #64748b;
 }
 
+/* Página de Acesso Negado */
+.acesso-negado {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 80vh;
+  text-align: center;
+  padding: 2rem;
+}
+
+.acesso-negado h1 {
+  font-size: 3rem;
+  color: #dc2626;
+  margin-bottom: 1rem;
+}
+
+.acesso-negado p {
+  font-size: 1.125rem;
+  color: #64748b;
+  margin-bottom: 0.5rem;
+  max-width: 400px;
+}
+
+.acesso-negado button {
+  margin-top: 2rem;
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  background: #10b981;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.acesso-negado button:hover {
+  background: #059669;
+}
+
 /* Responsividade */
 @media (min-width: 1024px) {
   .layout-main {

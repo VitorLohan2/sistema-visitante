@@ -3,51 +3,94 @@
 .page-profile-header {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   margin-top: 80px;
   margin-bottom: 24px;
-  gap: 16px;
+  gap: 12px;
   padding: 20px;
-  background: linear-gradient(135deg, rgba(0,0,0,0.9) 20%, hsla(160, 90%, 25%, 0.9) 80%);
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.9) 20%,
+    hsla(160, 90%, 25%, 0.9) 80%
+  );
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
-.visitors-link, .history-link, .adm-link, .agendamentos-link, .tickets-link {
+.visitors-link,
+.history-link,
+.menu-link,
+.agendamentos-link,
+.tickets-link {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 20px;
-  border: 1px solid rgba(255,255,255,0.2);
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 10px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
   text-decoration: none;
   color: #ffffff;
-  background: rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
-.visitors-link:hover, .history-link:hover, .adm-link:hover, .agendamentos-link:hover, .tickets-link:hover {
-  background: rgba(255,255,255,0.2);
-  border-color: rgba(255,255,255,0.3);
+.visitors-link:hover,
+.history-link:hover,
+.menu-link:hover,
+.agendamentos-link:hover,
+.tickets-link:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
 }
 
-.visitors-link span, .history-link span, .adm-link span, .agendamentos-link span, .tickets-link span {
+/* Botão de Admin destacado */
+.menu-link.admin-link {
+  background: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.3) 0%,
+    rgba(220, 38, 38, 0.3) 100%
+  );
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.menu-link.admin-link:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.5) 0%,
+    rgba(220, 38, 38, 0.5) 100%
+  );
+  border-color: rgba(239, 68, 68, 0.7);
+}
+
+.visitors-link span,
+.history-link span,
+.menu-link span,
+.agendamentos-link span,
+.tickets-link span {
   color: #ffffff;
   background: transparent;
 }
 
-.visitors-link .icone2, .history-link .icone, .adm-link .icone, .agendamentos-link .icone, .tickets-link .icone {
+.visitors-link .icone2,
+.history-link .icone,
+.menu-link .icone,
+.agendamentos-link .icone,
+.tickets-link .icone {
   color: #ffffff;
   background: transparent;
 }
 
-.visitors-link svg, .history-link svg, .adm-link svg, .agendamentos-link svg {
+.visitors-link svg,
+.history-link svg,
+.menu-link svg,
+.agendamentos-link svg {
   margin-right: 0px;
 }
 
@@ -71,42 +114,39 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 0 2px rgb(220, 40, 40), 0 4px 8px rgba(0,0,0,0.3);
+  box-shadow:
+    0 0 0 2px rgb(220, 40, 40),
+    0 4px 8px rgba(0, 0, 0, 0.3);
   z-index: 1;
 }
 
-.adm-menu-container {
-  position: relative;
-  display: inline-block;
+/* Responsividade para telas menores */
+@media (max-width: 1200px) {
+  .page-profile-header {
+    justify-content: center;
+  }
 }
 
-.adm-submenu {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  background: rgba(0,0,0,0.9);
-  border: 1px solid rgba(255,255,255,0.2);
-  border-radius: 8px;
-  padding: 8px 0;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-  backdrop-filter: blur(10px);
-  z-index: 100;
-  min-width: 200px;
-}
+@media (max-width: 768px) {
+  .page-profile-header {
+    padding: 15px;
+    gap: 8px;
+  }
 
-.adm-submenu button {
-  width: 100%;
-  padding: 10px 15px;
-  background: transparent;
-  border: none;
-  text-align: left;
-  font-size: 14px;
-  cursor: pointer;
-  color: #ffffff;
-  transition: all 0.2s ease;
-}
+  .visitors-link,
+  .history-link,
+  .menu-link,
+  .agendamentos-link,
+  .tickets-link {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
 
-.adm-submenu button:hover {
-  background: rgba(255,255,255,0.1);
-  color: #ffffff;
+  .visitors-link span,
+  .history-link span,
+  .menu-link span,
+  .agendamentos-link span,
+  .tickets-link span {
+    display: none;
+  }
 }

@@ -18,7 +18,7 @@ import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityI
 
 import api from "../../services/api";
 import { useSocket } from "../../contexts/SocketContext";
-import { useIncidents } from "../../contexts/IncidentsContext"; // ✅ AQUI
+import { useIncidents } from "../../contexts/IncidentsContext";
 import { styles } from "./styles";
 
 // Assets
@@ -116,7 +116,7 @@ export default function Admin() {
       }).length;
 
       setDashboardData({
-        totalVisitantes: allIncidents.length, // ✅ CORRETO
+        totalVisitantes: allIncidents.length,
         visitantesHoje,
         visitantesMes,
         totalEmpresas: empresas.length,
@@ -371,7 +371,7 @@ export default function Admin() {
           >
             <View style={[styles.actionIcon, { backgroundColor: "#e8f5e9" }]}>
               <MaterialCommunityIcons
-                name="office-building"
+                name="office-building-cog"
                 size={24}
                 color="#10B981"
               />
@@ -383,22 +383,35 @@ export default function Admin() {
             <Feather name="chevron-right" size={24} color="#ccc" />
           </TouchableOpacity>
 
-          {/* Gerenciar Setores */}
+          {/* Cadastrar Funcionários */}
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => navigation.navigate("GerenciarSetores")}
+            onPress={() => navigation.navigate("CadastrarFuncionarios")}
           >
             <View style={[styles.actionIcon, { backgroundColor: "#e0f2f1" }]}>
-              <MaterialCommunityIcons
-                name="office-building"
-                size={24}
-                color="#009688"
-              />
+              <Feather name="user-plus" size={24} color="#009688" />
             </View>
             <View style={styles.actionContent}>
-              <Text style={styles.actionTitle}>Gerenciar Setores</Text>
+              <Text style={styles.actionTitle}>Cadastrar Funcionários</Text>
               <Text style={styles.actionDescription}>
-                Configure os setores da empresa
+                Adicionar funcionário
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={24} color="#ccc" />
+          </TouchableOpacity>
+
+          {/* Gerenciar Funcionários */}
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate("GerenciarFuncionarios")}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: "#e0f2f1" }]}>
+              <Feather name="users" size={24} color="#009688" />
+            </View>
+            <View style={styles.actionContent}>
+              <Text style={styles.actionTitle}>Gerenciar Funcionários</Text>
+              <Text style={styles.actionDescription}>
+                Controle de funcionários cadastrados
               </Text>
             </View>
             <Feather name="chevron-right" size={24} color="#ccc" />

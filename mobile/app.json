@@ -13,7 +13,10 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "SUA_API_KEY_GOOGLE_MAPS_IOS"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -27,9 +30,16 @@
         "RECORD_AUDIO",
         "READ_MEDIA_IMAGES",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
       ],
-      "package": "com.vitorlohanmatos.mobile"
+      "package": "com.vitorlohanmatos.mobile",
+      "config": {
+        "googleMaps": {
+          "apiKey": "SUA_API_KEY_GOOGLE_MAPS_ANDROID"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -39,6 +49,13 @@
         "expo-camera",
         {
           "cameraPermission": "Precisamos acessar sua câmera para escanear códigos de barras"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Permite acesso à localização para registrar o ponto de trabalho.",
+          "locationWhenInUsePermission": "Permite acesso à localização enquanto o app está em uso."
         }
       ]
     ],

@@ -1,0 +1,138 @@
+/* Estilos do componente Table */
+
+.tabela-container {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #dcdce6;
+}
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.tabela thead {
+  background: #f0f0f5;
+}
+
+.tabela th {
+  padding: 14px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #41414d;
+  border-bottom: 1px solid #dcdce6;
+  white-space: nowrap;
+}
+
+.tabela td {
+  padding: 14px 16px;
+  font-size: 14px;
+  color: #41414d;
+  border-bottom: 1px solid #dcdce6;
+}
+
+.tabela tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Compacta */
+.tabela-compacta .tabela th,
+.tabela-compacta .tabela td {
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+/* Listrada */
+.tabela-listrada .tabela tbody tr:nth-child(even) {
+  background: #f9f9fb;
+}
+
+/* Clicável */
+.tabela-clicavel .tabela tbody tr {
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.tabela-clicavel .tabela tbody tr:hover {
+  background: #f0f0f5;
+}
+
+/* Estado vazio */
+.tabela-vazia {
+  text-align: center;
+  color: #a8a8b3;
+  padding: 40px 16px !important;
+}
+
+/* Coluna de ações */
+.tabela-acoes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Skeleton loading */
+.tabela-skeleton-row {
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.tabela-skeleton {
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f5 25%, #e8e8ed 50%, #f0f0f5 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shine 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes skeleton-shine {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Tema escuro */
+[data-theme="dark"] .tabela-container {
+  border-color: #16213e;
+}
+
+[data-theme="dark"] .tabela thead {
+  background: #16213e;
+}
+
+[data-theme="dark"] .tabela th {
+  color: #e0e0e0;
+  border-bottom-color: #16213e;
+}
+
+[data-theme="dark"] .tabela td {
+  color: #e0e0e0;
+  border-bottom-color: #16213e;
+}
+
+[data-theme="dark"] .tabela-listrada .tabela tbody tr:nth-child(even) {
+  background: rgba(22, 33, 62, 0.5);
+}
+
+[data-theme="dark"] .tabela-clicavel .tabela tbody tr:hover {
+  background: #16213e;
+}
+
+[data-theme="dark"] .tabela-skeleton {
+  background: linear-gradient(90deg, #16213e 25%, #1a1a2e 50%, #16213e 75%);
+  background-size: 200% 100%;
+}

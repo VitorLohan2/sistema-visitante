@@ -1,99 +1,101 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Link, useHistory } from 'react-router-dom';
-import { FiArrowLeft } from 'react-icons/fi';
-import api from '../../services/api';
-import './styles.css';
-import logoImg from '../../assets/logo.svg';
-import Loading from '../../components/Loading';
+import React, { useState, useEffect, useRef } from "react";
+import { Link, useHistory } from "react-router-dom";
+import { FiArrowLeft } from "react-icons/fi";
+import api from "../../services/api";
+import { usePermissoes } from "../../hooks/usePermissoes";
+import "./styles.css";
+import logoImg from "../../assets/logo.svg";
+import Loading from "../../components/Loading";
 
 // Dados estruturais dos setores e funções
 const setoresEFuncoes = {
-  'EXPEDIÇÃO': [
-    'TRAINEE GESTÃO LOGÍSTICA',
-    'TRAINEE ASSIST. DE EXPEDIÇÃO',
-    'ASSISTENTE DE EXPEDIÇÃO I',
-    'ASSIST. DE EXPEDIÇÃO II',
-    'ASSIST. DE EXPEDIÇÃO III',
-    'ASSIST. DE EXPEDIÇÃO IV',
-    'AUXILIAR DE EXPEDIÇÃO',
-    'ASSIST. DE SALA NOBRE',
-    'CONFERENTE DE CARGA I',
-    'CONFERENTE DE CARGA II',
-    'AUX. CONFERENTE DE CARGA',
-    'MECANICO DE VEICULOS',
-    'MANOBRISTA',
-    'LAVADOR DE VEICULOS II'      
+  EXPEDIÇÃO: [
+    "TRAINEE GESTÃO LOGÍSTICA",
+    "TRAINEE ASSIST. DE EXPEDIÇÃO",
+    "ASSISTENTE DE EXPEDIÇÃO I",
+    "ASSIST. DE EXPEDIÇÃO II",
+    "ASSIST. DE EXPEDIÇÃO III",
+    "ASSIST. DE EXPEDIÇÃO IV",
+    "AUXILIAR DE EXPEDIÇÃO",
+    "ASSIST. DE SALA NOBRE",
+    "CONFERENTE DE CARGA I",
+    "CONFERENTE DE CARGA II",
+    "AUX. CONFERENTE DE CARGA",
+    "MECANICO DE VEICULOS",
+    "MANOBRISTA",
+    "LAVADOR DE VEICULOS II",
   ],
-  'ADMINISTRATIVO': [
-    'ASSISTENTE ADMINISTRATIVO',
-    'ANALISTA ADMINISTRATIVO',
-    'GERENTE ADMINISTRATIVO'
-  ]
+  ADMINISTRATIVO: [
+    "ASSISTENTE ADMINISTRATIVO",
+    "ANALISTA ADMINISTRATIVO",
+    "GERENTE ADMINISTRATIVO",
+  ],
 };
 
 export default function CadastrarFuncionario() {
   const [form, setForm] = useState({
-    cracha: '',
-    nome: '',
-    setor: '',
-    funcao: '',
-    data_admissao: new Date().toISOString().split('T')[0]
+    cracha: "",
+    nome: "",
+    setor: "",
+    funcao: "",
+    data_admissao: new Date().toISOString().split("T")[0],
   });
   const [loading, setLoading] = useState(false);
   const [funcoesDisponiveis, setFuncoesDisponiveis] = useState([]);
-  const [userType, setUserType] = useState(null); // ✅ Controlar tipo do usuário
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true); // ✅ Loading da verificação
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const history = useHistory();
-  const ongName = localStorage.getItem('ongName');
+  const ongName = localStorage.getItem("ongName");
   const isMounted = useRef(true);
 
-  // ✅ VERIFICAR AUTENTICAÇÃO ADM NO MOUNT
+  const { isAdmin, temPermissao, loading: permissoesLoading } = usePermissoes();
+
+  // ✅ VERIFICAR AUTENTICAÇÃO VIA RBAC
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const ongId = localStorage.getItem('ongId');
-        const ongTypeStored = localStorage.getItem('ongType') || localStorage.getItem('userType');
-        
-        console.log('=== DEBUG CADASTRAR FUNCIONÁRIO ===');
-        console.log('ongId:', ongId);
-        console.log('ongName:', ongName);
-        console.log('ongType/userType:', ongTypeStored);
-        
+        const ongId = localStorage.getItem("ongId");
+
+        console.log("=== DEBUG CADASTRAR FUNCIONÁRIO ===");
+        console.log("ongId:", ongId);
+        console.log("ongName:", ongName);
+
         // Se não tiver ID, redirecionar para login
         if (!ongId) {
-          alert('Sessão expirada. Faça login novamente.');
-          history.push('/');
+          alert("Sessão expirada. Faça login novamente.");
+          history.push("/");
           return;
         }
-        
-        // ✅ Verificar se é ADM/ADMIN
-        if (ongTypeStored !== 'ADM' && ongTypeStored !== 'ADMIN') {
-          alert('Somente administradores tem permissão!');
-          history.push('/profile');
+
+        // Aguarda carregamento das permissões
+        if (permissoesLoading) return;
+
+        // ✅ Verificar permissão via RBAC
+        const podeAcessar = isAdmin || temPermissao("funcionario_criar");
+        if (!podeAcessar) {
+          alert("Somente administradores tem permissão!");
+          history.push("/listagem-visitante");
           return;
         }
-        
-        setUserType(ongTypeStored);
+
         setIsCheckingAuth(false);
-        
       } catch (error) {
-        console.error('Erro ao verificar autenticação:', error);
-        history.push('/profile');
+        console.error("Erro ao verificar autenticação:", error);
+        history.push("/listagem-visitante");
       }
     };
 
     checkAuth();
-    
+
     return () => {
       isMounted.current = false;
     };
-  }, [history]);
+  }, [history, isAdmin, temPermissao, permissoesLoading]);
 
   // Atualiza as funções disponíveis quando o setor é alterado
   useEffect(() => {
     if (form.setor && setoresEFuncoes[form.setor]) {
       setFuncoesDisponiveis(setoresEFuncoes[form.setor]);
-      setForm(prev => ({ ...prev, funcao: '' })); // Reseta a função quando muda o setor
+      setForm((prev) => ({ ...prev, funcao: "" })); // Reseta a função quando muda o setor
     } else {
       setFuncoesDisponiveis([]);
     }
@@ -103,24 +105,24 @@ export default function CadastrarFuncionario() {
     e.preventDefault();
     try {
       setLoading(true);
-      await api.post('/funcionarios', form, {
-        headers: { Authorization: localStorage.getItem('ongId') }
+      await api.post("/funcionarios", form, {
+        headers: { Authorization: localStorage.getItem("ongId") },
       });
-      
+
       if (isMounted.current) {
-        alert('Funcionário cadastrado com sucesso!');
-        history.push('/funcionarios');
+        alert("Funcionário cadastrado com sucesso!");
+        history.push("/funcionarios");
       }
     } catch (error) {
       if (isMounted.current) {
         // ✅ Tratar erro de permissão
         if (error.response?.status === 403) {
-          alert('Somente administradores tem permissão!');
-          history.push('/profile');
+          alert("Somente administradores tem permissão!");
+          history.push("/listagem-visitante");
           return;
         }
-        
-        alert(error.response?.data?.error || 'Erro ao cadastrar funcionário');
+
+        alert(error.response?.data?.error || "Erro ao cadastrar funcionário");
         setLoading(false);
       }
     }
@@ -128,23 +130,18 @@ export default function CadastrarFuncionario() {
 
   const handleNomeChange = (e) => {
     // Converte o valor para maiúsculas e atualiza o estado
-    setForm({...form, nome: e.target.value.toUpperCase()});
+    setForm({ ...form, nome: e.target.value.toUpperCase() });
   };
 
   const handleCrachaChange = (e) => {
     // Remove todos os caracteres não numéricos
-    const value = e.target.value.replace(/\D/g, '');
-    setForm({...form, cracha: value});
+    const value = e.target.value.replace(/\D/g, "");
+    setForm({ ...form, cracha: value });
   };
 
   // ✅ Mostrar loading enquanto verifica autenticação
   if (isCheckingAuth) {
     return <Loading progress={50} />;
-  }
-
-  // ✅ Se não é ADM, não renderizar nada (já redirecionou)
-  if (userType !== 'ADM' && userType !== 'ADMIN') {
-    return null;
   }
 
   return (
@@ -182,11 +179,7 @@ export default function CadastrarFuncionario() {
 
             <div className="input-group">
               <label>Nome Completo:</label>
-              <input
-                value={form.nome}
-                onChange={handleNomeChange}
-                required
-              />
+              <input value={form.nome} onChange={handleNomeChange} required />
             </div>
 
             <div className="form-row">
@@ -194,13 +187,15 @@ export default function CadastrarFuncionario() {
                 <label>Setor:</label>
                 <select
                   value={form.setor}
-                  onChange={(e) => setForm({...form, setor: e.target.value})}
+                  onChange={(e) => setForm({ ...form, setor: e.target.value })}
                   required
                   className="input-select" // Classe modificada para combinar com o estilo
                 >
                   <option value="">Selecione um setor</option>
-                  {Object.keys(setoresEFuncoes).map(setor => (
-                    <option key={setor} value={setor}>{setor}</option>
+                  {Object.keys(setoresEFuncoes).map((setor) => (
+                    <option key={setor} value={setor}>
+                      {setor}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -209,14 +204,16 @@ export default function CadastrarFuncionario() {
                 <label>Função:</label>
                 <select
                   value={form.funcao}
-                  onChange={(e) => setForm({...form, funcao: e.target.value})}
+                  onChange={(e) => setForm({ ...form, funcao: e.target.value })}
                   required
                   disabled={!form.setor}
                   className="input-select" // Classe modificada para combinar com o estilo
                 >
                   <option value="">Selecione uma função</option>
-                  {funcoesDisponiveis.map(funcao => (
-                    <option key={funcao} value={funcao}>{funcao}</option>
+                  {funcoesDisponiveis.map((funcao) => (
+                    <option key={funcao} value={funcao}>
+                      {funcao}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -227,18 +224,16 @@ export default function CadastrarFuncionario() {
               <input
                 type="date"
                 value={form.data_admissao}
-                onChange={(e) => setForm({...form, data_admissao: e.target.value})}
+                onChange={(e) =>
+                  setForm({ ...form, data_admissao: e.target.value })
+                }
                 required
               />
             </div>
 
             <div className="form-actions">
-              <button 
-                type="submit" 
-                className="save-button"
-                disabled={loading}
-              >
-                {loading ? 'Salvando...' : 'Salvar Funcionário'}
+              <button type="submit" className="save-button" disabled={loading}>
+                {loading ? "Salvando..." : "Salvar Funcionário"}
               </button>
               <Link to="/funcionarios" className="cancel-button">
                 Cancelar

@@ -1,72 +1,141 @@
 // src/components/ProfileMenu.js
-import React, { useState, useRef, useEffect } from 'react';
-import { FiUsers, FiClock, FiMessageSquare, FiCoffee, FiSettings, FiGitlab } from 'react-icons/fi';
-import { useHistory } from 'react-router-dom';
+import React from "react";
+import {
+  FiUsers,
+  FiClock,
+  FiMessageSquare,
+  FiCoffee,
+  FiSettings,
+  FiKey,
+  FiShield,
+  FiBriefcase,
+  FiUserPlus,
+  FiLogIn,
+} from "react-icons/fi";
+import { useHistory } from "react-router-dom";
+import { usePermissoes } from "../hooks/usePermissoes";
 
-import '../styles/profile-menu.css';
+import "../styles/profile-menu.css";
 
-
-export default function ProfileMenu({ userData, unseenCount, handleOpenConfigModal }) {
+export default function ProfileMenu({
+  userData,
+  unseenCount,
+  handleOpenConfigModal,
+}) {
   const history = useHistory();
-  const [showAdmMenu, setShowAdmMenu] = useState(false);
-  const admMenuRef = useRef(null);
+  const { isAdmin, temPermissao } = usePermissoes();
 
-  // Fecha menu ADM ao clicar fora
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (admMenuRef.current && !admMenuRef.current.contains(event.target)) {
-        setShowAdmMenu(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  // Verifica se pode ver agendamentos
+  const podeVerAgendamentos =
+    isAdmin ||
+    temPermissao("agendamento_visualizar") ||
+    [3, 4, 6].includes(userData?.setor_id);
 
   return (
     <div className="page-profile-header">
-      <button onClick={() => history.push('/visitors')} className="visitors-link">
+      {/* Visitantes - todos podem ver */}
+      <button
+        onClick={() => history.push("/visitantes")}
+        className="visitors-link"
+      >
         <FiUsers size={20} className="icone2" />
         <span>Ver Visitantes</span>
       </button>
 
-      <button onClick={() => history.push('/history')} className="history-link">
+      {/* Histórico - todos podem ver */}
+      <button
+        onClick={() => history.push("/historico-visitante")}
+        className="history-link"
+      >
         <FiClock size={20} className="icone" />
         <span>Histórico</span>
       </button>
-        
-      <button onClick={() => history.push('/ticket-dashboard')} className="tickets-link">
+
+      {/* Tickets - todos podem ver */}
+      <button
+        onClick={() => history.push("/ticket-dashboard")}
+        className="tickets-link"
+      >
         <FiMessageSquare size={20} className="icone" />
         <span>Tickets</span>
-        {userData.setor === 'Segurança' && unseenCount > 0 && ( 
+        {userData?.setor === "Segurança" && unseenCount > 0 && (
           <span className="notification-badge">
-            {unseenCount > 9 ? '9+' : unseenCount}
+            {unseenCount > 9 ? "9+" : unseenCount}
           </span>
         )}
       </button>
-        
-      {userData.type === 'ADM' && (
-        <div className="adm-menu-container" ref={admMenuRef}>
-          <button onClick={() => setShowAdmMenu(prev => !prev)} className="adm-link">
-            <FiGitlab size={20} className="icone" />
-            <span>Administrativo</span>
-          </button>
 
-          {showAdmMenu && (
-            <div className="adm-submenu">
-              <button onClick={() => history.push('/chave-cadastro')}>Chave de Cadastro</button>
-              <button onClick={() => history.push('/empresa-visitantes')}>Cadastrar Empresa</button>
-              <button onClick={() => history.push('/funcionarios')}>Gerenciar Funcionários</button>
-              <button onClick={() => history.push('/funcionarios/cadastrar')}>Cadastrar Funcionário</button>
-              <button onClick={() => history.push('/ponto')}>Bipagem Entrada/Saída</button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {(userData.type === 'ADM' || [3, 4, 6].includes(userData.setor_id)) && (
-        <button onClick={() => history.push('/agendamentos')} className="agendamentos-link">
+      {/* Agendamentos - por permissão ou setor */}
+      {podeVerAgendamentos && (
+        <button
+          onClick={() => history.push("/agendamentos")}
+          className="agendamentos-link"
+        >
           <FiCoffee size={20} className="icone" />
           <span>Agendamentos</span>
+        </button>
+      )}
+
+      {/* Chave de Cadastro - por permissão */}
+      {(isAdmin || temPermissao("codigo_visualizar")) && (
+        <button
+          onClick={() => history.push("/chave-cadastro")}
+          className="menu-link"
+        >
+          <FiKey size={20} className="icone" />
+          <span>Chave Cadastro</span>
+        </button>
+      )}
+
+      {/* Cadastrar Empresa - por permissão */}
+      {(isAdmin || temPermissao("empresa_criar")) && (
+        <button
+          onClick={() => history.push("/cadastrar-empresa-visitante")}
+          className="menu-link"
+        >
+          <FiBriefcase size={20} className="icone" />
+          <span>Cadastrar Empresa</span>
+        </button>
+      )}
+
+      {/* Funcionários - por permissão */}
+      {(isAdmin || temPermissao("funcionario_visualizar")) && (
+        <button
+          onClick={() => history.push("/funcionarios")}
+          className="menu-link"
+        >
+          <FiUsers size={20} className="icone" />
+          <span>Funcionários</span>
+        </button>
+      )}
+
+      {/* Cadastrar Funcionário - por permissão */}
+      {(isAdmin || temPermissao("funcionario_criar")) && (
+        <button
+          onClick={() => history.push("/funcionarios/cadastrar")}
+          className="menu-link"
+        >
+          <FiUserPlus size={20} className="icone" />
+          <span>Cadastrar Func.</span>
+        </button>
+      )}
+
+      {/* Ponto/Bipagem - por permissão */}
+      {(isAdmin || temPermissao("ponto_visualizar")) && (
+        <button onClick={() => history.push("/ponto")} className="menu-link">
+          <FiLogIn size={20} className="icone" />
+          <span>Ponto</span>
+        </button>
+      )}
+
+      {/* Gerenciar Permissões - somente ADMIN */}
+      {isAdmin && (
+        <button
+          onClick={() => history.push("/gerenciamento-permissoes")}
+          className="menu-link admin-link"
+        >
+          <FiShield size={20} className="icone" />
+          <span>Permissões</span>
         </button>
       )}
 

@@ -1,17 +1,10 @@
 // controllers/AgendamentoController.js
 const connection = require("../database/connection");
 const { getIo } = require("../socket");
-
-// ✅ Helper para extrair token do Bearer
-function getBearerToken(req) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return null;
-  const parts = authHeader.split(" ");
-  if (parts.length === 2 && parts[0] === "Bearer") {
-    return parts[1];
-  }
-  return authHeader;
-}
+const { getUsuarioId } = require("../utils/authHelper");
+const {
+  isAdmin: verificarAdmin,
+} = require("../middleware/permissaoMiddleware");
 
 module.exports = {
   async create(request, response) {
@@ -26,12 +19,12 @@ module.exports = {
       criado_por,
     } = request.body;
 
-    const ong_id = getBearerToken(request);
+    const usuario_id = getUsuarioId(request);
 
     try {
       console.log("=== DEBUG CRIAR AGENDAMENTO ===");
       console.log("Horário recebido:", horario_agendado);
-      console.log("ong_id do token:", ong_id);
+      console.log("usuario_id do token:", usuario_id);
       console.log("Arquivo recebido:", request.file);
 
       if (request.file) {
@@ -43,19 +36,21 @@ module.exports = {
         });
       }
 
-      if (!ong_id) {
+      if (!usuario_id) {
         return response.status(401).json({
           error: "Authorization header é obrigatório",
         });
       }
 
-      // Buscar ONG
-      const ong = await connection("ongs").where("id", ong_id).first();
+      // Buscar usuario
+      const usuario = await connection("usuarios")
+        .where("id", usuario_id)
+        .first();
 
-      if (!ong) {
+      if (!usuario) {
         return response.status(404).json({
-          error: "ONG não encontrada",
-          id_enviado: ong_id,
+          error: "usuario não encontrada",
+          id_enviado: usuario_id,
         });
       }
 
@@ -114,7 +109,7 @@ module.exports = {
           horario_agendado: horarioAjustado,
           observacao: observacao ? observacao.trim() : null,
           criado_por,
-          ong_id,
+          usuario_id,
           foto_colaborador,
         })
         .returning("*");
@@ -134,7 +129,7 @@ module.exports = {
         foto_colaborador: agendamento.foto_colaborador,
         confirmado: agendamento.confirmado || false,
         presente: agendamento.presente || false,
-        ong_id: agendamento.ong_id,
+        usuario_id: agendamento.usuario_id,
         timestamp: new Date(),
       };
 
@@ -197,26 +192,29 @@ module.exports = {
   async confirmar(request, response) {
     const io = getIo();
     const { id } = request.params;
-    const ong_id = getBearerToken(request);
+    const usuario_id = getUsuarioId(request);
 
     try {
       console.log("=== DEBUG CONFIRMAR AGENDAMENTO ===");
       console.log("Agendamento ID:", id);
-      console.log("ONG ID:", ong_id);
+      console.log("usuario ID:", usuario_id);
 
-      if (!ong_id) {
+      if (!usuario_id) {
         return response
           .status(401)
           .json({ error: "Authorization header é obrigatório" });
       }
 
-      const ong = await connection("ongs").where("id", ong_id).first();
+      const usuario = await connection("usuarios")
+        .where("id", usuario_id)
+        .first();
 
-      if (!ong) {
-        return response.status(404).json({ error: "ONG não encontrada" });
+      if (!usuario) {
+        return response.status(404).json({ error: "usuario não encontrada" });
       }
 
-      const podeConfirmar = ong.type === "ADM" || ong.setor_id === 4;
+      const userIsAdmin = await verificarAdmin(usuario_id);
+      const podeConfirmar = userIsAdmin || usuario.setor_id === 4;
 
       if (!podeConfirmar) {
         return response.status(403).json({
@@ -246,11 +244,11 @@ module.exports = {
         .update({
           confirmado: true,
           confirmado_em: new Date().toISOString(),
-          confirmado_por: ong.name,
+          confirmado_por: usuario.name,
         })
         .returning("*");
 
-      console.log("✅ Agendamento confirmado por:", ong.name);
+      console.log("✅ Agendamento confirmado por:", usuario.name);
 
       io.to("global").emit("agendamento:update", agendamentoAtualizado);
       console.log("📡 Evento agendamento:update emitido (confirmação)");
@@ -270,19 +268,21 @@ module.exports = {
   async delete(request, response) {
     const io = getIo();
     const { id } = request.params;
-    const ong_id = getBearerToken(request);
+    const usuario_id = getUsuarioId(request);
 
     try {
-      if (!ong_id) {
+      if (!usuario_id) {
         return response
           .status(401)
           .json({ error: "Authorization header é obrigatório" });
       }
 
-      const ong = await connection("ongs").where("id", ong_id).first();
+      const usuario = await connection("usuarios")
+        .where("id", usuario_id)
+        .first();
 
-      if (!ong) {
-        return response.status(404).json({ error: "ONG não encontrada" });
+      if (!usuario) {
+        return response.status(404).json({ error: "usuario não encontrada" });
       }
 
       const agendamento = await connection("agendamentos")
@@ -295,7 +295,7 @@ module.exports = {
           .json({ error: "Agendamento não encontrado" });
       }
 
-      if (agendamento.ong_id !== ong_id && ong.type !== "ADM") {
+      if (agendamento.usuario_id !== usuario_id && usuario.type !== "ADM") {
         return response
           .status(403)
           .json({ error: "Não autorizado a excluir este agendamento" });
@@ -320,18 +320,20 @@ module.exports = {
   async presenca(request, response) {
     const io = getIo();
     const { id } = request.params;
-    const ong_id = getBearerToken(request);
+    const usuario_id = getUsuarioId(request);
 
     try {
-      if (!ong_id) {
+      if (!usuario_id) {
         return response
           .status(401)
           .json({ error: "Authorization header é obrigatório" });
       }
 
-      const ong = await connection("ongs").where("id", ong_id).first();
+      const usuario = await connection("usuarios")
+        .where("id", usuario_id)
+        .first();
 
-      if (!ong) {
+      if (!usuario) {
         return response.status(404).json({ error: "PERFIL não encontrada" });
       }
 
@@ -361,11 +363,11 @@ module.exports = {
         .update({
           presente: true,
           presente_em: new Date().toISOString(),
-          presente_por: ong.name,
+          presente_por: usuario.name,
         })
         .returning("*");
 
-      console.log("✅ Presença registrada por:", ong.name);
+      console.log("✅ Presença registrada por:", usuario.name);
 
       io.to("global").emit("agendamento:update", agendamentoAtualizado);
       console.log("📡 Evento agendamento:update emitido (presença)");
