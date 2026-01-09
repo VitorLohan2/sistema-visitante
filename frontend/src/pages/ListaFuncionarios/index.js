@@ -5,7 +5,6 @@ import api from "../../services/api";
 import "./styles.css";
 
 // Componentes reutilizáveis
-import Loading from "../../components/Loading";
 import CabecalhoPagina from "../../components/CabecalhoPagina";
 
 // Hooks customizados
@@ -99,13 +98,8 @@ export default function ListaFuncionarios() {
     }
   };
 
-  // Mostrar loading enquanto verifica autenticação
-  if (verificando) {
-    return <Loading progress={50} />;
-  }
-
   // Se não é ADM, não renderizar nada (já redirecionou)
-  if (!eAdmin) {
+  if (!eAdmin && !verificando) {
     return null;
   }
 
@@ -115,13 +109,8 @@ export default function ListaFuncionarios() {
       funcionario.cracha.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (loading)
-    return <Loading progress={100} message="Carregando Listagem..." />;
-
   return (
     <div className="funcionarios-container">
-      {loading && <Loading progress={100} />}
-
       <CabecalhoPagina nomeUsuario={usuarioNome} />
 
       <div className="content">
@@ -162,9 +151,7 @@ export default function ListaFuncionarios() {
                   {filteredFuncionarios.length === 0 ? (
                     <tr>
                       <td colSpan="6" style={{ textAlign: "center" }}>
-                        {loading
-                          ? "Carregando..."
-                          : "Nenhum funcionário encontrado"}
+                        Nenhum funcionário encontrado
                       </td>
                     </tr>
                   ) : (

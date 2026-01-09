@@ -7,7 +7,6 @@ import {
   FiBuilding,
   FiFileText,
   FiCheck,
-  FiArrowLeft,
   FiCalendar,
   FiX,
   FiEdit,
@@ -23,11 +22,8 @@ import { saveAs } from "file-saver";
 import api from "../../services/api";
 import { useAuth } from "../../hooks/useAuth";
 import { usePermissoes } from "../../hooks/usePermissoes";
-import Loading from "../../components/Loading";
 
 import "./styles.css";
-
-import logoImg from "../../assets/logo.svg";
 
 export default function Agendamentos() {
   const [agendamentos, setAgendamentos] = useState([]);
@@ -252,29 +248,23 @@ export default function Agendamentos() {
     doc.save("presencas.pdf");
   }
 
-  if (loading)
-    return <Loading progress={100} message="Carregando agendamentos..." />;
+  if (loading) return <div className="loading">Carregando agendamentos...</div>;
+
+  // Contar agendamentos em aberto (não confirmados)
+  const agendamentosAbertos = agendamentos.filter(
+    (ag) => !ag.confirmado
+  ).length;
 
   return (
     <div className="page-container">
       <header className="page-header">
         <div className="page-title-wrapper">
-          <img src={logoImg} alt="DIME" />
-          <span>Bem-vindo(a), {ongName}</span>
-        </div>
-
-        <div className="acao-novo-agendamento">
-          {ongId && userPodeCriar && (
-            <Link className="agendamento-button" to="/agendamentos/novo">
-              <FiPlus size={16} />
-              Novo Agendamento
-            </Link>
-          )}
-
-          <Link className="back-link" to="/listagem-visitante">
-            <FiArrowLeft size={16} color="#E02041" />
-            Voltar
-          </Link>
+          <div className="page-title-group">
+            <h1 className="page-title">Agendamentos de Visitas</h1>
+            <span className="page-subtitle">
+              {agendamentosAbertos} agendamento(s) em aberto
+            </span>
+          </div>
         </div>
       </header>
       <div className="sub-informacao-agendamentos">

@@ -13,6 +13,8 @@ const memoryCache = {
   empresas: null,
   setores: null,
   responsaveis: null,
+  historico: null,
+  tickets: null,
   lastUpdate: null,
 };
 
@@ -22,6 +24,8 @@ const CACHE_KEYS = {
   EMPRESAS: "cache_empresas",
   SETORES: "cache_setores",
   RESPONSAVEIS: "cache_responsaveis",
+  HISTORICO: "cache_historico",
+  TICKETS: "cache_tickets",
   LAST_UPDATE: "cache_last_update",
   USER_DATA: "cache_user_data",
 };
@@ -150,18 +154,60 @@ export function removeVisitanteFromCache(id) {
 }
 
 /**
+ * Adiciona um item ao cache de histórico
+ */
+export function addHistoricoToCache(visitante) {
+  const historico = getCache("historico") || [];
+  const newHistorico = [visitante, ...historico].sort((a, b) => {
+    const dateA = new Date(a.entry_date || a.created_at);
+    const dateB = new Date(b.entry_date || b.created_at);
+    return dateB - dateA; // Mais recente primeiro
+  });
+  setCache("historico", newHistorico);
+  return newHistorico;
+}
+
+/**
+ * Atualiza um visitante no cache de histórico
+ */
+export function updateHistoricoInCache(id, dadosAtualizados) {
+  const historico = getCache("historico") || [];
+  const newHistorico = historico
+    .map((v) => (v.id === id ? { ...v, ...dadosAtualizados } : v))
+    .sort((a, b) => {
+      const dateA = new Date(a.entry_date || a.created_at);
+      const dateB = new Date(b.entry_date || b.created_at);
+      return dateB - dateA;
+    });
+  setCache("historico", newHistorico);
+  return newHistorico;
+}
+
+/**
+ * Remove um visitante do cache de histórico
+ */
+export function removeHistoricoFromCache(id) {
+  const historico = getCache("historico") || [];
+  const newHistorico = historico.filter((v) => v.id !== id);
+  setCache("historico", newHistorico);
+  return newHistorico;
+}
+
+/**
  * Retorna estatísticas do cache
  */
 export function getCacheStats() {
   const visitantes = getCache("visitantes") || [];
   const empresas = getCache("empresas") || [];
   const setores = getCache("setores") || [];
+  const historico = getCache("historico") || [];
   const lastUpdate = getCache("lastUpdate");
 
   return {
     visitantes: visitantes.length,
     empresas: empresas.length,
     setores: setores.length,
+    historico: historico.length,
     lastUpdate: lastUpdate ? new Date(parseInt(lastUpdate)) : null,
     isLoaded: isCacheLoaded(),
   };
@@ -175,5 +221,8 @@ export default {
   addVisitanteToCache,
   updateVisitanteInCache,
   removeVisitanteFromCache,
+  addHistoricoToCache,
+  updateHistoricoInCache,
+  removeHistoricoFromCache,
   getCacheStats,
 };

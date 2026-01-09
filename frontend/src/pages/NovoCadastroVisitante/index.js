@@ -1,13 +1,31 @@
 // src/pages/NovoCadastroVisitante/index.js
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useHistory } from "react-router-dom";
-import { FiArrowLeft, FiCamera } from "react-icons/fi";
+import {
+  FiArrowLeft,
+  FiArrowRight,
+  FiCamera,
+  FiUser,
+  FiTruck,
+  FiImage,
+  FiCheck,
+  FiX,
+  FiPlus,
+} from "react-icons/fi";
 import api from "../../services/api";
 import "./styles.css";
 import logoImg from "../../assets/logo.svg";
-import Loading from "../../components/Loading";
 
 export default function NewVisitor() {
+  // Etapas do formulário
+  const STEPS = [
+    { id: 1, title: "Dados Pessoais", icon: FiUser },
+    { id: 2, title: "Veículo", icon: FiTruck },
+    { id: 3, title: "Fotos", icon: FiImage },
+  ];
+
+  const [currentStep, setCurrentStep] = useState(1);
+
   // Lista de cores pré-definidas
   const opcoesCores = [
     "PRETO",
@@ -44,26 +62,21 @@ export default function NewVisitor() {
   const [cameraAtiva, setCameraAtiva] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
-  //Tela de carregamento
-  const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
+  // Tela de carregamento com progresso real
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState("");
 
   // Modal Confirmar Cadastro
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  // Modal de visualização de imagem ampliada
+  const [selectedImage, setSelectedImage] = useState(null);
 
   const [errors, setErrors] = useState({
     placa_veiculo: "",
     cor_veiculo: "",
   });
-
-  const simulateProgress = () => {
-    let value = 0;
-    const interval = setInterval(() => {
-      value += 15;
-      setProgress(value);
-      if (value >= 100) clearInterval(interval);
-    }, 150);
-  };
 
   // Busca empresas e setores do banco de dados
   useEffect(() => {
@@ -100,7 +113,6 @@ export default function NewVisitor() {
     return cleaned;
   };
 
-  // ← NOVA FUNÇÃO PARA FORMATAR PLACA
   const formatPlaca = (value) => {
     const cleaned = value
       .replace(/[^a-zA-Z0-9]/g, "")
@@ -111,7 +123,6 @@ export default function NewVisitor() {
       return cleaned;
     }
 
-    // Formato Mercosul: AAA1A11 ou Formato antigo: AAA1111
     if (cleaned.length > 3) {
       return `${cleaned.slice(0, 3)}${cleaned.slice(3, 4)}${cleaned.slice(4, 5)}${cleaned.slice(5, 7)}`;
     }
@@ -119,7 +130,6 @@ export default function NewVisitor() {
     return cleaned;
   };
 
-  // Adicione esta função para validar a placa em tempo real
   const validatePlaca = (value) => {
     const cleaned = value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
     if (cleaned.length > 0 && cleaned.length < 7) {
@@ -144,10 +154,9 @@ export default function NewVisitor() {
     if (name === "nome") {
       newValue = value.toUpperCase();
     } else if (name === "placa_veiculo") {
-      newValue = formatPlaca(value); // Formata a placa
+      newValue = formatPlaca(value);
       validatePlaca(newValue);
     }
-    // A cor já vem formatada do select (se você mudar para select)
 
     setForm((prev) => ({ ...prev, [name]: newValue }));
   };
@@ -243,9 +252,106 @@ export default function NewVisitor() {
         }
         return { ...prev, fotos: [...prev.fotos, file] };
       });
-      // Fecha modal após tirar a foto
       pararCamera();
     }, "image/png");
+  };
+
+  // === Validação por etapa ===
+  const validateStep = (step) => {
+    const cpfClean = form.cpf.replace(/\D/g, "");
+    const telefoneClean = form.telefone.replace(/\D/g, "");
+
+    switch (step) {
+      case 1:
+        if (!form.nome.trim()) {
+          alert("Nome é obrigatório.");
+          return false;
+        }
+        if (!form.nascimento) {
+          alert("Data de nascimento é obrigatória.");
+          return false;
+        }
+        if (cpfClean.length !== 11) {
+          alert("CPF inválido. Deve conter 11 dígitos.");
+          return false;
+        }
+        if (!form.empresa_id || !form.setor_id) {
+          alert("Empresa e setor são obrigatórios.");
+          return false;
+        }
+        if (telefoneClean.length !== 11) {
+          alert("Telefone inválido. Deve conter 11 dígitos com DDD.");
+          return false;
+        }
+        return true;
+
+      case 2:
+        const placaClean = form.placa_veiculo
+          .replace(/[^a-zA-Z0-9]/g, "")
+          .toUpperCase();
+        const hasPlaca = placaClean.trim().length > 0;
+        const hasCor = form.cor_veiculo.trim().length > 0;
+
+        if (hasPlaca && !hasCor) {
+          setErrors((prev) => ({
+            ...prev,
+            cor_veiculo:
+              "Cor do veículo é obrigatória quando a placa é informada",
+          }));
+          alert("Por favor, selecione a cor do veículo.");
+          return false;
+        }
+
+        if (hasCor && !hasPlaca) {
+          setErrors((prev) => ({
+            ...prev,
+            placa_veiculo:
+              "Placa do veículo é obrigatória quando a cor é informada",
+          }));
+          alert("Por favor, preencha a placa do veículo.");
+          return false;
+        }
+
+        if (hasPlaca && placaClean.length < 7) {
+          setErrors((prev) => ({
+            ...prev,
+            placa_veiculo: "Placa deve ter 7 caracteres",
+          }));
+          alert("Placa do veículo deve ter 7 caracteres.");
+          return false;
+        }
+        return true;
+
+      case 3:
+        if (form.fotos.length === 0) {
+          alert("Envie pelo menos uma imagem.");
+          return false;
+        }
+        return true;
+
+      default:
+        return true;
+    }
+  };
+
+  // === Navegação entre etapas ===
+  const nextStep = () => {
+    if (validateStep(currentStep)) {
+      setCurrentStep((prev) => Math.min(prev + 1, STEPS.length));
+    }
+  };
+
+  const prevStep = () => {
+    setCurrentStep((prev) => Math.max(prev - 1, 1));
+  };
+
+  const goToStep = (step) => {
+    // Permite voltar para etapas anteriores ou ir para próxima se a atual estiver válida
+    if (step < currentStep) {
+      setCurrentStep(step);
+    } else if (step === currentStep + 1 && validateStep(currentStep)) {
+      setCurrentStep(step);
+    }
   };
 
   // === Submit ===
@@ -258,71 +364,29 @@ export default function NewVisitor() {
       .replace(/[^a-zA-Z0-9]/g, "")
       .toUpperCase();
 
-    // Limpa erros anteriores
     setErrors({
       placa_veiculo: "",
       cor_veiculo: "",
     });
 
-    if (cpfClean.length !== 11) {
-      alert("CPF inválido. Deve conter 11 dígitos.");
-      return;
-    }
-    if (telefoneClean.length !== 11) {
-      alert("Telefone inválido. Deve conter 11 dígitos com DDD.");
-      return;
-    }
-    if (!form.empresa_id || !form.setor_id) {
-      alert("Empresa e setor são obrigatórios.");
-      return;
-    }
-    if (form.fotos.length === 0) {
-      alert("Envie pelo menos uma imagem.");
-      return;
-    }
-
-    // ← NOVA VALIDAÇÃO: Se tem placa, deve ter cor
-    const hasPlaca = placaClean.trim().length > 0;
-    const hasCor = form.cor_veiculo.trim().length > 0;
-
-    if (hasPlaca && !hasCor) {
-      setErrors((prev) => ({
-        ...prev,
-        cor_veiculo: "Cor do veículo é obrigatória quando a placa é informada",
-      }));
-      alert("Por favor, selecione a cor do veículo.");
-      return;
-    }
-
-    if (hasCor && !hasPlaca) {
-      setErrors((prev) => ({
-        ...prev,
-        placa_veiculo:
-          "Placa do veículo é obrigatória quando a cor é informada",
-      }));
-      alert("Por favor, preencha a placa do veículo.");
-      return;
-    }
-
-    // Valida formato da placa (opcional, se quiser)
-    if (hasPlaca && placaClean.length < 7) {
-      setErrors((prev) => ({
-        ...prev,
-        placa_veiculo: "Placa deve ter 7 caracteres",
-      }));
-      alert("Placa do veículo deve ter 7 caracteres.");
+    // Validação final
+    if (!validateStep(1) || !validateStep(2) || !validateStep(3)) {
       return;
     }
 
     try {
-      setLoading(true);
-      simulateProgress();
+      setIsSubmitting(true);
+      setUploadProgress(0);
+      setUploadStatus("Verificando CPF...");
 
-      const { data } = await api.get(`/cpf-existe/${cpfClean}`);
+      const { data } = await api.get(`/cadastro-visitantes/cpf/${cpfClean}`);
       if (data.exists) {
-        setLoading(false);
+        setIsSubmitting(false);
         return alert("CPF já cadastrado. Verifique antes de continuar.");
       }
+
+      setUploadStatus("Preparando dados...");
+      setUploadProgress(10);
 
       const dataToSend = new FormData();
       dataToSend.append("nome", form.nome);
@@ -339,276 +403,514 @@ export default function NewVisitor() {
         dataToSend.append("fotos", foto);
       });
 
+      setUploadStatus("Enviando dados e fotos...");
+
       await api.post("/cadastro-visitantes", dataToSend, {
         headers: {
           "Content-Type": "multipart/form-data",
           Authorization: localStorage.getItem("ongId"),
         },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted =
+            Math.round((progressEvent.loaded * 80) / progressEvent.total) + 10; // 10% inicial + até 80% do upload
+          setUploadProgress(Math.min(percentCompleted, 90));
+        },
       });
 
-      // ✅ Socket.IO vai sincronizar em tempo real, navega direto sem loading
-      setLoading(false);
-      history.push("/listagem-visitante");
+      setUploadStatus("Finalizando cadastro...");
+      setUploadProgress(100);
+
+      // Pequeno delay para o usuário ver que completou
+      setTimeout(() => {
+        setIsSubmitting(false);
+        history.push("/listagem-visitante");
+      }, 500);
     } catch (err) {
       console.error("Erro detalhado:", err.response?.data);
-      setLoading(false);
+      setIsSubmitting(false);
       alert(`Erro: ${err.response?.data?.error || "Falha no cadastro"}`);
     }
   };
 
-  // Nova função para abrir o modal ao tentar enviar
   const handleOpenConfirm = (e) => {
     e.preventDefault();
-    setShowConfirmModal(true);
+    if (validateStep(3)) {
+      setShowConfirmModal(true);
+    }
   };
 
-  // Função que confirma e chama o submit real
-  const handleConfirmSubmit = (e) => {
+  const handleConfirmSubmit = () => {
     setShowConfirmModal(false);
     handleSubmit();
   };
 
+  // Calcula o progresso do stepper
+  const getStepperProgress = () => {
+    const totalSteps = STEPS.length;
+    const completedSteps = currentStep - 1;
+    // Etapa 1: 0%, Etapa 2: 50%, Etapa 3: 100%
+    const progressPercentage = completedSteps / (totalSteps - 1);
+    // Calcula a largura relativa à linha base (que vai de 22px até calc(100% - 22px))
+    // A linha base tem largura de calc(100% - 44px)
+    return `calc((100% - 44px) * ${progressPercentage})`;
+  };
+
   return (
-    <div className="new-incident-container">
-      <div className="content">
-        <section>
-          <img src={logoImg} alt="Logo" width="350px" />
+    <div className="cadastro-visitante-page">
+      {/* Overlay de Loading durante o cadastro */}
+      {isSubmitting && (
+        <div className="loading-overlay">
+          <div className="loading-content">
+            <div className="loading-spinner"></div>
+            <h3>Cadastrando Visitante</h3>
+            <p className="loading-status">{uploadStatus}</p>
+            <div className="loading-progress-bar">
+              <div
+                className="loading-progress-fill"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+            <span className="loading-percentage">{uploadProgress}%</span>
+          </div>
+        </div>
+      )}
+
+      <div className="cadastro-card">
+        {/* Header */}
+        <div className="cadastro-header">
+          <img src={logoImg} alt="Logo" className="cadastro-logo" />
           <h1>Cadastrar Visitante</h1>
-          <p>Informe os dados do visitante.</p>
-          <Link className="back-link" to="/listagem-visitante">
-            <FiArrowLeft size={16} color="#e02041" />
-            Voltar
-          </Link>
-        </section>
+          <p>Preencha os dados em etapas simples</p>
+        </div>
 
-        <form>
-          <p className="aviso-no-cadastro">
-            [ATENÇÃO] Se não houver placa, deixe em branco!!
-          </p>
-          <input
-            name="nome"
-            placeholder="Nome"
-            value={form.nome}
-            onChange={handleChange}
-            required
-          />
-
-          <input
-            type="date"
-            name="nascimento"
-            value={form.nascimento}
-            onChange={handleChange}
-            required
-          />
-
-          <input
-            name="cpf"
-            placeholder="CPF"
-            value={form.cpf}
-            onChange={handleCpfChange}
-            maxLength={14}
-            required
-          />
-
-          <select
-            name="empresa_id"
-            value={form.empresa_id}
-            onChange={handleChange}
-            required
-          >
-            <option value="">Selecione a empresa</option>
-            {empresasVisitantes.map((empresa) => (
-              <option key={empresa.id} value={empresa.id}>
-                {empresa.nome}
-              </option>
-            ))}
-          </select>
-
-          <select
-            name="setor_id"
-            value={form.setor_id}
-            onChange={handleChange}
-            required
-          >
-            <option value="">Selecione o setor</option>
-            {setoresVisitantes.map((setor) => (
-              <option key={setor.id} value={setor.id}>
-                {setor.nome}
-              </option>
-            ))}
-          </select>
-
-          <input
-            name="placa_veiculo"
-            placeholder="Placa do Veículo (ex: ABC1D23)"
-            value={form.placa_veiculo}
-            onChange={handleChange}
-            maxLength={7}
-            className={errors.placa_veiculo ? "error" : ""}
-          />
-          {errors.placa_veiculo && (
-            <span className="error-message">{errors.placa_veiculo}</span>
-          )}
-
-          <select
-            name="cor_veiculo"
-            value={form.cor_veiculo}
-            onChange={handleChange}
-            className={errors.cor_veiculo ? "error" : ""}
-          >
-            <option value="">Selecione a cor</option>
-            {opcoesCores.map((cor) => (
-              <option key={cor} value={cor}>
-                {cor}
-              </option>
-            ))}
-          </select>
-          {errors.cor_veiculo && (
-            <span className="error-message">{errors.cor_veiculo}</span>
-          )}
-
-          <input
-            name="telefone"
-            placeholder="(DD)99999-9999"
-            value={form.telefone}
-            onChange={handleTelefoneChange}
-            maxLength={15}
-            required
-          />
-
-          <textarea
-            name="observacao"
-            placeholder="Observações"
-            value={form.observacao}
-            onChange={handleChange}
-          />
-
-          {/* Upload de arquivo e webcam lado a lado */}
-          <div className="file-upload-wrapper">
-            <input
-              type="file"
-              id="image-upload"
-              accept="image/*"
-              multiple
-              onChange={handleFileChange}
-              disabled={form.fotos.length >= 3}
-              style={{ display: "none" }}
+        {/* Stepper */}
+        <div className="stepper-container">
+          <div className="stepper">
+            <div
+              className="stepper-progress"
+              style={{ width: getStepperProgress() }}
             />
-
-            {/* Container para os botões lado a lado */}
-            <div className="upload-buttons-container">
-              <label htmlFor="image-upload" className="upload-button">
-                <span className="button-icon">+</span>
-                <span className="button-text">Selecionar Imagens</span>
-              </label>
-
-              <button
-                type="button"
-                className="camera-button"
-                onClick={() => {
-                  setCameraAtiva(true);
-                  setShowModal(true);
-                }}
-                disabled={form.fotos.length >= 3}
+            {STEPS.map((step) => (
+              <div
+                key={step.id}
+                className={`step ${currentStep === step.id ? "active" : ""} ${
+                  currentStep > step.id ? "completed" : ""
+                }`}
+                onClick={() => goToStep(step.id)}
               >
-                <FiCamera size={20} className="button-icon" /> Abrir Webcam
-              </button>
-            </div>
+                <div className="step-circle">
+                  <span>{step.id}</span>
+                </div>
+                <span className="step-label">{step.title}</span>
+              </div>
+            ))}
+          </div>
+        </div>
 
-            <div className="upload-hint">
-              {form.fotos.length < 3
-                ? `Selecione mais ${3 - form.fotos.length} imagem(ns)`
-                : "Máximo de 3 imagens atingido"}
-            </div>
+        {/* Conteúdo do Formulário */}
+        <div className="cadastro-content">
+          <form onSubmit={(e) => e.preventDefault()}>
+            {/* Etapa 1: Dados Pessoais */}
+            {currentStep === 1 && (
+              <div className="step-content">
+                <h2 className="step-title">
+                  <span className="step-title-icon">
+                    <FiUser size={16} />
+                  </span>
+                  Dados Pessoais
+                </h2>
+                <p className="step-description">
+                  Informe os dados pessoais do visitante
+                </p>
 
-            <div className="image-previews">
-              {form.fotos.map((file, index) => (
-                <div
-                  key={`${file.name}-${file.size}-${index}`}
-                  className="image-preview"
-                >
-                  <div className="image-container">
-                    <img
-                      src={URL.createObjectURL(file)}
-                      alt="Pré-visualização"
-                      onLoad={() => URL.revokeObjectURL(file)}
+                <div className="form-group">
+                  <label className="form-label required">Nome Completo</label>
+                  <input
+                    type="text"
+                    name="nome"
+                    className="form-input"
+                    placeholder="Digite o nome completo"
+                    value={form.nome}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label required">
+                      Data de Nascimento
+                    </label>
+                    <input
+                      type="date"
+                      name="nascimento"
+                      className="form-input"
+                      value={form.nascimento}
+                      onChange={handleChange}
                     />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setForm((prev) => ({
-                          ...prev,
-                          fotos: prev.fotos.filter((_, i) => i !== index),
-                        }))
-                      }
-                      className="remove-image"
-                    >
-                      ×
-                    </button>
                   </div>
-                  <div className="image-info">
-                    <span className="image-name">{file.name}</span>
-                    <span className="image-size">
-                      ({Math.round(file.size / 1024)} KB)
-                    </span>
+
+                  <div className="form-group">
+                    <label className="form-label required">CPF</label>
+                    <input
+                      type="text"
+                      name="cpf"
+                      className="form-input"
+                      placeholder="000.000.000-00"
+                      value={form.cpf}
+                      onChange={handleCpfChange}
+                      maxLength={14}
+                    />
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
 
-          {/* Webcam Modal */}
-          {showModal && (
-            <div className="modal-webcam">
-              <div className="modal-estrtura-webcam">
-                <video ref={videoRef} autoPlay width="780" height="620" />
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label required">Empresa</label>
+                    <select
+                      name="empresa_id"
+                      className="form-select"
+                      value={form.empresa_id}
+                      onChange={handleChange}
+                    >
+                      <option value="">Selecione a empresa</option>
+                      {empresasVisitantes.map((empresa) => (
+                        <option key={empresa.id} value={empresa.id}>
+                          {empresa.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label required">Setor</label>
+                    <select
+                      name="setor_id"
+                      className="form-select"
+                      value={form.setor_id}
+                      onChange={handleChange}
+                    >
+                      <option value="">Selecione o setor</option>
+                      {setoresVisitantes.map((setor) => (
+                        <option key={setor.id} value={setor.id}>
+                          {setor.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label required">Telefone</label>
+                  <input
+                    type="text"
+                    name="telefone"
+                    className="form-input"
+                    placeholder="(00) 00000-0000"
+                    value={form.telefone}
+                    onChange={handleTelefoneChange}
+                    maxLength={15}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Etapa 2: Veículo */}
+            {currentStep === 2 && (
+              <div className="step-content">
+                <h2 className="step-title">
+                  <span className="step-title-icon">
+                    <FiTruck size={16} />
+                  </span>
+                  Informações do Veículo
+                </h2>
+                <p className="step-description">
+                  Preencha apenas se o visitante possuir veículo
+                </p>
+
+                <div className="attention-alert">
+                  <span className="attention-alert-icon">⚠️</span>
+                  <span className="attention-alert-text">
+                    Se não houver veículo, deixe os campos em branco e avance
+                    para a próxima etapa.
+                  </span>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Placa do Veículo</label>
+                    <input
+                      type="text"
+                      name="placa_veiculo"
+                      className={`form-input ${errors.placa_veiculo ? "error" : ""}`}
+                      placeholder="ABC1D23"
+                      value={form.placa_veiculo}
+                      onChange={handleChange}
+                      maxLength={7}
+                    />
+                    {errors.placa_veiculo && (
+                      <span className="error-message">
+                        {errors.placa_veiculo}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Cor do Veículo</label>
+                    <select
+                      name="cor_veiculo"
+                      className={`form-select ${errors.cor_veiculo ? "error" : ""}`}
+                      value={form.cor_veiculo}
+                      onChange={handleChange}
+                    >
+                      <option value="">Selecione a cor</option>
+                      {opcoesCores.map((cor) => (
+                        <option key={cor} value={cor}>
+                          {cor}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.cor_veiculo && (
+                      <span className="error-message">
+                        {errors.cor_veiculo}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Observações</label>
+                  <textarea
+                    name="observacao"
+                    className="form-textarea"
+                    placeholder="Informações adicionais sobre o visitante ou veículo..."
+                    value={form.observacao}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Etapa 3: Fotos */}
+            {currentStep === 3 && (
+              <div className="step-content">
+                <h2 className="step-title">
+                  <span className="step-title-icon">
+                    <FiImage size={16} />
+                  </span>
+                  Fotos do Visitante
+                </h2>
+                <p className="step-description">
+                  Capture ou selecione até 3 fotos do visitante
+                </p>
+
+                <div className="upload-section">
+                  <input
+                    type="file"
+                    id="image-upload"
+                    accept="image/*"
+                    multiple
+                    onChange={handleFileChange}
+                    disabled={form.fotos.length >= 3}
+                    style={{ display: "none" }}
+                  />
+
+                  <div className="upload-buttons">
+                    <label
+                      htmlFor="image-upload"
+                      className={`upload-btn upload-btn-file ${form.fotos.length >= 3 ? "disabled" : ""}`}
+                    >
+                      <FiPlus size={20} />
+                      Selecionar Imagens
+                    </label>
+
+                    <button
+                      type="button"
+                      className="upload-btn upload-btn-camera"
+                      onClick={() => {
+                        setCameraAtiva(true);
+                        setShowModal(true);
+                      }}
+                      disabled={form.fotos.length >= 3}
+                    >
+                      <FiCamera size={20} />
+                      Abrir Webcam
+                    </button>
+                  </div>
+
+                  <p className="upload-hint">
+                    {form.fotos.length < 3
+                      ? `Selecione mais ${3 - form.fotos.length} imagem(ns)`
+                      : "Máximo de 3 imagens atingido"}
+                  </p>
+
+                  {form.fotos.length > 0 && (
+                    <div className="image-preview-grid">
+                      {form.fotos.map((file, index) => (
+                        <div
+                          key={`${file.name}-${file.size}-${index}`}
+                          className="image-preview-item"
+                        >
+                          <img
+                            src={URL.createObjectURL(file)}
+                            alt={`Preview ${index + 1}`}
+                            onClick={() => setSelectedImage(file)}
+                            style={{ cursor: "pointer" }}
+                          />
+                          <button
+                            type="button"
+                            className="image-remove-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setForm((prev) => ({
+                                ...prev,
+                                fotos: prev.fotos.filter((_, i) => i !== index),
+                              }));
+                            }}
+                          >
+                            <FiX size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Navegação entre etapas */}
+            <div className="step-navigation">
+              {currentStep > 1 ? (
+                <button
+                  type="button"
+                  className="nav-btn nav-btn-prev"
+                  onClick={prevStep}
+                >
+                  <FiArrowLeft size={18} />
+                  Anterior
+                </button>
+              ) : (
+                <div />
+              )}
+
+              {currentStep < STEPS.length ? (
+                <button
+                  type="button"
+                  className="nav-btn nav-btn-next"
+                  onClick={nextStep}
+                >
+                  Próximo
+                  <FiArrowRight size={18} />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="nav-btn nav-btn-submit"
+                  onClick={handleOpenConfirm}
+                >
+                  <FiCheck size={18} />
+                  Cadastrar
+                </button>
+              )}
+            </div>
+          </form>
+        </div>
+
+        {/* Modal da Webcam */}
+        {showModal && (
+          <div className="modal-overlay">
+            <div className="modal-webcam-content">
+              <div className="modal-webcam-header">
+                <h3>Capturar Foto</h3>
+                <button
+                  type="button"
+                  className="modal-close-btn"
+                  onClick={pararCamera}
+                >
+                  <FiX />
+                </button>
+              </div>
+              <div className="modal-webcam-body">
+                <video ref={videoRef} autoPlay className="webcam-video" />
                 <canvas
                   ref={canvasRef}
-                  width="780"
-                  height="620"
+                  width="640"
+                  height="480"
                   style={{ display: "none" }}
                 />
-                <div className="camera-webcam">
+                <div className="modal-webcam-actions">
                   <button
                     type="button"
-                    className="camera-action-btn btn-capture"
+                    className="nav-btn nav-btn-submit"
                     onClick={tirarFoto}
                   >
-                    <FiCamera className="btn-icon" />
+                    <FiCamera size={18} />
                     Tirar Foto
                   </button>
                   <button
                     type="button"
-                    className="camera-action-btn btn-close"
+                    className="nav-btn nav-btn-prev"
                     onClick={pararCamera}
                   >
-                    <FiArrowLeft className="btn-icon" />
-                    Fechar
+                    <FiX size={18} />
+                    Cancelar
                   </button>
                 </div>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          <button className="button" type="button" onClick={handleOpenConfirm}>
-            Cadastrar
-          </button>
-        </form>
-
+        {/* Modal de Confirmação */}
         {showConfirmModal && (
-          <div className="modal-cadastro-visitante">
-            <div className="modal-content-visitante">
-              <h3>Deseja realmente realizar o cadastro?</h3>
-              <div className="modal-actions-visistante">
-                <button className="button yes" onClick={handleConfirmSubmit}>
-                  Sim
+          <div className="modal-overlay">
+            <div className="modal-confirm-content">
+              <div className="modal-confirm-icon">❓</div>
+              <h3>Confirmar Cadastro</h3>
+              <p>Deseja realmente cadastrar este visitante?</p>
+              <div className="modal-confirm-actions">
+                <button
+                  type="button"
+                  className="nav-btn nav-btn-submit"
+                  onClick={handleConfirmSubmit}
+                >
+                  <FiCheck size={18} />
+                  Confirmar
                 </button>
                 <button
-                  className="button no"
+                  type="button"
+                  className="nav-btn nav-btn-prev"
                   onClick={() => setShowConfirmModal(false)}
                 >
-                  Não
+                  <FiX size={18} />
+                  Cancelar
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Visualização de Imagem Ampliada */}
+        {selectedImage && (
+          <div className="modal-overlay" onClick={() => setSelectedImage(null)}>
+            <div
+              className="modal-image-viewer"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                className="modal-image-close"
+                onClick={() => setSelectedImage(null)}
+              >
+                <FiX size={24} />
+              </button>
+              <img
+                src={URL.createObjectURL(selectedImage)}
+                alt="Visualização ampliada"
+                className="modal-image-full"
+              />
+              <div className="modal-image-info">
+                <span>{selectedImage.name}</span>
+                <span>{Math.round(selectedImage.size / 1024)} KB</span>
               </div>
             </div>
           </div>

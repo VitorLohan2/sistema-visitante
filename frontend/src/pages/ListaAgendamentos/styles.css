@@ -1,3 +1,50 @@
+/* ═══════════════════════════════════════════════════════════════
+   LISTA AGENDAMENTOS - Layout Profissional
+   ═══════════════════════════════════════════════════════════════ */
+
+/* HEADER - Card elegante */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  padding: 20px 32px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  margin-bottom: 24px;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.page-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.page-title-group {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #000;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.page-subtitle {
+  font-size: 14px;
+  color: #737380;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
 .acao-novo-agendamento {
   display: flex;
   align-items: center;
@@ -24,7 +71,7 @@
 }
 
 /* Sub informação */
-.sub-informacao-agendamentos{
+.sub-informacao-agendamentos {
   display: flex;
   flex-direction: column;
 }
@@ -91,7 +138,9 @@
   padding: 20px;
   border: 1px solid #dcdce6;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
   display: flex;
   align-items: center;
   gap: 24px;
@@ -280,7 +329,7 @@
   transform: translateY(-1px);
 }
 
-/* ✅ NOVO: Ações do card horizontais */      
+/* ✅ NOVO: Ações do card horizontais */
 
 .confirm-button,
 .presence-button,
@@ -340,11 +389,11 @@
   .card-agend-info {
     grid-template-columns: 1fr 1fr;
   }
-  
+
   .card-main-content {
     gap: 16px;
   }
-  
+
   .card-header-lista-agendamentos {
     min-width: 180px;
   }
@@ -357,13 +406,13 @@
     flex-wrap: wrap;
     gap: 12px;
   }
-  
+
   .acao-novo-agendamento .agendamento-button {
     flex: 1;
     justify-content: center;
     min-width: 120px;
   }
-  
+
   /* ✅ Cards empilhados em mobile */
   .agendamento-card {
     flex-direction: column;
@@ -372,41 +421,41 @@
     padding: 16px;
     min-height: auto;
   }
-  
+
   .card-main-content {
     flex-direction: column;
     gap: 16px;
   }
-  
+
   .card-header-lista-agendamentos {
     min-width: auto;
     width: 100%;
   }
-  
+
   .card-time {
     align-self: flex-start;
   }
-  
+
   .card-agend-info {
     grid-template-columns: 1fr;
     gap: 12px;
   }
-  
+
   .card-status-actions {
     flex-direction: row;
     align-items: stretch;
     min-width: auto;
     width: 100%;
   }
-  
+
   .presence-button {
     flex: 1;
   }
-  
+
   .empty-state {
     padding: 60px 16px;
   }
-  
+
   .empty-state p {
     font-size: 16px;
   }
@@ -416,7 +465,7 @@
   .agendamento-card {
     padding: 16px;
   }
-  
+
   .card-title h3 {
     font-size: 16px;
   }
@@ -424,11 +473,11 @@
   .acao-novo-agendamento {
     flex-direction: column;
   }
-  
+
   .acao-novo-agendamento .agendamento-button {
     width: 100%;
   }
-  
+
   .card-status-actions {
     flex-wrap: wrap;
     gap: 8px;
@@ -527,7 +576,7 @@
   .exportar-buttons {
     gap: 8px;
   }
-  
+
   .exportar-button {
     padding: 8px 12px;
     font-size: 13px;
@@ -541,7 +590,7 @@
     width: 100%;
     gap: 8px;
   }
-  
+
   .exportar-button {
     width: 100%;
     justify-content: center;

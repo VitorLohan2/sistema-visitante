@@ -150,7 +150,7 @@ export default function Login() {
             <div className="login-links">
               <Link className="back-link" to="/recuperar-id">
                 <FiKey size={18} />
-                Esqueci meu ID
+                Esqueci minha senha
               </Link>
               <Link className="back-link" to="/helpdesk">
                 <FiHelpCircle size={18} />

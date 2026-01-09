@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Link, useHistory } from "react-router-dom";
-import { FiSearch, FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import { FiSearch, FiChevronLeft, FiChevronRight, FiX } from "react-icons/fi";
 
 import notificacaoSom from "../../assets/notificacao.mp3";
 import api from "../../services/api";
@@ -391,14 +391,37 @@ export default function ListagemVisitante() {
 
         <div className="search-container">
           <div className="search-wrapper">
-            <FiSearch className="search-icon" size={16} />
+            <FiSearch className="search-icon" size={18} />
             <input
               type="text"
-              placeholder="Consultar por nome ou CPF"
+              placeholder="Buscar por nome ou CPF..."
               className="search-input"
               value={searchTerm}
               onChange={handleSearchChange}
             />
+            {searchTerm && (
+              <button
+                className="search-clear-btn"
+                onClick={() => setSearchTerm("")}
+                title="Limpar busca"
+                style={{
+                  position: "absolute",
+                  right: 14,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 28,
+                  height: 28,
+                  border: "none",
+                  borderRadius: "50%",
+                  background: "rgba(32, 224, 176, 0.1)",
+                  color: "#047857",
+                  cursor: "pointer",
+                }}
+              >
+                <FiX size={16} />
+              </button>
+            )}
           </div>
         </div>
 

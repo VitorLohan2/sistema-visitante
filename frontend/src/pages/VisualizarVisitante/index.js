@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useHistory, Link } from "react-router-dom";
-import { FiArrowLeft, FiImage, FiX } from "react-icons/fi";
+import { useParams, useHistory } from "react-router-dom";
+import { FiImage, FiX, FiArrowLeft } from "react-icons/fi";
 import "./styles.css";
 import logoImg from "../../assets/logo.svg";
 import api from "../../services/api";
@@ -48,20 +48,17 @@ export default function VisualizarVisitante() {
     <div className="view-visitor-container">
       <header>
         <div className="ajuste-Titulo">
-          <img src={logoImg} alt="Logo" />
-          <span>Bem-vindo(a), {localStorage.getItem("ongName")}</span>
+          <div className="page-title-group">
+            <h1 className="page-title">Visualização de Cadastro</h1>
+            <p className="page-subtitle">
+              Informações detalhadas do visitante.
+            </p>
+          </div>
         </div>
-        <Link className="back-link" to="/listagem-visitante">
-          <FiArrowLeft size={16} color="#E02041" />
-          Voltar
-        </Link>
       </header>
 
       <div className="content">
         <section className="visitor-details">
-          <h1>Visualização de Cadastro</h1>
-          <p>Informações detalhadas do visitante.</p>
-
           <div className="readonly-form">
             <label>Nome</label>
             <input value={visitor.nome} readOnly />

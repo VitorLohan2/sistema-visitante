@@ -5,44 +5,18 @@ import api from "../../services/api";
 import { usePermissoes } from "../../hooks/usePermissoes";
 import "./styles.css";
 import logoImg from "../../assets/logo.svg";
-import Loading from "../../components/Loading";
 
 export default function CadastrarEmpresaVisitantes() {
   const [form, setForm] = useState({
     nome: "",
   });
 
-  const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const history = useHistory();
   const ongName = localStorage.getItem("ongName");
   const isMounted = useRef(true);
 
   const { isAdmin, temPermissao, loading: permissoesLoading } = usePermissoes();
-
-  // ✅ Efeito para controlar o progresso do loading (igual ao seu login)
-  useEffect(() => {
-    let interval = null;
-
-    if (loading || isCheckingAuth) {
-      setProgress(0);
-      interval = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 95) {
-            clearInterval(interval);
-            return prev;
-          }
-          return prev + 5;
-        });
-      }, 100);
-    } else {
-      setProgress(0);
-    }
-
-    return () => clearInterval(interval);
-  }, [loading, isCheckingAuth]);
 
   // ✅ VERIFICAR AUTENTICAÇÃO VIA RBAC
   useEffect(() => {
@@ -61,23 +35,13 @@ export default function CadastrarEmpresaVisitantes() {
         // ✅ Verificar permissão via RBAC
         const podeAcessar = isAdmin || temPermissao("empresa_criar");
         if (!podeAcessar) {
-          setTimeout(() => {
-            alert("Somente administradores tem permissão!");
-            history.push("/listagem-visitante");
-          }, 1000);
+          alert("Somente administradores tem permissão!");
+          history.push("/listagem-visitante");
           return;
         }
-
-        // Força barra a ir até 100%
-        setProgress(100);
-        setTimeout(() => {
-          setIsCheckingAuth(false);
-        }, 300);
       } catch (error) {
         console.error("Erro ao verificar autenticação:", error);
-        setTimeout(() => {
-          history.push("/listagem-visitante");
-        }, 1000);
+        history.push("/listagem-visitante");
       }
     };
 
@@ -136,11 +100,6 @@ export default function CadastrarEmpresaVisitantes() {
   const handleNomeChange = (e) => {
     setForm({ ...form, nome: e.target.value.toUpperCase() });
   };
-
-  // ✅ Mostrar loading enquanto verifica autenticação
-  if (isCheckingAuth) {
-    return <Loading progress={progress} />;
-  }
 
   return (
     <div className="form-container">

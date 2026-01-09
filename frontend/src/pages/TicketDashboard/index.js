@@ -1,47 +1,127 @@
 // src/pages/TicketDashboard/index.js
-import React, { useEffect, useState } from "react";
-import { Link, useHistory } from "react-router-dom";
-import { FiArrowLeft, FiPlusCircle } from "react-icons/fi";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useHistory } from "react-router-dom";
+import { FiPlusCircle } from "react-icons/fi";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import api from "../../services/api";
 import { useAuth } from "../../hooks/useAuth";
-import Loading from "../../components/Loading";
+import * as socketService from "../../services/socketService";
+import { setCache, getCache } from "../../services/cacheService";
 
 import "./styles.css";
-import logoImg from "../../assets/logo.svg";
 import excel from "../../assets/xlss.png";
 
 const TicketDashboard = () => {
-  const [tickets, setTickets] = useState([]);
-  const [filteredTickets, setFilteredTickets] = useState([]);
+  // ✅ Inicializa com cache se existir
+  const [tickets, setTickets] = useState(() => getCache("tickets") || []);
+  const [filteredTickets, setFilteredTickets] = useState(
+    () => getCache("tickets") || []
+  );
   const [userData, setUserData] = useState({ nome: "", setor_id: "" });
   const [filterDate, setFilterDate] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [progress, setProgress] = useState(0);
   const history = useHistory();
   const { user } = useAuth();
 
+  // Controle de listeners do socket
+  const socketListenersRef = useRef([]);
+  const isDataLoadedRef = useRef(false);
+
+  // ═══════════════════════════════════════════════════════════════
+  // SOCKET LISTENERS - Atualização em tempo real
+  // ═══════════════════════════════════════════════════════════════
+  const setupSocketListeners = useCallback(() => {
+    // Remove listeners anteriores
+    socketListenersRef.current.forEach((unsub) => unsub && unsub());
+    socketListenersRef.current = [];
+
+    // ✅ LISTENER: Novo ticket criado
+    const unsubTicketCreate = socketService.on("ticket:create", (ticket) => {
+      console.log("📥 Socket Tickets: Novo ticket", ticket.id);
+      setTickets((prev) => {
+        if (prev.find((t) => t.id === ticket.id)) {
+          return prev;
+        }
+        const novosTickets = [ticket, ...prev].sort(
+          (a, b) => new Date(b.data_criacao) - new Date(a.data_criacao)
+        );
+        setCache("tickets", novosTickets);
+        return novosTickets;
+      });
+    });
+
+    // ✅ LISTENER: Ticket atualizado
+    const unsubTicketUpdate = socketService.on("ticket:update", (dados) => {
+      console.log("📝 Socket Tickets: Atualizado", dados.id);
+      setTickets((prev) => {
+        const novosTickets = prev
+          .map((t) => (t.id === dados.id ? { ...t, ...dados } : t))
+          .sort((a, b) => new Date(b.data_criacao) - new Date(a.data_criacao));
+        setCache("tickets", novosTickets);
+        return novosTickets;
+      });
+    });
+
+    // ✅ LISTENER: Ticket visualizado
+    const unsubTicketViewed = socketService.on("ticket:viewed", (dados) => {
+      console.log("👁️ Socket Tickets: Visualizado", dados.id);
+      setTickets((prev) => {
+        const novosTickets = prev.map((t) =>
+          t.id === dados.id ? { ...t, visto: true } : t
+        );
+        setCache("tickets", novosTickets);
+        return novosTickets;
+      });
+    });
+
+    // ✅ LISTENER: Todos tickets visualizados
+    const unsubAllViewed = socketService.on("ticket:all_viewed", () => {
+      console.log("👁️ Socket Tickets: Todos visualizados");
+      setTickets((prev) => {
+        const novosTickets = prev.map((t) => ({ ...t, visto: true }));
+        setCache("tickets", novosTickets);
+        return novosTickets;
+      });
+    });
+
+    socketListenersRef.current.push(
+      unsubTicketCreate,
+      unsubTicketUpdate,
+      unsubTicketViewed,
+      unsubAllViewed
+    );
+
+    console.log("🔌 Socket Tickets: Listeners configurados");
+  }, []);
+
+  // ═══════════════════════════════════════════════════════════════
+  // CARREGAMENTO INICIAL - Com cache
+  // ═══════════════════════════════════════════════════════════════
   useEffect(() => {
     const ongId = user?.id || localStorage.getItem("ongId");
 
     if (!ongId) {
-      history.push("/"); // Proteção de rota
+      history.push("/");
       return;
     }
 
-    const simulateProgress = () => {
-      let value = 0;
-      const interval = setInterval(() => {
-        value += 10;
-        setProgress(value);
-        if (value >= 100) clearInterval(interval);
-      }, 100);
-    };
-
     const fetchTickets = async () => {
       try {
-        simulateProgress();
+        // ✅ Se já tem cache, usa imediatamente
+        const cachedTickets = getCache("tickets");
+        if (
+          cachedTickets &&
+          cachedTickets.length > 0 &&
+          !isDataLoadedRef.current
+        ) {
+          console.log(
+            "📦 Tickets: Usando cache",
+            cachedTickets.length,
+            "registros"
+          );
+          setTickets(cachedTickets);
+          setFilteredTickets(cachedTickets);
+        }
 
         const userRes = await api.get(`/usuarios/${ongId}`);
         setUserData({
@@ -49,29 +129,38 @@ const TicketDashboard = () => {
           setor_id: userRes.data.setor_id,
         });
 
-        const response = await api.get("/tickets"); // Header Authorization já enviado pelo interceptor
+        const response = await api.get("/tickets");
 
         const sorted = response.data.sort(
           (a, b) => new Date(b.data_criacao) - new Date(a.data_criacao)
         );
 
+        // ✅ Atualiza estado e cache
         setTickets(sorted);
         setFilteredTickets(sorted);
+        setCache("tickets", sorted);
+        isDataLoadedRef.current = true;
+
+        console.log("✅ Tickets: Carregado da API", sorted.length, "registros");
       } catch (error) {
         console.error("Erro ao buscar tickets:", error);
-        alert("Erro ao carregar tickets. Verifique sua conexão.");
-      } finally {
-        setTimeout(() => {
-          setLoading(false);
-          setProgress(100);
-        }, 1000);
+        if (!getCache("tickets")) {
+          alert("Erro ao carregar tickets. Verifique sua conexão.");
+        }
       }
     };
 
     fetchTickets();
-    const interval = setInterval(fetchTickets, 5000);
-    return () => clearInterval(interval);
-  }, [history, user]);
+
+    // ✅ Configura Socket listeners (substitui setInterval)
+    setupSocketListeners();
+
+    // Cleanup
+    return () => {
+      socketListenersRef.current.forEach((unsub) => unsub && unsub());
+      socketListenersRef.current = [];
+    };
+  }, [history, user, setupSocketListeners]);
 
   useEffect(() => {
     if (!filterDate) {
@@ -144,20 +233,14 @@ const TicketDashboard = () => {
     saveAs(blob, `tickets_${filterDate || "todos"}.xlsx`);
   };
 
-  if (loading)
-    return <Loading progress={progress} message="Carregando Tickets..." />;
-
   return (
     <div className="page-container">
       <header className="page-header">
         <div className="page-title-wrapper">
-          <img src={logoImg} alt="DIME" />
-          <span>Bem-vindo(a), {userData.nome}</span>
+          <div className="page-title-group">
+            <h1 className="page-title">Ticket Dashboard</h1>
+          </div>
         </div>
-        <Link className="back-link" to="/listagem-visitante">
-          <FiArrowLeft size={16} color="#E02041" />
-          Voltar
-        </Link>
       </header>
 
       <div className="sub-lista">
