@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Route, Redirect } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { usePermissoes } from "../hooks/usePermissoes";
+import { useTickets } from "../contexts/TicketContext";
 import SidebarMenu from "../components/SidebarMenu";
 import ConfigModal from "../components/ConfigModal";
 import "../styles/layout.css";
@@ -21,9 +22,9 @@ export default function ProtectedRoute({
 }) {
   const { isAuthenticated, loading, user } = useAuth();
   const { isAdmin, temPermissao, loading: loadingPermissoes } = usePermissoes();
+  const { ticketsAbertos } = useTickets();
   const [configModalVisible, setConfigModalVisible] = useState(false);
   const [userDetails, setUserDetails] = useState(null);
-  const [unseenCount, setUnseenCount] = useState(0);
 
   const handleOpenConfigModal = async () => {
     try {
@@ -101,7 +102,7 @@ export default function ProtectedRoute({
           return (
             <div className="layout-container">
               <SidebarMenu
-                unseenCount={unseenCount}
+                unseenCount={ticketsAbertos}
                 handleOpenConfigModal={handleOpenConfigModal}
               />
               <main className="layout-main">
@@ -122,7 +123,7 @@ export default function ProtectedRoute({
         return (
           <div className="layout-container">
             <SidebarMenu
-              unseenCount={unseenCount}
+              unseenCount={ticketsAbertos}
               handleOpenConfigModal={handleOpenConfigModal}
             />
             <main className="layout-main">{children}</main>

@@ -1,217 +1,285 @@
 // src/pages/TicketDashboard/index.js
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useHistory } from "react-router-dom";
-import { FiPlusCircle } from "react-icons/fi";
+import {
+  FiPlusCircle,
+  FiX,
+  FiUser,
+  FiUsers,
+  FiFileText,
+  FiFilter,
+  FiRefreshCw,
+  FiDownload,
+  FiMoreVertical,
+  FiCalendar,
+  FiAlertCircle,
+  FiTrendingUp,
+  FiClock,
+} from "react-icons/fi";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import api from "../../services/api";
 import { useAuth } from "../../hooks/useAuth";
-import * as socketService from "../../services/socketService";
-import { setCache, getCache } from "../../services/cacheService";
+import { usePermissoes } from "../../hooks/usePermissoes";
+import { useTickets } from "../../contexts/TicketContext";
 
 import "./styles.css";
-import excel from "../../assets/xlss.png";
 
 const TicketDashboard = () => {
-  // ✅ Inicializa com cache se existir
-  const [tickets, setTickets] = useState(() => getCache("tickets") || []);
-  const [filteredTickets, setFilteredTickets] = useState(
-    () => getCache("tickets") || []
-  );
-  const [userData, setUserData] = useState({ nome: "", setor_id: "" });
+  // Estados principais - Usando contexto para sincronização
+  const {
+    tickets,
+    setTickets,
+    fetchTickets: fetchTicketsContext,
+  } = useTickets();
+  const [filteredTickets, setFilteredTickets] = useState([]);
+  const [userData, setUserData] = useState({
+    nome: "",
+    setor: "",
+    setor_id: null,
+  });
   const [filterDate, setFilterDate] = useState("");
+  const [filterStatus, setFilterStatus] = useState("todos");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Estados do Modal
+  const [showModal, setShowModal] = useState(false);
+  const [formData, setFormData] = useState({
+    funcionario: "",
+    motivo: "",
+    descricao: "",
+    setorResponsavel: "Segurança",
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Drag and Drop
+  const [draggedTicket, setDraggedTicket] = useState(null);
+  const [dragOverColumn, setDragOverColumn] = useState(null);
+
+  // Menu de opções
+  const [activeMenu, setActiveMenu] = useState(null);
+
   const history = useHistory();
   const { user } = useAuth();
+  const { papeis, isAdmin, loading: permissoesLoading } = usePermissoes();
 
-  // Controle de listeners do socket
-  const socketListenersRef = useRef([]);
+  // Verificar se é da Segurança via papéis
+  const isSeguranca =
+    papeis.includes("SEGURANÇA") || papeis.includes("SEGURANCA");
+  const podeEditarTicket = isAdmin || isSeguranca;
+
+  // Refs para controle
   const isDataLoadedRef = useRef(false);
 
-  // ═══════════════════════════════════════════════════════════════
-  // SOCKET LISTENERS - Atualização em tempo real
-  // ═══════════════════════════════════════════════════════════════
-  const setupSocketListeners = useCallback(() => {
-    // Remove listeners anteriores
-    socketListenersRef.current.forEach((unsub) => unsub && unsub());
-    socketListenersRef.current = [];
+  // Status do Kanban - Novo design com cores pastel
+  const statusConfig = [
+    {
+      key: "Aberto",
+      label: "A Fazer",
+      headerBg: "#FDE68A",
+      textColor: "#92400E",
+      columnBg: "#FFFBEB",
+    },
+    {
+      key: "Em andamento",
+      label: "Em Progresso",
+      headerBg: "#FCA5A5",
+      textColor: "#991B1B",
+      columnBg: "#FEF2F2",
+    },
+    {
+      key: "Resolvido",
+      label: "Concluído",
+      headerBg: "#6EE7B7",
+      textColor: "#065F46",
+      columnBg: "#ECFDF5",
+    },
+  ];
 
-    // ✅ LISTENER: Novo ticket criado
-    const unsubTicketCreate = socketService.on("ticket:create", (ticket) => {
-      console.log("📥 Socket Tickets: Novo ticket", ticket.id);
-      setTickets((prev) => {
-        if (prev.find((t) => t.id === ticket.id)) {
-          return prev;
-        }
-        const novosTickets = [ticket, ...prev].sort(
-          (a, b) => new Date(b.data_criacao) - new Date(a.data_criacao)
-        );
-        setCache("tickets", novosTickets);
-        return novosTickets;
-      });
-    });
-
-    // ✅ LISTENER: Ticket atualizado
-    const unsubTicketUpdate = socketService.on("ticket:update", (dados) => {
-      console.log("📝 Socket Tickets: Atualizado", dados.id);
-      setTickets((prev) => {
-        const novosTickets = prev
-          .map((t) => (t.id === dados.id ? { ...t, ...dados } : t))
-          .sort((a, b) => new Date(b.data_criacao) - new Date(a.data_criacao));
-        setCache("tickets", novosTickets);
-        return novosTickets;
-      });
-    });
-
-    // ✅ LISTENER: Ticket visualizado
-    const unsubTicketViewed = socketService.on("ticket:viewed", (dados) => {
-      console.log("👁️ Socket Tickets: Visualizado", dados.id);
-      setTickets((prev) => {
-        const novosTickets = prev.map((t) =>
-          t.id === dados.id ? { ...t, visto: true } : t
-        );
-        setCache("tickets", novosTickets);
-        return novosTickets;
-      });
-    });
-
-    // ✅ LISTENER: Todos tickets visualizados
-    const unsubAllViewed = socketService.on("ticket:all_viewed", () => {
-      console.log("👁️ Socket Tickets: Todos visualizados");
-      setTickets((prev) => {
-        const novosTickets = prev.map((t) => ({ ...t, visto: true }));
-        setCache("tickets", novosTickets);
-        return novosTickets;
-      });
-    });
-
-    socketListenersRef.current.push(
-      unsubTicketCreate,
-      unsubTicketUpdate,
-      unsubTicketViewed,
-      unsubAllViewed
-    );
-
-    console.log("🔌 Socket Tickets: Listeners configurados");
-  }, []);
+  // Cores das tags de motivo
+  const motivoColors = {
+    "Saída antecipada": { bg: "#FEE2E2", text: "#991B1B", label: "urgente" },
+    "Saída com objeto": { bg: "#E0E7FF", text: "#3730A3", label: "objeto" },
+    Outros: { bg: "#F3F4F6", text: "#374151", label: "outros" },
+  };
 
   // ═══════════════════════════════════════════════════════════════
-  // CARREGAMENTO INICIAL - Com cache
+  // CARREGAMENTO DE DADOS
+  // ═══════════════════════════════════════════════════════════════
+  const fetchTickets = useCallback(
+    async (forceRefresh = false) => {
+      const ongId = user?.id || localStorage.getItem("ongId");
+      if (!ongId) return;
+
+      if (forceRefresh) setIsRefreshing(true);
+      else setIsLoading(true);
+
+      try {
+        const userRes = await api.get(`/usuarios/${ongId}`);
+        setUserData({
+          nome: userRes.data.name,
+          setor: userRes.data.setor || userRes.data.setor_nome || "",
+          setor_id: userRes.data.setor_id,
+        });
+
+        // Usar o fetch do contexto para manter sincronizado
+        await fetchTicketsContext(forceRefresh);
+        isDataLoadedRef.current = true;
+      } catch (error) {
+        console.error("Erro ao buscar tickets:", error);
+      } finally {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
+    },
+    [user, fetchTicketsContext]
+  );
+
+  // ═══════════════════════════════════════════════════════════════
+  // EFEITOS
   // ═══════════════════════════════════════════════════════════════
   useEffect(() => {
     const ongId = user?.id || localStorage.getItem("ongId");
-
     if (!ongId) {
       history.push("/");
       return;
     }
 
-    const fetchTickets = async () => {
-      try {
-        // ✅ Se já tem cache, usa imediatamente
-        const cachedTickets = getCache("tickets");
-        if (
-          cachedTickets &&
-          cachedTickets.length > 0 &&
-          !isDataLoadedRef.current
-        ) {
-          console.log(
-            "📦 Tickets: Usando cache",
-            cachedTickets.length,
-            "registros"
-          );
-          setTickets(cachedTickets);
-          setFilteredTickets(cachedTickets);
-        }
-
-        const userRes = await api.get(`/usuarios/${ongId}`);
-        setUserData({
-          nome: userRes.data.name,
-          setor_id: userRes.data.setor_id,
-        });
-
-        const response = await api.get("/tickets");
-
-        const sorted = response.data.sort(
-          (a, b) => new Date(b.data_criacao) - new Date(a.data_criacao)
-        );
-
-        // ✅ Atualiza estado e cache
-        setTickets(sorted);
-        setFilteredTickets(sorted);
-        setCache("tickets", sorted);
-        isDataLoadedRef.current = true;
-
-        console.log("✅ Tickets: Carregado da API", sorted.length, "registros");
-      } catch (error) {
-        console.error("Erro ao buscar tickets:", error);
-        if (!getCache("tickets")) {
-          alert("Erro ao carregar tickets. Verifique sua conexão.");
-        }
-      }
-    };
-
     fetchTickets();
+  }, [history, user, fetchTickets]);
 
-    // ✅ Configura Socket listeners (substitui setInterval)
-    setupSocketListeners();
-
-    // Cleanup
-    return () => {
-      socketListenersRef.current.forEach((unsub) => unsub && unsub());
-      socketListenersRef.current = [];
-    };
-  }, [history, user, setupSocketListeners]);
-
+  // Filtros
   useEffect(() => {
-    if (!filterDate) {
-      setFilteredTickets(tickets);
-      return;
+    let filtered = [...tickets];
+
+    if (filterDate) {
+      filtered = filtered.filter((ticket) => {
+        const ticketDate = new Date(ticket.data_criacao)
+          .toLocaleDateString("pt-BR")
+          .split("/")
+          .reverse()
+          .join("-");
+        return ticketDate === filterDate;
+      });
     }
 
-    const filtered = tickets.filter((ticket) => {
-      const ticketDate = new Date(ticket.data_criacao)
-        .toLocaleDateString("pt-BR")
-        .split("/")
-        .reverse()
-        .join("-");
-      return ticketDate === filterDate;
-    });
+    if (filterStatus !== "todos") {
+      filtered = filtered.filter((ticket) => ticket.status === filterStatus);
+    }
 
     setFilteredTickets(filtered);
-  }, [filterDate, tickets]);
+  }, [filterDate, filterStatus, tickets]);
 
+  // Fechar menu ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = () => setActiveMenu(null);
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
+
+  // ═══════════════════════════════════════════════════════════════
+  // DRAG AND DROP HANDLERS
+  // ═══════════════════════════════════════════════════════════════
+  const handleDragStart = (e, ticket) => {
+    if (!podeEditarTicket) return;
+    setDraggedTicket(ticket);
+    e.dataTransfer.effectAllowed = "move";
+    e.target.classList.add("dragging");
+  };
+
+  const handleDragEnd = (e) => {
+    e.target.classList.remove("dragging");
+    setDraggedTicket(null);
+    setDragOverColumn(null);
+  };
+
+  const handleDragOver = (e, columnKey) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverColumn(columnKey);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverColumn(null);
+  };
+
+  const handleDrop = async (e, newStatus) => {
+    e.preventDefault();
+    setDragOverColumn(null);
+
+    if (!draggedTicket || !podeEditarTicket) return;
+    if (draggedTicket.status === newStatus) return;
+
+    await handleChangeStatus(draggedTicket.id, newStatus);
+    setDraggedTicket(null);
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  // HANDLERS
+  // ═══════════════════════════════════════════════════════════════
   const handleChangeStatus = async (ticketId, newStatus) => {
-    if (!ticketId || !newStatus) {
-      alert("Dados inválidos para atualização");
-      return;
-    }
+    if (!ticketId || !newStatus) return;
 
     try {
       const response = await api.put(`/tickets/${Number(ticketId)}`, {
         status: newStatus,
       });
+
       if (response.status === 200) {
         setTickets((prev) =>
           prev.map((t) => (t.id === ticketId ? { ...t, status: newStatus } : t))
         );
-        setFilteredTickets((prev) =>
-          prev.map((t) => (t.id === ticketId ? { ...t, status: newStatus } : t))
-        );
       }
     } catch (err) {
-      console.error("Erro completo:", err);
-      alert(`Erro: ${err.response?.data?.message || "Falha na atualização"}`);
+      console.error("Erro ao atualizar:", err);
+      const errorMsg = err.response?.data?.error || "Erro ao atualizar status";
+      alert(errorMsg);
     }
   };
 
-  const statusLabels = ["Aberto", "Em andamento", "Resolvido"];
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
-  const handleNavigateToCreateTicket = () => {
-    history.push("/tickets");
+  const handleSubmitTicket = async (e) => {
+    e.preventDefault();
+
+    if (!formData.funcionario || !formData.motivo || !formData.descricao) {
+      alert("Por favor, preencha todos os campos obrigatórios.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await api.post("/tickets", {
+        ...formData,
+        nomeUsuario: userData.nome,
+        setorUsuario: userData.setor,
+      });
+
+      setShowModal(false);
+      setFormData({
+        funcionario: "",
+        motivo: "",
+        descricao: "",
+        setorResponsavel: "Segurança",
+      });
+
+      alert(`✅ Ticket #${response.data.id} criado com sucesso!`);
+    } catch (err) {
+      console.error("Erro ao criar ticket:", err);
+      alert("❌ Erro ao criar ticket. Tente novamente.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const exportToExcel = () => {
     const dataToExport = filteredTickets.map((ticket) => ({
+      ID: ticket.id,
       "Criado por": ticket.nome_usuario,
       Setor: ticket.setor_usuario,
       Funcionário: ticket.funcionario,
@@ -230,107 +298,473 @@ const TicketDashboard = () => {
       type: "array",
     });
     const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
-    saveAs(blob, `tickets_${filterDate || "todos"}.xlsx`);
+    saveAs(
+      blob,
+      `tickets_${filterDate || "todos"}_${new Date().toLocaleDateString("pt-BR").replace(/\//g, "-")}.xlsx`
+    );
   };
 
+  const clearFilters = () => {
+    setFilterDate("");
+    setFilterStatus("todos");
+  };
+
+  const toggleMenu = (e, ticketId) => {
+    e.stopPropagation();
+    setActiveMenu(activeMenu === ticketId ? null : ticketId);
+  };
+
+  // Gerar iniciais do usuário
+  const getInitials = (name) => {
+    if (!name) return "?";
+    const parts = name.split(" ");
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  // Gerar cor do avatar baseado no nome
+  const getAvatarColor = (name) => {
+    if (!name) return "#6B7280";
+    const colors = [
+      "#3B82F6",
+      "#10B981",
+      "#F59E0B",
+      "#EF4444",
+      "#8B5CF6",
+      "#EC4899",
+      "#06B6D4",
+      "#84CC16",
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
+
+  // Estatísticas
+  const stats = {
+    total: tickets.length,
+    abertos: tickets.filter((t) => t.status === "Aberto").length,
+    emAndamento: tickets.filter((t) => t.status === "Em andamento").length,
+    resolvidos: tickets.filter((t) => t.status === "Resolvido").length,
+  };
+
+  // Obter usuários únicos
+  const uniqueUsers = [
+    ...new Set(tickets.map((t) => t.nome_usuario).filter(Boolean)),
+  ];
+
+  // Loading
+  if (isLoading && tickets.length === 0) {
+    return (
+      <div className="ticket-dashboard-loading">
+        <div className="loading-spinner"></div>
+        <p>Carregando tickets...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="page-container">
-      <header className="page-header">
-        <div className="page-title-wrapper">
-          <div className="page-title-group">
-            <h1 className="page-title">Ticket Dashboard</h1>
+    <div className="ticket-dashboard">
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* HEADER */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      <header className="ticket-header">
+        <div className="ticket-header-content">
+          <div className="header-left">
+            <h1>
+              <FiFileText className="header-icon" />
+              Central de Tickets
+            </h1>
+            <p className="header-subtitle">
+              Gerencie e acompanhe todas as solicitações
+            </p>
+          </div>
+
+          <div className="header-right">
+            <button
+              className="btn-icon"
+              onClick={() => fetchTickets(true)}
+              disabled={isRefreshing}
+              title="Atualizar"
+            >
+              <FiRefreshCw className={isRefreshing ? "spinning" : ""} />
+            </button>
+
+            <button className="btn-primary" onClick={() => setShowModal(true)}>
+              <FiPlusCircle />
+              <span>Novo Ticket</span>
+            </button>
           </div>
         </div>
       </header>
 
-      <div className="sub-lista">
-        <div className="linha-esquerda-buttons">
-          <button
-            onClick={handleNavigateToCreateTicket}
-            className="ticket-button"
-          >
-            <FiPlusCircle size={20} className="icone" />
-            <span>Criar Ticket</span>
-          </button>
-          <button onClick={exportToExcel} className="excel-button">
-            <img src={excel} alt="Excel" className="excel-icon" />
-            Gerar Relatório
-          </button>
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* MINI DASHBOARD - STATS CARDS */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      <div className="stats-dashboard">
+        <div className="stat-card">
+          <div className="stat-content">
+            <span className="stat-label">Total de Tarefas</span>
+            <span className="stat-value">{stats.total}</span>
+          </div>
+          <div className="stat-icon-wrapper">
+            <FiTrendingUp />
+          </div>
         </div>
 
-        <div className="date-filter">
-          <label>
-            Filtrar por data:
+        <div className="stat-card">
+          <div className="stat-content">
+            <span className="stat-label">Em Progresso</span>
+            <span className="stat-value">{stats.emAndamento}</span>
+          </div>
+          <div className="stat-icon-wrapper yellow">
+            <FiClock />
+          </div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-content">
+            <span className="stat-label">Membros da Equipe</span>
+            <span className="stat-value">{uniqueUsers.length}</span>
+          </div>
+          <div className="stat-icon-wrapper">
+            <FiUsers />
+          </div>
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* FILTROS */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      <div className="filters-bar">
+        <div className="filters-left">
+          <div className="filter-item">
+            <FiFilter />
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="todos">Todos os status</option>
+              <option value="Aberto">A Fazer</option>
+              <option value="Em andamento">Em Progresso</option>
+              <option value="Resolvido">Concluído</option>
+            </select>
+          </div>
+
+          <div className="filter-item">
+            <FiCalendar />
             <input
               type="date"
               value={filterDate}
               onChange={(e) => setFilterDate(e.target.value)}
             />
-          </label>
+          </div>
+
+          {(filterDate || filterStatus !== "todos") && (
+            <button className="btn-clear" onClick={clearFilters}>
+              Limpar filtros
+            </button>
+          )}
+        </div>
+
+        <div className="filters-right">
+          <span className="results-count">
+            {filteredTickets.length} ticket
+            {filteredTickets.length !== 1 ? "s" : ""}
+          </span>
+
+          <button className="btn-export" onClick={exportToExcel}>
+            <FiDownload />
+            <span>Exportar</span>
+          </button>
         </div>
       </div>
 
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* KANBAN BOARD - NOVO DESIGN */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
       <div className="kanban-board">
-        {statusLabels.map((status) => (
-          <div className="kanban-column" key={status}>
-            <div className="header-wrapper">
-              <h2>{status}</h2>
-            </div>
-            <div className="ticket-list">
-              {filteredTickets
-                .filter((ticket) => ticket.status === status)
-                .map((ticket) => (
-                  <div
-                    className={`ticket-card ${status.toLowerCase()}`}
-                    key={ticket.id}
-                  >
-                    <strong>Criado por:</strong>
-                    <p className="destaque-usuario">{ticket.nome_usuario}</p>
+        {statusConfig.map((status) => {
+          const columnTickets = filteredTickets.filter(
+            (t) => t.status === status.key
+          );
+          const isDragOver = dragOverColumn === status.key;
 
-                    <strong>Setor:</strong>
-                    <p className="destaque-usuario">{ticket.setor_usuario}</p>
+          return (
+            <div
+              className={`kanban-column ${isDragOver ? "drag-over" : ""}`}
+              key={status.key}
+              onDragOver={(e) => handleDragOver(e, status.key)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, status.key)}
+              style={{ backgroundColor: status.columnBg }}
+            >
+              <div
+                className="column-header"
+                style={{ backgroundColor: status.headerBg }}
+              >
+                <span
+                  className="column-title"
+                  style={{ color: status.textColor }}
+                >
+                  {status.label}
+                </span>
+                <span
+                  className="column-count"
+                  style={{
+                    backgroundColor: status.textColor,
+                    color: "#fff",
+                  }}
+                >
+                  {columnTickets.length}
+                </span>
+              </div>
 
-                    <strong>Funcionário:</strong>
-                    <p>{ticket.funcionario}</p>
-
-                    <strong>Motivo:</strong>
-                    <p>{ticket.motivo}</p>
-
-                    <strong>Descrição:</strong>
-                    <p>{ticket.descricao}</p>
-
-                    <strong>Setor (Verificação):</strong>
-                    <p className="destaque-usuario">
-                      {ticket.setor_responsavel}
-                    </p>
-
-                    <strong>Data:</strong>
-                    <p>
-                      {new Date(ticket.data_criacao).toLocaleString("pt-BR")}
-                    </p>
-
-                    {userData.setor_id === 4 && (
-                      <select
-                        value={ticket.status}
-                        onChange={(e) =>
-                          handleChangeStatus(ticket.id, e.target.value)
-                        }
-                        className="status-select"
-                        disabled={ticket.status === "Resolvido"}
-                      >
-                        {statusLabels.map((s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </select>
+              <div className="column-content">
+                {columnTickets.length === 0 ? (
+                  <div className="empty-column">
+                    <p>Nenhum ticket</p>
+                    {podeEditarTicket && draggedTicket && (
+                      <p className="drop-hint">Solte aqui</p>
                     )}
                   </div>
-                ))}
+                ) : (
+                  columnTickets.map((ticket) => (
+                    <div
+                      className={`ticket-card ${podeEditarTicket ? "draggable" : ""}`}
+                      key={ticket.id}
+                      draggable={podeEditarTicket}
+                      onDragStart={(e) => handleDragStart(e, ticket)}
+                      onDragEnd={handleDragEnd}
+                    >
+                      {/* Header do Card */}
+                      <div className="card-header">
+                        <h3 className="card-title">
+                          #{ticket.id} - {ticket.funcionario}
+                        </h3>
+                        {podeEditarTicket && (
+                          <button
+                            className="card-menu-btn"
+                            onClick={(e) => toggleMenu(e, ticket.id)}
+                          >
+                            <FiMoreVertical />
+                          </button>
+                        )}
+
+                        {/* Menu dropdown */}
+                        {activeMenu === ticket.id && podeEditarTicket && (
+                          <div className="card-menu">
+                            {statusConfig
+                              .filter((s) => s.key !== ticket.status)
+                              .map((s) => (
+                                <button
+                                  key={s.key}
+                                  onClick={() =>
+                                    handleChangeStatus(ticket.id, s.key)
+                                  }
+                                >
+                                  Mover para {s.label}
+                                </button>
+                              ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Descrição */}
+                      <p className="card-description">{ticket.descricao}</p>
+
+                      {/* Tags */}
+                      <div className="card-tags">
+                        <span
+                          className="tag"
+                          style={{
+                            backgroundColor:
+                              motivoColors[ticket.motivo]?.bg || "#F3F4F6",
+                            color:
+                              motivoColors[ticket.motivo]?.text || "#374151",
+                          }}
+                        >
+                          {motivoColors[ticket.motivo]?.label || ticket.motivo}
+                        </span>
+                        <span className="tag tag-setor">
+                          {ticket.setor_responsavel}
+                        </span>
+                      </div>
+
+                      {/* Footer */}
+                      <div className="card-footer">
+                        <span className="card-date">
+                          <FiCalendar />
+                          {new Date(ticket.data_criacao).toLocaleDateString(
+                            "pt-BR"
+                          )}
+                        </span>
+
+                        <div className="card-avatars">
+                          <div
+                            className="avatar"
+                            title={ticket.nome_usuario}
+                            style={{
+                              backgroundColor: getAvatarColor(
+                                ticket.nome_usuario
+                              ),
+                            }}
+                          >
+                            {getInitials(ticket.nome_usuario)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* MODAL - CRIAR TICKET */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {showModal && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>
+                <FiPlusCircle />
+                Novo Ticket
+              </h2>
+              <button
+                className="modal-close"
+                onClick={() => setShowModal(false)}
+              >
+                <FiX />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitTicket} className="modal-form">
+              <div className="form-row">
+                <div className="form-group">
+                  <label>
+                    <FiUser />
+                    Usuário
+                  </label>
+                  <input type="text" value={userData.nome} disabled />
+                </div>
+
+                <div className="form-group">
+                  <label>
+                    <FiUsers />
+                    Setor
+                  </label>
+                  <input type="text" value={userData.setor} disabled />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="funcionario">
+                  <FiUser />
+                  Funcionário Envolvido *
+                </label>
+                <input
+                  type="text"
+                  id="funcionario"
+                  name="funcionario"
+                  value={formData.funcionario}
+                  onChange={handleFormChange}
+                  placeholder="Nome do funcionário envolvido"
+                  required
+                />
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="motivo">
+                    <FiAlertCircle />
+                    Motivo *
+                  </label>
+                  <select
+                    id="motivo"
+                    name="motivo"
+                    value={formData.motivo}
+                    onChange={handleFormChange}
+                    required
+                  >
+                    <option value="">Selecione um motivo</option>
+                    <option value="Saída antecipada">Saída antecipada</option>
+                    <option value="Saída com objeto">Saída com objeto</option>
+                    <option value="Outros">Outros</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="setorResponsavel">
+                    <FiUsers />
+                    Setor Responsável *
+                  </label>
+                  <select
+                    id="setorResponsavel"
+                    name="setorResponsavel"
+                    value={formData.setorResponsavel}
+                    onChange={handleFormChange}
+                    required
+                  >
+                    <option value="Segurança">Segurança</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="descricao">
+                  <FiFileText />
+                  Descrição *
+                </label>
+                <textarea
+                  id="descricao"
+                  name="descricao"
+                  value={formData.descricao}
+                  onChange={handleFormChange}
+                  placeholder="Descreva o ocorrido com detalhes..."
+                  rows={5}
+                  required
+                />
+              </div>
+
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="btn-cancel"
+                  onClick={() => setShowModal(false)}
+                  disabled={isSubmitting}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="btn-submit"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="btn-spinner"></div>
+                      Criando...
+                    </>
+                  ) : (
+                    <>
+                      <FiPlusCircle />
+                      Criar Ticket
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

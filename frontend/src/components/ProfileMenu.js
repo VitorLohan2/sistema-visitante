@@ -109,17 +109,6 @@ export default function ProfileMenu({
         </button>
       )}
 
-      {/* Cadastrar Funcionário - por permissão */}
-      {(isAdmin || temPermissao("funcionario_criar")) && (
-        <button
-          onClick={() => history.push("/funcionarios/cadastrar")}
-          className="menu-link"
-        >
-          <FiUserPlus size={20} className="icone" />
-          <span>Cadastrar Func.</span>
-        </button>
-      )}
-
       {/* Ponto/Bipagem - por permissão */}
       {(isAdmin || temPermissao("ponto_visualizar")) && (
         <button onClick={() => history.push("/ponto")} className="menu-link">

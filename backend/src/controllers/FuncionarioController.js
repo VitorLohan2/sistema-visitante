@@ -1,6 +1,5 @@
 //controllers/FuncionarioController.js
 const connection = require("../database/connection");
-const { getUsuarioId } = require("../utils/authHelper");
 
 module.exports = {
   /**
@@ -51,51 +50,20 @@ module.exports = {
   },
 
   /**
-   * Cria novo funcionário (SOMENTE ADM) - COM AUTENTICAÇÃO
+   * Cria novo funcionário (SOMENTE ADM)
+   * O adminMiddleware já valida se é administrador
    */
   async criar(req, res) {
     const { cracha, nome, setor, funcao, data_admissao } = req.body;
-    const criado_por = getUsuarioId(req); // ✅ USAR HELPER
 
     try {
-      // ✅ DEBUG DETALHADO:
-      console.log("=== DEBUG CADASTRAR FUNCIONÁRIO ===");
-      console.log("Authorization header:", criado_por);
-      console.log("Tipo do criado_por:", typeof criado_por);
-
-      if (!criado_por) {
-        return res
-          .status(401)
-          .json({ error: "Authorization header é obrigatório" });
-      }
-
-      // Buscar usuario primeiro
-      const usuario = await connection("usuarios").where("id", criado_por).first();
-
-      console.log("usuario encontrada:", usuario);
-
-      if (!usuario) {
-        console.log("❌ usuario não encontrada para ID:", criado_por);
-        return res.status(404).json({
-          error: "usuario não encontrada",
-          id_enviado: criado_por,
-        });
-      }
-
-      console.log("Tipo da usuario encontrada:", usuario.type);
-
-      // ✅ VERIFICAR AMBOS OS VALORES (ADM e ADMIN):
-      if (usuario.type !== "ADM" && usuario.type !== "ADMIN") {
-        console.log("❌ usuario não é ADM nem ADMIN. Tipo atual:", usuario.type);
-        return res.status(403).json({
-          error: "Somente administradores tem permissão!",
-          userType: usuario.type,
-          redirectTo: "/profile", // ✅ ADICIONAR REDIRECT
-          tipoPossivelProblema: "Valor do campo type está incorreto",
-        });
-      }
-
-      console.log("✅ usuario é administrador, prosseguindo com cadastro...");
+      console.log("📝 Criando funcionário:", {
+        cracha,
+        nome,
+        setor,
+        funcao,
+        data_admissao,
+      });
 
       // Verifica se crachá já existe
       const existe = await connection("funcionarios")
@@ -134,46 +102,20 @@ module.exports = {
         error: "Erro interno ao criar funcionário",
         details:
           process.env.NODE_ENV === "development" ? error.message : undefined,
-        stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
       });
     }
   },
 
   /**
-   * Atualiza funcionário por crachá (SOMENTE ADM) - COM AUTENTICAÇÃO
+   * Atualiza funcionário por crachá (SOMENTE ADM)
+   * O adminMiddleware já valida se é administrador
    */
   async atualizar(req, res) {
     const { cracha } = req.params;
     const { nome, setor, funcao, data_admissao, data_demissao, ativo } =
       req.body;
-    const criado_por = getUsuarioId(req); // ✅ USAR HELPER
 
     try {
-      // ✅ VERIFICAÇÃO DE AUTENTICAÇÃO ADM
-      if (!criado_por) {
-        return res
-          .status(401)
-          .json({ error: "Authorization header é obrigatório" });
-      }
-
-      const usuario = await connection("usuarios").where("id", criado_por).first();
-
-      if (!usuario) {
-        return res.status(404).json({
-          error: "usuario não encontrada",
-          id_enviado: criado_por,
-        });
-      }
-
-      // ✅ VERIFICAR AMBOS OS VALORES (ADM e ADMIN):
-      if (usuario.type !== "ADM" && usuario.type !== "ADMIN") {
-        return res.status(403).json({
-          error: "Somente administradores tem permissão!",
-          userType: usuario.type,
-          redirectTo: "/profile",
-        });
-      }
-
       // Verifica se funcionário existe
       const funcionario = await connection("funcionarios")
         .where("cracha", cracha)

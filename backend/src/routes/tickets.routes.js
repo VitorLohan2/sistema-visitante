@@ -34,6 +34,7 @@ router.put("/mark-seen", authMiddleware, TicketController.markAllSeen);
 // ═══════════════════════════════════════════════════════════════
 router.post(
   "/",
+  authMiddleware,
   celebrate({
     [Segments.BODY]: Joi.object().keys({
       funcionario: Joi.string().required(),

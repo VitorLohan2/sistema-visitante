@@ -38,7 +38,7 @@ function init(server) {
       socket.userId = usuario.id;
       socket.userName = usuario.nome;
       socket.userEmail = usuario.email;
-      socket.userType = usuario.tipo;
+      socket.isAdmin = usuario.isAdmin;
       socket.setorId = usuario.setor_id;
       socket.empresaId = usuario.empresa_id;
 
@@ -80,15 +80,15 @@ function init(server) {
     socket.on("disconnect", async () => {
       console.log("🔴 Socket desconectado:", socket.id);
 
-      // ✅ SE FOR ADM DE TI, ATUALIZAR EQUIPE ONLINE
-      if (socket.userType === "ADM" && socket.setorId === 7) {
-        console.log(`➖ ADM de TI desconectou: ${socket.userName}`);
+      // ✅ SE FOR ADMIN DE TI, ATUALIZAR EQUIPE ONLINE
+      if (socket.isAdmin && socket.setorId === 7) {
+        console.log(`➖ ADMIN de TI desconectou: ${socket.userName}`);
 
         // Emitir evento GENÉRICO que o frontend escuta
         io.to("global").emit("user:disconnected", {
           id: socket.userId,
           nome: socket.userName,
-          type: socket.userType,
+          isAdmin: socket.isAdmin,
           setorId: socket.setorId,
         });
 
@@ -107,17 +107,17 @@ function init(server) {
 async function buscarTipoUsuarioEAtualizar(socket) {
   try {
     // Os dados já estão no socket através do JWT validado
-    // Apenas precisamos emitir eventos se for ADM de TI (setor_id = 7)
+    // Apenas precisamos emitir eventos se for ADMIN de TI (setor_id = 7)
 
-    if (socket.userType === "ADM" && socket.setorId === 7) {
-      console.log(`➕ ADM de TI conectou: ${socket.userName}`);
+    if (socket.isAdmin && socket.setorId === 7) {
+      console.log(`➕ ADMIN de TI conectou: ${socket.userName}`);
 
       // Emitir evento GENÉRICO que o frontend escuta
       io.to("global").emit("user:connected", {
         id: socket.userId,
         nome: socket.userName,
         email: socket.userEmail,
-        type: socket.userType,
+        isAdmin: socket.isAdmin,
         setorId: socket.setorId,
       });
 
@@ -140,19 +140,21 @@ async function enviarEquipeOnlineParaSocket(socket) {
   try {
     const connection = require("./database/connection");
 
-    // Buscar todos os ADMs do setor TI (setor_id = 7)
+    // Buscar todos os ADMs do setor TI (setor_id = 7) via papéis
     const equipeADM = await connection("usuarios")
-      .where("type", "ADM")
-      .where("setor_id", 7)
-      .select("id", "name", "email")
-      .orderBy("name", "asc");
+      .join("usuarios_papeis", "usuarios.id", "usuarios_papeis.usuario_id")
+      .join("papeis", "usuarios_papeis.papel_id", "papeis.id")
+      .where("papeis.nome", "ADMIN")
+      .where("usuarios.setor_id", 7)
+      .select("usuarios.id", "usuarios.name", "usuarios.email")
+      .orderBy("usuarios.name", "asc");
 
-    // Verificar quais ADMs de TI estão online
+    // Verificar quais ADMINs de TI estão online
     const onlineUsers = [];
 
     if (io && io.sockets && io.sockets.sockets) {
       io.sockets.sockets.forEach((s) => {
-        if (s.userId && s.userType === "ADM" && s.setorId === 7) {
+        if (s.userId && s.isAdmin && s.setorId === 7) {
           if (!onlineUsers.find((u) => u.id === s.userId)) {
             const userInfo = equipeADM.find((u) => u.id === s.userId);
             if (userInfo) {
@@ -171,7 +173,7 @@ async function enviarEquipeOnlineParaSocket(socket) {
     socket.emit("equipe:online", onlineUsers);
 
     console.log(
-      `👥 Lista de equipe online enviada para socket ${socket.id}: ${onlineUsers.length} membros ADM de TI online`
+      `👥 Lista de equipe online enviada para socket ${socket.id}: ${onlineUsers.length} membros ADMIN de TI online`
     );
   } catch (error) {
     console.error("❌ Erro ao enviar equipe online:", error);
@@ -183,23 +185,21 @@ async function emitirEquipeOnlineAtualizada() {
   try {
     const connection = require("./database/connection");
 
-    // Buscar todos os ADMs do setor TI (setor_id = 7)
+    // Buscar todos os ADMs do setor TI (setor_id = 7) via papéis
     const equipeADM = await connection("usuarios")
-      .where("type", "ADM")
-      .where("setor_id", 7)
-      .select("id", "name", "email")
-      .orderBy("name", "asc");
+      .join("usuarios_papeis", "usuarios.id", "usuarios_papeis.usuario_id")
+      .join("papeis", "usuarios_papeis.papel_id", "papeis.id")
+      .where("papeis.nome", "ADMIN")
+      .where("usuarios.setor_id", 7)
+      .select("usuarios.id", "usuarios.name", "usuarios.email")
+      .orderBy("usuarios.name", "asc");
 
-    // Verificar quais ADMs de TI estão online
+    // Verificar quais ADMINs de TI estão online
     const onlineUsers = [];
 
     if (io && io.sockets && io.sockets.sockets) {
       io.sockets.sockets.forEach((socket) => {
-        if (
-          socket.userId &&
-          socket.userType === "ADM" &&
-          socket.setorId === 7
-        ) {
+        if (socket.userId && socket.isAdmin && socket.setorId === 7) {
           if (!onlineUsers.find((u) => u.id === socket.userId)) {
             const userInfo = equipeADM.find((u) => u.id === socket.userId);
             if (userInfo) {

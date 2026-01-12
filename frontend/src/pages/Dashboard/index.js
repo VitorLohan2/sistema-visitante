@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   FiUsers,
   FiClipboard,
@@ -8,8 +8,12 @@ import {
   FiRefreshCw,
 } from "react-icons/fi";
 import api from "../../services/api";
+import { getCache, setCache } from "../../services/cacheService";
 import { useAuth } from "../../hooks/useAuth";
 import "../../styles/dashboard.css";
+
+// TTL do cache de dashboard: 2 minutos
+const DASHBOARD_CACHE_TTL = 2 * 60 * 1000;
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -22,17 +26,42 @@ export default function Dashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [lastUpdate, setLastUpdate] = useState(null);
+  const cacheTimestampRef = useRef(null);
 
   useEffect(() => {
     carregarEstatisticas();
   }, []);
 
-  const carregarEstatisticas = async () => {
+  const carregarEstatisticas = async (forceReload = false) => {
     try {
       setLoading(true);
       setError("");
 
-      // Buscar dados das diferentes tabelas
+      // ✅ Verifica cache com TTL (a menos que seja reload forçado)
+      if (!forceReload) {
+        const cachedStats = getCache("dashboardStats");
+        const cacheTimestamp = sessionStorage.getItem(
+          "cache_dashboard_timestamp"
+        );
+
+        if (cachedStats && cacheTimestamp) {
+          const cacheAge = Date.now() - parseInt(cacheTimestamp);
+          if (cacheAge < DASHBOARD_CACHE_TTL) {
+            console.log(
+              "📦 Usando estatísticas do cache (válido por mais " +
+                Math.round((DASHBOARD_CACHE_TTL - cacheAge) / 1000) +
+                "s)"
+            );
+            setStats(cachedStats);
+            setLastUpdate(new Date(parseInt(cacheTimestamp)));
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
+      // Se não tem cache válido ou é reload forçado, busca da API
       const [visitantes, funcionarios, agendamentos, tickets] =
         await Promise.all([
           api.get("/cadastro-visitantes").catch(() => ({ data: { total: 0 } })),
@@ -41,13 +70,23 @@ export default function Dashboard() {
           api.get("/tickets").catch(() => ({ data: { total: 0 } })),
         ]);
 
-      setStats({
+      const newStats = {
         totalVisitantes: visitantes.data?.total || 0,
         visitantesHoje: visitantes.data?.hoje || 0,
         agendamentos: agendamentos.data?.total || 0,
         tickets: tickets.data?.total || 0,
         funcionarios: funcionarios.data?.total || 0,
-      });
+      };
+
+      // Salva no cache com timestamp
+      setCache("dashboardStats", newStats);
+      sessionStorage.setItem(
+        "cache_dashboard_timestamp",
+        Date.now().toString()
+      );
+
+      setStats(newStats);
+      setLastUpdate(new Date());
     } catch (err) {
       console.error("Erro ao carregar estatísticas:", err);
       setError("Erro ao carregar dados do dashboard");
@@ -56,7 +95,7 @@ export default function Dashboard() {
     }
   };
 
-  if (!user?.tipo || user.tipo !== "ADM") {
+  if (!user?.isAdmin) {
     return (
       <div className="dashboard-container">
         <div className="dashboard-error">
@@ -77,7 +116,7 @@ export default function Dashboard() {
         </div>
         <button
           className="refresh-btn"
-          onClick={carregarEstatisticas}
+          onClick={() => carregarEstatisticas(true)}
           disabled={loading}
         >
           <FiRefreshCw size={20} className={loading ? "rotating" : ""} />
@@ -178,7 +217,12 @@ export default function Dashboard() {
 
         {/* Última atualização */}
         <div className="dashboard-footer">
-          <p>Última atualização: {new Date().toLocaleString("pt-BR")}</p>
+          <p>
+            Última atualização:{" "}
+            {lastUpdate
+              ? lastUpdate.toLocaleString("pt-BR")
+              : new Date().toLocaleString("pt-BR")}
+          </p>
         </div>
       </div>
     </div>

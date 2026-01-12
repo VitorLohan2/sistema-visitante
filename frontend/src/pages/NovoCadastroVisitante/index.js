@@ -13,6 +13,7 @@ import {
   FiPlus,
 } from "react-icons/fi";
 import api from "../../services/api";
+import { getCache, setCache } from "../../services/cacheService";
 import "./styles.css";
 import logoImg from "../../assets/logo.svg";
 
@@ -78,17 +79,36 @@ export default function NewVisitor() {
     cor_veiculo: "",
   });
 
-  // Busca empresas e setores do banco de dados
+  // Busca empresas e setores do banco de dados (usa cache se disponível)
   useEffect(() => {
     async function loadData() {
       try {
+        // ✅ Primeiro verifica se já tem no cache
+        const cachedEmpresas = getCache("empresas");
+        const cachedSetores = getCache("setores");
+
+        if (cachedEmpresas && cachedSetores) {
+          console.log("📦 Usando empresas e setores do cache");
+          setEmpresasVisitantes(cachedEmpresas);
+          setSetoresVisitantes(cachedSetores);
+          return;
+        }
+
+        // Se não tem cache, busca da API
         const [empresasResponse, setoresResponse] = await Promise.all([
           api.get("/empresas-visitantes"),
           api.get("/setores-visitantes"),
         ]);
 
-        setEmpresasVisitantes(empresasResponse.data);
-        setSetoresVisitantes(setoresResponse.data);
+        const empresasData = empresasResponse.data;
+        const setoresData = setoresResponse.data;
+
+        // Salva no cache para próximos acessos
+        setCache("empresas", empresasData);
+        setCache("setores", setoresData);
+
+        setEmpresasVisitantes(empresasData);
+        setSetoresVisitantes(setoresData);
       } catch (err) {
         console.error("Erro ao carregar dados:", err);
         alert("Erro ao carregar opções de empresa e setor");

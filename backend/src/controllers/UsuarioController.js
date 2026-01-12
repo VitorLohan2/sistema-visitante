@@ -33,7 +33,6 @@ module.exports = {
           `${TABELA_USUARIOS}.birthdate as data_nascimento`,
           `${TABELA_USUARIOS}.city as cidade`,
           `${TABELA_USUARIOS}.uf`,
-          `${TABELA_USUARIOS}.type as tipo`,
           `${TABELA_USUARIOS}.empresa_id`,
           `${TABELA_USUARIOS}.setor_id`,
           "empresas.nome as empresa_nome",
@@ -77,8 +76,8 @@ module.exports = {
     const birthdate = data_nascimento || request.body.birthdate;
     const city = cidade || request.body.city;
 
-    // Tipo do usuário
-    const tipoUsuario = tipo || request.body.type || "USER";
+    // Tipo do usuário - usar apenas para validação de código
+    const tipoUsuario = tipo || "USER";
 
     // 🔐 Validação do código (apenas para USER)
     if (tipoUsuario === "USER") {
@@ -207,7 +206,6 @@ module.exports = {
           `${TABELA_USUARIOS}.birthdate as data_nascimento`,
           `${TABELA_USUARIOS}.city as cidade`,
           `${TABELA_USUARIOS}.uf`,
-          `${TABELA_USUARIOS}.type as tipo`,
           `${TABELA_USUARIOS}.empresa_id`,
           `${TABELA_USUARIOS}.setor_id`,
           "empresas.nome as empresa_nome",
@@ -216,7 +214,6 @@ module.exports = {
           `${TABELA_USUARIOS}.name`,
           `${TABELA_USUARIOS}.birthdate`,
           `${TABELA_USUARIOS}.city`,
-          `${TABELA_USUARIOS}.type`,
           "empresas.nome as empresa",
           "setores.nome as setor"
         )
@@ -436,14 +433,12 @@ module.exports = {
           `${TABELA_USUARIOS}.birthdate as data_nascimento`,
           `${TABELA_USUARIOS}.city as cidade`,
           `${TABELA_USUARIOS}.uf`,
-          `${TABELA_USUARIOS}.type as tipo`,
           `${TABELA_USUARIOS}.empresa_id`,
           `${TABELA_USUARIOS}.setor_id`,
           "empresas.nome as empresa_nome",
           "setores.nome as setor_nome",
           // Campos antigos para compatibilidade
-          `${TABELA_USUARIOS}.name`,
-          `${TABELA_USUARIOS}.type`
+          `${TABELA_USUARIOS}.name`
         )
         .first();
 
@@ -460,6 +455,192 @@ module.exports = {
       return response.status(500).json({
         error: "Erro ao buscar perfil",
         code: "PROFILE_ERROR",
+      });
+    }
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // CRIAR USUÁRIO INTERNO (Apenas Admin - sem código de acesso)
+  // POST /usuarios/interno
+  // ═══════════════════════════════════════════════════════════════
+  async createInterno(request, response) {
+    const io = getIo();
+    const {
+      nome,
+      data_nascimento,
+      cpf,
+      empresa_id,
+      setor_id,
+      email,
+      whatsapp,
+      cidade,
+      uf,
+      papel_id, // Papel para vincular em usuarios_papeis
+      senha,
+    } = request.body;
+
+    console.log("📝 === CADASTRO DE USUÁRIO INTERNO ===");
+    console.log("📝 Body completo recebido:", request.body);
+    console.log("📝 Campos extraídos:", {
+      nome,
+      cpf,
+      email,
+      papel_id,
+      senha: senha ? "****" : "não fornecido",
+    });
+
+    // Valida se papel_id foi informado
+    if (!papel_id) {
+      console.error("❌ Papel não informado");
+      return response.status(400).json({
+        error: "Papel do usuário é obrigatório",
+        code: "PAPEL_REQUIRED",
+      });
+    }
+
+    // Valida campos obrigatórios
+    if (!cpf || !email || !nome) {
+      console.error("❌ Campos obrigatórios faltando:", { cpf, email, nome });
+      return response.status(400).json({
+        error: "CPF, Email e Nome são obrigatórios",
+        code: "MISSING_FIELDS",
+      });
+    }
+    // Valida tamanho mínimo da senha
+    if (senha.length < 6) {
+      console.error("❌ Senha muito curta:", senha.length);
+      return response.status(400).json({
+        error: "A senha deve ter no mínimo 6 caracteres",
+        code: "WEAK_PASSWORD",
+      });
+    }
+    try {
+      const cleanedCpf = cpf.replace(/\D/g, "");
+      const cleanedWhatsapp = whatsapp ? whatsapp.replace(/\D/g, "") : null;
+
+      console.log("📌 CPF limpo:", cleanedCpf);
+
+      // Verifica se o papel existe
+      const papelExiste = await connection("papeis")
+        .where("id", papel_id)
+        .first();
+
+      console.log("🔍 Papel encontrado:", papelExiste);
+
+      if (!papelExiste) {
+        console.error("❌ Papel não encontrado com ID:", papel_id);
+        return response.status(400).json({
+          error: "Papel não encontrado",
+          code: "PAPEL_NOT_FOUND",
+        });
+      }
+
+      // Verifica se email já existe
+      const emailExiste = await connection(TABELA_USUARIOS)
+        .where("email", email.toLowerCase())
+        .first();
+
+      if (emailExiste) {
+        return response.status(400).json({
+          error: "Este email já está cadastrado",
+          code: "EMAIL_EXISTS",
+        });
+      }
+
+      // Verifica se CPF já existe
+      const cpfExiste = await connection(TABELA_USUARIOS)
+        .where("cpf", cleanedCpf)
+        .first();
+
+      if (cpfExiste) {
+        return response.status(400).json({
+          error: "Este CPF já está cadastrado",
+          code: "CPF_EXISTS",
+        });
+      }
+
+      const id = generateUniqueId();
+
+      // Dados para inserção (sem type - agora usa papeis)
+      const dadosInsercao = {
+        id,
+        name: nome,
+        birthdate: data_nascimento || null,
+        cpf: cleanedCpf,
+        empresa_id: empresa_id || null,
+        setor_id: setor_id || null,
+        email: email.toLowerCase(),
+        whatsapp: cleanedWhatsapp,
+        city: cidade || null,
+        uf: uf ? uf.toUpperCase() : null,
+      };
+
+      // Se senha foi fornecida, adiciona hash
+      if (senha) {
+        dadosInsercao.senha = hashSenha(senha);
+      }
+
+      // Usando transação para garantir consistência
+      await connection.transaction(async (trx) => {
+        // Insere o usuário
+        await trx(TABELA_USUARIOS).insert(dadosInsercao);
+
+        // Vincula o usuário ao papel na tabela usuarios_papeis
+        await trx("usuarios_papeis").insert({
+          usuario_id: id,
+          papel_id: parseInt(papel_id),
+        });
+      });
+
+      console.log(
+        "✅ Usuário interno cadastrado:",
+        id,
+        "com papel:",
+        papelExiste.nome
+      );
+
+      // Emite evento Socket.IO
+      io.to("global").emit("usuario:created", {
+        id,
+        nome,
+        papel: papelExiste.nome,
+      });
+
+      return response.status(201).json({
+        id,
+        nome,
+        email: email.toLowerCase(),
+        papel: papelExiste.nome,
+        message: "Usuário cadastrado com sucesso",
+      });
+    } catch (error) {
+      console.error("❌ Erro ao criar usuário interno:", error.message);
+      console.error("Stack:", error.stack);
+
+      // Trata erros específicos de banco de dados
+      if (error.message.includes("cpf")) {
+        return response.status(400).json({
+          error: "CPF inválido ou já cadastrado",
+          code: "CPF_ERROR",
+          details:
+            process.env.NODE_ENV === "development" ? error.message : undefined,
+        });
+      }
+
+      if (error.message.includes("email")) {
+        return response.status(400).json({
+          error: "Email inválido ou já cadastrado",
+          code: "EMAIL_ERROR",
+          details:
+            process.env.NODE_ENV === "development" ? error.message : undefined,
+        });
+      }
+
+      return response.status(500).json({
+        error: "Erro ao criar usuário",
+        code: "CREATE_ERROR",
+        details:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   },

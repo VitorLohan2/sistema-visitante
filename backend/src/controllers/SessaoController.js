@@ -6,7 +6,7 @@ module.exports = {
 
     const usuario = await connection("usuarios")
       .where("id", id)
-      .select("name", "type", "setor_id")
+      .select("name", "setor_id")
       .first();
 
     if (!usuario) {
@@ -15,9 +15,18 @@ module.exports = {
         .json({ error: "Nenhum CADASTRO encontrado com este ID" });
     }
 
+    // Buscar papéis do usuário para determinar se é admin
+    const papeis = await connection("usuarios_papeis")
+      .join("papeis", "usuarios_papeis.papel_id", "papeis.id")
+      .where("usuarios_papeis.usuario_id", id)
+      .pluck("papeis.nome");
+
+    const isAdmin = Array.isArray(papeis) && papeis.includes("ADMIN");
+
     return response.json({
       name: usuario.name,
-      type: usuario.type,
+      isAdmin,
+      papeis,
       setor_id: usuario.setor_id,
       token: id,
     });

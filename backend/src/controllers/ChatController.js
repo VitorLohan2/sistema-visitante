@@ -42,7 +42,7 @@ module.exports = {
 
       const usuario = await connection("usuarios")
         .where("id", usuario_id)
-        .select("type", "setor_id")
+        .select("setor_id")
         .first();
 
       if (!usuario) {
@@ -52,7 +52,7 @@ module.exports = {
 
       let conversas;
 
-      // ✅ Apenas ADM do setor TI (setor_id = 7) pode ver todas as conversas
+      // ✅ Apenas ADMIN do setor TI (setor_id = 7) pode ver todas as conversas
       const userIsAdmTI = await isAdmTI(usuario_id);
       if (userIsAdmTI) {
         conversas = await connection("conversas_suporte")
@@ -112,7 +112,7 @@ module.exports = {
 
       const usuario = await connection("usuarios")
         .where("id", usuario_id)
-        .select("name", "type", "setor_id")
+        .select("name", "setor_id")
         .first();
 
       if (!usuario) {
@@ -564,12 +564,14 @@ module.exports = {
       const connection = require("../database/connection");
       const { getIo } = require("../socket");
 
-      // ✅ Buscar apenas usuários ADM do setor TI (setor_id = 7)
+      // ✅ Buscar apenas usuários ADMIN do setor TI (setor_id = 7) via papéis
       const equipeADM = await connection("usuarios")
-        .where("type", "ADM")
-        .where("setor_id", 7)
-        .select("id", "name", "email")
-        .orderBy("name", "asc");
+        .join("usuarios_papeis", "usuarios.id", "usuarios_papeis.usuario_id")
+        .join("papeis", "usuarios_papeis.papel_id", "papeis.id")
+        .where("papeis.nome", "ADMIN")
+        .where("usuarios.setor_id", 7)
+        .select("usuarios.id", "usuarios.name", "usuarios.email")
+        .orderBy("usuarios.name", "asc");
 
       console.log(
         `✅ ${equipeADM.length} membros ADM de TI encontrados no banco`

@@ -295,7 +295,15 @@ module.exports = {
           .json({ error: "Agendamento não encontrado" });
       }
 
-      if (agendamento.usuario_id !== usuario_id && usuario.type !== "ADM") {
+      // Verificar se é admin via papéis
+      const papeis = await connection("usuarios_papeis")
+        .join("papeis", "usuarios_papeis.papel_id", "papeis.id")
+        .where("usuarios_papeis.usuario_id", usuario_id)
+        .pluck("papeis.nome");
+
+      const isAdmin = Array.isArray(papeis) && papeis.includes("ADMIN");
+
+      if (agendamento.usuario_id !== usuario_id && !isAdmin) {
         return response
           .status(403)
           .json({ error: "Não autorizado a excluir este agendamento" });

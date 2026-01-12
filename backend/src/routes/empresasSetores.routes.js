@@ -38,6 +38,10 @@ router.post(
   celebrate({
     [Segments.BODY]: Joi.object().keys({
       nome: Joi.string().required().max(100),
+      cnpj: Joi.string().max(14).allow(null, ""),
+      telefone: Joi.string().max(11).allow(null, ""),
+      email: Joi.string().email().max(100).allow(null, ""),
+      endereco: Joi.string().max(255).allow(null, ""),
     }),
   }),
   EmpresasVisitantesController.create
@@ -53,6 +57,10 @@ router.put(
     }),
     [Segments.BODY]: Joi.object().keys({
       nome: Joi.string().required().max(100),
+      cnpj: Joi.string().max(14).allow(null, ""),
+      telefone: Joi.string().max(11).allow(null, ""),
+      email: Joi.string().email().max(100).allow(null, ""),
+      endereco: Joi.string().max(255).allow(null, ""),
     }),
   }),
   EmpresasVisitantesController.update

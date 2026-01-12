@@ -110,7 +110,7 @@ module.exports = {
     try {
       const usuario = await connection("usuarios")
         .where("id", usuario_id)
-        .select("type", "setor_id")
+        .select("setor_id")
         .first();
 
       if (!usuario)
@@ -155,7 +155,7 @@ module.exports = {
     try {
       const usuario = await connection("usuarios")
         .where("id", usuario_id)
-        .select("type", "setor_id")
+        .select("setor_id")
         .first();
 
       if (!usuario)
@@ -166,8 +166,16 @@ module.exports = {
       if (!ticket)
         return res.status(404).json({ error: "Ticket não encontrado" });
 
+      // Verificar se é ADMIN via papéis
       const userIsAdmin = await verificarAdmin(usuario_id);
-      const isSeguranca = usuario.setor_id === 4;
+
+      // Verificar se tem papel de SEGURANCA
+      const papeis = await connection("usuarios_papeis")
+        .join("papeis", "usuarios_papeis.papel_id", "papeis.id")
+        .where("usuarios_papeis.usuario_id", usuario_id)
+        .pluck("papeis.nome");
+
+      const isSeguranca = Array.isArray(papeis) && papeis.includes("SEGURANÇA");
 
       if (!userIsAdmin && !isSeguranca) {
         return res.status(403).json({
@@ -244,7 +252,15 @@ module.exports = {
         .where("id", usuario_id)
         .first();
 
-      if (usuario.type !== "ADMIN" && ticket.usuario_id !== usuario_id) {
+      // Verificar se é admin via papéis
+      const papeis = await connection("usuarios_papeis")
+        .join("papeis", "usuarios_papeis.papel_id", "papeis.id")
+        .where("usuarios_papeis.usuario_id", usuario_id)
+        .pluck("papeis.nome");
+
+      const isAdmin = Array.isArray(papeis) && papeis.includes("ADMIN");
+
+      if (!isAdmin && ticket.usuario_id !== usuario_id) {
         return res.status(403).json({ error: "Acesso negado ao ticket" });
       }
 

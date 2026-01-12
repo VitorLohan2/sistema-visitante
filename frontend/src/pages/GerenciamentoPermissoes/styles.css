@@ -486,6 +486,132 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════ */
+/* CADASTRO DE USUÁRIO */
+/* ═══════════════════════════════════════════════════════════════ */
+
+.cadastro-section h2 {
+  font-size: 20px;
+  color: #41414d;
+  margin-bottom: 8px;
+}
+
+.cadastro-form {
+  max-width: 800px;
+  margin-top: 24px;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.form-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group-small {
+  flex: 0 0 100px;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #41414d;
+  margin-bottom: 6px;
+}
+
+.form-group input,
+.form-group select {
+  padding: 12px 14px;
+  border: 1px solid #dcdce6;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #333;
+  background: white;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #1e293b;
+  box-shadow: 0 0 0 3px rgba(30, 41, 59, 0.1);
+}
+
+.form-group input::placeholder {
+  color: #a8a8b3;
+}
+
+.form-group input:disabled,
+.form-group select:disabled {
+  background: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.form-hint {
+  font-size: 12px;
+  color: #737380;
+  margin-top: 4px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #e1e5e8;
+}
+
+.form-actions .btn-save {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: #1e293b;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.form-actions .btn-save:hover:not(:disabled) {
+  background: #0f172a;
+}
+
+.form-actions .btn-save:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
+.form-actions .btn-cancel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: white;
+  color: #64748b;
+  border: 1px solid #e1e5e8;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.form-actions .btn-cancel:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
 /* LOADING */
 /* ═══════════════════════════════════════════════════════════════ */
 
@@ -532,5 +658,22 @@
 
   .permissoes-por-modulo {
     grid-template-columns: 1fr;
+  }
+
+  .form-row {
+    flex-direction: column;
+  }
+
+  .form-group-small {
+    flex: 1;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .form-actions button {
+    width: 100%;
+    justify-content: center;
   }
 }

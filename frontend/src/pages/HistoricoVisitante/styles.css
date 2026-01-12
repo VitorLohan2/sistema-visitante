@@ -309,8 +309,8 @@
 .historico-stat-card .stat-icon.total {
   background: linear-gradient(
     135deg,
-    rgba(224, 32, 65, 0.1) 0%,
-    rgba(224, 32, 65, 0.2) 100%
+    rgba(40, 167, 69, 0.1) 0%,
+    rgba(40, 167, 69, 0.2) 100%
   );
   color: var(--historico-primary);
 }
@@ -418,7 +418,7 @@
 }
 
 .historico-table tbody tr:hover {
-  background: rgba(224, 32, 65, 0.03);
+  background: rgba(40, 167, 69, 0.03);
 }
 
 .historico-table tbody td {
@@ -689,7 +689,7 @@
 }
 
 .historico-modal-close:hover {
-  background: rgba(224, 32, 65, 0.1);
+  background: rgba(40, 167, 69, 0.1);
   color: var(--historico-primary);
 }
 

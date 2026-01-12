@@ -372,7 +372,7 @@ module.exports = {
     const { bloqueado } = request.body;
 
     // Verifica se é admin (vem do adminMiddleware)
-    if (!request.usuario || !["ADM", "ADMIN"].includes(request.usuario.tipo)) {
+    if (!request.usuario || !request.usuario.isAdmin) {
       return response.status(403).json({
         error: "Somente administradores podem bloquear cadastros.",
         code: "ADMIN_REQUIRED",
@@ -431,7 +431,7 @@ module.exports = {
     const { id } = request.params;
 
     // Verifica se é admin
-    if (!request.usuario || !["ADM", "ADMIN"].includes(request.usuario.tipo)) {
+    if (!request.usuario || !request.usuario.isAdmin) {
       return response.status(403).json({
         error: "Somente administradores podem excluir cadastros.",
         code: "ADMIN_REQUIRED",
@@ -631,12 +631,15 @@ module.exports = {
     console.log("🚫 Bloqueio solicitado:", { id, bloqueado, usuario_id });
 
     try {
-      const usuario = await connection("usuarios")
-        .where("id", usuario_id)
-        .where("type", "ADM")
-        .first();
+      // Verificar se é admin via papéis
+      const papeis = await connection("usuarios_papeis")
+        .join("papeis", "usuarios_papeis.papel_id", "papeis.id")
+        .where("usuarios_papeis.usuario_id", usuario_id)
+        .pluck("papeis.nome");
 
-      if (!usuario) {
+      const isAdmin = Array.isArray(papeis) && papeis.includes("ADMIN");
+
+      if (!isAdmin) {
         console.log(
           `❌ Tentativa de bloqueio não autorizada por: ${usuario_id}`
         );

@@ -1,7 +1,7 @@
 import React from "react";
 import { FiSettings, FiX, FiSun, FiMoon, FiInfo } from "react-icons/fi";
 
-import '../styles/config-modal.css';
+import "../styles/config-modal.css";
 
 function ConfigModal({
   visible,
@@ -10,13 +10,16 @@ function ConfigModal({
   toggleTheme,
   userDetails,
   ongId,
-  ongName
+  ongName,
 }) {
   if (!visible) return null;
 
   return (
     <div className="config-modal-overlay" onClick={onClose}>
-      <div className="config-modal-content" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="config-modal-content"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Cabeçalho */}
         <div className="config-modal-header">
           <h2>
@@ -68,7 +71,9 @@ function ConfigModal({
               <div className="user-info-item">
                 <label>Nome:</label>
                 <span className="user-info-value">
-                  {(userDetails && userDetails.name) || ongName || "Carregando..."}
+                  {(userDetails && userDetails.name) ||
+                    ongName ||
+                    "Carregando..."}
                 </span>
               </div>
 
@@ -83,15 +88,6 @@ function ConfigModal({
                 <div className="user-info-item">
                   <label>Setor:</label>
                   <span className="user-info-value">{userDetails.setor}</span>
-                </div>
-              )}
-
-              {userDetails && userDetails.type && (
-                <div className="user-info-item">
-                  <label>Tipo de Conta:</label>
-                  <span className="user-info-value badge-type">
-                    {userDetails.type}
-                  </span>
                 </div>
               )}
             </div>

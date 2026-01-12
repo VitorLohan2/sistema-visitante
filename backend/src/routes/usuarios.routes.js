@@ -46,8 +46,7 @@ router.post(
         email: Joi.string().required().email(),
         whatsapp: Joi.string().required().min(10).max(11),
         uf: Joi.string().required().length(2),
-        tipo: Joi.string().valid("ADM", "ADMIN", "USER").default("USER"),
-        type: Joi.string().valid("ADM", "ADMIN", "USER"), // compatibilidade
+        tipo: Joi.string().valid("USER").default("USER"), // Apenas USER - admin via papéis
         codigo_acesso: Joi.when("tipo", {
           is: "USER",
           then: Joi.string()
@@ -60,6 +59,34 @@ router.post(
       .or("nome", "name"), // Pelo menos um dos dois
   }),
   UsuarioController.create
+);
+
+// ═══════════════════════════════════════════════════════════════
+// CRIAR USUÁRIO INTERNO (Admin only - sem código de acesso)
+// POST /usuarios/interno
+// ═══════════════════════════════════════════════════════════════
+router.post(
+  "/interno",
+  authMiddleware,
+  adminMiddleware,
+  celebrate({
+    [Segments.BODY]: Joi.object().keys({
+      nome: Joi.string().required(),
+      data_nascimento: Joi.string().allow("", null),
+      cpf: Joi.string()
+        .required()
+        .regex(/^\d{3}\.\d{3}\.\d{3}-\d{2}$|^\d{11}$/),
+      empresa_id: Joi.number().integer().allow(null),
+      setor_id: Joi.number().integer().allow(null),
+      email: Joi.string().required().email(),
+      whatsapp: Joi.string().min(10).max(11).allow("", null),
+      cidade: Joi.string().allow("", null),
+      uf: Joi.string().length(2).allow("", null),
+      papel_id: Joi.number().integer().required(), // Papel obrigatório para vincular em usuarios_papeis
+      senha: Joi.string().min(6).required(), // Senha obrigatória para usuário interno
+    }),
+  }),
+  UsuarioController.createInterno
 );
 
 // ═══════════════════════════════════════════════════════════════

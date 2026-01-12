@@ -21,7 +21,6 @@ export function AuthProvider({ children }) {
     // Dados legados (para compatibilidade)
     const ongId = localStorage.getItem("ongId");
     const ongName = localStorage.getItem("ongName");
-    const ongType = localStorage.getItem("ongType");
 
     // Primeiro tenta o novo formato
     if (token && usuarioStr) {
@@ -33,14 +32,12 @@ export function AuthProvider({ children }) {
           nome: usuario.nome,
           name: usuario.nome, // Alias para compatibilidade
           email: usuario.email,
-          tipo: usuario.tipo,
-          type: usuario.tipo, // Alias para compatibilidade
+          isAdmin: usuario.isAdmin || false,
           empresa_id: usuario.empresa_id,
           setor_id: usuario.setor_id,
           // Propriedades legadas para compatibilidade
           ongId: usuario.id,
           ongName: usuario.nome,
-          ongType: usuario.tipo,
         });
         return setLoading(false);
       } catch (error) {
@@ -58,14 +55,12 @@ export function AuthProvider({ children }) {
         nome: ongName || "",
         name: ongName || "", // Alias
         email: "",
-        tipo: ongType || "COMUM",
-        type: ongType || "COMUM", // Alias
+        isAdmin: false,
         empresa_id: null,
         setor_id: null,
         // Propriedades legadas
         ongId: ongId,
         ongName: ongName || "",
-        ongType: ongType || "COMUM",
       });
       setLoading(false);
       return;
@@ -86,7 +81,7 @@ export function AuthProvider({ children }) {
         id: usuario.id,
         nome: usuario.nome,
         email: usuario.email,
-        tipo: usuario.tipo,
+        isAdmin: usuario.isAdmin || false,
         empresa_id: usuario.empresa_id,
         setor_id: usuario.setor_id,
       })
@@ -95,7 +90,6 @@ export function AuthProvider({ children }) {
     // Também salva no formato legado para compatibilidade
     localStorage.setItem("ongId", usuario.id);
     localStorage.setItem("ongName", usuario.nome);
-    localStorage.setItem("ongType", usuario.tipo);
 
     setIsAuthenticated(true);
     setUser({
@@ -103,13 +97,11 @@ export function AuthProvider({ children }) {
       nome: usuario.nome,
       name: usuario.nome,
       email: usuario.email,
-      tipo: usuario.tipo,
-      type: usuario.tipo,
+      isAdmin: usuario.isAdmin || false,
       empresa_id: usuario.empresa_id,
       setor_id: usuario.setor_id,
       ongId: usuario.id,
       ongName: usuario.nome,
-      ongType: usuario.tipo,
     });
   };
 
@@ -141,7 +133,7 @@ export function AuthProvider({ children }) {
    * @returns {boolean}
    */
   const isAdmin = () => {
-    return user?.tipo === "ADM" || user?.tipo === "ADMIN";
+    return user?.isAdmin === true;
   };
 
   return (

@@ -1,32 +1,40 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useHistory } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { Link, useHistory } from "react-router-dom";
 import {
-  FiPower, FiSave, FiArrowLeft, FiUser, FiClock, 
-  FiHome, FiFileText, FiCalendar, FiImage
-} from 'react-icons/fi';
+  FiPower,
+  FiSave,
+  FiArrowLeft,
+  FiUser,
+  FiClock,
+  FiHome,
+  FiFileText,
+  FiCalendar,
+  FiImage,
+} from "react-icons/fi";
 
-import api from '../../services/api';
-import { useAuth } from '../../hooks/useAuth';
-import Loading from '../../components/Loading';
+import api from "../../services/api";
+import { getCache, setCache } from "../../services/cacheService";
+import { useAuth } from "../../hooks/useAuth";
+import Loading from "../../components/Loading";
 
-import './styles.css';
-import logoImg from '../../assets/logo.svg';
+import "./styles.css";
+import logoImg from "../../assets/logo.svg";
 
 export default function NovoAgendamento() {
   const [loading, setLoading] = useState(false);
   const [setoresVisitantes, setSetoresVisitantes] = useState([]);
   const history = useHistory();
-  
+
   const { user, logout } = useAuth();
   const ongId = user?.id;
   const ongName = user?.name;
 
   const [formData, setFormData] = useState({
-    nome: '',
-    cpf: '',
-    setor_id: '',
-    horario_agendado: '',
-    observacao: ''
+    nome: "",
+    cpf: "",
+    setor_id: "",
+    horario_agendado: "",
+    observacao: "",
   });
 
   const [file, setFile] = useState(null); // 🔹 novo estado para imagem
@@ -34,10 +42,24 @@ export default function NovoAgendamento() {
   useEffect(() => {
     async function loadSetores() {
       try {
-        const response = await api.get('/setores-visitantes');
-        setSetoresVisitantes(response.data);
+        // ✅ Primeiro verifica se já tem no cache
+        const cachedSetores = getCache("setores");
+
+        if (cachedSetores) {
+          console.log("📦 Usando setores do cache");
+          setSetoresVisitantes(cachedSetores);
+          return;
+        }
+
+        // Se não tem cache, busca da API
+        const response = await api.get("/setores-visitantes");
+        const setoresData = response.data;
+
+        // Salva no cache
+        setCache("setores", setoresData);
+        setSetoresVisitantes(setoresData);
       } catch (error) {
-        console.error('Erro ao carregar setores:', error);
+        console.error("Erro ao carregar setores:", error);
       }
     }
 
@@ -46,24 +68,24 @@ export default function NovoAgendamento() {
 
   function handleInputChange(e) {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   }
 
   function formatarCPF(value) {
-    const numbers = value.replace(/\D/g, '');
-    return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    const numbers = value.replace(/\D/g, "");
+    return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
   }
 
   function handleCPFChange(e) {
     const value = e.target.value;
     const formattedValue = formatarCPF(value);
-    
-    setFormData(prev => ({
+
+    setFormData((prev) => ({
       ...prev,
-      cpf: formattedValue
+      cpf: formattedValue,
     }));
   }
 
@@ -73,32 +95,32 @@ export default function NovoAgendamento() {
 
   function validarFormulario() {
     const { nome, cpf, setor_id, horario_agendado } = formData;
-    
+
     if (!nome.trim()) {
-      alert('Nome é obrigatório');
+      alert("Nome é obrigatório");
       return false;
     }
 
-    if (!cpf || cpf.replace(/\D/g, '').length !== 11) {
-      alert('CPF deve ter 11 dígitos');
+    if (!cpf || cpf.replace(/\D/g, "").length !== 11) {
+      alert("CPF deve ter 11 dígitos");
       return false;
     }
 
     if (!setor_id) {
-      alert('Setor é obrigatório');
+      alert("Setor é obrigatório");
       return false;
     }
 
     if (!horario_agendado) {
-      alert('Horário agendado é obrigatório');
+      alert("Horário agendado é obrigatório");
       return false;
     }
 
     const agora = new Date();
     const horarioSelecionado = new Date(horario_agendado);
-    
+
     if (horarioSelecionado <= agora) {
-      alert('O horário agendado deve ser no futuro');
+      alert("O horário agendado deve ser no futuro");
       return false;
     }
 
@@ -107,7 +129,7 @@ export default function NovoAgendamento() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    
+
     if (!validarFormulario()) {
       return;
     }
@@ -115,44 +137,46 @@ export default function NovoAgendamento() {
     setLoading(true);
 
     try {
-      const setorSelecionado = setoresVisitantes.find(s => s.id === parseInt(formData.setor_id));
-      
+      const setorSelecionado = setoresVisitantes.find(
+        (s) => s.id === parseInt(formData.setor_id)
+      );
+
       // 🔹 montar FormData
       const data = new FormData();
-      data.append('nome', formData.nome.trim());
-      data.append('cpf', formData.cpf.replace(/\D/g, ''));
-      data.append('setor_id', parseInt(formData.setor_id));
-      data.append('setor', setorSelecionado?.nome || '');
-      data.append('horario_agendado', formData.horario_agendado);
-      data.append('observacao', formData.observacao.trim());
-      data.append('criado_por', ongName);
+      data.append("nome", formData.nome.trim());
+      data.append("cpf", formData.cpf.replace(/\D/g, ""));
+      data.append("setor_id", parseInt(formData.setor_id));
+      data.append("setor", setorSelecionado?.nome || "");
+      data.append("horario_agendado", formData.horario_agendado);
+      data.append("observacao", formData.observacao.trim());
+      data.append("criado_por", ongName);
 
       if (file) {
-        data.append('foto_colaborador', file); // 🔹 adiciona imagem
+        data.append("foto_colaborador", file); // 🔹 adiciona imagem
       }
 
-      console.log('Enviando FormData:', Object.fromEntries(data)); // DEBUG
+      console.log("Enviando FormData:", Object.fromEntries(data)); // DEBUG
 
-     await api.post('/agendamentos', data, {
-      headers: { Authorization: ongId }
+      await api.post("/agendamentos", data, {
+        headers: { Authorization: ongId },
       });
 
-      alert('Agendamento criado com sucesso!');
-      history.push('/agendamentos');
+      alert("Agendamento criado com sucesso!");
+      history.push("/agendamentos");
     } catch (error) {
-      console.error('Erro ao criar agendamento:', error);
-      
-      let errorMessage = 'Erro ao criar agendamento';
+      console.error("Erro ao criar agendamento:", error);
+
+      let errorMessage = "Erro ao criar agendamento";
       if (error.response) {
         if (error.response.status === 400) {
-          errorMessage = error.response.data.error || 'Dados inválidos';
+          errorMessage = error.response.data.error || "Dados inválidos";
         } else if (error.response.status === 401) {
-          errorMessage = 'Não autorizado. Faça login novamente.';
+          errorMessage = "Não autorizado. Faça login novamente.";
         } else if (error.response.status === 500) {
-          errorMessage = 'Erro interno do servidor';
+          errorMessage = "Erro interno do servidor";
         }
       }
-      
+
       alert(errorMessage);
     } finally {
       setLoading(false);
@@ -160,16 +184,17 @@ export default function NovoAgendamento() {
   }
 
   function handleLogout() {
-    if (window.confirm('Tem certeza que deseja sair?')) {
+    if (window.confirm("Tem certeza que deseja sair?")) {
       logout();
     }
-  } 
+  }
 
   const agora = new Date();
   const minimaData = new Date(agora.getTime() + 60 * 60 * 1000);
   const minimaDataString = minimaData.toISOString().slice(0, 16);
 
-  if (loading) return <Loading progress={100} message="Salvando agendamento..." />;
+  if (loading)
+    return <Loading progress={100} message="Salvando agendamento..." />;
 
   return (
     <div className="novo-agendamento-container">
@@ -180,9 +205,9 @@ export default function NovoAgendamento() {
         </div>
 
         <Link className="back-link" to="/agendamentos">
-        <FiArrowLeft size={16} color="#E02041" />
+          <FiArrowLeft size={16} color="#E02041" />
           Voltar
-        </Link> 
+        </Link>
       </header>
 
       <div className="page-content">
@@ -191,7 +216,11 @@ export default function NovoAgendamento() {
           <h1>Novo Agendamento</h1>
         </div>
 
-        <form onSubmit={handleSubmit} className="agendamento-form" encType="multipart/form-data">
+        <form
+          onSubmit={handleSubmit}
+          className="agendamento-form"
+          encType="multipart/form-data"
+        >
           <div className="form-grid">
             {/* Nome */}
             <div className="form-group">
@@ -243,7 +272,7 @@ export default function NovoAgendamento() {
                 required
               >
                 <option value="">Selecione o setor</option>
-                {setoresVisitantes.map(setor => (
+                {setoresVisitantes.map((setor) => (
                   <option key={setor.id} value={setor.id}>
                     {setor.nome}
                   </option>
@@ -266,9 +295,7 @@ export default function NovoAgendamento() {
                 min={minimaDataString}
                 required
               />
-              <small className="form-hint">
-                O horário deve ser no futuro
-              </small>
+              <small className="form-hint">O horário deve ser no futuro</small>
             </div>
 
             {/* Observação */}
@@ -297,9 +324,9 @@ export default function NovoAgendamento() {
                 <FiImage size={16} />
                 Foto do Colaborador (opcional)
               </label>
-              <input 
-                type="file" 
-                id="file" 
+              <input
+                type="file"
+                id="file"
                 name="file"
                 accept="image/*"
                 onChange={handleFileChange}

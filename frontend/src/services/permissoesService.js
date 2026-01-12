@@ -1,26 +1,31 @@
 // src/services/permissoesService.js
 
 import api from "./api";
-
-/**
- * Cache local de permissões do usuário
- */
-let cachePermissoes = null;
-let cachePapeis = null;
+import {
+  setPermissoesCache,
+  getPermissoesCache,
+  clearPermissoesCache,
+} from "./cacheService";
 
 /**
  * Busca as permissões do usuário logado
+ * Usa cache em memória e sessionStorage para persistir entre navegações
  */
 export async function buscarMinhasPermissoes() {
-  if (cachePermissoes && cachePapeis) {
-    return { permissoes: cachePermissoes, papeis: cachePapeis };
+  // Primeiro tenta o cache (memória + sessionStorage)
+  const cached = getPermissoesCache();
+  if (cached.permissoes && cached.papeis) {
+    return cached;
   }
 
   try {
     const response = await api.get("/usuarios-papeis/me/permissoes");
-    cachePermissoes = response.data.permissoes;
-    cachePapeis = response.data.papeis;
-    return response.data;
+    const { permissoes, papeis } = response.data;
+
+    // Salva no cache centralizado
+    setPermissoesCache(permissoes, papeis);
+
+    return { permissoes, papeis };
   } catch (error) {
     console.error("Erro ao buscar permissões:", error);
     return { permissoes: [], papeis: [] };
@@ -31,8 +36,7 @@ export async function buscarMinhasPermissoes() {
  * Limpa o cache de permissões (usar ao fazer login/logout)
  */
 export function limparCachePermissoes() {
-  cachePermissoes = null;
-  cachePapeis = null;
+  clearPermissoesCache();
 }
 
 /**

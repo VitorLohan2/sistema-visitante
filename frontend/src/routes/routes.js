@@ -3,7 +3,6 @@ import React from "react";
 import { BrowserRouter, Route, Switch } from "react-router-dom";
 
 import Login from "../pages/Login";
-import CadastrarUsuario from "../pages/CadastrarUsuario";
 import Dashboard from "../pages/Dashboard";
 import ListagemVisitante from "../pages/ListagemVisitante";
 import NovoCadastroVisitante from "../pages/NovoCadastroVisitante";
@@ -11,20 +10,16 @@ import Visitante from "../pages/Visitante";
 import HistoricoVisitante from "../pages/HistoricoVisitante";
 import EditarCadastroVisitante from "../pages/EditarCadastroVisitante";
 import VisualizarVisitante from "../pages/VisualizarVisitante";
-import Ticket from "../pages/Ticket";
 import TicketDashboard from "../pages/TicketDashboard";
 import GeradorCodigo from "../pages/GeradorCodigo";
 import ListaFuncionarios from "../pages/ListaFuncionarios";
-import CadastrarFuncionario from "../pages/CadastrarFuncionario";
-import EditarFuncionario from "../pages/EditarFuncionario";
 import BiparCracha from "../pages/BiparCracha";
-import HistoricoFuncionarios from "../pages/HistoricoFuncionarios";
 import RecuperarId from "../pages/RecuperarId";
 import HelpDesk from "../pages/HelpDesk";
 import CadastrarEmpresaVisitante from "../pages/CadastrarEmpresaVisitante";
+import ListaEmpresasVisitantes from "../pages/ListaEmpresasVisitantes";
 import ProtectedRoute from "./protectedRoutes";
 import ListaAgendamentos from "../pages/ListaAgendamentos";
-import CadastrarAgendamentos from "../pages/CadastrarAgendamentos";
 import GerenciamentoPermissoes from "../pages/GerenciamentoPermissoes";
 
 export default function Routes() {
@@ -33,7 +28,6 @@ export default function Routes() {
       <Switch>
         {/* Rotas públicas */}
         <Route path="/" exact component={Login} />
-        <Route path="/register" component={CadastrarUsuario} />
         <Route path="/recuperar-id" exact component={RecuperarId} />
         <Route path="/helpdesk" exact component={HelpDesk} />
 
@@ -91,13 +85,13 @@ export default function Routes() {
           <VisualizarVisitante />
         </ProtectedRoute>
 
-        {/* Ticket Individual - ticket_visualizar */}
-        <ProtectedRoute path="/ticket" exact permissao="ticket_visualizar">
-          <Ticket />
-        </ProtectedRoute>
-
         {/* Dashboard de Tickets - ticket_visualizar */}
         <ProtectedRoute path="/ticket-dashboard" permissao="ticket_visualizar">
+          <TicketDashboard />
+        </ProtectedRoute>
+
+        {/* Rota legada - redireciona para ticket-dashboard */}
+        <ProtectedRoute path="/tickets" permissao="ticket_visualizar">
           <TicketDashboard />
         </ProtectedRoute>
 
@@ -114,6 +108,14 @@ export default function Routes() {
           <CadastrarEmpresaVisitante />
         </ProtectedRoute>
 
+        {/* Lista de Empresas de Visitantes - empresa_visualizar */}
+        <ProtectedRoute
+          path="/empresas-visitantes"
+          permissao="empresa_visualizar"
+        >
+          <ListaEmpresasVisitantes />
+        </ProtectedRoute>
+
         {/* Lista de Funcionários - funcionario_visualizar */}
         <ProtectedRoute
           path="/funcionarios"
@@ -121,35 +123,6 @@ export default function Routes() {
           permissao="funcionario_visualizar"
         >
           <ListaFuncionarios />
-        </ProtectedRoute>
-
-        {/* Cadastrar Funcionário - funcionario_criar */}
-        <ProtectedRoute
-          path="/funcionarios/cadastrar"
-          permissao="funcionario_criar"
-        >
-          <CadastrarFuncionario />
-        </ProtectedRoute>
-
-        {/* Editar Funcionário - funcionario_editar */}
-        <ProtectedRoute
-          path="/funcionarios/editar/:cracha"
-          permissao="funcionario_editar"
-        >
-          <EditarFuncionario />
-        </ProtectedRoute>
-
-        {/* Histórico de Funcionário - funcionario_historico */}
-        <ProtectedRoute
-          path="/funcionarios/historico/:cracha"
-          permissao="funcionario_historico"
-        >
-          <HistoricoFuncionarios />
-        </ProtectedRoute>
-
-        {/* Cadastrar Agendamento - agendamento_criar */}
-        <ProtectedRoute path="/agendamentos/novo" permissao="agendamento_criar">
-          <CadastrarAgendamentos />
         </ProtectedRoute>
 
         {/* Lista de Agendamentos - agendamento_visualizar */}

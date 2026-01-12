@@ -19,14 +19,20 @@ import {
 } from "react-icons/fi";
 import { useAuth } from "../hooks/useAuth";
 import { usePermissoes } from "../hooks/usePermissoes";
+import { useAgendamentos } from "../contexts/AgendamentoContext";
 import "../styles/sidebar-menu.css";
 
 export default function SidebarMenu({ unseenCount, handleOpenConfigModal }) {
   const history = useHistory();
   const { user, logout } = useAuth();
-  const { isAdmin, temPermissao } = usePermissoes();
+  const { isAdmin, temPermissao, papeis } = usePermissoes();
+  const { agendamentosAbertos } = useAgendamentos();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sidebarRef = useRef(null);
+
+  // Verificar se é da Segurança
+  const isSeguranca =
+    papeis.includes("SEGURANÇA") || papeis.includes("SEGURANCA");
 
   // Fechar sidebar ao clicar fora (mobile)
   useEffect(() => {
@@ -168,6 +174,12 @@ export default function SidebarMenu({ unseenCount, handleOpenConfigModal }) {
             >
               <FiCalendar size={20} />
               <span>Agendamentos</span>
+              {/* Badge de notificação para SEGURANÇA e Admin */}
+              {(isSeguranca || isAdmin) && agendamentosAbertos > 0 && (
+                <span className="notification-badge">
+                  {agendamentosAbertos > 9 ? "9+" : agendamentosAbertos}
+                </span>
+              )}
             </button>
           )}
 
@@ -205,14 +217,14 @@ export default function SidebarMenu({ unseenCount, handleOpenConfigModal }) {
           {/* MÓDULO: EMPRESAS */}
           {/* ═══════════════════════════════════════════════════════════════ */}
 
-          {/* Cadastrar Empresa - empresa_criar */}
-          {(isAdmin || temPermissao("empresa_criar")) && (
+          {/* Empresas de Visitantes - empresa_visualizar */}
+          {(isAdmin || temPermissao("empresa_visualizar")) && (
             <button
               className="nav-item"
-              onClick={() => handleNavigation("/cadastrar-empresa-visitante")}
+              onClick={() => handleNavigation("/empresas-visitantes")}
             >
               <FiBriefcase size={20} />
-              <span>Cadastrar Empresa</span>
+              <span>Empresas de Visitantes</span>
             </button>
           )}
 
@@ -228,17 +240,6 @@ export default function SidebarMenu({ unseenCount, handleOpenConfigModal }) {
             >
               <FiUsers size={20} />
               <span>Gerenciar Funcionários</span>
-            </button>
-          )}
-
-          {/* Cadastrar Funcionário - funcionario_criar */}
-          {(isAdmin || temPermissao("funcionario_criar")) && (
-            <button
-              className="nav-item"
-              onClick={() => handleNavigation("/funcionarios/cadastrar")}
-            >
-              <FiUserPlus size={20} />
-              <span>Cadastrar Funcionário</span>
             </button>
           )}
 

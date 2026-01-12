@@ -2,7 +2,7 @@ const connection = require("../database/connection");
 const { getIo } = require("../socket");
 const { getUsuarioId } = require("../utils/authHelper");
 
-// ✅ Helper para verificar se usuário é ADM
+// ✅ Helper para verificar se usuário é ADM via papéis
 async function verificarAdmin(usuarioId) {
   const usuario = await connection("usuarios").where("id", usuarioId).first();
 
@@ -10,7 +10,13 @@ async function verificarAdmin(usuarioId) {
     return { error: "usuario não encontrada", status: 404 };
   }
 
-  if (usuario.type !== "ADM" && usuario.type !== "ADMIN") {
+  // Verificar via papéis
+  const papeis = await connection("usuarios_papeis")
+    .join("papeis", "usuarios_papeis.papel_id", "papeis.id")
+    .where("usuarios_papeis.usuario_id", usuarioId)
+    .pluck("papeis.nome");
+
+  if (!Array.isArray(papeis) || !papeis.includes("ADMIN")) {
     return {
       error: "Somente administradores podem realizar esta ação!",
       status: 403,

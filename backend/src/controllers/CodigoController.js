@@ -3,6 +3,16 @@
 const connection = require("../database/connection");
 const { getUsuarioId } = require("../utils/authHelper");
 
+// Helper para verificar se usuário é admin via papéis
+async function isUsuarioAdmin(usuarioId) {
+  const papeis = await connection("usuarios_papeis")
+    .join("papeis", "usuarios_papeis.papel_id", "papeis.id")
+    .where("usuarios_papeis.usuario_id", usuarioId)
+    .pluck("papeis.nome");
+
+  return Array.isArray(papeis) && papeis.includes("ADMIN");
+}
+
 module.exports = {
   // ✅ LISTAR CÓDIGOS (Para ADMs) - COM DEBUG
   async listarCodigos(request, response) {
@@ -12,7 +22,6 @@ module.exports = {
       // ✅ DEBUG DETALHADO:
       console.log("=== DEBUG LISTAR CÓDIGOS ===");
       console.log("Authorization header:", criado_por);
-      console.log("Tipo do criado_por:", typeof criado_por);
 
       if (!criado_por) {
         return response
@@ -20,10 +29,10 @@ module.exports = {
           .json({ error: "Authorization header é obrigatório" });
       }
 
-      // Buscar usuario primeiro (sem filtro de type)
-      const usuario = await connection("usuarios").where("id", criado_por).first();
-
-      console.log("usuario encontrada:", usuario);
+      // Buscar usuario primeiro
+      const usuario = await connection("usuarios")
+        .where("id", criado_por)
+        .first();
 
       if (!usuario) {
         console.log("❌ usuario não encontrada para ID:", criado_por);
@@ -33,16 +42,13 @@ module.exports = {
         });
       }
 
-      console.log("Tipo da usuario encontrada:", usuario.type);
-
-      // ✅ VERIFICAR AMBOS OS VALORES (ADM e ADMIN):
-      if (usuario.type !== "ADM" && usuario.type !== "ADMIN") {
-        console.log("❌ usuario não é ADM nem ADMIN. Tipo atual:", usuario.type);
+      // ✅ VERIFICAR SE É ADMIN VIA PAPÉIS:
+      const isAdmin = await isUsuarioAdmin(criado_por);
+      if (!isAdmin) {
+        console.log("❌ usuario não tem papel ADMIN");
         return response.status(403).json({
           error: "Somente administradores tem permissão!",
-          userType: usuario.type,
-          redirectTo: "/profile", // ✅ ADICIONAR REDIRECT
-          tipoPossivelProblema: "Valor do campo type está incorreto",
+          redirectTo: "/profile",
         });
       }
 
@@ -86,22 +92,18 @@ module.exports = {
   // ✅ GERAR CÓDIGO (Somente para ADMs) - CORRIGIDO
   async gerarCodigo(request, response) {
     const { codigo, limite_usos } = request.body;
-    const criado_por = getUsuarioId(request); // ✅ USAR HELPER
+    const criado_por = getUsuarioId(request);
 
     try {
-      // ✅ ACEITAR TANTO ADM QUANTO ADMIN:
-      const usuario = await connection("usuarios")
-        .where("id", criado_por)
-        .whereIn("type", ["ADM", "ADMIN"]) // ✅ Aceita ambos
-        .first();
-
-      if (!usuario) {
+      // Verificar se é admin via papéis
+      const isAdmin = await isUsuarioAdmin(criado_por);
+      if (!isAdmin) {
         console.log(
           `Tentativa de gerar código não autorizada por: ${criado_por}`
         );
         return response.status(403).json({
           error: "Somente administradores podem gerar códigos.",
-          redirectTo: "/profile", // ✅ ADICIONAR REDIRECT
+          redirectTo: "/profile",
         });
       }
 
@@ -146,19 +148,15 @@ module.exports = {
   // ✅ DESATIVAR CÓDIGO - CORRIGIDO
   async desativarCodigo(request, response) {
     const { id } = request.params;
-    const criado_por = getUsuarioId(request); // ✅ USAR HELPER
+    const criado_por = getUsuarioId(request);
 
     try {
-      // ✅ ACEITAR TANTO ADM QUANTO ADMIN:
-      const usuario = await connection("usuarios")
-        .where("id", criado_por)
-        .whereIn("type", ["ADM", "ADMIN"])
-        .first();
-
-      if (!usuario) {
+      // Verificar se é admin via papéis
+      const isAdmin = await isUsuarioAdmin(criado_por);
+      if (!isAdmin) {
         return response.status(403).json({
           error: "Somente administradores podem desativar códigos.",
-          redirectTo: "/profile", // ✅ ADICIONAR REDIRECT
+          redirectTo: "/profile",
         });
       }
 
@@ -192,19 +190,15 @@ module.exports = {
   // ✅ ATIVAR CÓDIGO - CORRIGIDO
   async ativarCodigo(request, response) {
     const { id } = request.params;
-    const criado_por = getUsuarioId(request); // ✅ USAR HELPER
+    const criado_por = getUsuarioId(request);
 
     try {
-      // ✅ ACEITAR TANTO ADM QUANTO ADMIN:
-      const usuario = await connection("usuarios")
-        .where("id", criado_por)
-        .whereIn("type", ["ADM", "ADMIN"])
-        .first();
-
-      if (!usuario) {
+      // Verificar se é admin via papéis
+      const isAdmin = await isUsuarioAdmin(criado_por);
+      if (!isAdmin) {
         return response.status(403).json({
           error: "Somente administradores podem ativar códigos.",
-          redirectTo: "/profile", // ✅ ADICIONAR REDIRECT
+          redirectTo: "/profile",
         });
       }
 
@@ -260,19 +254,15 @@ module.exports = {
   // ✅ DELETAR CÓDIGO - CORRIGIDO
   async deleteCodigo(request, response) {
     const { id } = request.params;
-    const criado_por = getUsuarioId(request); // ✅ USAR HELPER
+    const criado_por = getUsuarioId(request);
 
     try {
-      // ✅ ACEITAR TANTO ADM QUANTO ADMIN:
-      const usuario = await connection("usuarios")
-        .where("id", criado_por)
-        .whereIn("type", ["ADM", "ADMIN"])
-        .first();
-
-      if (!usuario) {
+      // Verificar se é admin via papéis
+      const isAdmin = await isUsuarioAdmin(criado_por);
+      if (!isAdmin) {
         return response.status(403).json({
           error: "Somente administradores podem deletar códigos.",
-          redirectTo: "/profile", // ✅ ADICIONAR REDIRECT
+          redirectTo: "/profile",
         });
       }
 

@@ -7,6 +7,16 @@ const {
   gerarTokenRedefinicao,
 } = require("../utils/password");
 
+// Helper para verificar se usuário é admin via papéis
+async function isUsuarioAdmin(usuarioId) {
+  const papeis = await connection("usuarios_papeis")
+    .join("papeis", "usuarios_papeis.papel_id", "papeis.id")
+    .where("usuarios_papeis.usuario_id", usuarioId)
+    .pluck("papeis.nome");
+
+  return Array.isArray(papeis) && papeis.includes("ADMIN");
+}
+
 module.exports = {
   /**
    * LOGIN - Autenticação por email e senha
@@ -19,15 +29,7 @@ module.exports = {
       // Busca usuário pelo email
       const usuario = await connection("usuarios")
         .where("email", email.toLowerCase())
-        .select(
-          "id",
-          "name",
-          "email",
-          "type",
-          "empresa_id",
-          "setor_id",
-          "senha"
-        )
+        .select("id", "name", "email", "empresa_id", "setor_id", "senha")
         .first();
 
       if (!usuario) {
@@ -58,14 +60,17 @@ module.exports = {
         });
       }
 
+      // Verifica se é admin via papéis
+      const isAdmin = await isUsuarioAdmin(usuario.id);
+
       // Gera o token JWT
       const token = gerarToken({
         id: usuario.id,
         nome: usuario.name,
         email: usuario.email,
-        tipo: usuario.type,
         empresa_id: usuario.empresa_id,
         setor_id: usuario.setor_id,
+        isAdmin,
       });
 
       return response.json({
@@ -74,9 +79,9 @@ module.exports = {
           id: usuario.id,
           nome: usuario.name,
           email: usuario.email,
-          tipo: usuario.type,
           empresa_id: usuario.empresa_id,
           setor_id: usuario.setor_id,
+          isAdmin,
         },
       });
     } catch (error) {
@@ -98,7 +103,7 @@ module.exports = {
     try {
       const usuario = await connection("usuarios")
         .where("id", id)
-        .select("id", "name", "email", "type", "empresa_id", "setor_id")
+        .select("id", "name", "email", "empresa_id", "setor_id")
         .first();
 
       if (!usuario) {
@@ -108,14 +113,17 @@ module.exports = {
         });
       }
 
+      // Verifica se é admin via papéis
+      const isAdmin = await isUsuarioAdmin(usuario.id);
+
       // Gera o token JWT
       const token = gerarToken({
         id: usuario.id,
         nome: usuario.name,
         email: usuario.email,
-        tipo: usuario.type,
         empresa_id: usuario.empresa_id,
         setor_id: usuario.setor_id,
+        isAdmin,
       });
 
       return response.json({
@@ -124,14 +132,14 @@ module.exports = {
           id: usuario.id,
           nome: usuario.name,
           email: usuario.email,
-          tipo: usuario.type,
           empresa_id: usuario.empresa_id,
           setor_id: usuario.setor_id,
+          isAdmin,
         },
         // Mantém campos antigos para compatibilidade
         name: usuario.name,
-        type: usuario.type,
         setor_id: usuario.setor_id,
+        isAdmin,
       });
     } catch (error) {
       console.error("❌ Erro no login por ID:", error);
@@ -167,15 +175,7 @@ module.exports = {
 
       const usuario = await connection("usuarios")
         .where("id", userId)
-        .select(
-          "id",
-          "name",
-          "email",
-          "type",
-          "empresa_id",
-          "setor_id",
-          "senha"
-        )
+        .select("id", "name", "email", "empresa_id", "setor_id", "senha")
         .first();
 
       if (!usuario) {
@@ -193,14 +193,17 @@ module.exports = {
         .where("id", userId)
         .update({ senha: senhaHash });
 
+      // Verifica se é admin via papéis
+      const isAdmin = await isUsuarioAdmin(usuario.id);
+
       // Gera o token JWT
       const token = gerarToken({
         id: usuario.id,
         nome: usuario.name,
         email: usuario.email,
-        tipo: usuario.type,
         empresa_id: usuario.empresa_id,
         setor_id: usuario.setor_id,
+        isAdmin,
       });
 
       return response.json({
@@ -210,9 +213,9 @@ module.exports = {
           id: usuario.id,
           nome: usuario.name,
           email: usuario.email,
-          tipo: usuario.type,
           empresa_id: usuario.empresa_id,
           setor_id: usuario.setor_id,
+          isAdmin,
         },
       });
     } catch (error) {
@@ -453,7 +456,7 @@ module.exports = {
     try {
       const usuario = await connection("usuarios")
         .where("id", id)
-        .select("id", "name", "email", "type", "empresa_id", "setor_id")
+        .select("id", "name", "email", "empresa_id", "setor_id")
         .first();
 
       if (!usuario) {
@@ -463,22 +466,25 @@ module.exports = {
         });
       }
 
+      // Verifica se é admin via papéis
+      const isAdmin = await isUsuarioAdmin(usuario.id);
+
       // Gera o token JWT
       const token = gerarToken({
         id: usuario.id,
         nome: usuario.name,
         email: usuario.email,
-        tipo: usuario.type,
         empresa_id: usuario.empresa_id,
         setor_id: usuario.setor_id,
+        isAdmin,
       });
 
       // Retorna no formato esperado pelo frontend legado
       return response.json({
         token,
         name: usuario.name,
-        type: usuario.type,
         setor_id: usuario.setor_id,
+        isAdmin,
       });
     } catch (error) {
       console.error("❌ Erro no sessions:", error);

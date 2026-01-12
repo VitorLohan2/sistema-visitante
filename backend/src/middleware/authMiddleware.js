@@ -40,7 +40,6 @@ function authMiddleware(req, res, next) {
       id: decoded.id,
       nome: decoded.nome,
       email: decoded.email,
-      tipo: decoded.tipo,
       empresa_id: decoded.empresa_id,
       setor_id: decoded.setor_id,
     };
@@ -85,7 +84,6 @@ function authOptional(req, res, next) {
       id: decoded.id,
       nome: decoded.nome,
       email: decoded.email,
-      tipo: decoded.tipo,
       empresa_id: decoded.empresa_id,
       setor_id: decoded.setor_id,
     };

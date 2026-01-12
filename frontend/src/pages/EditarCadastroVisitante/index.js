@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useHistory, useParams } from "react-router-dom";
 import { FiArrowLeft } from "react-icons/fi";
 import api from "../../services/api";
+import { getCache, setCache } from "../../services/cacheService";
 import { usePermissoes } from "../../hooks/usePermissoes";
 import "./styles.css";
 import logoImg from "../../assets/logo.svg";
@@ -50,26 +51,47 @@ export default function EditarCadastroVisitante() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [incidentRes, empresasRes, setoresRes] = await Promise.all([
-          api.get(`/cadastro-visitantes/${id}`),
-          api.get("/empresas-visitantes"),
-          api.get("/setores-visitantes"),
-        ]);
+        // ✅ Primeiro verifica se já tem empresas e setores no cache
+        const cachedEmpresas = getCache("empresas");
+        const cachedSetores = getCache("setores");
 
+        // Busca dados do visitante (sempre da API - dados específicos)
+        const incidentRes = await api.get(`/cadastro-visitantes/${id}`);
         const data = incidentRes.data;
 
         setForm({
           ...data,
           cpf: formatCPF(data.cpf || ""),
           telefone: formatTelefone(data.telefone || ""),
-          placa_veiculo: formatPlaca(data.placa_veiculo || ""), // Formatar placa
+          placa_veiculo: formatPlaca(data.placa_veiculo || ""),
           bloqueado: Boolean(data.bloqueado),
         });
 
         setFotos(data.fotos || []);
         setAvatar(data.avatar_imagem || data.fotos?.[0] || "");
-        setEmpresas(empresasRes.data);
-        setSetores(setoresRes.data);
+
+        // Usa cache para empresas e setores se disponível
+        if (cachedEmpresas && cachedSetores) {
+          console.log("📦 Usando empresas e setores do cache");
+          setEmpresas(cachedEmpresas);
+          setSetores(cachedSetores);
+        } else {
+          // Se não tem cache, busca da API
+          const [empresasRes, setoresRes] = await Promise.all([
+            api.get("/empresas-visitantes"),
+            api.get("/setores-visitantes"),
+          ]);
+
+          const empresasData = empresasRes.data;
+          const setoresData = setoresRes.data;
+
+          // Salva no cache
+          setCache("empresas", empresasData);
+          setCache("setores", setoresData);
+
+          setEmpresas(empresasData);
+          setSetores(setoresData);
+        }
       } catch (err) {
         alert("Erro ao carregar dados do incidente");
         history.push("/listagem-visitante");

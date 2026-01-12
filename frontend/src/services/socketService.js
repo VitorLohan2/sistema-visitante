@@ -30,6 +30,13 @@ const eventCallbacks = {
   "setor:created": [],
   "setor:updated": [],
   "setor:deleted": [],
+  "ticket:create": [],
+  "ticket:update": [],
+  "ticket:viewed": [],
+  "ticket:all_viewed": [],
+  "agendamento:create": [],
+  "agendamento:update": [],
+  "agendamento:delete": [],
   connected: [],
   disconnected: [],
   error: [],
@@ -229,6 +236,59 @@ export function connect(token) {
       setores.filter((s) => s.id !== data.id)
     );
     eventCallbacks["setor:deleted"].forEach((cb) => cb(data));
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // EVENTOS DE TICKETS
+  // ═══════════════════════════════════════════════════════════════
+  socket.on("ticket:create", (data) => {
+    console.log("🎫 Novo ticket recebido via Socket:", data);
+    const tickets = getCache("tickets") || [];
+    if (!tickets.find((t) => t.id === data.id)) {
+      const novosTickets = [data, ...tickets].sort(
+        (a, b) => new Date(b.data_criacao) - new Date(a.data_criacao)
+      );
+      setCache("tickets", novosTickets);
+    }
+    eventCallbacks["ticket:create"].forEach((cb) => cb(data));
+  });
+
+  socket.on("ticket:update", (data) => {
+    console.log("🎫 Ticket atualizado via Socket:", data);
+    const tickets = getCache("tickets") || [];
+    const novosTickets = tickets.map((t) =>
+      t.id === data.id ? { ...t, ...data } : t
+    );
+    setCache("tickets", novosTickets);
+    eventCallbacks["ticket:update"].forEach((cb) => cb(data));
+  });
+
+  socket.on("ticket:viewed", (data) => {
+    console.log("🎫 Ticket visualizado via Socket:", data);
+    eventCallbacks["ticket:viewed"].forEach((cb) => cb(data));
+  });
+
+  socket.on("ticket:all_viewed", (data) => {
+    console.log("🎫 Todos tickets visualizados via Socket");
+    eventCallbacks["ticket:all_viewed"].forEach((cb) => cb(data));
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // EVENTOS DE AGENDAMENTOS
+  // ═══════════════════════════════════════════════════════════════
+  socket.on("agendamento:create", (data) => {
+    console.log("📅 Novo agendamento recebido via Socket:", data);
+    eventCallbacks["agendamento:create"].forEach((cb) => cb(data));
+  });
+
+  socket.on("agendamento:update", (data) => {
+    console.log("📅 Agendamento atualizado via Socket:", data);
+    eventCallbacks["agendamento:update"].forEach((cb) => cb(data));
+  });
+
+  socket.on("agendamento:delete", (data) => {
+    console.log("📅 Agendamento removido via Socket:", data);
+    eventCallbacks["agendamento:delete"].forEach((cb) => cb(data));
   });
 
   return socket;

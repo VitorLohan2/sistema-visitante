@@ -13,88 +13,7 @@ const { adminMiddleware } = require("../middleware/adminMiddleware");
 const router = express.Router();
 
 // ═══════════════════════════════════════════════════════════════
-// LISTAR FUNCIONÁRIOS
-// GET /funcionarios
-// ═══════════════════════════════════════════════════════════════
-router.get(
-  "/",
-  authMiddleware,
-  celebrate({
-    [Segments.QUERY]: Joi.object().keys({
-      mostrarInativos: Joi.boolean().default(false),
-    }),
-  }),
-  FuncionarioController.index
-);
-
-// ═══════════════════════════════════════════════════════════════
-// BUSCAR FUNCIONÁRIO POR CRACHÁ
-// GET /funcionarios/:cracha
-// ═══════════════════════════════════════════════════════════════
-router.get(
-  "/:cracha",
-  authMiddleware,
-  celebrate({
-    [Segments.PARAMS]: Joi.object().keys({
-      cracha: Joi.string().required(),
-    }),
-  }),
-  FuncionarioController.buscarPorCracha
-);
-
-// ═══════════════════════════════════════════════════════════════
-// CRIAR FUNCIONÁRIO (Admin only)
-// POST /funcionarios
-// ═══════════════════════════════════════════════════════════════
-router.post(
-  "/",
-  authMiddleware,
-  adminMiddleware,
-  celebrate({
-    [Segments.BODY]: Joi.object().keys({
-      cracha: Joi.string().required().min(3).max(20),
-      nome: Joi.string().required().min(3).max(255),
-      setor: Joi.string().required().max(100),
-      funcao: Joi.string().required().max(100),
-      data_admissao: Joi.date().iso().required(),
-    }),
-  }),
-  FuncionarioController.criar
-);
-
-// ═══════════════════════════════════════════════════════════════
-// ATUALIZAR FUNCIONÁRIO (Admin only)
-// PUT /funcionarios/:cracha
-// ═══════════════════════════════════════════════════════════════
-router.put(
-  "/:cracha",
-  authMiddleware,
-  adminMiddleware,
-  celebrate({
-    [Segments.PARAMS]: Joi.object().keys({
-      cracha: Joi.string().required(),
-    }),
-    [Segments.BODY]: Joi.object().keys({
-      nome: Joi.string().min(3).max(255),
-      setor: Joi.string().max(100),
-      funcao: Joi.string().max(100),
-      data_admissao: Joi.alternatives().try(
-        Joi.date().iso(),
-        Joi.string().regex(/^\d{4}-\d{2}-\d{2}$/)
-      ),
-      data_demissao: Joi.alternatives().try(
-        Joi.date().iso(),
-        Joi.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-        Joi.allow(null)
-      ),
-      ativo: Joi.boolean(),
-    }),
-  }),
-  FuncionarioController.atualizar
-);
-
-// ═══════════════════════════════════════════════════════════════
-// REGISTROS DE PONTO
+// REGISTROS DE PONTO - DEVE VIR ANTES DE /:cracha para não conflitar
 // ═══════════════════════════════════════════════════════════════
 
 // Registrar ponto
@@ -121,6 +40,86 @@ router.get(
     }),
   }),
   RegistroFuncionarioController.historico
+);
+
+// ═══════════════════════════════════════════════════════════════
+// LISTAR FUNCIONÁRIOS
+// GET /funcionarios
+// ═══════════════════════════════════════════════════════════════
+router.get(
+  "/",
+  authMiddleware,
+  celebrate({
+    [Segments.QUERY]: Joi.object().keys({
+      mostrarInativos: Joi.boolean().default(false),
+    }),
+  }),
+  FuncionarioController.index
+);
+
+// ═══════════════════════════════════════════════════════════════
+// CRIAR FUNCIONÁRIO (Admin only)
+// POST /funcionarios
+// ═══════════════════════════════════════════════════════════════
+router.post(
+  "/",
+  authMiddleware,
+  adminMiddleware,
+  celebrate({
+    [Segments.BODY]: Joi.object()
+      .keys({
+        cracha: Joi.string().required().min(3).max(20),
+        nome: Joi.string().required().min(3).max(255),
+        setor: Joi.string().required().max(100),
+        funcao: Joi.string().required().max(100),
+        data_admissao: Joi.date().iso().required(),
+        ativo: Joi.boolean().optional(),
+        data_demissao: Joi.date().iso().allow(null).optional(),
+      })
+      .unknown(),
+  }),
+  FuncionarioController.criar
+);
+
+// ═══════════════════════════════════════════════════════════════
+// ATUALIZAR FUNCIONÁRIO (Admin only)
+// PUT /funcionarios/:cracha
+// ═══════════════════════════════════════════════════════════════
+router.put(
+  "/:cracha",
+  authMiddleware,
+  adminMiddleware,
+  celebrate({
+    [Segments.PARAMS]: Joi.object().keys({
+      cracha: Joi.string().required(),
+    }),
+    [Segments.BODY]: Joi.object()
+      .keys({
+        nome: Joi.string().min(3).max(255),
+        setor: Joi.string().max(100),
+        funcao: Joi.string().max(100),
+        data_admissao: Joi.date().iso().optional(),
+        data_demissao: Joi.date().iso().allow(null).optional(),
+        ativo: Joi.boolean().optional(),
+      })
+      .unknown(),
+  }),
+  FuncionarioController.atualizar
+);
+
+// ═══════════════════════════════════════════════════════════════
+// BUSCAR FUNCIONÁRIO POR CRACHÁ (deve vir por último)
+// GET /funcionarios/:cracha
+// ═══════════════════════════════════════════════════════════════
+router.get(
+  "/:cracha",
+  authMiddleware,
+  celebrate({
+    [Segments.PARAMS]: Joi.object().keys({
+      cracha: Joi.string().required(),
+    }),
+  }),
+  FuncionarioController.buscarPorCracha
 );
 
 module.exports = router;
