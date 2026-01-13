@@ -408,13 +408,6 @@ body.sidebar-open {
   overflow: hidden;
 }
 
-@media (min-width: 1024px) {
-  /* O conteúdo principal deve ter margin-left em desktop */
-  main {
-    margin-left: 280px;
-  }
-}
-
 @media (max-width: 1023px) {
   main {
     margin-left: 0;

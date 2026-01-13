@@ -4,6 +4,7 @@ import { FiImage, FiX, FiArrowLeft } from "react-icons/fi";
 import "./styles.css";
 import logoImg from "../../assets/logo.svg";
 import api from "../../services/api";
+import Loading from "../../components/Loading";
 
 export default function VisualizarVisitante() {
   const { id } = useParams();
@@ -42,7 +43,8 @@ export default function VisualizarVisitante() {
   const formatTelefone = (tel) =>
     tel.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
 
-  if (!visitor) return <div className="loading">Carregando...</div>;
+  if (!visitor)
+    return <Loading variant="page" message="Carregando visitante..." />;
 
   return (
     <div className="view-visitor-container">

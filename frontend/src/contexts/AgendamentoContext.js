@@ -65,13 +65,22 @@ export function AgendamentoProvider({ children }) {
           agendamento.id
         );
 
-        // Toca som de notificação (apenas se não for o primeiro load)
-        if (!isFirstLoadRef.current) {
-          playNotificationSound();
-        }
-
         setAgendamentos((prev) => {
-          if (prev.find((a) => a.id === agendamento.id)) return prev;
+          // Verificação mais robusta contra duplicação
+          const jaExiste = prev.some((a) => a.id === agendamento.id);
+          if (jaExiste) {
+            console.log(
+              "⚠️ Agendamento já existe, ignorando duplicação:",
+              agendamento.id
+            );
+            return prev;
+          }
+
+          // Toca som de notificação (apenas se não for o primeiro load)
+          if (!isFirstLoadRef.current) {
+            playNotificationSound();
+          }
+
           const novosAgendamentos = [agendamento, ...prev].sort(
             (a, b) =>
               new Date(b.horario_agendado) - new Date(a.horario_agendado)

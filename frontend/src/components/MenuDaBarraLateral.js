@@ -4,7 +4,6 @@ import {
   FiUsers,
   FiClock,
   FiMessageSquare,
-  FiSettings,
   FiLogOut,
   FiMenu,
   FiX,
@@ -16,17 +15,20 @@ import {
   FiBriefcase,
   FiLogIn,
   FiShield,
+  FiTruck,
 } from "react-icons/fi";
 import { useAuth } from "../hooks/useAuth";
 import { usePermissoes } from "../hooks/usePermissoes";
 import { useAgendamentos } from "../contexts/AgendamentoContext";
-import "../styles/sidebar-menu.css";
+import { useDescargas } from "../contexts/DescargaContext";
+import "../styles/MenuDaBarraLateral.css";
 
-export default function SidebarMenu({ unseenCount, handleOpenConfigModal }) {
+export default function MenuDaBarraLateral({ unseenCount }) {
   const history = useHistory();
   const { user, logout } = useAuth();
   const { isAdmin, temPermissao, papeis } = usePermissoes();
   const { agendamentosAbertos } = useAgendamentos();
+  const { solicitacoesPendentes } = useDescargas();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sidebarRef = useRef(null);
 
@@ -184,6 +186,27 @@ export default function SidebarMenu({ unseenCount, handleOpenConfigModal }) {
           )}
 
           {/* ═══════════════════════════════════════════════════════════════ */}
+          {/* MÓDULO: DESCARGAS */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
+
+          {/* Gerenciar Descargas - descarga_visualizar */}
+          {(isAdmin || temPermissao("descarga_visualizar")) && (
+            <button
+              className="nav-item"
+              onClick={() => handleNavigation("/gerenciamento-descargas")}
+            >
+              <FiTruck size={20} />
+              <span>Descargas</span>
+              {/* Badge de solicitações pendentes */}
+              {solicitacoesPendentes > 0 && (
+                <span className="notification-badge">
+                  {solicitacoesPendentes > 9 ? "9+" : solicitacoesPendentes}
+                </span>
+              )}
+            </button>
+          )}
+
+          {/* ═══════════════════════════════════════════════════════════════ */}
           {/* MÓDULO: DASHBOARD */}
           {/* ═══════════════════════════════════════════════════════════════ */}
 
@@ -272,18 +295,6 @@ export default function SidebarMenu({ unseenCount, handleOpenConfigModal }) {
               <span>Gerenciar Permissões</span>
             </button>
           )}
-
-          {/* Configurações - sempre visível para usuários logados */}
-          <button
-            className="nav-item"
-            onClick={() => {
-              handleOpenConfigModal();
-              setSidebarOpen(false);
-            }}
-          >
-            <FiSettings size={20} />
-            <span>Configurações</span>
-          </button>
         </nav>
 
         {/* Footer da sidebar */}

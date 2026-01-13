@@ -1,17 +1,20 @@
 import React from "react";
 
-import "./global.css";
+import "./styles/layout.css";
 import Routes from "./routes/routes";
 import { AuthProvider } from "./hooks/useAuth";
 import { TicketProvider } from "./contexts/TicketContext";
 import { AgendamentoProvider } from "./contexts/AgendamentoContext";
+import { DescargaProvider } from "./contexts/DescargaContext";
 
 function App() {
   return (
     <AuthProvider>
       <TicketProvider>
         <AgendamentoProvider>
-          <Routes />
+          <DescargaProvider>
+            <Routes />
+          </DescargaProvider>
         </AgendamentoProvider>
       </TicketProvider>
     </AuthProvider>

@@ -1,13 +1,13 @@
-// src/components/VisitAuthorizationModal.js
+// src/components/ModalRegistrarVisita.js
 import React, { useState, useEffect } from "react";
-import "../styles/visitAuthorization-Modal.css";
+import "../styles/ModalRegistrarVisita.css";
 
-export default function VisitAuthorizationModal({ 
-  visible, 
-  onClose, 
-  onConfirm, 
+export default function ModalRegistrarVisita({
+  visible,
+  onClose,
+  onConfirm,
   responsaveis = [],
-  incident = null // 🔹 Novo prop para receber dados do incidente
+  incident = null, // 🔹 Novo prop para receber dados do incidente
 }) {
   const [selected, setSelected] = useState("");
   const [observacao, setObservacao] = useState("");
@@ -29,16 +29,18 @@ export default function VisitAuthorizationModal({
 
   return (
     <div className="modal-authorization" onClick={onClose}>
-      <div className="modal-content-authorization" onClick={e => e.stopPropagation()}>
+      <div
+        className="modal-content-authorization"
+        onClick={(e) => e.stopPropagation()}
+      >
         <h2>Quem liberou a visita?</h2>
-        
-        <select 
-          value={selected} 
-          onChange={(e) => setSelected(e.target.value)}
-        >
+
+        <select value={selected} onChange={(e) => setSelected(e.target.value)}>
           <option value="">Selecione um responsável</option>
           {responsaveis.map((resp, idx) => (
-            <option key={idx} value={resp}>{resp}</option>
+            <option key={idx} value={resp}>
+              {resp}
+            </option>
           ))}
         </select>
 
@@ -56,14 +58,16 @@ export default function VisitAuthorizationModal({
         </div>
 
         <div className="modal-actions-authorization">
-          <button 
-            onClick={handleConfirm} 
-            className="btn-confirm" 
+          <button
+            onClick={handleConfirm}
+            className="btn-confirm"
             disabled={!selected}
           >
             Confirmar
           </button>
-          <button onClick={onClose} className="btn-cancel">Cancelar</button>
+          <button onClick={onClose} className="btn-cancel">
+            Cancelar
+          </button>
         </div>
       </div>
     </div>

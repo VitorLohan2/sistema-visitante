@@ -1,4 +1,4 @@
-// src/pages/NovoCadastroVisitante/index.js
+// src/pages/CadastrarVisitante/index.js
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useHistory } from "react-router-dom";
 import {
@@ -13,11 +13,12 @@ import {
   FiPlus,
 } from "react-icons/fi";
 import api from "../../services/api";
+import Loading from "../../components/Loading";
 import { getCache, setCache } from "../../services/cacheService";
 import "./styles.css";
 import logoImg from "../../assets/logo.svg";
 
-export default function NewVisitor() {
+export default function CadastrarVisitante() {
   // Etapas do formulário
   const STEPS = [
     { id: 1, title: "Dados Pessoais", icon: FiUser },
@@ -477,22 +478,14 @@ export default function NewVisitor() {
 
   return (
     <div className="cadastro-visitante-page">
-      {/* Overlay de Loading durante o cadastro */}
+      {/* Loading durante o cadastro */}
       {isSubmitting && (
-        <div className="loading-overlay">
-          <div className="loading-content">
-            <div className="loading-spinner"></div>
-            <h3>Cadastrando Visitante</h3>
-            <p className="loading-status">{uploadStatus}</p>
-            <div className="loading-progress-bar">
-              <div
-                className="loading-progress-fill"
-                style={{ width: `${uploadProgress}%` }}
-              />
-            </div>
-            <span className="loading-percentage">{uploadProgress}%</span>
-          </div>
-        </div>
+        <Loading
+          variant="overlay"
+          showProgress={true}
+          progress={uploadProgress}
+          message="Cadastrando Visitante"
+        />
       )}
 
       <div className="cadastro-card">

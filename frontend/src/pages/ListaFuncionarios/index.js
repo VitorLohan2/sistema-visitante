@@ -18,6 +18,7 @@ import {
   addFuncionarioToCache,
   updateFuncionarioInCache,
 } from "../../services/cacheService";
+import Loading from "../../components/Loading";
 import { useSocket } from "../../hooks/useSocket";
 import { usePermissoes } from "../../hooks/usePermissoes";
 import "./styles.css";
@@ -496,14 +497,7 @@ export default function ListaFuncionarios() {
   // RENDER
   // ═══════════════════════════════════════════════════════════════
   if (loading) {
-    return (
-      <div className="funcionarios-container">
-        <div className="loading">
-          <FiUsers className="loading-icon" />
-          <span>Carregando funcionários...</span>
-        </div>
-      </div>
-    );
+    return <Loading variant="page" message="Carregando funcionários..." />;
   }
 
   return (
@@ -895,7 +889,7 @@ export default function ListaFuncionarios() {
               {/* Tabela de Histórico */}
               <div className="historico-table-container">
                 {loadingHistorico ? (
-                  <div className="loading-historico">Carregando...</div>
+                  <Loading variant="inline" message="Carregando histórico..." />
                 ) : registrosPonto.length === 0 ? (
                   <div className="no-historico">
                     <FiClock className="empty-icon" />

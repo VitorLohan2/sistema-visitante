@@ -13,6 +13,7 @@ import {
   FiUserPlus,
 } from "react-icons/fi";
 import api from "../../services/api";
+import Loading from "../../components/Loading";
 import { useSocket } from "../../hooks/useSocket";
 import "./styles.css";
 
@@ -343,11 +344,7 @@ export default function GerenciamentoPermissoes() {
   // ═══════════════════════════════════════════════════════════════
 
   if (loading) {
-    return (
-      <div className="gerenciamento-container">
-        <div className="loading">Carregando...</div>
-      </div>
-    );
+    return <Loading variant="page" message="Carregando permissões..." />;
   }
 
   return (

@@ -4,7 +4,6 @@ import { FiTrash2, FiPlus } from "react-icons/fi";
 import api from "../../services/api";
 import { usePermissoes } from "../../hooks/usePermissoes";
 import "./styles.css";
-import SwitchToggle from "../../components/SwitchToggle";
 
 export default function GeradorCodigo() {
   const [codigos, setCodigos] = useState([]);
@@ -368,15 +367,19 @@ export default function GeradorCodigo() {
                       </td>
                       <td className="actions">
                         <div className="actions-container">
-                          <SwitchToggle
-                            isOn={codigo.ativo}
-                            handleToggle={() =>
-                              codigo.ativo
-                                ? handleDesativarTemporario(codigo.id)
-                                : handleAtivarCodigo(codigo.id)
-                            }
-                            disabled={isProcessing}
-                          />
+                          <label className="toggle-switch">
+                            <input
+                              type="checkbox"
+                              checked={codigo.ativo}
+                              onChange={() =>
+                                codigo.ativo
+                                  ? handleDesativarTemporario(codigo.id)
+                                  : handleAtivarCodigo(codigo.id)
+                              }
+                              disabled={isProcessing}
+                            />
+                            <span className="toggle-slider"></span>
+                          </label>
                           <button
                             onClick={() =>
                               handleDeletarCodigoPermanentemente(codigo.id)

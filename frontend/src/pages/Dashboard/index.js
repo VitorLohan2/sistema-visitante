@@ -10,7 +10,7 @@ import {
 import api from "../../services/api";
 import { getCache, setCache } from "../../services/cacheService";
 import { useAuth } from "../../hooks/useAuth";
-import "../../styles/dashboard.css";
+import "./styles.css";
 
 // TTL do cache de dashboard: 2 minutos
 const DASHBOARD_CACHE_TTL = 2 * 60 * 1000;
@@ -111,8 +111,7 @@ export default function Dashboard() {
       {/* Header */}
       <div className="dashboard-header">
         <div className="header-content">
-          <h1>Dashboard Administrativo</h1>
-          <p>Bem-vindo(a), {user?.nome}</p>
+          <h1>DASHBOARD ADMINISTRATIVO</h1>
         </div>
         <button
           className="refresh-btn"

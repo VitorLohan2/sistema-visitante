@@ -4,6 +4,7 @@ const { getIo } = require("../socket");
 const { getUsuarioId } = require("../utils/authHelper");
 const {
   isAdmin: verificarAdmin,
+  temPermissao,
 } = require("../middleware/permissaoMiddleware");
 
 module.exports = {
@@ -213,13 +214,16 @@ module.exports = {
         return response.status(404).json({ error: "usuario não encontrada" });
       }
 
-      const userIsAdmin = await verificarAdmin(usuario_id);
-      const podeConfirmar = userIsAdmin || usuario.setor_id === 4;
+      // Verificar permissão via RBAC - qualquer papel com agendamento_editar pode confirmar
+      const podeConfirmar = await temPermissao(
+        usuario_id,
+        "agendamento_editar"
+      );
 
       if (!podeConfirmar) {
         return response.status(403).json({
           error:
-            "Somente Segurança e Administradores podem confirmar agendamentos",
+            "Sem permissão para confirmar agendamentos. Necessário: agendamento_editar",
         });
       }
 
@@ -295,18 +299,19 @@ module.exports = {
           .json({ error: "Agendamento não encontrado" });
       }
 
-      // Verificar se é admin via papéis
-      const papeis = await connection("usuarios_papeis")
-        .join("papeis", "usuarios_papeis.papel_id", "papeis.id")
-        .where("usuarios_papeis.usuario_id", usuario_id)
-        .pluck("papeis.nome");
+      // Verificar permissão via RBAC - qualquer papel com agendamento_deletar pode excluir
+      const podeExcluir = await temPermissao(usuario_id, "agendamento_deletar");
 
-      const isAdmin = Array.isArray(papeis) && papeis.includes("ADMIN");
+      // Usuário pode excluir seus próprios agendamentos OU ter permissão agendamento_deletar
+      const autorizado = podeExcluir || agendamento.usuario_id === usuario_id;
 
-      if (agendamento.usuario_id !== usuario_id && !isAdmin) {
+      if (!autorizado) {
         return response
           .status(403)
-          .json({ error: "Não autorizado a excluir este agendamento" });
+          .json({
+            error:
+              "Sem permissão para excluir este agendamento. Necessário: agendamento_deletar",
+          });
       }
 
       await connection("agendamentos").where("id", id).delete();
@@ -343,6 +348,19 @@ module.exports = {
 
       if (!usuario) {
         return response.status(404).json({ error: "PERFIL não encontrada" });
+      }
+
+      // Verificar permissão via RBAC - qualquer papel com agendamento_editar pode registrar presença
+      const podeRegistrarPresenca = await temPermissao(
+        usuario_id,
+        "agendamento_editar"
+      );
+
+      if (!podeRegistrarPresenca) {
+        return response.status(403).json({
+          error:
+            "Sem permissão para registrar presença. Necessário: agendamento_editar",
+        });
       }
 
       const agendamento = await connection("agendamentos")

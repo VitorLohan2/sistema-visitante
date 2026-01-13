@@ -4,8 +4,8 @@ import { Route, Redirect } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { usePermissoes } from "../hooks/usePermissoes";
 import { useTickets } from "../contexts/TicketContext";
-import SidebarMenu from "../components/SidebarMenu";
-import ConfigModal from "../components/ConfigModal";
+import MenuDaBarraLateral from "../components/MenuDaBarraLateral";
+
 import "../styles/layout.css";
 
 /**
@@ -23,22 +23,6 @@ export default function ProtectedRoute({
   const { isAuthenticated, loading, user } = useAuth();
   const { isAdmin, temPermissao, loading: loadingPermissoes } = usePermissoes();
   const { ticketsAbertos } = useTickets();
-  const [configModalVisible, setConfigModalVisible] = useState(false);
-  const [userDetails, setUserDetails] = useState(null);
-
-  const handleOpenConfigModal = async () => {
-    try {
-      setUserDetails(user);
-      setConfigModalVisible(true);
-    } catch (err) {
-      console.error("Erro ao carregar informações do usuário:", err);
-    }
-  };
-
-  const handleCloseConfigModal = () => {
-    setConfigModalVisible(false);
-    setUserDetails(null);
-  };
 
   // Verifica se o usuário tem permissão para acessar a rota
   const verificarPermissao = () => {
@@ -101,10 +85,7 @@ export default function ProtectedRoute({
         if (!verificarPermissao()) {
           return (
             <div className="layout-container">
-              <SidebarMenu
-                unseenCount={ticketsAbertos}
-                handleOpenConfigModal={handleOpenConfigModal}
-              />
+              <MenuDaBarraLateral unseenCount={ticketsAbertos} />
               <main className="layout-main">
                 <div className="acesso-negado">
                   <h1>🚫 Acesso Negado</h1>
@@ -122,17 +103,8 @@ export default function ProtectedRoute({
         // Autenticado e com permissão - renderiza a página
         return (
           <div className="layout-container">
-            <SidebarMenu
-              unseenCount={ticketsAbertos}
-              handleOpenConfigModal={handleOpenConfigModal}
-            />
+            <MenuDaBarraLateral unseenCount={ticketsAbertos} />
             <main className="layout-main">{children}</main>
-            {configModalVisible && userDetails && (
-              <ConfigModal
-                userDetails={userDetails}
-                onClose={handleCloseConfigModal}
-              />
-            )}
           </div>
         );
       }}

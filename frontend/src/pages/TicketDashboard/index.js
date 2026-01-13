@@ -1,4 +1,3 @@
-// src/pages/TicketDashboard/index.js
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useHistory } from "react-router-dom";
 import {
@@ -22,6 +21,7 @@ import api from "../../services/api";
 import { useAuth } from "../../hooks/useAuth";
 import { usePermissoes } from "../../hooks/usePermissoes";
 import { useTickets } from "../../contexts/TicketContext";
+import Loading from "../../components/Loading";
 
 import "./styles.css";
 
@@ -357,14 +357,9 @@ const TicketDashboard = () => {
     ...new Set(tickets.map((t) => t.nome_usuario).filter(Boolean)),
   ];
 
-  // Loading
+  // Loading inicial dos dados
   if (isLoading && tickets.length === 0) {
-    return (
-      <div className="ticket-dashboard-loading">
-        <div className="loading-spinner"></div>
-        <p>Carregando tickets...</p>
-      </div>
-    );
+    return <Loading variant="page" message="Carregando tickets..." />;
   }
 
   return (

@@ -5,7 +5,7 @@ import { BrowserRouter, Route, Switch } from "react-router-dom";
 import Login from "../pages/Login";
 import Dashboard from "../pages/Dashboard";
 import ListagemVisitante from "../pages/ListagemVisitante";
-import NovoCadastroVisitante from "../pages/NovoCadastroVisitante";
+import CadastrarVisitante from "../pages/CadastrarVisitante";
 import Visitante from "../pages/Visitante";
 import HistoricoVisitante from "../pages/HistoricoVisitante";
 import EditarCadastroVisitante from "../pages/EditarCadastroVisitante";
@@ -21,6 +21,8 @@ import ListaEmpresasVisitantes from "../pages/ListaEmpresasVisitantes";
 import ProtectedRoute from "./protectedRoutes";
 import ListaAgendamentos from "../pages/ListaAgendamentos";
 import GerenciamentoPermissoes from "../pages/GerenciamentoPermissoes";
+import SolicitacaoDescarga from "../pages/SolicitacaoDescarga";
+import GerenciamentoDescargas from "../pages/GerenciamentoDescargas";
 
 export default function Routes() {
   return (
@@ -30,6 +32,11 @@ export default function Routes() {
         <Route path="/" exact component={Login} />
         <Route path="/recuperar-id" exact component={RecuperarId} />
         <Route path="/helpdesk" exact component={HelpDesk} />
+        <Route
+          path="/solicitar-descarga"
+          exact
+          component={SolicitacaoDescarga}
+        />
 
         {/* ══════════════════════════════════════════════════════════════════ */}
         {/* ROTAS PROTEGIDAS COM PERMISSÕES */}
@@ -53,7 +60,7 @@ export default function Routes() {
           path="/cadastro-visitantes/novo"
           permissao="cadastro_criar"
         >
-          <NovoCadastroVisitante />
+          <CadastrarVisitante />
         </ProtectedRoute>
 
         {/* Lista de Visitantes Cadastrados - cadastro_visualizar */}
@@ -138,6 +145,14 @@ export default function Routes() {
         {/* Gerenciamento de Permissões - SOMENTE ADMIN */}
         <ProtectedRoute path="/gerenciamento-permissoes" adminOnly>
           <GerenciamentoPermissoes />
+        </ProtectedRoute>
+
+        {/* Gerenciamento de Descargas - descarga_visualizar */}
+        <ProtectedRoute
+          path="/gerenciamento-descargas"
+          permissao="descarga_visualizar"
+        >
+          <GerenciamentoDescargas />
         </ProtectedRoute>
       </Switch>
     </BrowserRouter>

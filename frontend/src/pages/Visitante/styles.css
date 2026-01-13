@@ -19,8 +19,6 @@
 .visitante-container {
   min-height: 100vh;
   padding: 24px;
-  max-width: 1400px;
-  margin: 0 auto;
 }
 
 /* HEADER - Card elegante */
@@ -52,7 +50,7 @@
 }
 
 .visitante-title {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
   color: #000;
   margin: 0;

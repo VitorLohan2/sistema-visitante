@@ -28,6 +28,7 @@ import { saveAs } from "file-saver";
 import api from "../../services/api";
 import { getCache, setCache } from "../../services/cacheService";
 import { useAuth } from "../../hooks/useAuth";
+import Loading from "../../components/Loading";
 import { usePermissoes } from "../../hooks/usePermissoes";
 import { useAgendamentos } from "../../contexts/AgendamentoContext";
 
@@ -51,18 +52,17 @@ export default function ListaAgendamentos() {
   const ongName = user?.name;
   const userSetorId = user?.setor_id;
 
-  // Verificar se é da Segurança
+  // Verificar se é da Segurança (usado apenas para notificações no menu lateral)
   const isSeguranca =
     papeis.includes("SEGURANÇA") || papeis.includes("SEGURANCA");
 
-  // Permissões baseadas em RBAC
+  // Permissões baseadas em RBAC - qualquer papel com permissão habilitada pode executar
   const podeCriar = temPermissao("agendamento_criar") || isAdmin;
-  const podeConfirmar = isAdmin || isSeguranca || userSetorId === 4;
-  const podeExcluir = temPermissao("agendamento_excluir") || isAdmin;
-  const podeRegistrarPresenca = isAdmin || isSeguranca;
+  const podeConfirmar = temPermissao("agendamento_editar") || isAdmin;
+  const podeExcluir = temPermissao("agendamento_deletar") || isAdmin;
+  const podeRegistrarPresenca = temPermissao("agendamento_editar") || isAdmin;
 
   // Estados locais
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("todos");
   const [filterDate, setFilterDate] = useState("");
@@ -79,6 +79,10 @@ export default function ListaAgendamentos() {
   const [file, setFile] = useState(null);
   const [setoresVisitantes, setSetoresVisitantes] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Estados do Modal de Visualização de Imagem
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
 
   // Carregar setores para o modal
   useEffect(() => {
@@ -152,12 +156,6 @@ export default function ListaAgendamentos() {
   );
 
   // Handlers
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await fetchAgendamentos(true);
-    setIsRefreshing(false);
-  };
-
   const clearFilters = () => {
     setSearchTerm("");
     setFilterStatus("todos");
@@ -223,7 +221,38 @@ export default function ListaAgendamentos() {
   };
 
   const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
+    const selectedFile = e.target.files[0];
+
+    if (selectedFile) {
+      // Validar tipo e tamanho do arquivo
+      if (!selectedFile.type.startsWith("image/")) {
+        alert("Por favor, selecione apenas arquivos de imagem.");
+        e.target.value = ""; // Limpa o input
+        return;
+      }
+
+      if (selectedFile.size > 5 * 1024 * 1024) {
+        // 5MB
+        alert("A imagem deve ter no máximo 5MB.");
+        e.target.value = ""; // Limpa o input
+        return;
+      }
+
+      setFile(selectedFile);
+    } else {
+      setFile(null);
+    }
+  };
+
+  // Handlers do Modal de Imagem
+  const handleOpenImageModal = (imageUrl, nome) => {
+    setSelectedImage({ url: imageUrl, nome });
+    setShowImageModal(true);
+  };
+
+  const handleCloseImageModal = () => {
+    setShowImageModal(false);
+    setSelectedImage(null);
   };
 
   const validarFormulario = () => {
@@ -281,16 +310,20 @@ export default function ListaAgendamentos() {
       data.append("observacao", formData.observacao.trim());
       data.append("criado_por", ongName);
 
-      if (file) {
+      // Só adiciona o arquivo se realmente existe e não está vazio
+      if (file && file.size > 0 && file.type.startsWith("image/")) {
         data.append("foto_colaborador", file);
       }
 
       const response = await api.post("/agendamentos", data, {
-        headers: { Authorization: ongId },
+        headers: {
+          Authorization: ongId,
+          "Content-Type": "multipart/form-data",
+        },
       });
 
-      // Adicionar ao contexto
-      addAgendamento(response.data);
+      // O agendamento será adicionado automaticamente via Socket
+      // Não precisa adicionar manualmente para evitar duplicação
 
       handleCloseModal();
       alert("✅ Agendamento criado com sucesso!");
@@ -315,7 +348,7 @@ export default function ListaAgendamentos() {
         }
       );
 
-      updateAgendamento(id, response.data.agendamento);
+      // Não atualiza localmente - deixa o Socket fazer via listener
       alert("✅ Agendamento confirmado!");
     } catch (error) {
       console.error("Erro ao confirmar:", error);
@@ -335,7 +368,7 @@ export default function ListaAgendamentos() {
         }
       );
 
-      updateAgendamento(id, response.data.agendamento);
+      // Não atualiza localmente - deixa o Socket fazer via listener
       alert("✅ Presença registrada!");
     } catch (error) {
       console.error("Erro ao registrar presença:", error);
@@ -352,7 +385,7 @@ export default function ListaAgendamentos() {
         headers: { Authorization: ongId },
       });
 
-      removeAgendamento(id);
+      // Não remove localmente - deixa o Socket fazer via listener
       alert("✅ Agendamento excluído!");
     } catch (error) {
       console.error("Erro ao excluir:", error);
@@ -409,14 +442,9 @@ export default function ListaAgendamentos() {
     .toISOString()
     .slice(0, 16);
 
-  // Loading
+  // Loading inicial dos dados
   if (contextLoading && agendamentos.length === 0) {
-    return (
-      <div className="agendamentos-loading">
-        <div className="loading-spinner"></div>
-        <p>Carregando agendamentos...</p>
-      </div>
-    );
+    return <Loading variant="page" message="Carregando agendamentos..." />;
   }
 
   return (
@@ -437,15 +465,6 @@ export default function ListaAgendamentos() {
           </div>
 
           <div className="header-right">
-            <button
-              className="btn-icon"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              title="Atualizar"
-            >
-              <FiRefreshCw className={isRefreshing ? "spinning" : ""} />
-            </button>
-
             {podeCriar && (
               <button className="btn-primary" onClick={handleOpenModal}>
                 <FiPlus />
@@ -601,7 +620,16 @@ export default function ListaAgendamentos() {
             >
               {/* Foto do visitante */}
               {agendamento.foto_colaborador && (
-                <div className="agendamento-card-photo">
+                <div
+                  className="agendamento-card-photo clickable"
+                  onClick={() =>
+                    handleOpenImageModal(
+                      agendamento.foto_colaborador,
+                      agendamento.nome
+                    )
+                  }
+                  title="Clique para ampliar a imagem"
+                >
                   <img
                     src={agendamento.foto_colaborador}
                     alt={agendamento.nome}
@@ -734,17 +762,13 @@ export default function ListaAgendamentos() {
                 <FiCalendar />
                 Novo Agendamento
               </h2>
-              <button className="modal-close" onClick={handleCloseModal}>
-                <FiX />
-              </button>
             </div>
 
             <form onSubmit={handleSubmit} className="modal-form">
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="nome">
-                    <FiUser />
-                    Nome Completo *
+                    <FiUser /> Nome Completo *
                   </label>
                   <input
                     type="text"
@@ -760,8 +784,7 @@ export default function ListaAgendamentos() {
 
                 <div className="form-group">
                   <label htmlFor="cpf">
-                    <FiUser />
-                    CPF *
+                    <FiUser /> CPF *
                   </label>
                   <input
                     type="text"
@@ -779,8 +802,7 @@ export default function ListaAgendamentos() {
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="setor_id">
-                    <FiHome />
-                    Setor *
+                    <FiHome /> Setor *
                   </label>
                   <select
                     id="setor_id"
@@ -800,8 +822,7 @@ export default function ListaAgendamentos() {
 
                 <div className="form-group">
                   <label htmlFor="horario_agendado">
-                    <FiClock />
-                    Horário Agendado *
+                    <FiClock /> Horário Agendado *
                   </label>
                   <input
                     type="datetime-local"
@@ -817,8 +838,7 @@ export default function ListaAgendamentos() {
 
               <div className="form-group">
                 <label htmlFor="observacao">
-                  <FiFileText />
-                  Observação
+                  <FiFileText /> Observação
                 </label>
                 <textarea
                   id="observacao"
@@ -836,28 +856,29 @@ export default function ListaAgendamentos() {
 
               <div className="form-group">
                 <label htmlFor="file">
-                  <FiImage />
-                  Foto do Visitante (opcional)
+                  <FiImage /> Foto do Visitante (opcional)
                 </label>
                 <input
                   type="file"
                   id="file"
                   name="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/jpg,image/webp"
                   onChange={handleFileChange}
                 />
-                {file && <span className="file-name">{file.name}</span>}
+                {file && (
+                  <div className="file-info">
+                    <span className="file-name">📄 {file.name}</span>
+                    <small className="file-size">
+                      ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                    </small>
+                  </div>
+                )}
+                <small className="form-help">
+                  Formatos aceitos: JPG, PNG, WebP. Tamanho máximo: 5MB.
+                </small>
               </div>
 
               <div className="modal-actions">
-                <button
-                  type="button"
-                  className="btn-cancel"
-                  onClick={handleCloseModal}
-                  disabled={isSubmitting}
-                >
-                  Cancelar
-                </button>
                 <button
                   type="submit"
                   className="btn-submit"
@@ -875,8 +896,52 @@ export default function ListaAgendamentos() {
                     </>
                   )}
                 </button>
+                <button
+                  type="button"
+                  className="btn-cancel"
+                  onClick={handleCloseModal}
+                  disabled={isSubmitting}
+                >
+                  Cancelar
+                </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* MODAL - VISUALIZAÇÃO DE IMAGEM */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {showImageModal && selectedImage && (
+        <div className="modal-overlay" onClick={handleCloseImageModal}>
+          <div
+            className="image-modal-container"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="image-modal-header">
+              <h3>📷 Foto - {selectedImage.nome}</h3>
+            </div>
+
+            <div className="image-modal-content">
+              <img
+                src={selectedImage.url}
+                alt={selectedImage.nome}
+                className="image-modal-img"
+              />
+            </div>
+
+            <div className="image-modal-footer">
+              <button
+                className="btn-secondary"
+                onClick={() => window.open(selectedImage.url, "_blank")}
+              >
+                🔗 Abrir em nova aba
+              </button>
+              <button className="btn-primary" onClick={handleCloseImageModal}>
+                Fechar
+              </button>
+            </div>
           </div>
         </div>
       )}

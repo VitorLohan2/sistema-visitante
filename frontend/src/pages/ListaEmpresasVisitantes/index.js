@@ -18,6 +18,7 @@ import {
   removeEmpresaVisitanteFromCache,
 } from "../../services/cacheService";
 import { useSocket } from "../../hooks/useSocket";
+import Loading from "../../components/Loading";
 import "./styles.css";
 
 export default function ListaEmpresasVisitantes() {
@@ -279,11 +280,7 @@ export default function ListaEmpresasVisitantes() {
   };
 
   if (loading) {
-    return (
-      <div className="empresas-visitantes-container">
-        <div className="loading">Carregando empresas...</div>
-      </div>
-    );
+    return <Loading variant="page" message="Carregando empresas..." />;
   }
 
   return (

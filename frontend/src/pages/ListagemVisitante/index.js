@@ -8,13 +8,12 @@ import { useAuth } from "../../hooks/useAuth";
 import { useDataLoader } from "../../hooks/useDataLoader";
 import Loading from "../../components/Loading";
 
-import VisitorCard from "../../components/VisitorCard";
-import ConfigModal from "../../components/ConfigModal";
-import VisitAuthorizationModal from "../../components/VisitAuthorizationModal";
+import CardDeListagemVisitante from "../../components/CardDeListagemVisitante";
+
+import ModalRegistrarVisita from "../../components/ModalRegistrarVisita";
 
 import "./styles.css";
-import "../../styles/dark-theme.css";
-import "../../styles/visitorcard.css";
+import "../../styles/CardDeListagemVisitante.css";
 
 import logo from "../../assets/logo.svg";
 
@@ -67,9 +66,6 @@ export default function ListagemVisitante() {
   const [badgeData, setBadgeData] = useState(null);
 
   // Modal de configurações
-  const [configModalVisible, setConfigModalVisible] = useState(false);
-  const [darkTheme, setDarkTheme] = useState(false);
-  const [userDetails, setUserDetails] = useState(null);
 
   // ═══════════════════════════════════════════════════════════════
   // EFEITO: Sincroniza visitantes carregados com estado filtrado
@@ -83,13 +79,6 @@ export default function ListagemVisitante() {
   // ═══════════════════════════════════════════════════════════════
   // EFEITO: Carrega tema do localStorage
   // ═══════════════════════════════════════════════════════════════
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("darkTheme");
-    if (savedTheme) {
-      setDarkTheme(JSON.parse(savedTheme));
-      document.body.classList.toggle("dark-theme", JSON.parse(savedTheme));
-    }
-  }, []);
 
   // ═══════════════════════════════════════════════════════════════
   // EFEITO: Verifica notificações de segurança (apenas para setor Segurança)
@@ -173,12 +162,6 @@ export default function ListagemVisitante() {
   // ═══════════════════════════════════════════════════════════════
   // FUNÇÕES UTILITÁRIAS
   // ═══════════════════════════════════════════════════════════════
-  function toggleTheme() {
-    const newTheme = !darkTheme;
-    setDarkTheme(newTheme);
-    localStorage.setItem("darkTheme", JSON.stringify(newTheme));
-    document.body.classList.toggle("dark-theme", newTheme);
-  }
 
   function formatarData(data) {
     if (!data) return "Data não informada";
@@ -235,21 +218,6 @@ export default function ListagemVisitante() {
       setIsSearching(false);
     }
   };
-
-  async function handleOpenConfigModal() {
-    try {
-      const response = await api.get(`usuarios/${ongId}`);
-      setUserDetails(response.data);
-      setConfigModalVisible(true);
-    } catch (err) {
-      alert("Erro ao carregar informações do usuário: " + err.message);
-    }
-  }
-
-  function handleCloseConfigModal() {
-    setConfigModalVisible(false);
-    setUserDetails(null);
-  }
 
   async function handleDeleteIncident(id) {
     if (!window.confirm("Tem certeza que deseja deletar este cadastro?"))
@@ -443,7 +411,7 @@ export default function ListagemVisitante() {
       {/* CARDS CONTAINER */}
       <div className="visitors-list">
         {currentRecords.map((incident) => (
-          <VisitorCard
+          <CardDeListagemVisitante
             key={incident.id}
             incident={incident}
             formatarData={formatarData}
@@ -560,17 +528,7 @@ export default function ListagemVisitante() {
         </div>
       )}
 
-      <ConfigModal
-        visible={configModalVisible}
-        onClose={handleCloseConfigModal}
-        darkTheme={darkTheme}
-        toggleTheme={toggleTheme}
-        userDetails={userDetails}
-        ongId={ongId}
-        ongName={ongName}
-      />
-
-      <VisitAuthorizationModal
+      <ModalRegistrarVisita
         visible={visitModalVisible}
         onClose={() => setVisitModalVisible(false)}
         onConfirm={handleConfirmVisit}

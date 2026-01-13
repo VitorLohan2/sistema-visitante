@@ -26,6 +26,7 @@ const empresasSetoresRoutes = require("./empresasSetores.routes");
 const papeisRoutes = require("./papeis.routes");
 const permissoesRoutes = require("./permissoes.routes");
 const usuariosPapeisRoutes = require("./usuariosPapeis.routes");
+const solicitacoesDescargaRoutes = require("./solicitacoesDescarga.routes");
 
 const router = express.Router();
 
@@ -106,6 +107,9 @@ router.use("/permissoes", permissoesRoutes);
 
 // Gerenciamento de Usuários e Papéis
 router.use("/usuarios-papeis", usuariosPapeisRoutes);
+
+// Solicitações de Descarga (público + autenticado)
+router.use("/solicitacoes-descarga", solicitacoesDescargaRoutes);
 
 // ═══════════════════════════════════════════════════════════════
 // ROTAS LEGADAS ADICIONAIS (compatibilidade com frontend)
