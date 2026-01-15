@@ -3,7 +3,7 @@
  * Gerencia cadastros de visitantes (antigo IncidentController)
  *
  * IMPORTANTE: A tabela ainda se chama 'incidents' até a migration ser executada
- * Após a migration, trocar todas as referências para 'cadastro_visitantes'
+ * Após a migration, trocar todas as referências para 'cadastro_visitante'
  */
 
 const connection = require("../database/connection");
@@ -11,7 +11,7 @@ const cloudinary = require("../config/cloudinary");
 const { getIo } = require("../socket");
 
 // Nome da tabela (facilita futura migration)
-const TABELA_VISITANTES = "cadastro_visitantes"; // Tabela atualizada
+const TABELA_VISITANTES = "cadastro_visitante"; // Tabela atualizada
 
 module.exports = {
   // ═══════════════════════════════════════════════════════════════
@@ -26,14 +26,14 @@ module.exports = {
 
       const visitantes = await connection(TABELA_VISITANTES)
         .leftJoin(
-          "empresas_visitantes",
-          "empresas_visitantes.id",
+          "empresa_visitante",
+          "empresa_visitante.id",
           "=",
           `${TABELA_VISITANTES}.empresa_id`
         )
         .leftJoin(
-          "setores_visitantes",
-          "setores_visitantes.id",
+          "setor_visitante",
+          "setor_visitante.id",
           "=",
           `${TABELA_VISITANTES}.setor_id`
         )
@@ -48,8 +48,8 @@ module.exports = {
         .orderByRaw(`LOWER(${TABELA_VISITANTES}.nome) ASC`)
         .select([
           `${TABELA_VISITANTES}.*`,
-          "empresas_visitantes.nome as empresa_nome",
-          "setores_visitantes.nome as setor_nome",
+          "empresa_visitante.nome as empresa_nome",
+          "setor_visitante.nome as setor_nome",
           "usuarios.name as cadastrado_por",
         ]);
 
@@ -147,6 +147,7 @@ module.exports = {
           imagem3: imageUrls[2] || null,
           avatar_imagem: imageUrls[0] || null,
           usuario_id: usuario_id, // Quem cadastrou
+          criado_em: new Date(), // Data de criação
         })
         .returning("id");
 
@@ -189,22 +190,22 @@ module.exports = {
     try {
       const visitante = await connection(TABELA_VISITANTES)
         .leftJoin(
-          "empresas_visitantes",
-          "empresas_visitantes.id",
+          "empresa_visitante",
+          "empresa_visitante.id",
           "=",
           `${TABELA_VISITANTES}.empresa_id`
         )
         .leftJoin(
-          "setores_visitantes",
-          "setores_visitantes.id",
+          "setor_visitante",
+          "setor_visitante.id",
           "=",
           `${TABELA_VISITANTES}.setor_id`
         )
         .where(`${TABELA_VISITANTES}.id`, id)
         .select(
           `${TABELA_VISITANTES}.*`,
-          "empresas_visitantes.nome as empresa",
-          "setores_visitantes.nome as setor"
+          "empresa_visitante.nome as empresa",
+          "setor_visitante.nome as setor"
         )
         .first();
 
@@ -267,7 +268,7 @@ module.exports = {
 
     try {
       // Busca empresa pelo nome
-      const empresaData = await connection("empresas_visitantes")
+      const empresaData = await connection("empresa_visitante")
         .where("nome", empresa)
         .select("id")
         .first();
@@ -280,7 +281,7 @@ module.exports = {
       }
 
       // Busca setor pelo nome
-      const setorData = await connection("setores_visitantes")
+      const setorData = await connection("setor_visitante")
         .where("nome", setor)
         .select("id")
         .first();
@@ -333,6 +334,7 @@ module.exports = {
           placa_veiculo,
           cor_veiculo,
           avatar_imagem: avatarToSave,
+          atualizado_em: new Date(), // Data de atualização
         });
 
       console.log("✅ Visitante atualizado:", id);
@@ -497,14 +499,14 @@ module.exports = {
     try {
       const dados = await connection(TABELA_VISITANTES)
         .leftJoin(
-          "empresas_visitantes",
-          "empresas_visitantes.id",
+          "empresa_visitante",
+          "empresa_visitante.id",
           "=",
           `${TABELA_VISITANTES}.empresa_id`
         )
         .leftJoin(
-          "setores_visitantes",
-          "setores_visitantes.id",
+          "setor_visitante",
+          "setor_visitante.id",
           "=",
           `${TABELA_VISITANTES}.setor_id`
         )
@@ -516,8 +518,8 @@ module.exports = {
           `${TABELA_VISITANTES}.telefone`,
           `${TABELA_VISITANTES}.placa_veiculo`,
           `${TABELA_VISITANTES}.cor_veiculo`,
-          "empresas_visitantes.nome as empresa",
-          "setores_visitantes.nome as setor",
+          "empresa_visitante.nome as empresa",
+          "setor_visitante.nome as setor",
           `${TABELA_VISITANTES}.avatar_imagem`
         )
         .first();
@@ -705,14 +707,14 @@ module.exports = {
     try {
       const badgeData = await connection(TABELA_VISITANTES)
         .leftJoin(
-          "empresas_visitantes",
-          "empresas_visitantes.id",
+          "empresa_visitante",
+          "empresa_visitante.id",
           "=",
           `${TABELA_VISITANTES}.empresa_id`
         )
         .leftJoin(
-          "setores_visitantes",
-          "setores_visitantes.id",
+          "setor_visitante",
+          "setor_visitante.id",
           "=",
           `${TABELA_VISITANTES}.setor_id`
         )
@@ -724,8 +726,8 @@ module.exports = {
           `${TABELA_VISITANTES}.telefone`,
           `${TABELA_VISITANTES}.placa_veiculo`,
           `${TABELA_VISITANTES}.cor_veiculo`,
-          "empresas_visitantes.nome as empresa",
-          "setores_visitantes.nome as setor",
+          "empresa_visitante.nome as empresa",
+          "setor_visitante.nome as setor",
           `${TABELA_VISITANTES}.avatar_imagem`
         )
         .first();

@@ -12,8 +12,12 @@ import {
   FiAlertCircle,
   FiArrowRight,
   FiArrowLeft,
+  FiPlus,
+  FiTrash2,
+  FiHash,
 } from "react-icons/fi";
 import api from "../../services/api";
+import logoImg from "../../assets/logo.svg";
 import "./styles.css";
 
 // Constantes
@@ -51,12 +55,15 @@ export default function SolicitacaoDescarga() {
     motorista_cpf: "",
     placa_veiculo: "",
     tipo_veiculo: "",
+    transportadora_nome: "",
     // Agendamento
     tipo_carga: "",
     horario_solicitado: "",
     observacao: "",
+    quantidade_volumes: "",
   });
 
+  const [notasFiscais, setNotasFiscais] = useState([""]);
   const [errosCampo, setErrosCampo] = useState({});
 
   // Formatadores
@@ -172,7 +179,11 @@ export default function SolicitacaoDescarga() {
         break;
       case "empresa_nome":
       case "motorista_nome":
+      case "transportadora_nome":
         valorFormatado = value.toUpperCase();
+        break;
+      case "quantidade_volumes":
+        valorFormatado = value.replace(/\D/g, "");
         break;
       default:
         break;
@@ -201,6 +212,14 @@ export default function SolicitacaoDescarga() {
         } else if (!validarEmail(formData.empresa_email)) {
           erros.empresa_email = "E-mail inválido";
         }
+        if (!formData.empresa_contato || !formData.empresa_contato.trim()) {
+          erros.empresa_contato = "Nome do solicitante é obrigatório";
+        }
+        if (!formData.empresa_telefone) {
+          erros.empresa_telefone = "Telefone é obrigatório";
+        } else if (formData.empresa_telefone.replace(/\D/g, "").length < 10) {
+          erros.empresa_telefone = "Telefone inválido";
+        }
         break;
 
       case 2:
@@ -217,6 +236,15 @@ export default function SolicitacaoDescarga() {
         } else if (formData.placa_veiculo.length < 7) {
           erros.placa_veiculo = "Placa deve ter 7 caracteres";
         }
+        if (!formData.tipo_veiculo) {
+          erros.tipo_veiculo = "Tipo de veículo é obrigatório";
+        }
+        if (
+          !formData.transportadora_nome ||
+          !formData.transportadora_nome.trim()
+        ) {
+          erros.transportadora_nome = "Nome da transportadora é obrigatório";
+        }
         break;
 
       case 3:
@@ -230,6 +258,12 @@ export default function SolicitacaoDescarga() {
           if (dataHorario <= new Date()) {
             erros.horario_solicitado = "Data/hora deve ser no futuro";
           }
+        }
+        if (
+          !formData.quantidade_volumes ||
+          parseInt(formData.quantidade_volumes) <= 0
+        ) {
+          erros.quantidade_volumes = "Quantidade de volumes é obrigatória";
         }
         break;
 
@@ -262,21 +296,30 @@ export default function SolicitacaoDescarga() {
     setErro(null);
 
     try {
-      const response = await api.post("/solicitacoes-descarga", {
+      // Filtrar notas fiscais preenchidas
+      const notasPreenchidas = notasFiscais.filter((nf) => nf.trim() !== "");
+
+      const dadosEnvio = {
         empresa_nome: formData.empresa_nome,
         empresa_cnpj: formData.empresa_cnpj,
         empresa_email: formData.empresa_email,
-        empresa_contato: formData.empresa_contato || null,
-        empresa_telefone: formData.empresa_telefone || null,
+        empresa_contato: formData.empresa_contato,
+        empresa_telefone: formData.empresa_telefone,
         motorista_nome: formData.motorista_nome,
         motorista_cpf: formData.motorista_cpf,
         placa_veiculo: formData.placa_veiculo,
-        tipo_veiculo: formData.tipo_veiculo || null,
+        tipo_veiculo: formData.tipo_veiculo,
+        transportadora_nome: formData.transportadora_nome,
         tipo_carga: formData.tipo_carga,
         observacao: formData.observacao || null,
-        // Enviar data/hora sem conversão de timezone
         horario_solicitado: formData.horario_solicitado,
-      });
+        notas_fiscais: notasPreenchidas.length > 0 ? notasPreenchidas.join(", ") : null,
+        quantidade_volumes: parseInt(formData.quantidade_volumes),
+      };
+
+      console.log("=== DADOS ENVIADOS ===", dadosEnvio);
+
+      const response = await api.post("/solicitacoes-descarga", dadosEnvio);
 
       setSucesso({
         message: response.data.message,
@@ -305,10 +348,13 @@ export default function SolicitacaoDescarga() {
       motorista_cpf: "",
       placa_veiculo: "",
       tipo_veiculo: "",
+      transportadora_nome: "",
       tipo_carga: "",
       horario_solicitado: "",
       observacao: "",
+      quantidade_volumes: "",
     });
+    setNotasFiscais([""]);
     setEtapaAtual(1);
     setSucesso(null);
     setErro(null);
@@ -324,7 +370,7 @@ export default function SolicitacaoDescarga() {
   if (sucesso) {
     return (
       <div className="sd-page">
-        <div className="sd-container sd-sucesso">
+        <div className="sd-card sd-sucesso">
           <div className="sd-sucesso-icon">
             <FiCheckCircle size={80} />
           </div>
@@ -352,32 +398,50 @@ export default function SolicitacaoDescarga() {
     );
   }
 
+  // Calcula a largura da barra de progresso do stepper
+  const calcularProgressoStepper = () => {
+    if (etapaAtual === 1) return 0;
+    if (etapaAtual === 2) return 50;
+    return 100;
+  };
+
   return (
     <div className="sd-page">
-      <div className="sd-container">
+      <div className="sd-card">
         {/* Header */}
         <header className="sd-header">
-          <div className="sd-header-icon">
-            <FiTruck size={40} />
+          <img src={logoImg} alt="Logo" className="sd-logo" />
+          <div className="sd-header-content">
+            <h1>Agendamento de Descarga</h1>
+            <p>Preencha o formulário para solicitar um horário de descarga</p>
           </div>
-          <h1>Agendamento de Descarga</h1>
-          <p>Preencha o formulário para solicitar um horário de descarga</p>
         </header>
 
         {/* Stepper */}
-        <div className="sd-stepper">
-          {ETAPAS.map((etapa, index) => (
+        <div className="sd-stepper-container">
+          <div className="sd-stepper">
             <div
-              key={etapa.id}
-              className={`sd-step ${etapaAtual >= etapa.id ? "sd-active" : ""} ${etapaAtual > etapa.id ? "sd-completed" : ""}`}
-            >
-              <div className="sd-step-circle">
-                {etapaAtual > etapa.id ? <FiCheckCircle /> : <etapa.icone />}
+              className="sd-stepper-progress"
+              style={{
+                width: `calc(${calcularProgressoStepper()}% - ${calcularProgressoStepper() === 100 ? "30px" : calcularProgressoStepper() === 50 ? "15px" : "0px"})`,
+              }}
+            />
+            {ETAPAS.map((etapa) => (
+              <div
+                key={etapa.id}
+                className={`sd-step ${etapaAtual >= etapa.id ? "sd-active" : ""} ${etapaAtual > etapa.id ? "sd-completed" : ""}`}
+              >
+                <div className="sd-step-circle">
+                  {etapaAtual > etapa.id ? (
+                    <span>✓</span>
+                  ) : (
+                    <span>{etapa.id}</span>
+                  )}
+                </div>
+                <span className="sd-step-label">{etapa.titulo}</span>
               </div>
-              <span className="sd-step-title">{etapa.titulo}</span>
-              {index < ETAPAS.length - 1 && <div className="sd-step-line" />}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
         {/* Erro geral */}
@@ -398,7 +462,10 @@ export default function SolicitacaoDescarga() {
               </h2>
 
               <div className="sd-form-group">
-                <label htmlFor="empresa_nome">Nome da Empresa *</label>
+                <label htmlFor="empresa_nome">
+                  Nome da Empresa
+                  <span className="sd-obrigatorio">*</span>
+                </label>
                 <input
                   type="text"
                   id="empresa_nome"
@@ -417,7 +484,10 @@ export default function SolicitacaoDescarga() {
 
               <div className="sd-form-row">
                 <div className="sd-form-group">
-                  <label htmlFor="empresa_cnpj">CNPJ *</label>
+                  <label htmlFor="empresa_cnpj">
+                    CNPJ
+                    <span className="sd-obrigatorio">*</span>
+                  </label>
                   <input
                     type="text"
                     id="empresa_cnpj"
@@ -436,7 +506,8 @@ export default function SolicitacaoDescarga() {
 
                 <div className="sd-form-group">
                   <label htmlFor="empresa_email">
-                    <FiMail /> E-mail *
+                    <FiMail /> E-mail
+                    <span className="sd-obrigatorio">*</span>
                   </label>
                   <input
                     type="email"
@@ -457,7 +528,10 @@ export default function SolicitacaoDescarga() {
 
               <div className="sd-form-row">
                 <div className="sd-form-group">
-                  <label htmlFor="empresa_contato">Nome do Contato</label>
+                  <label htmlFor="empresa_contato">
+                    Nome do Solicitante{" "}
+                    <span className="sd-obrigatorio">*</span>
+                  </label>
                   <input
                     type="text"
                     id="empresa_contato"
@@ -465,12 +539,19 @@ export default function SolicitacaoDescarga() {
                     value={formData.empresa_contato}
                     onChange={handleChange}
                     placeholder="João Silva"
+                    className={errosCampo.empresa_contato ? "sd-erro" : ""}
                   />
+                  {errosCampo.empresa_contato && (
+                    <span className="sd-erro-campo">
+                      {errosCampo.empresa_contato}
+                    </span>
+                  )}
                 </div>
 
                 <div className="sd-form-group">
                   <label htmlFor="empresa_telefone">
-                    <FiPhone /> Telefone
+                    <FiPhone /> Telefone{" "}
+                    <span className="sd-obrigatorio">*</span>
                   </label>
                   <input
                     type="text"
@@ -479,7 +560,13 @@ export default function SolicitacaoDescarga() {
                     value={formData.empresa_telefone}
                     onChange={handleChange}
                     placeholder="(00) 00000-0000"
+                    className={errosCampo.empresa_telefone ? "sd-erro" : ""}
                   />
+                  {errosCampo.empresa_telefone && (
+                    <span className="sd-erro-campo">
+                      {errosCampo.empresa_telefone}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -551,21 +638,50 @@ export default function SolicitacaoDescarga() {
                 </div>
 
                 <div className="sd-form-group">
-                  <label htmlFor="tipo_veiculo">Tipo de Veículo</label>
+                  <label htmlFor="tipo_veiculo">
+                    Tipo de Veículo <span className="sd-obrigatorio">*</span>
+                  </label>
                   <select
                     id="tipo_veiculo"
                     name="tipo_veiculo"
                     value={formData.tipo_veiculo}
                     onChange={handleChange}
+                    className={errosCampo.tipo_veiculo ? "sd-erro" : ""}
                   >
-                    <option value="">Selecione (opcional)</option>
+                    <option value="">Selecione</option>
                     {TIPOS_VEICULO.map((tipo) => (
                       <option key={tipo} value={tipo}>
                         {tipo}
                       </option>
                     ))}
                   </select>
+                  {errosCampo.tipo_veiculo && (
+                    <span className="sd-erro-campo">
+                      {errosCampo.tipo_veiculo}
+                    </span>
+                  )}
                 </div>
+              </div>
+
+              <div className="sd-form-group">
+                <label htmlFor="transportadora_nome">
+                  <FiTruck /> Nome da Transportadora{" "}
+                  <span className="sd-obrigatorio">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="transportadora_nome"
+                  name="transportadora_nome"
+                  value={formData.transportadora_nome}
+                  onChange={handleChange}
+                  placeholder="NOME DA TRANSPORTADORA"
+                  className={errosCampo.transportadora_nome ? "sd-erro" : ""}
+                />
+                {errosCampo.transportadora_nome && (
+                  <span className="sd-erro-campo">
+                    {errosCampo.transportadora_nome}
+                  </span>
+                )}
               </div>
             </div>
           )}
@@ -578,26 +694,6 @@ export default function SolicitacaoDescarga() {
               </h2>
 
               <div className="sd-form-row">
-                <div className="sd-form-group">
-                  <label htmlFor="tipo_carga">
-                    <FiPackage /> Tipo de Carga *
-                  </label>
-                  <input
-                    type="text"
-                    id="tipo_carga"
-                    name="tipo_carga"
-                    value={formData.tipo_carga}
-                    onChange={handleChange}
-                    placeholder="Ex: Material de escritório, Equipamentos..."
-                    className={errosCampo.tipo_carga ? "sd-erro" : ""}
-                  />
-                  {errosCampo.tipo_carga && (
-                    <span className="sd-erro-campo">
-                      {errosCampo.tipo_carga}
-                    </span>
-                  )}
-                </div>
-
                 <div className="sd-form-group">
                   <label htmlFor="horario_solicitado">
                     <FiCalendar /> Data e Hora Desejada *
@@ -614,6 +710,107 @@ export default function SolicitacaoDescarga() {
                   {errosCampo.horario_solicitado && (
                     <span className="sd-erro-campo">
                       {errosCampo.horario_solicitado}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Notas Fiscais */}
+              <div className="sd-form-group">
+                <label>
+                  <FiFileText /> Notas Fiscais (Opcional)
+                </label>
+                <div className="sd-notas-fiscais">
+                  {notasFiscais.map((nota, index) => (
+                    <div key={index} className="sd-nota-fiscal-row">
+                      <input
+                        type="text"
+                        value={nota}
+                        onChange={(e) => {
+                          const novas = [...notasFiscais];
+                          novas[index] = e.target.value;
+                          setNotasFiscais(novas);
+                          setErrosCampo((prev) => ({
+                            ...prev,
+                            notas_fiscais: "",
+                          }));
+                        }}
+                        placeholder={`Nota Fiscal ${index + 1}`}
+                        className={
+                          errosCampo.notas_fiscais && index === 0
+                            ? "sd-erro"
+                            : ""
+                        }
+                      />
+                      {notasFiscais.length > 1 && (
+                        <button
+                          type="button"
+                          className="sd-btn-remover-nota"
+                          onClick={() => {
+                            const novas = notasFiscais.filter(
+                              (_, i) => i !== index
+                            );
+                            setNotasFiscais(novas);
+                          }}
+                          title="Remover nota fiscal"
+                        >
+                          <FiTrash2 />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="sd-btn-adicionar-nota"
+                    onClick={() => setNotasFiscais([...notasFiscais, ""])}
+                  >
+                    <FiPlus /> Adicionar Nota Fiscal
+                  </button>
+                </div>
+                {errosCampo.notas_fiscais && (
+                  <span className="sd-erro-campo">
+                    {errosCampo.notas_fiscais}
+                  </span>
+                )}
+              </div>
+
+              <div className="sd-form-row">
+                <div className="sd-form-group">
+                  <label htmlFor="quantidade_volumes">
+                    <FiHash /> Quantidade de Volumes *
+                  </label>
+                  <input
+                    type="text"
+                    id="quantidade_volumes"
+                    name="quantidade_volumes"
+                    value={formData.quantidade_volumes}
+                    onChange={handleChange}
+                    placeholder="Ex: 10"
+                    className={errosCampo.quantidade_volumes ? "sd-erro" : ""}
+                  />
+                  {errosCampo.quantidade_volumes && (
+                    <span className="sd-erro-campo">
+                      {errosCampo.quantidade_volumes}
+                    </span>
+                  )}
+                </div>
+
+                <div className="sd-form-group">
+                  <label htmlFor="tipo_carga">
+                    <FiPackage /> Tipo de Carga *
+                  </label>
+                  <input
+                    type="text"
+                    id="tipo_carga"
+                    name="tipo_carga"
+                    value={formData.tipo_carga}
+                    onChange={handleChange}
+                    placeholder="Ex: Material de escritório, Equipamentos..."
+                    className={errosCampo.tipo_carga ? "sd-erro" : ""}
+                  />
+                  {errosCampo.tipo_carga && (
+                    <span className="sd-erro-campo">
+                      {errosCampo.tipo_carga}
                     </span>
                   )}
                 </div>
@@ -663,6 +860,34 @@ export default function SolicitacaoDescarga() {
                     <span className="sd-resumo-label">Placa:</span>
                     <span className="sd-resumo-valor">
                       {formData.placa_veiculo}
+                    </span>
+                  </div>
+                  {formData.transportadora_nome && (
+                    <div className="sd-resumo-item">
+                      <span className="sd-resumo-label">Transportadora:</span>
+                      <span className="sd-resumo-valor">
+                        {formData.transportadora_nome}
+                      </span>
+                    </div>
+                  )}
+                  <div className="sd-resumo-item">
+                    <span className="sd-resumo-label">Notas Fiscais:</span>
+                    <span className="sd-resumo-valor">
+                      {notasFiscais
+                        .filter((nf) => nf.trim() !== "")
+                        .join(", ") || "-"}
+                    </span>
+                  </div>
+                  <div className="sd-resumo-item">
+                    <span className="sd-resumo-label">Volumes:</span>
+                    <span className="sd-resumo-valor">
+                      {formData.quantidade_volumes || "-"}
+                    </span>
+                  </div>
+                  <div className="sd-resumo-item">
+                    <span className="sd-resumo-label">Tipo de Carga:</span>
+                    <span className="sd-resumo-valor">
+                      {formData.tipo_carga}
                     </span>
                   </div>
                 </div>

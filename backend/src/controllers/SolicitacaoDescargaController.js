@@ -83,78 +83,156 @@ module.exports = {
       motorista_cpf,
       placa_veiculo,
       tipo_veiculo,
+      transportadora_nome,
       tipo_carga,
       observacao,
       horario_solicitado,
+      notas_fiscais,
+      quantidade_volumes,
     } = request.body;
 
     try {
       console.log("=== NOVA SOLICITAÇÃO DE DESCARGA ===");
+      console.log("Dados recebidos:", JSON.stringify(request.body, null, 2));
 
       // Validações obrigatórias
       if (!empresa_nome || empresa_nome.trim() === "") {
+        console.log("❌ ERRO: Nome da empresa é obrigatório");
         return response
           .status(400)
           .json({ error: "Nome da empresa é obrigatório" });
       }
+      console.log("✅ empresa_nome OK");
 
       if (!empresa_cnpj) {
+        console.log("❌ ERRO: CNPJ é obrigatório");
         return response.status(400).json({ error: "CNPJ é obrigatório" });
       }
+      console.log("✅ empresa_cnpj presente");
 
       const cnpjLimpo = empresa_cnpj.replace(/[^\d]/g, "");
+      console.log("CNPJ limpo:", cnpjLimpo);
       if (!validarCNPJ(cnpjLimpo)) {
+        console.log("❌ ERRO: CNPJ inválido");
         return response.status(400).json({ error: "CNPJ inválido" });
       }
+      console.log("✅ CNPJ válido");
 
       if (!empresa_email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(empresa_email)) {
+        console.log("❌ ERRO: E-mail inválido");
         return response.status(400).json({ error: "E-mail inválido" });
       }
+      console.log("✅ empresa_email OK");
+
+      if (!empresa_contato || empresa_contato.trim() === "") {
+        console.log("❌ ERRO: Nome do solicitante é obrigatório");
+        return response
+          .status(400)
+          .json({ error: "Nome do solicitante é obrigatório" });
+      }
+      console.log("✅ empresa_contato OK");
+
+      if (
+        !empresa_telefone ||
+        empresa_telefone.replace(/[^\d]/g, "").length < 10
+      ) {
+        console.log(
+          "❌ ERRO: Telefone inválido, dígitos:",
+          empresa_telefone?.replace(/[^\d]/g, "").length
+        );
+        return response.status(400).json({
+          error: "Telefone é obrigatório e deve ter pelo menos 10 dígitos",
+        });
+      }
+      console.log("✅ empresa_telefone OK");
 
       if (!motorista_nome || motorista_nome.trim() === "") {
+        console.log("❌ ERRO: Nome do motorista é obrigatório");
         return response
           .status(400)
           .json({ error: "Nome do motorista é obrigatório" });
       }
+      console.log("✅ motorista_nome OK");
 
       if (!motorista_cpf) {
+        console.log("❌ ERRO: CPF do motorista é obrigatório");
         return response
           .status(400)
           .json({ error: "CPF do motorista é obrigatório" });
       }
+      console.log("✅ motorista_cpf presente");
 
       const cpfLimpo = motorista_cpf.replace(/[^\d]/g, "");
+      console.log("CPF limpo:", cpfLimpo);
       if (!validarCPF(cpfLimpo)) {
+        console.log("❌ ERRO: CPF do motorista inválido");
         return response
           .status(400)
           .json({ error: "CPF do motorista inválido" });
       }
+      console.log("✅ CPF válido");
 
       if (!placa_veiculo || placa_veiculo.trim() === "") {
+        console.log("❌ ERRO: Placa do veículo é obrigatória");
         return response
           .status(400)
           .json({ error: "Placa do veículo é obrigatória" });
       }
+      console.log("✅ placa_veiculo OK");
+
+      if (!tipo_veiculo || tipo_veiculo.trim() === "") {
+        console.log("❌ ERRO: Tipo de veículo é obrigatório");
+        return response
+          .status(400)
+          .json({ error: "Tipo de veículo é obrigatório" });
+      }
+      console.log("✅ tipo_veiculo OK");
+
+      if (!transportadora_nome || transportadora_nome.trim() === "") {
+        console.log("❌ ERRO: Nome da transportadora é obrigatório");
+        return response
+          .status(400)
+          .json({ error: "Nome da transportadora é obrigatório" });
+      }
+      console.log("✅ transportadora_nome OK");
 
       if (!tipo_carga || tipo_carga.trim() === "") {
+        console.log("❌ ERRO: Tipo de carga é obrigatório");
         return response
           .status(400)
           .json({ error: "Tipo de carga é obrigatório" });
       }
+      console.log("✅ tipo_carga OK");
+
+      if (!quantidade_volumes || quantidade_volumes <= 0) {
+        console.log(
+          "❌ ERRO: Quantidade de volumes inválida:",
+          quantidade_volumes
+        );
+        return response
+          .status(400)
+          .json({ error: "Quantidade de volumes é obrigatória" });
+      }
+      console.log("✅ quantidade_volumes OK");
 
       if (!horario_solicitado) {
+        console.log("❌ ERRO: Horário solicitado é obrigatório");
         return response
           .status(400)
           .json({ error: "Horário solicitado é obrigatório" });
       }
+      console.log("✅ horario_solicitado presente");
 
       // Verificar se é data futura
       const dataHorario = new Date(horario_solicitado);
+      console.log("Data horário:", dataHorario, "Agora:", new Date());
       if (dataHorario <= new Date()) {
+        console.log("❌ ERRO: O horário solicitado deve ser no futuro");
         return response
           .status(400)
           .json({ error: "O horário solicitado deve ser no futuro" });
       }
+      console.log("✅ Data é no futuro");
 
       // Formatar a data/hora para salvar sem conversão de timezone
       // O horario_solicitado vem como "2026-01-15T14:30" ou "2026-01-15T14:30:00"
@@ -188,42 +266,50 @@ module.exports = {
           empresa_nome: empresa_nome.trim().toUpperCase(),
           empresa_cnpj: cnpjLimpo,
           empresa_email: empresa_email.trim().toLowerCase(),
-          empresa_contato: empresa_contato ? empresa_contato.trim() : null,
-          empresa_telefone: empresa_telefone
-            ? empresa_telefone.replace(/[^\d]/g, "")
-            : null,
+          empresa_contato: empresa_contato.trim(),
+          empresa_telefone: empresa_telefone.replace(/[^\d]/g, ""),
           motorista_nome: motorista_nome.trim().toUpperCase(),
           motorista_cpf: cpfLimpo,
           placa_veiculo: placa_veiculo
             .trim()
             .toUpperCase()
             .replace(/[^A-Z0-9]/g, ""),
-          tipo_veiculo: tipo_veiculo ? tipo_veiculo.trim() : null,
+          tipo_veiculo: tipo_veiculo.trim(),
+          transportadora_nome: transportadora_nome.trim().toUpperCase(),
           tipo_carga: tipo_carga.trim(),
           observacao: observacao ? observacao.trim() : null,
           horario_solicitado: horarioParaSalvar,
+          notas_fiscais: notas_fiscais ? notas_fiscais.trim() : null,
+          quantidade_volumes: parseInt(quantidade_volumes),
           status: "PENDENTE",
         })
         .returning("*");
 
       console.log("✅ Solicitação de descarga criada:", solicitacao.id);
 
+      // Gerar protocolo
+      const protocolo = `DESC-${solicitacao.id.toString().padStart(6, "0")}`;
+
+      // Atualizar o protocolo no banco
+      await connection("solicitacoes_descarga")
+        .where("id", solicitacao.id)
+        .update({ protocolo });
+
       // Emitir evento via Socket para notificar usuários internos
+      // Enviando TODOS os dados necessários para exibição na tabela
       io.to("global").emit("descarga:nova", {
-        id: solicitacao.id,
-        empresa_nome: solicitacao.empresa_nome,
-        horario_solicitado: solicitacao.horario_solicitado,
-        tipo_carga: solicitacao.tipo_carga,
-        status: solicitacao.status,
-        criado_em: solicitacao.criado_em,
+        ...solicitacao,
+        protocolo: protocolo,
       });
 
       console.log("📡 Evento descarga:nova emitido");
 
       // Enviar e-mail de confirmação para a empresa
       try {
+        console.log("📧 Enviando email com protocolo:", protocolo);
         await emailService.enviarEmailSolicitacaoRecebida({
           email: solicitacao.empresa_email,
+          protocolo: protocolo,
           empresa_nome: solicitacao.empresa_nome,
           motorista_nome: solicitacao.motorista_nome,
           placa_veiculo: solicitacao.placa_veiculo,
@@ -247,7 +333,7 @@ module.exports = {
       return response.status(201).json({
         message: "Solicitação de descarga enviada com sucesso!",
         id: solicitacao.id,
-        protocolo: `DESC-${solicitacao.id.toString().padStart(6, "0")}`,
+        protocolo: protocolo,
       });
     } catch (error) {
       console.error("❌ Erro ao criar solicitação de descarga:", error);
@@ -465,14 +551,14 @@ module.exports = {
       }
 
       // Buscar setor ESTOQUE
-      let setorEstoque = await connection("setores_visitantes")
+      let setorEstoque = await connection("setor_visitante")
         .whereRaw("UPPER(nome) LIKE ?", ["%ESTOQUE%"])
         .first();
 
       // Se não encontrar, usar setor padrão ou criar
       if (!setorEstoque) {
         // Tentar buscar qualquer setor ou usar id 1
-        setorEstoque = await connection("setores_visitantes").first();
+        setorEstoque = await connection("setor_visitante").first();
         if (!setorEstoque) {
           setorEstoque = { id: 1, nome: "ESTOQUE" };
         }
@@ -539,6 +625,7 @@ module.exports = {
         try {
           await emailService.enviarEmailStatusSolicitacao({
             email: solicitacao.empresa_email,
+            protocolo: solicitacao.protocolo,
             empresa_nome: solicitacao.empresa_nome,
             motorista_nome: solicitacao.motorista_nome,
             placa_veiculo: solicitacao.placa_veiculo,
@@ -642,6 +729,7 @@ module.exports = {
       try {
         await emailService.enviarEmailStatusSolicitacao({
           email: solicitacao.empresa_email,
+          protocolo: solicitacao.protocolo,
           empresa_nome: solicitacao.empresa_nome,
           motorista_nome: solicitacao.motorista_nome,
           placa_veiculo: solicitacao.placa_veiculo,
@@ -781,6 +869,7 @@ module.exports = {
       try {
         await emailService.enviarEmailHorarioAjustado({
           email: solicitacao.empresa_email,
+          protocolo: solicitacao.protocolo,
           empresa_nome: solicitacao.empresa_nome,
           motorista_nome: solicitacao.motorista_nome,
           placa_veiculo: solicitacao.placa_veiculo,

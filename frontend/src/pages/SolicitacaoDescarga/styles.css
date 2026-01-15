@@ -1,25 +1,31 @@
 /* src/pages/SolicitacaoDescarga/styles.css */
 /* Prefixo sd- para evitar conflitos com outras páginas */
+/* Baseado no layout de CadastrarVisitante */
 
-/* ═══════════════════════════════════════════════════════════════ */
-/* PÁGINA PÚBLICA DE SOLICITAÇÃO DE DESCARGA */
-/* ═══════════════════════════════════════════════════════════════ */
+/* ================================================================
+   PÁGINA DE SOLICITAÇÃO DE DESCARGA - LAYOUT PROFISSIONAL
+   ================================================================ */
 
+/* Container Principal */
 .sd-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
 }
 
-.sd-container {
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  max-width: 700px;
+/* Card Principal */
+.sd-card {
   width: 100%;
+  max-width: 900px;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06),
+    0 20px 25px -5px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   animation: sd-slideUp 0.5s ease-out;
 }
@@ -27,7 +33,7 @@
 @keyframes sd-slideUp {
   from {
     opacity: 0;
-    transform: translateY(30px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
@@ -35,125 +41,160 @@
   }
 }
 
-/* Header */
+/* Header do Card */
 .sd-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 40px 30px;
-  text-align: center;
-}
-
-.sd-header-icon {
-  background: rgba(255, 255, 255, 0.2);
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  padding: 24px 40px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  margin: 0 auto 20px;
+  justify-content: space-between;
+  gap: 24px;
+  position: relative;
+}
+
+.sd-header::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #10b981, #059669, #10b981);
+}
+
+.sd-logo {
+  max-width: 180px;
+  height: auto;
+  filter: brightness(0) invert(1);
+  flex-shrink: 0;
+}
+
+.sd-header-content {
+  text-align: right;
 }
 
 .sd-header h1 {
-  margin: 0 0 10px;
+  color: #ffffff;
   font-size: 28px;
   font-weight: 700;
+  margin: 0 0 4px;
+  letter-spacing: -0.5px;
 }
 
 .sd-header p {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
   margin: 0;
-  opacity: 0.9;
-  font-size: 16px;
 }
 
-/* Stepper */
+/* ================================================================
+   STEPPER / INDICADOR DE ETAPAS
+   ================================================================ */
+
+.sd-stepper-container {
+  padding: 24px 40px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
 .sd-stepper {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
-  padding: 30px 20px;
-  background: #f8f9fa;
-  border-bottom: 1px solid #e9ecef;
+  position: relative;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+/* Linha cinza de fundo */
+.sd-stepper::before {
+  content: "";
+  position: absolute;
+  top: 22px;
+  left: 30px;
+  right: 30px;
+  height: 3px;
+  background: #e2e8f0;
+  z-index: 1;
+}
+
+/* Linha verde de progresso */
+.sd-stepper-progress {
+  position: absolute;
+  top: 22px;
+  left: 10px;
+  height: 3px;
+  background: linear-gradient(90deg, #10b981, #059669);
+  z-index: 2;
+  transition: width 0.4s ease;
+  border-radius: 3px;
 }
 
 .sd-step {
   display: flex;
+  flex-direction: column;
   align-items: center;
   position: relative;
+  z-index: 3;
+  cursor: default;
+  transition: all 0.3s ease;
 }
 
 .sd-step-circle {
-  width: 50px;
-  height: 50px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: #e9ecef;
-  color: #6c757d;
+  background: #ffffff;
+  border: 3px solid #e2e8f0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-weight: 700;
+  font-size: 16px;
+  color: #94a3b8;
   transition: all 0.3s ease;
-  position: relative;
-  z-index: 1;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-.sd-step.sd-active .sd-step-circle {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-}
-
+.sd-step.sd-active .sd-step-circle,
 .sd-step.sd-completed .sd-step-circle {
-  background: #28a745;
-  color: white;
+  background: linear-gradient(135deg, #10b981, #059669);
+  border-color: #10b981;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
 }
 
-.sd-step-title {
-  position: absolute;
-  bottom: -25px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 12px;
-  color: #6c757d;
-  white-space: nowrap;
+.sd-step-label {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #64748b;
   font-weight: 500;
+  text-align: center;
+  transition: color 0.3s ease;
 }
 
-.sd-step.sd-active .sd-step-title {
-  color: #667eea;
+.sd-step.sd-active .sd-step-label,
+.sd-step.sd-completed .sd-step-label {
+  color: #10b981;
   font-weight: 600;
 }
 
-.sd-step.sd-completed .sd-step-title {
-  color: #28a745;
-}
+/* ================================================================
+   FORMULÁRIO
+   ================================================================ */
 
-.sd-step-line {
-  width: 80px;
-  height: 3px;
-  background: #e9ecef;
-  margin: 0 10px;
-  transition: background 0.3s ease;
-}
-
-.sd-step.sd-completed + .sd-step .sd-step-line,
-.sd-step.sd-completed .sd-step-line {
-  background: #28a745;
-}
-
-/* Form */
 .sd-form {
-  padding: 30px;
+  padding: 32px 40px;
 }
 
 .sd-form-etapa {
-  animation: sd-fadeIn 0.3s ease;
+  animation: sd-fadeIn 0.4s ease;
 }
 
 @keyframes sd-fadeIn {
   from {
     opacity: 0;
-    transform: translateX(20px);
+    transform: translateX(10px);
   }
   to {
     opacity: 1;
@@ -162,20 +203,33 @@
 }
 
 .sd-form-etapa h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 8px;
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 20px;
-  color: #333;
-  margin: 0 0 25px;
-  padding-bottom: 15px;
-  border-bottom: 2px solid #667eea;
 }
 
 .sd-form-etapa h2 svg {
-  color: #667eea;
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  border-radius: 8px;
+  padding: 6px;
+  color: white;
 }
 
+.sd-form-etapa > p {
+  color: #64748b;
+  font-size: 15px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+/* Grupos de Campos */
 .sd-form-group {
   margin-bottom: 20px;
 }
@@ -183,115 +237,241 @@
 .sd-form-group label {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 8px;
+  gap: 6px;
   font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
 }
 
 .sd-form-group label svg {
-  color: #667eea;
+  color: #10b981;
   font-size: 16px;
 }
 
+/* Asterisco Obrigatório - Vermelho */
+.sd-obrigatorio {
+  color: #ef4444;
+  font-weight: 700;
+}
+
+/* Inputs */
 .sd-form-group input,
 .sd-form-group select,
 .sd-form-group textarea {
   width: 100%;
-  padding: 12px 16px;
-  border: 2px solid #e9ecef;
-  border-radius: 8px;
+  padding: 14px 18px;
   font-size: 15px;
-  transition: all 0.3s ease;
-  background: #fff;
+  color: #1e293b;
+  background: #ffffff;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.sd-form-group input:hover,
+.sd-form-group select:hover,
+.sd-form-group textarea:hover {
+  border-color: #cbd5e1;
 }
 
 .sd-form-group input:focus,
 .sd-form-group select:focus,
 .sd-form-group textarea:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #10b981;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+}
+
+.sd-form-group input::placeholder,
+.sd-form-group textarea::placeholder {
+  color: #94a3b8;
 }
 
 .sd-form-group input.sd-erro,
 .sd-form-group select.sd-erro,
 .sd-form-group textarea.sd-erro {
-  border-color: #dc3545;
+  border-color: #ef4444;
+  background: #fef2f2;
 }
 
-.sd-form-group input::placeholder,
-.sd-form-group textarea::placeholder {
-  color: #adb5bd;
+.sd-form-group input.sd-erro:focus,
+.sd-form-group select.sd-erro:focus,
+.sd-form-group textarea.sd-erro:focus {
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
 }
 
+/* Select Estilizado */
+.sd-form-group select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 12px center;
+  background-repeat: no-repeat;
+  background-size: 20px;
+  padding-right: 44px;
+  cursor: pointer;
+}
+
+/* Textarea */
+.sd-form-group textarea {
+  min-height: 120px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+/* Grid de Campos */
 .sd-form-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, 1fr);
   gap: 20px;
 }
 
+/* Mensagem de Erro */
 .sd-erro-campo {
-  color: #dc3545;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 13px;
+  color: #ef4444;
+}
+
+.sd-erro-campo::before {
+  content: "⚠";
   font-size: 12px;
-  margin-top: 5px;
-  display: block;
 }
 
 .sd-char-count {
   display: block;
   text-align: right;
-  color: #6c757d;
+  color: #64748b;
   font-size: 12px;
-  margin-top: 5px;
+  margin-top: 6px;
 }
 
-/* Resumo */
+/* ================================================================
+   NOTAS FISCAIS
+   ================================================================ */
+
+.sd-notas-fiscais {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sd-nota-fiscal-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.sd-nota-fiscal-row input {
+  flex: 1;
+}
+
+.sd-btn-remover-nota {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fef2f2;
+  border: 2px solid #fecaca;
+  border-radius: 10px;
+  color: #ef4444;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sd-btn-remover-nota:hover {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #dc2626;
+}
+
+.sd-btn-adicionar-nota {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: #f0fdf4;
+  border: 2px dashed #86efac;
+  border-radius: 10px;
+  color: #16a34a;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sd-btn-adicionar-nota:hover {
+  background: #dcfce7;
+  border-color: #10b981;
+  color: #059669;
+}
+
+/* ================================================================
+   RESUMO
+   ================================================================ */
+
 .sd-resumo {
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  border-radius: 12px;
-  padding: 20px;
-  margin-top: 20px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 24px;
+  margin-top: 24px;
 }
 
 .sd-resumo h3 {
-  margin: 0 0 15px;
+  margin: 0 0 16px;
   font-size: 16px;
-  color: #333;
+  font-weight: 700;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .sd-resumo-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 16px;
 }
 
 .sd-resumo-item {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
 .sd-resumo-label {
   font-size: 12px;
-  color: #6c757d;
+  color: #64748b;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .sd-resumo-valor {
   font-weight: 600;
-  color: #333;
-  font-size: 14px;
+  color: #1e293b;
+  font-size: 15px;
 }
 
-/* Botões */
+/* ================================================================
+   BOTÕES DE NAVEGAÇÃO
+   ================================================================ */
+
 .sd-form-actions {
   display: flex;
   justify-content: space-between;
-  gap: 15px;
-  margin-top: 30px;
-  padding-top: 20px;
-  border-top: 1px solid #e9ecef;
+  align-items: center;
+  gap: 16px;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #e2e8f0;
 }
 
 .sd-btn-voltar,
@@ -299,52 +479,57 @@
 .sd-btn-enviar {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   padding: 14px 28px;
-  border-radius: 8px;
   font-size: 15px;
   font-weight: 600;
+  border-radius: 12px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   border: none;
+  min-width: 140px;
 }
 
 .sd-btn-voltar {
-  background: #f8f9fa;
-  color: #6c757d;
-  border: 2px solid #e9ecef;
+  background: #f1f5f9;
+  border: 2px solid #e2e8f0;
+  color: #475569;
 }
 
 .sd-btn-voltar:hover {
-  background: #e9ecef;
-  color: #333;
+  background: #e2e8f0;
+  border-color: #cbd5e1;
 }
 
 .sd-btn-avancar {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1e293b, #334155);
   color: white;
   margin-left: auto;
+  box-shadow: 0 4px 12px rgba(30, 41, 59, 0.3);
 }
 
 .sd-btn-avancar:hover {
   transform: translateY(-2px);
-  box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 6px 16px rgba(30, 41, 59, 0.4);
 }
 
 .sd-btn-enviar {
-  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  background: linear-gradient(135deg, #10b981, #059669);
   color: white;
   margin-left: auto;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 .sd-btn-enviar:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 5px 20px rgba(40, 167, 69, 0.4);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
 }
 
 .sd-btn-enviar:disabled {
-  opacity: 0.7;
+  opacity: 0.6;
   cursor: not-allowed;
+  transform: none !important;
 }
 
 /* Spinner */
@@ -363,17 +548,22 @@
   }
 }
 
-/* Erro geral */
+/* ================================================================
+   ERRO GERAL
+   ================================================================ */
+
 .sd-erro-geral {
   display: flex;
   align-items: center;
-  gap: 10px;
-  background: #f8d7da;
-  color: #721c24;
-  padding: 15px 20px;
-  margin: 0 30px;
-  border-radius: 8px;
+  gap: 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 16px 24px;
+  margin: 0 40px 24px;
+  border-radius: 12px;
   font-size: 14px;
+  font-weight: 500;
 }
 
 .sd-erro-geral svg {
@@ -381,32 +571,35 @@
   flex-shrink: 0;
 }
 
-/* Footer */
+/* ================================================================
+   FOOTER
+   ================================================================ */
+
 .sd-footer {
-  background: #f8f9fa;
-  padding: 20px 30px;
+  background: #f8fafc;
+  padding: 20px 40px;
   text-align: center;
-  border-top: 1px solid #e9ecef;
+  border-top: 1px solid #e2e8f0;
 }
 
 .sd-footer p {
-  margin: 5px 0;
+  margin: 4px 0;
   font-size: 13px;
-  color: #6c757d;
+  color: #64748b;
 }
 
-/* ═══════════════════════════════════════════════════════════════ */
-/* TELA DE SUCESSO */
-/* ═══════════════════════════════════════════════════════════════ */
+/* ================================================================
+   TELA DE SUCESSO
+   ================================================================ */
 
-.sd-container.sd-sucesso {
+.sd-card.sd-sucesso {
   text-align: center;
   padding: 60px 40px;
 }
 
 .sd-sucesso-icon {
-  color: #28a745;
-  margin-bottom: 20px;
+  color: #10b981;
+  margin-bottom: 24px;
   animation: sd-scaleIn 0.5s ease-out;
 }
 
@@ -424,31 +617,46 @@
   }
 }
 
-.sd-container.sd-sucesso h1 {
-  color: #28a745;
+.sd-card.sd-sucesso h1 {
+  color: #10b981;
   font-size: 32px;
-  margin: 0 0 15px;
+  font-weight: 700;
+  margin: 0 0 16px;
 }
 
-.sd-container.sd-sucesso > p {
-  color: #333;
+.sd-card.sd-sucesso > p {
+  color: #374151;
   font-size: 16px;
-  margin: 0 0 30px;
+  margin: 0 0 32px;
 }
 
 .sd-protocolo-box {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
   color: white;
-  padding: 25px;
-  border-radius: 12px;
-  margin: 30px 0;
+  padding: 28px;
+  border-radius: 16px;
+  margin: 32px 0;
+  position: relative;
+}
+
+.sd-protocolo-box::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 12px;
+  background: linear-gradient(90deg, #10b981, #059669, #10b981);
+  border-radius: 0 0 16px 16px;
 }
 
 .sd-protocolo-label {
   display: block;
   font-size: 14px;
   opacity: 0.9;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .sd-protocolo-numero {
@@ -459,72 +667,111 @@
 }
 
 .sd-sucesso-info {
-  color: #6c757d;
+  color: #64748b;
   font-size: 14px;
-  margin: 10px 0;
+  margin: 12px 0;
 }
 
 .sd-sucesso-info strong {
-  color: #333;
+  color: #1e293b;
 }
 
 .sd-btn-nova {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
   color: white;
   border: none;
-  padding: 15px 40px;
-  border-radius: 8px;
+  padding: 16px 48px;
+  border-radius: 12px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
-  margin-top: 30px;
+  transition: all 0.2s ease;
+  margin-top: 32px;
+  box-shadow: 0 4px 12px rgba(30, 41, 59, 0.3);
 }
 
 .sd-btn-nova:hover {
   transform: translateY(-2px);
-  box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 6px 16px rgba(30, 41, 59, 0.4);
 }
 
-/* ═══════════════════════════════════════════════════════════════ */
-/* RESPONSIVO */
-/* ═══════════════════════════════════════════════════════════════ */
+/* ================================================================
+   RESPONSIVIDADE
+   ================================================================ */
 
-@media (max-width: 768px) {
-  .sd-page {
-    padding: 10px;
-  }
-
-  .sd-container {
-    border-radius: 12px;
+@media (max-width: 1023px) {
+  .sd-card {
+    max-width: 100%;
+    border-radius: 16px;
   }
 
   .sd-header {
-    padding: 30px 20px;
+    padding: 24px 32px;
+  }
+
+  .sd-stepper-container {
+    padding: 20px 32px;
+  }
+
+  .sd-form {
+    padding: 24px 32px;
+  }
+}
+
+@media (max-width: 767px) {
+  .sd-page {
+    padding: 0;
+    align-items: flex-start;
+  }
+
+  .sd-card {
+    border-radius: 0;
+    min-height: 100vh;
+  }
+
+  .sd-header {
+    padding: 16px 20px;
+    flex-direction: row;
+    gap: 16px;
+  }
+
+  .sd-logo {
+    max-width: 100px;
   }
 
   .sd-header h1 {
-    font-size: 22px;
+    font-size: 18px;
   }
 
-  .sd-stepper {
-    padding: 25px 15px 40px;
+  .sd-header p {
+    font-size: 11px;
+  }
+
+  /* Stepper Mobile */
+  .sd-stepper-container {
+    padding: 20px;
+  }
+
+  .sd-stepper::before {
+    left: 18px;
+    right: 18px;
+  }
+
+  .sd-stepper-progress {
+    left: 18px;
   }
 
   .sd-step-circle {
-    width: 40px;
-    height: 40px;
-    font-size: 16px;
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
   }
 
-  .sd-step-line {
-    width: 40px;
+  .sd-step-label {
+    font-size: 11px;
   }
 
-  .sd-step-title {
-    font-size: 10px;
-  }
-
+  /* Form Mobile */
   .sd-form {
     padding: 20px;
   }
@@ -537,6 +784,20 @@
     font-size: 18px;
   }
 
+  .sd-form-etapa h2 svg {
+    width: 28px;
+    height: 28px;
+    padding: 5px;
+  }
+
+  .sd-form-group input,
+  .sd-form-group select,
+  .sd-form-group textarea {
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+
+  /* Botões Mobile */
   .sd-form-actions {
     flex-direction: column;
   }
@@ -545,7 +806,7 @@
   .sd-btn-avancar,
   .sd-btn-enviar {
     width: 100%;
-    justify-content: center;
+    padding: 16px;
   }
 
   .sd-btn-avancar,
@@ -554,11 +815,56 @@
     order: -1;
   }
 
+  /* Resumo Mobile */
+  .sd-resumo {
+    padding: 20px;
+  }
+
   .sd-resumo-grid {
     grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  /* Erro Mobile */
+  .sd-erro-geral {
+    margin: 0 20px 20px;
+    padding: 14px 16px;
+  }
+
+  /* Footer Mobile */
+  .sd-footer {
+    padding: 16px 20px;
+  }
+
+  /* Sucesso Mobile */
+  .sd-card.sd-sucesso {
+    padding: 40px 24px;
+  }
+
+  .sd-card.sd-sucesso h1 {
+    font-size: 26px;
+  }
+
+  .sd-protocolo-box {
+    padding: 20px;
   }
 
   .sd-protocolo-numero {
     font-size: 22px;
+  }
+
+  .sd-btn-nova {
+    width: 100%;
+    padding: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .sd-step-label {
+    font-size: 10px;
+  }
+
+  .sd-form-etapa h2 {
+    font-size: 16px;
   }
 }

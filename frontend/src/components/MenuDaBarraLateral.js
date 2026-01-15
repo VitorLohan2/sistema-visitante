@@ -11,7 +11,6 @@ import {
   FiCalendar,
   FiHome,
   FiUserPlus,
-  FiKey,
   FiBriefcase,
   FiLogIn,
   FiShield,
@@ -218,21 +217,6 @@ export default function MenuDaBarraLateral({ unseenCount }) {
             >
               <FiBarChart2 size={20} />
               <span>Dashboard</span>
-            </button>
-          )}
-
-          {/* ═══════════════════════════════════════════════════════════════ */}
-          {/* MÓDULO: CÓDIGOS DE ACESSO */}
-          {/* ═══════════════════════════════════════════════════════════════ */}
-
-          {/* Chave de Cadastro - codigo_visualizar */}
-          {(isAdmin || temPermissao("codigo_visualizar")) && (
-            <button
-              className="nav-item"
-              onClick={() => handleNavigation("/chave-cadastro")}
-            >
-              <FiKey size={20} />
-              <span>Chave de Cadastro</span>
             </button>
           )}
 

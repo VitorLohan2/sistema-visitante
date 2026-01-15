@@ -106,6 +106,39 @@ form textarea {
   filter: brightness(90%);
 }
 
+/* Botão primário profissional - uso global */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #374151;
+  color: #ffffff;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.btn-primary:hover {
+  background: #1f2937;
+  border-color: #1f2937;
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary svg {
+  font-size: 16px;
+}
+
 /* Classe de compatibilidade - pode ser removida gradualmente */
 .button {
   width: 100%;

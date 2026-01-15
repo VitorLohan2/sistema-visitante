@@ -32,7 +32,7 @@ module.exports = {
   // ═══════════════════════════════════════════════════════════════
   async index(request, response) {
     try {
-      const empresasVisitantes = await connection("empresas_visitantes")
+      const empresasVisitantes = await connection("empresa_visitante")
         .select("id", "nome", "cnpj", "telefone", "email", "endereco")
         .orderBy("nome");
 
@@ -52,7 +52,7 @@ module.exports = {
     const { id } = request.params;
 
     try {
-      const empresa = await connection("empresas_visitantes")
+      const empresa = await connection("empresa_visitante")
         .where("id", id)
         .select("id", "nome", "cnpj", "telefone", "email", "endereco")
         .first();
@@ -102,7 +102,7 @@ module.exports = {
       }
 
       // Verificar se já existe uma empresa com o mesmo nome
-      const empresaExistente = await connection("empresas_visitantes")
+      const empresaExistente = await connection("empresa_visitante")
         .where({ nome: nome.trim().toUpperCase() })
         .first();
 
@@ -113,7 +113,7 @@ module.exports = {
       }
 
       // Inserir a nova empresa
-      const [empresa] = await connection("empresas_visitantes")
+      const [empresa] = await connection("empresa_visitante")
         .insert({
           nome: nome.trim().toUpperCase(),
           cnpj: cnpj ? cnpj.replace(/\D/g, "") : null,
@@ -170,7 +170,7 @@ module.exports = {
       }
 
       // Verificar se a empresa existe
-      const empresaExistente = await connection("empresas_visitantes")
+      const empresaExistente = await connection("empresa_visitante")
         .where("id", id)
         .first();
 
@@ -186,7 +186,7 @@ module.exports = {
       }
 
       // Verificar se já existe outra empresa com o mesmo nome
-      const nomeConflito = await connection("empresas_visitantes")
+      const nomeConflito = await connection("empresa_visitante")
         .where({ nome: nome.trim().toUpperCase() })
         .whereNot("id", id)
         .first();
@@ -198,7 +198,7 @@ module.exports = {
       }
 
       // Atualizar a empresa
-      await connection("empresas_visitantes")
+      await connection("empresa_visitante")
         .where("id", id)
         .update({
           nome: nome.trim().toUpperCase(),
@@ -209,7 +209,7 @@ module.exports = {
         });
 
       // Buscar a empresa atualizada
-      const empresaAtualizada = await connection("empresas_visitantes")
+      const empresaAtualizada = await connection("empresa_visitante")
         .where("id", id)
         .select("id", "nome", "cnpj", "telefone", "email", "endereco")
         .first();
@@ -260,7 +260,7 @@ module.exports = {
       }
 
       // Verificar se a empresa existe
-      const empresa = await connection("empresas_visitantes")
+      const empresa = await connection("empresa_visitante")
         .where("id", id)
         .first();
 
@@ -281,7 +281,7 @@ module.exports = {
       }
 
       // Deletar a empresa
-      await connection("empresas_visitantes").where("id", id).delete();
+      await connection("empresa_visitante").where("id", id).delete();
 
       console.log("✅ Empresa deletada com sucesso:", empresa.nome);
 

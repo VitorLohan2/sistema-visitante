@@ -881,7 +881,7 @@ export default function ListaAgendamentos() {
               <div className="modal-actions">
                 <button
                   type="submit"
-                  className="btn-submit"
+                  className="btn-primary"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (

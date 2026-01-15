@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useHistory } from "react-router-dom";
 import {
   FiArrowLeft,
@@ -10,52 +10,137 @@ import {
 } from "react-icons/fi";
 
 import api from "../../services/api";
+import { getCache, setCache } from "../../services/cacheService";
+import * as socketService from "../../services/socketService";
 import "./styles.css";
-
-import logoImg from "../../assets/logo.svg";
 
 export default function Visitante() {
   const [visitors, setVisitors] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedObservation, setSelectedObservation] = useState(null); // 👈 guarda obs do visitante
+  const [selectedObservation, setSelectedObservation] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const socketListenersRef = useRef([]);
 
   const history = useHistory();
   const ongId = localStorage.getItem("ongId");
-  const ongName = localStorage.getItem("ongName");
 
+  // ═══════════════════════════════════════════════════════════════
+  // SETUP DOS LISTENERS DO SOCKET (tempo real)
+  // ═══════════════════════════════════════════════════════════════
+  const setupSocketListeners = useCallback(() => {
+    // Limpar listeners anteriores
+    socketListenersRef.current.forEach((unsub) => unsub && unsub());
+    socketListenersRef.current = [];
+
+    // Novo visitante criado
+    const unsubCreate = socketService.on("visitante:created", (visitante) => {
+      console.log("📥 Visitante criado via socket:", visitante.id);
+      setVisitors((prev) => {
+        if (prev.find((v) => v.id === visitante.id)) return prev;
+        const novosVisitantes = [visitante, ...prev];
+        setCache("visitors", novosVisitantes);
+        return novosVisitantes;
+      });
+    });
+
+    // Visitante atualizado (ex: saiu)
+    const unsubUpdate = socketService.on("visitante:updated", (dados) => {
+      console.log("📝 Visitante atualizado via socket:", dados.id);
+      // Se exit_date foi definido, remove da lista de ativos
+      if (dados.exit_date) {
+        setVisitors((prev) => {
+          const novosVisitantes = prev.filter((v) => v.id !== dados.id);
+          setCache("visitors", novosVisitantes);
+          return novosVisitantes;
+        });
+      } else {
+        setVisitors((prev) => {
+          const novosVisitantes = prev.map((v) =>
+            v.id === dados.id ? { ...v, ...dados } : v
+          );
+          setCache("visitors", novosVisitantes);
+          return novosVisitantes;
+        });
+      }
+    });
+
+    // Visitante deletado
+    const unsubDelete = socketService.on("visitante:deleted", (dados) => {
+      console.log("🗑️ Visitante removido via socket:", dados.id);
+      setVisitors((prev) => {
+        const novosVisitantes = prev.filter((v) => v.id !== dados.id);
+        setCache("visitors", novosVisitantes);
+        return novosVisitantes;
+      });
+    });
+
+    socketListenersRef.current.push(unsubCreate, unsubUpdate, unsubDelete);
+  }, []);
+
+  // ═══════════════════════════════════════════════════════════════
+  // CARREGAMENTO INICIAL (cache primeiro, depois API)
+  // ═══════════════════════════════════════════════════════════════
   useEffect(() => {
-    // ✅ CORREÇÃO: REMOVER header manual - o interceptor já adiciona Bearer automaticamente
+    // 1. Carrega do cache instantaneamente
+    const cachedVisitors = getCache("visitors");
+    if (cachedVisitors && cachedVisitors.length > 0) {
+      console.log("⚡ Visitantes carregados do cache:", cachedVisitors.length);
+      setVisitors(cachedVisitors);
+      setIsLoading(false);
+    }
+
+    // 2. Setup dos listeners do socket
+    setupSocketListeners();
+
+    // 3. Busca da API em background
     api
       .get("visitantes")
       .then((response) => {
+        console.log("🔄 Visitantes atualizados da API:", response.data.length);
         setVisitors(response.data);
+        setCache("visitors", response.data);
       })
       .catch((error) => {
         console.error("Erro ao carregar visitantes:", error);
-        alert("Erro ao carregar visitantes. Verifique sua conexão.");
+        // Se não tem cache, mostra erro
+        if (!cachedVisitors || cachedVisitors.length === 0) {
+          alert("Erro ao carregar visitantes. Verifique sua conexão.");
+        }
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
-  }, [ongId]);
 
-  // 👉 Função adicionada:
+    // Cleanup
+    return () => {
+      socketListenersRef.current.forEach((unsub) => unsub && unsub());
+      socketListenersRef.current = [];
+    };
+  }, [ongId, setupSocketListeners]);
+
+  // ═══════════════════════════════════════════════════════════════
+  // ENCERRAR VISITA
+  // ═══════════════════════════════════════════════════════════════
   async function handleEndVisit(id) {
     try {
-      // ✅ CORRIGIDO: Usando rota correta /visitantes/:id/exit
       await api.put(`visitantes/${id}/exit`, {});
 
       alert("Visita Finalizada com sucesso!");
-      // Atualiza o estado removendo o visitante da lista
-      setVisitors(visitors.filter((visitor) => visitor.id !== id));
 
-      // Opcional: redirecionar para histórico
-      // history.push('/history');
+      // Atualiza o estado e o cache
+      setVisitors((prev) => {
+        const novosVisitantes = prev.filter((visitor) => visitor.id !== id);
+        setCache("visitors", novosVisitantes);
+        return novosVisitantes;
+      });
     } catch (err) {
       console.error("Erro ao encerrar visita:", err);
       alert("Erro ao encerrar visita, tente novamente.");
     }
   }
 
-  // 👇 abre modal e mostra observação
+  // Abre modal e mostra observação
   function handleOpenObservation(observacao) {
     setSelectedObservation(observacao || "Nenhuma observação cadastrada.");
     setIsModalOpen(true);

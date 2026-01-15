@@ -201,23 +201,30 @@
 }
 
 .btn-primary {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: #3b82f6;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #374151;
+  color: #ffffff;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .btn-primary:hover {
-  background: #2563eb;
-  transform: translateY(-1px);
+  background: #1f2937;
+  border-color: #1f2937;
+}
+
+.btn-primary svg {
+  font-size: 16px;
 }
 
 /* ═══════════════════════════════════════════════════════════════

@@ -7,7 +7,6 @@ import {
   FiUsers,
   FiFileText,
   FiFilter,
-  FiRefreshCw,
   FiDownload,
   FiMoreVertical,
   FiCalendar,
@@ -41,7 +40,6 @@ const TicketDashboard = () => {
   const [filterDate, setFilterDate] = useState("");
   const [filterStatus, setFilterStatus] = useState("todos");
   const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Estados do Modal
   const [showModal, setShowModal] = useState(false);
@@ -112,8 +110,7 @@ const TicketDashboard = () => {
       const ongId = user?.id || localStorage.getItem("ongId");
       if (!ongId) return;
 
-      if (forceRefresh) setIsRefreshing(true);
-      else setIsLoading(true);
+      setIsLoading(true);
 
       try {
         const userRes = await api.get(`/usuarios/${ongId}`);
@@ -130,7 +127,6 @@ const TicketDashboard = () => {
         console.error("Erro ao buscar tickets:", error);
       } finally {
         setIsLoading(false);
-        setIsRefreshing(false);
       }
     },
     [user, fetchTicketsContext]
@@ -380,15 +376,6 @@ const TicketDashboard = () => {
           </div>
 
           <div className="header-right">
-            <button
-              className="btn-icon"
-              onClick={() => fetchTickets(true)}
-              disabled={isRefreshing}
-              title="Atualizar"
-            >
-              <FiRefreshCw className={isRefreshing ? "spinning" : ""} />
-            </button>
-
             <button className="btn-primary" onClick={() => setShowModal(true)}>
               <FiPlusCircle />
               <span>Novo Ticket</span>
@@ -731,16 +718,8 @@ const TicketDashboard = () => {
 
               <div className="modal-actions">
                 <button
-                  type="button"
-                  className="btn-cancel"
-                  onClick={() => setShowModal(false)}
-                  disabled={isSubmitting}
-                >
-                  Cancelar
-                </button>
-                <button
                   type="submit"
-                  className="btn-submit"
+                  className="btn-primary"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (
@@ -754,6 +733,14 @@ const TicketDashboard = () => {
                       Criar Ticket
                     </>
                   )}
+                </button>
+                <button
+                  type="button"
+                  className="btn-cancel"
+                  onClick={() => setShowModal(false)}
+                  disabled={isSubmitting}
+                >
+                  Cancelar
                 </button>
               </div>
             </form>

@@ -22,8 +22,16 @@ module.exports = {
   async index(request, response) {
     try {
       const usuarios = await connection(TABELA_USUARIOS)
-        .leftJoin("empresas", `${TABELA_USUARIOS}.empresa_id`, "empresas.id")
-        .leftJoin("setores", `${TABELA_USUARIOS}.setor_id`, "setores.id")
+        .leftJoin(
+          "empresa_interno",
+          `${TABELA_USUARIOS}.empresa_id`,
+          "empresa_interno.id"
+        )
+        .leftJoin(
+          "setor_usuario",
+          `${TABELA_USUARIOS}.setor_id`,
+          "setor_usuario.id"
+        )
         .select(
           `${TABELA_USUARIOS}.id`,
           `${TABELA_USUARIOS}.name as nome`,
@@ -35,8 +43,8 @@ module.exports = {
           `${TABELA_USUARIOS}.uf`,
           `${TABELA_USUARIOS}.empresa_id`,
           `${TABELA_USUARIOS}.setor_id`,
-          "empresas.nome as empresa_nome",
-          "setores.nome as setor_nome"
+          "empresa_interno.nome as empresa_nome",
+          "setor_usuario.nome as setor_nome"
         )
         .orderBy(`${TABELA_USUARIOS}.name`, "asc");
 
@@ -75,39 +83,6 @@ module.exports = {
     const name = nome || request.body.name;
     const birthdate = data_nascimento || request.body.birthdate;
     const city = cidade || request.body.city;
-
-    // Tipo do usuário - usar apenas para validação de código
-    const tipoUsuario = tipo || "USER";
-
-    // 🔐 Validação do código (apenas para USER)
-    if (tipoUsuario === "USER") {
-      try {
-        const codigoValido = await connection("codigos_cadastro")
-          .where({
-            codigo: codigo_acesso.toUpperCase(),
-            ativo: true,
-          })
-          .andWhereRaw("usos_atuais < limite_usos")
-          .first();
-
-        if (!codigoValido) {
-          return response.status(400).json({
-            error: "Código de acesso inválido ou limite de usos atingido",
-            code: "INVALID_ACCESS_CODE",
-          });
-        }
-
-        await connection("codigos_cadastro")
-          .where("codigo", codigo_acesso.toUpperCase())
-          .increment("usos_atuais", 1);
-      } catch (error) {
-        console.error("❌ Erro ao validar código:", error);
-        return response.status(500).json({
-          error: "Erro ao validar código de acesso",
-          code: "CODE_VALIDATION_ERROR",
-        });
-      }
-    }
 
     try {
       const cleanedCpf = cpf.replace(/\D/g, "");
@@ -194,8 +169,16 @@ module.exports = {
 
     try {
       const usuario = await connection(TABELA_USUARIOS)
-        .leftJoin("empresas", `${TABELA_USUARIOS}.empresa_id`, "empresas.id")
-        .leftJoin("setores", `${TABELA_USUARIOS}.setor_id`, "setores.id")
+        .leftJoin(
+          "empresa_interno",
+          `${TABELA_USUARIOS}.empresa_id`,
+          "empresa_interno.id"
+        )
+        .leftJoin(
+          "setor_usuario",
+          `${TABELA_USUARIOS}.setor_id`,
+          "setor_usuario.id"
+        )
         .where(`${TABELA_USUARIOS}.id`, id)
         .select(
           `${TABELA_USUARIOS}.id`,
@@ -208,14 +191,14 @@ module.exports = {
           `${TABELA_USUARIOS}.uf`,
           `${TABELA_USUARIOS}.empresa_id`,
           `${TABELA_USUARIOS}.setor_id`,
-          "empresas.nome as empresa_nome",
-          "setores.nome as setor_nome",
+          "empresa_interno.nome as empresa_nome",
+          "setor_usuario.nome as setor_nome",
           // Campos antigos para compatibilidade
           `${TABELA_USUARIOS}.name`,
           `${TABELA_USUARIOS}.birthdate`,
           `${TABELA_USUARIOS}.city`,
-          "empresas.nome as empresa",
-          "setores.nome as setor"
+          "empresa_interno.nome as empresa",
+          "setor_usuario.nome as setor"
         )
         .first();
 
@@ -390,7 +373,7 @@ module.exports = {
       }
 
       // 3. Deletar registros relacionados
-      await connection("history").where("usuario_id", id).delete();
+      await connection("historico_visitante").where("usuario_id", id).delete();
 
       // 4. Deletar o usuário
       await connection(TABELA_USUARIOS).where("id", id).delete();
@@ -421,8 +404,16 @@ module.exports = {
 
     try {
       const usuario = await connection(TABELA_USUARIOS)
-        .leftJoin("empresas", `${TABELA_USUARIOS}.empresa_id`, "empresas.id")
-        .leftJoin("setores", `${TABELA_USUARIOS}.setor_id`, "setores.id")
+        .leftJoin(
+          "empresa_interno",
+          `${TABELA_USUARIOS}.empresa_id`,
+          "empresa_interno.id"
+        )
+        .leftJoin(
+          "setor_usuario",
+          `${TABELA_USUARIOS}.setor_id`,
+          "setor_usuario.id"
+        )
         .where(`${TABELA_USUARIOS}.id`, id)
         .select(
           `${TABELA_USUARIOS}.id`,
@@ -435,8 +426,8 @@ module.exports = {
           `${TABELA_USUARIOS}.uf`,
           `${TABELA_USUARIOS}.empresa_id`,
           `${TABELA_USUARIOS}.setor_id`,
-          "empresas.nome as empresa_nome",
-          "setores.nome as setor_nome",
+          "empresa_interno.nome as empresa_nome",
+          "setor_usuario.nome as setor_nome",
           // Campos antigos para compatibilidade
           `${TABELA_USUARIOS}.name`
         )

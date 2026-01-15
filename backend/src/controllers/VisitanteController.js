@@ -49,9 +49,9 @@ module.exports = {
     }
 
     try {
-      const visitors = await connection("visitors")
+      const visitors = await connection("visitante")
         //.where('usuario_id', usuario_id) // Ative se for multi-usuário
-        // .leftJoin('incidents', 'incidents.placa_veiculo', '=', 'visitors.placa_veiculo')
+        // .leftJoin('cadastro_visitante', 'cadastro_visitante.placa_veiculo', '=', 'visitante.placa_veiculo')
         .select([
           "id",
           "name",
@@ -125,7 +125,7 @@ module.exports = {
 
       console.log("✅ LOGIN encontrado(a):", usuario.name);
 
-      const [visitor] = await connection("visitors")
+      const [visitor] = await connection("visitante")
         .insert({
           name,
           cpf,
@@ -189,13 +189,13 @@ module.exports = {
     }
 
     try {
-      const visitor = await connection("visitors").where("id", id).first();
+      const visitor = await connection("visitante").where("id", id).first();
 
       if (!visitor) {
         return response.status(404).json({ error: "Visitante não encontrado" });
       }
 
-      await connection("history").insert({
+      await connection("historico_visitante").insert({
         name: visitor.name,
         cpf: visitor.cpf,
         company: visitor.company,
@@ -209,7 +209,7 @@ module.exports = {
         usuario_id: visitor.usuario_id,
       });
 
-      await connection("visitors").where("id", id).delete();
+      await connection("visitante").where("id", id).delete();
 
       const eventData = {
         id: parseInt(id), // Garantir que é número
@@ -254,7 +254,7 @@ module.exports = {
     }
 
     try {
-      const results = await connection("history")
+      const results = await connection("historico_visitante")
         //.where('usuario_id', usuario_id) // Descomente se multi-usuário
         .select("*")
         .orderBy("exit_date", "desc");

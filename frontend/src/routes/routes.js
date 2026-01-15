@@ -11,7 +11,6 @@ import HistoricoVisitante from "../pages/HistoricoVisitante";
 import EditarCadastroVisitante from "../pages/EditarCadastroVisitante";
 import VisualizarVisitante from "../pages/VisualizarVisitante";
 import TicketDashboard from "../pages/TicketDashboard";
-import GeradorCodigo from "../pages/GeradorCodigo";
 import ListaFuncionarios from "../pages/ListaFuncionarios";
 import BiparCracha from "../pages/BiparCracha";
 import RecuperarId from "../pages/RecuperarId";
@@ -100,11 +99,6 @@ export default function Routes() {
         {/* Rota legada - redireciona para ticket-dashboard */}
         <ProtectedRoute path="/tickets" permissao="ticket_visualizar">
           <TicketDashboard />
-        </ProtectedRoute>
-
-        {/* Chave de Cadastro (Códigos) - codigo_visualizar */}
-        <ProtectedRoute path="/chave-cadastro" permissao="codigo_visualizar">
-          <GeradorCodigo />
         </ProtectedRoute>
 
         {/* Cadastrar Empresa - empresa_criar */}

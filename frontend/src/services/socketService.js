@@ -37,6 +37,8 @@ const eventCallbacks = {
   "agendamento:create": [],
   "agendamento:update": [],
   "agendamento:delete": [],
+  "descarga:nova": [],
+  "descarga:atualizada": [],
   connected: [],
   disconnected: [],
   error: [],
@@ -289,6 +291,19 @@ export function connect(token) {
   socket.on("agendamento:delete", (data) => {
     console.log("📅 Agendamento removido via Socket:", data);
     eventCallbacks["agendamento:delete"].forEach((cb) => cb(data));
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // EVENTOS DE SOLICITAÇÕES DE DESCARGA
+  // ═══════════════════════════════════════════════════════════════
+  socket.on("descarga:nova", (data) => {
+    console.log("📦 Nova solicitação de descarga via Socket:", data);
+    eventCallbacks["descarga:nova"].forEach((cb) => cb(data));
+  });
+
+  socket.on("descarga:atualizada", (data) => {
+    console.log("📦 Solicitação de descarga atualizada via Socket:", data);
+    eventCallbacks["descarga:atualizada"].forEach((cb) => cb(data));
   });
 
   return socket;

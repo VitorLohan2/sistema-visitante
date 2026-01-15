@@ -51,7 +51,9 @@ module.exports = {
       });
 
       // Validação de duplicidade
-      const registroExistente = await connection("registros_ponto")
+      const registroExistente = await connection(
+        "registro_ponto_detalhado_funcionario"
+      )
         .where({
           funcionario_id,
           data,
@@ -81,7 +83,7 @@ module.exports = {
         updated_at: connection.fn.now(),
       };
 
-      const [id] = await connection("registros_ponto")
+      const [id] = await connection("registro_ponto_detalhado_funcionario")
         .insert(registro)
         .returning("id");
 
@@ -149,7 +151,7 @@ module.exports = {
         return res.status(400).json({ error: "Usuário não encontrado" });
       }
 
-      let query = connection("registros_ponto")
+      let query = connection("registro_ponto_detalhado_funcionario")
         .where({
           funcionario_id,
           empresa_id: usuario.empresa_id,
@@ -204,7 +206,7 @@ module.exports = {
         return res.status(400).json({ error: "Usuário não encontrado" });
       }
 
-      let query = connection("historico_ponto_diario")
+      let query = connection("historico_ponto_diario_funcionario")
         .where({
           funcionario_id: cracha,
           empresa_id: usuario.empresa_id,
@@ -268,7 +270,7 @@ module.exports = {
         return res.status(400).json({ error: "Usuário não encontrado" });
       }
 
-      const registros = await connection("registros_ponto")
+      const registros = await connection("registro_ponto_detalhado_funcionario")
         .where({
           funcionario_id,
           data,
@@ -309,22 +311,43 @@ module.exports = {
         return res.status(400).json({ error: "Usuário não encontrado" });
       }
 
-      let query = connection("historico_ponto_diario")
-        .leftJoin("setores", "historico_ponto_diario.setor_id", "setores.id")
-        .where("historico_ponto_diario.empresa_id", usuario.empresa_id)
-        .select("historico_ponto_diario.*", "setores.name as setor_nome")
-        .orderBy("historico_ponto_diario.data", "desc");
+      let query = connection("historico_ponto_diario_funcionario")
+        .leftJoin(
+          "setor_usuario",
+          "historico_ponto_diario_funcionario.setor_id",
+          "setor_usuario.id"
+        )
+        .where(
+          "historico_ponto_diario_funcionario.empresa_id",
+          usuario.empresa_id
+        )
+        .select(
+          "historico_ponto_diario_funcionario.*",
+          "setor_usuario.name as setor_nome"
+        )
+        .orderBy("historico_ponto_diario_funcionario.data", "desc");
 
       if (dataInicio) {
-        query = query.where("historico_ponto_diario.data", ">=", dataInicio);
+        query = query.where(
+          "historico_ponto_diario_funcionario.data",
+          ">=",
+          dataInicio
+        );
       }
 
       if (dataFim) {
-        query = query.where("historico_ponto_diario.data", "<=", dataFim);
+        query = query.where(
+          "historico_ponto_diario_funcionario.data",
+          "<=",
+          dataFim
+        );
       }
 
       if (setor_id) {
-        query = query.where("historico_ponto_diario.setor_id", setor_id);
+        query = query.where(
+          "historico_ponto_diario_funcionario.setor_id",
+          setor_id
+        );
       }
 
       const registros = await query;
@@ -352,7 +375,9 @@ async function atualizarHistoricoConsolidado(
   empresa_id
 ) {
   try {
-    const registrosDoDia = await connection("registros_ponto")
+    const registrosDoDia = await connection(
+      "registro_ponto_detalhado_funcionario"
+    )
       .where({
         funcionario_id,
         data,
@@ -381,7 +406,9 @@ async function atualizarHistoricoConsolidado(
       totalHoras = Math.floor((saida - entrada) / 1000);
     }
 
-    const historicoExistente = await connection("historico_ponto_diario")
+    const historicoExistente = await connection(
+      "historico_ponto_diario_funcionario"
+    )
       .where({
         funcionario_id,
         data,
@@ -409,11 +436,11 @@ async function atualizarHistoricoConsolidado(
     };
 
     if (historicoExistente) {
-      await connection("historico_ponto_diario")
+      await connection("historico_ponto_diario_funcionario")
         .where({ id: historicoExistente.id })
         .update(dadosHistorico);
     } else {
-      await connection("historico_ponto_diario").insert({
+      await connection("historico_ponto_diario_funcionario").insert({
         ...dadosHistorico,
         created_at: connection.fn.now(),
       });

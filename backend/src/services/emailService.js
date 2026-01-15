@@ -77,7 +77,7 @@ const templateBase = (conteudo, titulo) => `
       overflow: hidden;
     }
     .header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
       color: white;
       padding: 30px;
       text-align: center;
@@ -91,14 +91,14 @@ const templateBase = (conteudo, titulo) => `
     }
     .info-box {
       background-color: #f8f9fa;
-      border-left: 4px solid #667eea;
+      border-left: 4px solid #1e293b;
       padding: 15px;
       margin: 20px 0;
       border-radius: 0 4px 4px 0;
     }
     .info-box h3 {
       margin: 0 0 10px 0;
-      color: #667eea;
+      color: #1e293b;
     }
     .info-item {
       display: flex;
@@ -177,6 +177,7 @@ const templateBase = (conteudo, titulo) => `
 async function enviarEmailSolicitacaoRecebida(dados) {
   const {
     email,
+    protocolo,
     empresa_nome,
     motorista_nome,
     placa_veiculo,
@@ -194,6 +195,10 @@ async function enviarEmailSolicitacaoRecebida(dados) {
       
       <div class="info-box">
         <h3>📋 Dados da Solicitação</h3>
+        <div class="info-item">
+          <span class="info-label">Protocolo:</span>
+          <span>${protocolo}</span>
+        </div>
         <div class="info-item">
           <span class="info-label">Empresa:</span>
           <span>${empresa_nome}</span>
@@ -237,6 +242,7 @@ async function enviarEmailSolicitacaoRecebida(dados) {
 async function enviarEmailStatusSolicitacao(dados) {
   const {
     email,
+    protocolo,
     empresa_nome,
     motorista_nome,
     placa_veiculo,
@@ -271,6 +277,10 @@ async function enviarEmailStatusSolicitacao(dados) {
       
       <div class="info-box">
         <h3>📋 Dados da Solicitação</h3>
+        <div class="info-item">
+          <span class="info-label">Protocolo:</span>
+          <span>${protocolo}</span>
+        </div>
         <div class="info-item">
           <span class="info-label">Empresa:</span>
           <span>${empresa_nome}</span>
@@ -325,6 +335,7 @@ async function enviarEmailStatusSolicitacao(dados) {
 async function enviarEmailHorarioAjustado(dados) {
   const {
     email,
+    protocolo,
     empresa_nome,
     motorista_nome,
     placa_veiculo,
@@ -345,6 +356,10 @@ async function enviarEmailHorarioAjustado(dados) {
       
       <div class="info-box">
         <h3>📋 Dados da Solicitação</h3>
+        <div class="info-item">
+          <span class="info-label">Protocolo:</span>
+          <span>${protocolo}</span>
+        </div>
         <div class="info-item">
           <span class="info-label">Empresa:</span>
           <span>${empresa_nome}</span>

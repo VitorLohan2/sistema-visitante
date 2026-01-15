@@ -16,7 +16,6 @@ const usuariosRoutes = require("./usuarios.routes");
 const cadastroVisitantesRoutes = require("./cadastroVisitantes.routes");
 const visitantesRoutes = require("./visitantes.routes");
 const ticketsRoutes = require("./tickets.routes");
-const codigosRoutes = require("./codigos.routes");
 const funcionariosRoutes = require("./funcionarios.routes");
 const agendamentosRoutes = require("./agendamentos.routes");
 const comunicadosRoutes = require("./comunicados.routes");
@@ -27,6 +26,7 @@ const papeisRoutes = require("./papeis.routes");
 const permissoesRoutes = require("./permissoes.routes");
 const usuariosPapeisRoutes = require("./usuariosPapeis.routes");
 const solicitacoesDescargaRoutes = require("./solicitacoesDescarga.routes");
+const dashboardRoutes = require("./dashboard.routes");
 
 const router = express.Router();
 
@@ -78,9 +78,6 @@ router.use("/visitantes", visitantesRoutes);
 // Tickets de suporte
 router.use("/tickets", ticketsRoutes);
 
-// Códigos de acesso
-router.use("/codigos", codigosRoutes);
-
 // Funcionários
 router.use("/funcionarios", funcionariosRoutes);
 
@@ -110,6 +107,9 @@ router.use("/usuarios-papeis", usuariosPapeisRoutes);
 
 // Solicitações de Descarga (público + autenticado)
 router.use("/solicitacoes-descarga", solicitacoesDescargaRoutes);
+
+// Dashboard (estatísticas)
+router.use("/dashboard", dashboardRoutes);
 
 // ═══════════════════════════════════════════════════════════════
 // ROTAS LEGADAS ADICIONAIS (compatibilidade com frontend)

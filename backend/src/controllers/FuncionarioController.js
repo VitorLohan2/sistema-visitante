@@ -9,7 +9,9 @@ module.exports = {
     try {
       const { mostrarInativos = false } = req.query;
 
-      let query = connection("funcionarios").select("*").orderBy("nome");
+      let query = connection("funcionario_interno_cracha")
+        .select("*")
+        .orderBy("nome");
 
       if (!mostrarInativos) {
         query = query.where("ativo", true);
@@ -32,7 +34,7 @@ module.exports = {
     try {
       const { cracha } = req.params;
 
-      const funcionario = await connection("funcionarios")
+      const funcionario = await connection("funcionario_interno_cracha")
         .where("cracha", cracha)
         .first();
 
@@ -66,7 +68,7 @@ module.exports = {
       });
 
       // Verifica se crachá já existe
-      const existe = await connection("funcionarios")
+      const existe = await connection("funcionario_interno_cracha")
         .where("cracha", cracha)
         .first();
 
@@ -80,7 +82,7 @@ module.exports = {
         : new Date().toISOString();
 
       // Insere novo funcionário
-      await connection("funcionarios").insert({
+      await connection("funcionario_interno_cracha").insert({
         cracha,
         nome: nome.toUpperCase(),
         setor,
@@ -117,7 +119,7 @@ module.exports = {
 
     try {
       // Verifica se funcionário existe
-      const funcionario = await connection("funcionarios")
+      const funcionario = await connection("funcionario_interno_cracha")
         .where("cracha", cracha)
         .first();
 
@@ -146,7 +148,7 @@ module.exports = {
       }
 
       // Atualiza no banco
-      await connection("funcionarios")
+      await connection("funcionario_interno_cracha")
         .where("cracha", cracha)
         .update(dadosAtualizacao);
 

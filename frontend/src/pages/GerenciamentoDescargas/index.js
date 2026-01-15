@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   FiTruck,
   FiSearch,
@@ -9,7 +9,6 @@ import {
   FiEye,
   FiChevronLeft,
   FiChevronRight,
-  FiRefreshCw,
   FiMail,
   FiPhone,
   FiUser,
@@ -19,7 +18,8 @@ import {
 import api from "../../services/api";
 import { useAuth } from "../../hooks/useAuth";
 import { usePermissoes } from "../../hooks/usePermissoes";
-import Loading from "../../components/Loading";
+import { getCache, setCache } from "../../services/cacheService";
+import socketService from "../../services/socketService";
 import "./styles.css";
 
 const GerenciamentoDescargas = () => {
@@ -72,23 +72,56 @@ const GerenciamentoDescargas = () => {
     motivo: "",
   });
   const [processando, setProcessando] = useState(false);
+  const isFirstLoadRef = useRef(true);
+  const filtrosRef = useRef(filtros);
+
+  // Manter ref atualizada
+  useEffect(() => {
+    filtrosRef.current = filtros;
+  }, [filtros]);
 
   // Buscar solicitações
   const buscarSolicitacoes = useCallback(
-    async (pagina = 1) => {
+    async (pagina = 1, usarFiltros = false) => {
       try {
-        setLoading(pagina === 1);
-        setRefreshing(pagina !== 1);
+        // Na primeira carga, usa cache para renderização instantânea
+        let cacheUsado = false;
+        if (isFirstLoadRef.current && pagina === 1) {
+          const cachedData = getCache("solicitacoesDescarga");
+          if (cachedData && cachedData.data?.length > 0) {
+            console.log(
+              "⚡ Descargas carregadas do cache:",
+              cachedData.data.length
+            );
+            setSolicitacoes(cachedData.data);
+            setTotalPaginas(cachedData.totalPaginas || 1);
+            setTotalRegistros(
+              cachedData.totalRegistros || cachedData.data.length
+            );
+            setLoading(false);
+            cacheUsado = true;
+          }
+        }
+
+        // Só mostra loading se não carregou do cache
+        if (!cacheUsado) {
+          setLoading(pagina === 1);
+          setRefreshing(pagina !== 1);
+        }
 
         const params = new URLSearchParams();
         params.append("page", pagina);
         params.append("limit", itensPorPagina);
 
-        if (filtros.status) params.append("status", filtros.status);
-        if (filtros.dataInicio)
-          params.append("data_inicio", filtros.dataInicio);
-        if (filtros.dataFim) params.append("data_fim", filtros.dataFim);
-        if (filtros.busca) params.append("busca", filtros.busca);
+        // Usa filtros da ref apenas se usarFiltros for true
+        const f = usarFiltros
+          ? filtrosRef.current
+          : { status: "", dataInicio: "", dataFim: "", busca: "" };
+
+        if (f.status) params.append("status", f.status);
+        if (f.dataInicio) params.append("data_inicio", f.dataInicio);
+        if (f.dataFim) params.append("data_fim", f.dataFim);
+        if (f.busca) params.append("busca", f.busca);
 
         const response = await api.get(
           `/solicitacoes-descarga?${params.toString()}`
@@ -96,10 +129,30 @@ const GerenciamentoDescargas = () => {
 
         // Mapear dados vindos do backend para o formato esperado
         const dados = response.data.data || response.data || [];
+        const totalPags = response.data.pagination?.totalPages || 1;
+        const totalRegs = response.data.pagination?.total || dados.length || 0;
+
         setSolicitacoes(dados);
-        setTotalPaginas(response.data.pagination?.totalPages || 1);
-        setTotalRegistros(response.data.pagination?.total || dados.length || 0);
+        setTotalPaginas(totalPags);
+        setTotalRegistros(totalRegs);
         setPaginaAtual(pagina);
+
+        // Salva no cache apenas se for a primeira página sem filtros
+        if (
+          pagina === 1 &&
+          !f.status &&
+          !f.dataInicio &&
+          !f.dataFim &&
+          !f.busca
+        ) {
+          setCache("solicitacoesDescarga", {
+            data: dados,
+            totalPaginas: totalPags,
+            totalRegistros: totalRegs,
+          });
+        }
+
+        isFirstLoadRef.current = false;
       } catch (error) {
         console.error("Erro ao buscar solicitações:", error);
       } finally {
@@ -107,17 +160,76 @@ const GerenciamentoDescargas = () => {
         setRefreshing(false);
       }
     },
-    [filtros]
+    [] // Sem dependências - usa refs
   );
 
   useEffect(() => {
-    buscarSolicitacoes(1);
+    buscarSolicitacoes(1, false); // Carrega sem filtros inicialmente
+  }, [buscarSolicitacoes]);
+
+  // Socket - Atualização em tempo real
+  useEffect(() => {
+    // Listener para nova solicitação
+    const handleNovaDescarga = (data) => {
+      console.log("📦 Nova solicitação recebida via Socket:", data);
+      // Adiciona no início da lista
+      setSolicitacoes((prev) => {
+        if (prev.find((s) => s.id === data.id)) return prev;
+        const novaLista = [data, ...prev];
+        // Atualiza cache
+        const cached = getCache("solicitacoesDescarga");
+        if (cached) {
+          setCache("solicitacoesDescarga", {
+            ...cached,
+            data: novaLista,
+            totalRegistros: (cached.totalRegistros || 0) + 1,
+          });
+        }
+        return novaLista;
+      });
+    };
+
+    // Listener para atualização de solicitação
+    const handleDescargaAtualizada = (data) => {
+      console.log("📦 Solicitação atualizada via Socket:", data);
+      // Atualiza a solicitação na lista local e no cache
+      setSolicitacoes((prev) => {
+        const novaLista = prev.map((s) =>
+          s.id === data.id ? { ...s, ...data } : s
+        );
+        // Atualiza cache
+        const cached = getCache("solicitacoesDescarga");
+        if (cached) {
+          setCache("solicitacoesDescarga", {
+            ...cached,
+            data: novaLista,
+          });
+        }
+        return novaLista;
+      });
+    };
+
+    // Registra os listeners
+    const unsubscribeNova = socketService.on(
+      "descarga:nova",
+      handleNovaDescarga
+    );
+    const unsubscribeAtualizada = socketService.on(
+      "descarga:atualizada",
+      handleDescargaAtualizada
+    );
+
+    // Cleanup ao desmontar
+    return () => {
+      unsubscribeNova();
+      unsubscribeAtualizada();
+    };
   }, [buscarSolicitacoes]);
 
   // Aplicar filtros
   const aplicarFiltros = () => {
     setFiltrosAtivos(true);
-    buscarSolicitacoes(1);
+    buscarSolicitacoes(1, true); // Passa true para usar filtros
   };
 
   // Limpar filtros
@@ -129,7 +241,10 @@ const GerenciamentoDescargas = () => {
       busca: "",
     });
     setFiltrosAtivos(false);
-    buscarSolicitacoes(1);
+    // Espera o estado limpar e depois busca sem filtros
+    setTimeout(() => {
+      buscarSolicitacoes(1, false);
+    }, 0);
   };
 
   // Aprovar solicitação
@@ -143,7 +258,7 @@ const GerenciamentoDescargas = () => {
       );
 
       setModalAprovar({ aberto: false, solicitacao: null });
-      buscarSolicitacoes(paginaAtual);
+      buscarSolicitacoes(paginaAtual, filtrosAtivos);
 
       alert(
         "Solicitação aprovada com sucesso! O solicitante foi notificado por e-mail."
@@ -174,7 +289,7 @@ const GerenciamentoDescargas = () => {
 
       setModalRejeitar({ aberto: false, solicitacao: null });
       setMotivoRejeicao("");
-      buscarSolicitacoes(paginaAtual);
+      buscarSolicitacoes(paginaAtual, filtrosAtivos);
 
       alert("Solicitação rejeitada. O solicitante foi notificado por e-mail.");
     } catch (error) {
@@ -209,7 +324,7 @@ const GerenciamentoDescargas = () => {
 
       setModalAjustar({ aberto: false, solicitacao: null });
       setNovoHorario({ data: "", hora: "", motivo: "" });
-      buscarSolicitacoes(paginaAtual);
+      buscarSolicitacoes(paginaAtual, filtrosAtivos);
 
       alert(
         "Horário ajustado com sucesso! O solicitante foi notificado por e-mail."
@@ -317,10 +432,6 @@ const GerenciamentoDescargas = () => {
       : "-";
   };
 
-  if (loading) {
-    return <Loading />;
-  }
-
   return (
     <div className="gd-container">
       {/* Header */}
@@ -332,15 +443,6 @@ const GerenciamentoDescargas = () => {
             <p>Gerencie as solicitações de descarga de fornecedores</p>
           </div>
         </div>
-
-        <button
-          className="gd-btn-atualizar"
-          onClick={() => buscarSolicitacoes(paginaAtual)}
-          disabled={refreshing}
-        >
-          <FiRefreshCw className={refreshing ? "gd-spinning" : ""} />
-          Atualizar
-        </button>
       </div>
 
       {/* Filtros */}
@@ -403,11 +505,9 @@ const GerenciamentoDescargas = () => {
             <button className="gd-btn-filtrar" onClick={aplicarFiltros}>
               <FiFilter /> Filtrar
             </button>
-            {filtrosAtivos && (
-              <button className="gd-btn-limpar" onClick={limparFiltros}>
-                Limpar
-              </button>
-            )}
+            <button className="gd-btn-limpar" onClick={limparFiltros}>
+              <FiX /> Limpar
+            </button>
           </div>
         </div>
       </div>
@@ -432,9 +532,10 @@ const GerenciamentoDescargas = () => {
               <tr>
                 <th>Protocolo</th>
                 <th>Empresa</th>
-                <th>Contato</th>
-                <th>CNPJ/CPF</th>
+                <th>Transportadora</th>
                 <th>Motorista</th>
+                <th>Notas Fiscais</th>
+                <th>Volumes</th>
                 <th>Data Solicitada</th>
                 <th>Status</th>
                 <th>Ações</th>
@@ -447,9 +548,18 @@ const GerenciamentoDescargas = () => {
                     <strong>{gerarProtocolo(solicitacao.id)}</strong>
                   </td>
                   <td>{solicitacao.empresa_nome}</td>
-                  <td>{solicitacao.empresa_contato}</td>
-                  <td>{formatarDocumento(solicitacao.empresa_cnpj)}</td>
+                  <td>{solicitacao.transportadora_nome || "-"}</td>
                   <td>{solicitacao.motorista_nome}</td>
+                  <td className="gd-td-notas">
+                    <span title={solicitacao.notas_fiscais || "-"}>
+                      {solicitacao.notas_fiscais
+                        ? solicitacao.notas_fiscais.length > 20
+                          ? solicitacao.notas_fiscais.substring(0, 20) + "..."
+                          : solicitacao.notas_fiscais
+                        : "-"}
+                    </span>
+                  </td>
+                  <td>{solicitacao.quantidade_volumes || "-"}</td>
                   <td>
                     {formatarData(solicitacao.horario_solicitado)}
                     <br />
@@ -522,7 +632,7 @@ const GerenciamentoDescargas = () => {
         <div className="gd-paginacao">
           <button
             className="gd-btn-paginacao"
-            onClick={() => buscarSolicitacoes(paginaAtual - 1)}
+            onClick={() => buscarSolicitacoes(paginaAtual - 1, filtrosAtivos)}
             disabled={paginaAtual === 1}
           >
             <FiChevronLeft /> Anterior
@@ -534,7 +644,7 @@ const GerenciamentoDescargas = () => {
 
           <button
             className="gd-btn-paginacao"
-            onClick={() => buscarSolicitacoes(paginaAtual + 1)}
+            onClick={() => buscarSolicitacoes(paginaAtual + 1, filtrosAtivos)}
             disabled={paginaAtual === totalPaginas}
           >
             Próxima <FiChevronRight />
@@ -633,9 +743,29 @@ const GerenciamentoDescargas = () => {
                     <label>Placa do Veículo</label>
                     <span>{modalDetalhes.solicitacao.placa_veiculo}</span>
                   </div>
+                  {modalDetalhes.solicitacao.transportadora_nome && (
+                    <div className="gd-detalhe-item">
+                      <label>Transportadora</label>
+                      <span>
+                        {modalDetalhes.solicitacao.transportadora_nome}
+                      </span>
+                    </div>
+                  )}
                   <div className="gd-detalhe-item">
                     <label>Tipo de Carga</label>
                     <span>{modalDetalhes.solicitacao.tipo_carga}</span>
+                  </div>
+                  <div className="gd-detalhe-item">
+                    <label>Notas Fiscais</label>
+                    <span>
+                      {modalDetalhes.solicitacao.notas_fiscais || "-"}
+                    </span>
+                  </div>
+                  <div className="gd-detalhe-item">
+                    <label>Quantidade de Volumes</label>
+                    <span>
+                      {modalDetalhes.solicitacao.quantidade_volumes || "-"}
+                    </span>
                   </div>
                   <div className="gd-detalhe-item">
                     <label>Data Solicitada</label>

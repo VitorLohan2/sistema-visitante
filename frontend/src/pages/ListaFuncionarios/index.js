@@ -774,18 +774,18 @@ export default function ListaFuncionarios() {
 
               <div className="funcionarios-modal-actions">
                 <button
-                  type="button"
-                  className="btn-cancelar"
-                  onClick={handleFecharModalForm}
-                >
-                  Cancelar
-                </button>
-                <button
                   type="submit"
                   className="btn-salvar"
                   disabled={salvando}
                 >
                   {salvando ? "Salvando..." : "Salvar"}
+                </button>
+                <button
+                  type="button"
+                  className="btn-cancelar"
+                  onClick={handleFecharModalForm}
+                >
+                  Cancelar
                 </button>
               </div>
             </form>
