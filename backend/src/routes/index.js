@@ -27,6 +27,9 @@ const permissoesRoutes = require("./permissoes.routes");
 const usuariosPapeisRoutes = require("./usuariosPapeis.routes");
 const solicitacoesDescargaRoutes = require("./solicitacoesDescarga.routes");
 const dashboardRoutes = require("./dashboard.routes");
+const veiculosVisitantesRoutes = require("./veiculosVisitantes.routes");
+const feedbackRoutes = require("./feedback.routes");
+const patchNotesRoutes = require("./patchNotes.routes");
 
 const router = express.Router();
 
@@ -110,6 +113,15 @@ router.use("/solicitacoes-descarga", solicitacoesDescargaRoutes);
 
 // Dashboard (estatísticas)
 router.use("/dashboard", dashboardRoutes);
+
+// Veículos, Funções, Cores e Tipos de Veículos de Visitantes (monta direto na raiz)
+router.use("/", veiculosVisitantesRoutes);
+
+// Feedback (envio de sugestões por email)
+router.use("/feedback", feedbackRoutes);
+
+// Patch Notes (atualizações do sistema)
+router.use("/patch-notes", patchNotesRoutes);
 
 // ═══════════════════════════════════════════════════════════════
 // ROTAS LEGADAS ADICIONAIS (compatibilidade com frontend)

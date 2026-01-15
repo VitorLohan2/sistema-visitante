@@ -1,0 +1,269 @@
+/* ═══════════════════════════════════════════════════════════════
+   MODAL CRACHÁ - DESIGN PROFISSIONAL
+   ═══════════════════════════════════════════════════════════════ */
+
+.modal-cracha-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal-cracha-container {
+  background: #ffffff;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 420px;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  animation: slideIn 0.2s ease;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ───────────────────────────────────────────────────────────────
+   HEADER
+   ─────────────────────────────────────────────────────────────── */
+
+.modal-cracha-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.modal-cracha-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.modal-cracha-header .modal-close-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.modal-cracha-header .modal-close-btn:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+/* ───────────────────────────────────────────────────────────────
+   BODY
+   ─────────────────────────────────────────────────────────────── */
+
+.modal-cracha-body {
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.preview-label {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+/* ───────────────────────────────────────────────────────────────
+   BADGE PREVIEW (Simulação visual da etiqueta)
+   ─────────────────────────────────────────────────────────────── */
+
+.badge-preview {
+  width: 226px; /* ~60mm em pixels */
+  height: 151px; /* ~40mm em pixels */
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.badge-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.badge-preview-logo {
+  width: 100px;
+  height: auto;
+}
+
+.badge-preview-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-left: auto;
+}
+
+.badge-preview-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  text-align: center;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+.badge-preview-nome {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+  text-transform: uppercase;
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge-preview-empresa {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+}
+
+.badge-preview-setor {
+  font-size: 11px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.badge-preview-footer {
+  width: 100%;
+  border-top: 1px solid #e5e7eb;
+  text-align: center;
+}
+
+.badge-preview-date {
+  font-size: 10px;
+  color: #9ca3af;
+}
+
+/* Badge Info */
+.badge-info {
+  background: #f3f4f6;
+  padding: 12px 16px;
+  border-radius: 6px;
+  width: 100%;
+}
+
+.badge-info p {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 4px 0;
+}
+
+.badge-info p strong {
+  color: #374151;
+}
+
+/* ───────────────────────────────────────────────────────────────
+   FOOTER
+   ─────────────────────────────────────────────────────────────── */
+
+.modal-cracha-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.modal-cracha-footer .btn-modal-cancel {
+  padding: 10px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.modal-cracha-footer .btn-modal-cancel:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+/* ───────────────────────────────────────────────────────────────
+   RESPONSIVIDADE
+   ─────────────────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .modal-cracha-container {
+    margin: 16px;
+    max-width: calc(100% - 32px);
+  }
+
+  .badge-preview {
+    width: 100%;
+    max-width: 226px;
+  }
+
+  .modal-cracha-footer {
+    flex-direction: column-reverse;
+  }
+
+  .modal-cracha-footer button {
+    width: 100%;
+  }
+}

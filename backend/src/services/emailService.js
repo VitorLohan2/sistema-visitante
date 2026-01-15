@@ -458,9 +458,64 @@ async function enviarEmail({ to, subject, html, text }) {
   }
 }
 
+/**
+ * Enviar e-mail de recuperação de senha
+ */
+async function enviarEmailRecuperacaoSenha(dados) {
+  const { email, nome, token } = dados;
+
+  const baseUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+  const linkRecuperacao = `${baseUrl}/redefinir-senha?token=${token}`;
+
+  const conteudo = `
+    <div class="header">
+      <h1>🔐 Recuperação de Senha</h1>
+    </div>
+    <div class="content">
+      <p>Olá, <strong>${nome}</strong>!</p>
+      <p>Recebemos uma solicitação para redefinir a senha da sua conta.</p>
+      
+      <div class="info-box">
+        <h3>🔑 Redefinir Senha</h3>
+        <p>Clique no botão abaixo para criar uma nova senha:</p>
+        <p style="text-align: center; margin: 20px 0;">
+          <a href="${linkRecuperacao}" style="display: inline-block; background: linear-gradient(135deg, #cc1030 0%, #e02041 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+            Redefinir Minha Senha
+          </a>
+        </p>
+        <p style="font-size: 13px; color: #666;">
+          Ou copie e cole o link abaixo no seu navegador:
+        </p>
+        <p style="font-size: 12px; word-break: break-all; color: #888;">
+          ${linkRecuperacao}
+        </p>
+      </div>
+      
+      <div class="observacao" style="background-color: #fff3cd; border-color: #ffc107;">
+        <div class="observacao-title" style="color: #856404;">⚠️ Importante</div>
+        <p style="margin: 0; color: #856404;">
+          Este link expira em <strong>1 hora</strong>. Se você não solicitou a recuperação de senha, ignore este e-mail.
+        </p>
+      </div>
+      
+      <p style="color: #666; font-size: 14px;">
+        Por questões de segurança, nunca compartilhe este link com terceiros.
+      </p>
+    </div>
+  `;
+
+  await enviarEmail({
+    to: email,
+    subject: `🔐 Recuperação de Senha - Sistema de Visitantes`,
+    html: templateBase(conteudo, "Recuperação de Senha"),
+  });
+}
+
 module.exports = {
   enviarEmail,
+  enviarEmailGenerico: enviarEmail,
   enviarEmailSolicitacaoRecebida,
   enviarEmailStatusSolicitacao,
   enviarEmailHorarioAjustado,
+  enviarEmailRecuperacaoSenha,
 };

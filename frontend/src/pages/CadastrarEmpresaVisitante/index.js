@@ -72,9 +72,7 @@ export default function CadastrarEmpresaVisitantes() {
     }
 
     try {
-      await api.post("/empresas-visitantes", form, {
-        headers: { Authorization: localStorage.getItem("ongId") },
-      });
+      await api.post("/empresas-visitantes", form);
 
       if (isMounted.current) {
         setShowSuccessModal(true);

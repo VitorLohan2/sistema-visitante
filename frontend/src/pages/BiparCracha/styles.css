@@ -1,20 +1,20 @@
-/* Adicione ao seu arquivo de estilos existente */
+/* ═══════════════════════════════════════════════════════════════
+   BIPAR CRACHÁ - Layout Profissional
+   ═══════════════════════════════════════════════════════════════ */
 
 .bipar-container {
   width: 100%;
-  max-width: 1350px;
-  padding: 0 30px;
-  margin: 32px auto;
-}
-
-.bipar-container header {
+  min-height: 100vh;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 40px; /* Aumentado o margin-bottom */
+  justify-content: center;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+  padding: 24px;
 }
-.bipar-container header img{
-  height: 64px;
+
+.bipar-container .content {
+  width: 100%;
+  max-width: 500px;
 }
 
 .bipar-section {
@@ -22,27 +22,34 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 70vh;
 }
 
 .bipar-card {
   background: #fff;
   padding: 40px;
-  border-radius: 8px;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   width: 100%;
-  max-width: 500px;
   text-align: center;
+}
+
+.bipar-card h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #41414d;
+  margin: 0 0 24px 0;
+  letter-spacing: -0.5px;
 }
 
 .bipar-input {
   width: 100%;
-  padding: 15px;
-  margin: 20px 0;
-  border: 2px solid #dcdce6;
-  border-radius: 4px;
-  font-size: 18px;
-  transition: border 0.3s;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  border: 2px solid #e1e5eb;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: border-color 0.2s ease;
+  box-sizing: border-box;
 }
 
 .bipar-input:focus {
@@ -52,19 +59,19 @@
 
 .bipar-button {
   width: 100%;
-  padding: 15px;
+  padding: 14px;
   background-color: #2083e0;
   color: white;
   border: none;
-  border-radius: 4px;
-  font-size: 18px;
-  font-weight: bold;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.3s;
+  transition: background 0.2s ease;
 }
 
 .bipar-button:hover:not(:disabled) {
-  background-color: #1e68c8;
+  background-color: #1a6fc2;
 }
 
 .bipar-button:disabled {
@@ -140,8 +147,20 @@
   color: #000;
 }
 @keyframes fadeInOut {
-  0%   { opacity: 0; transform: translateY(-20px); }
-  10%  { opacity: 1; transform: translateY(0); }
-  90%  { opacity: 1; transform: translateY(0); }
-  100% { opacity: 0; transform: translateY(-20px); }
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  90% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
 }

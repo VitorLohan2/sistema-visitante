@@ -68,7 +68,7 @@ export default function HistoricoVisitante() {
     const unsubVisitorEnd = socketService.on("visitor:end", (visitante) => {
       console.log(
         "📥 Socket Histórico: Visita encerrada recebida",
-        visitante.name || visitante.nome
+        visitante.nome
       );
       setHistoryData((prev) => {
         // Evita duplicatas
@@ -78,8 +78,8 @@ export default function HistoricoVisitante() {
           );
         }
         const novosHistorico = [visitante, ...prev].sort((a, b) => {
-          const dateA = new Date(a.entry_date || a.created_at);
-          const dateB = new Date(b.entry_date || b.created_at);
+          const dateA = new Date(a.data_de_entrada || a.criado_em);
+          const dateB = new Date(b.data_de_entrada || b.criado_em);
           return dateB - dateA;
         });
         // Atualiza cache
@@ -94,7 +94,7 @@ export default function HistoricoVisitante() {
       (visitante) => {
         console.log(
           "📥 Socket Histórico: Visita encerrada (alt)",
-          visitante.name || visitante.nome
+          visitante.nome
         );
         setHistoryData((prev) => {
           if (prev.find((v) => v.id === visitante.id)) {
@@ -103,8 +103,8 @@ export default function HistoricoVisitante() {
             );
           }
           const novosHistorico = [visitante, ...prev].sort((a, b) => {
-            const dateA = new Date(a.entry_date || a.created_at);
-            const dateB = new Date(b.entry_date || b.created_at);
+            const dateA = new Date(a.data_de_entrada || a.criado_em);
+            const dateB = new Date(b.data_de_entrada || b.criado_em);
             return dateB - dateA;
           });
           setCache("historico", novosHistorico);
@@ -122,8 +122,8 @@ export default function HistoricoVisitante() {
           const novosHistorico = prev
             .map((v) => (v.id === dados.id ? { ...v, ...dados } : v))
             .sort((a, b) => {
-              const dateA = new Date(a.entry_date || a.created_at);
-              const dateB = new Date(b.entry_date || b.created_at);
+              const dateA = new Date(a.data_de_entrada || a.criado_em);
+              const dateB = new Date(b.data_de_entrada || b.criado_em);
               return dateB - dateA;
             });
           setCache("historico", novosHistorico);
@@ -145,12 +145,12 @@ export default function HistoricoVisitante() {
       }
     );
 
-    // ✅ LISTENER: Visitante atualizado (pode ter saído - exit_date)
+    // ✅ LISTENER: Visitante atualizado (pode ter saído - data_de_saida)
     const unsubVisitanteUpdated = socketService.on(
       "visitante:updated",
       (dados) => {
-        // Se o visitante agora tem exit_date, ele deve aparecer no histórico
-        if (dados.exit_date) {
+        // Se o visitante agora tem data_de_saida, ele deve aparecer no histórico
+        if (dados.data_de_saida) {
           console.log(
             "📥 Socket Histórico: Visitante encerrou visita",
             dados.id
@@ -162,8 +162,8 @@ export default function HistoricoVisitante() {
               const novosHistorico = prev
                 .map((v) => (v.id === dados.id ? { ...v, ...dados } : v))
                 .sort((a, b) => {
-                  const dateA = new Date(a.entry_date || a.created_at);
-                  const dateB = new Date(b.entry_date || b.created_at);
+                  const dateA = new Date(a.data_de_entrada || a.criado_em);
+                  const dateB = new Date(b.data_de_entrada || b.criado_em);
                   return dateB - dateA;
                 });
               setCache("historico", novosHistorico);
@@ -171,8 +171,8 @@ export default function HistoricoVisitante() {
             } else {
               // Adiciona novo ao histórico
               const novosHistorico = [dados, ...prev].sort((a, b) => {
-                const dateA = new Date(a.entry_date || a.created_at);
-                const dateB = new Date(b.entry_date || b.created_at);
+                const dateA = new Date(a.data_de_entrada || a.criado_em);
+                const dateB = new Date(b.data_de_entrada || b.criado_em);
                 return dateB - dateA;
               });
               setCache("historico", novosHistorico);
@@ -220,8 +220,8 @@ export default function HistoricoVisitante() {
 
         // Ordenar os dados por data de entrada (mais recente primeiro)
         const sortedData = response.data.sort((a, b) => {
-          const dateA = new Date(a.entry_date || a.created_at);
-          const dateB = new Date(b.entry_date || b.created_at);
+          const dateA = new Date(a.data_de_entrada || a.criado_em);
+          const dateB = new Date(b.data_de_entrada || b.criado_em);
           return dateB - dateA;
         });
 
@@ -262,8 +262,8 @@ export default function HistoricoVisitante() {
   const filteredHistoryData = useMemo(() => {
     return historyData.filter((visitor) => {
       const matchesSearch =
-        (visitor.name &&
-          visitor.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (visitor.nome &&
+          visitor.nome.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (visitor.cpf && visitor.cpf.includes(searchTerm));
 
       if (!filterDate) return matchesSearch;
@@ -277,7 +277,7 @@ export default function HistoricoVisitante() {
       }
 
       const entryDateFormatted = formatDateToLocalYYYYMMDD(
-        visitor.entry_date || visitor.created_at
+        visitor.data_de_entrada || visitor.criado_em
       );
 
       return matchesSearch && entryDateFormatted === filterDate;
@@ -348,7 +348,7 @@ export default function HistoricoVisitante() {
     today.setHours(0, 0, 0, 0);
 
     const visitasHoje = historyData.filter((v) => {
-      const entryDate = new Date(v.entry_date || v.created_at);
+      const entryDate = new Date(v.data_de_entrada || v.criado_em);
       entryDate.setHours(0, 0, 0, 0);
       return entryDate.getTime() === today.getTime();
     }).length;
@@ -369,19 +369,21 @@ export default function HistoricoVisitante() {
   // ═══════════════════════════════════════════════════════════════
   function exportToExcel(data) {
     const formattedData = data.map((visitor) => ({
-      Nome: visitor.name || "Não informado",
+      Nome: visitor.nome || "Não informado",
       CPF: visitor.cpf || "Não informado",
-      Empresa: visitor.company || visitor.empresa || "Não informado",
-      Setor: visitor.sector || visitor.setor || "Não informado",
+      Empresa: visitor.empresa || "Não informado",
+      Setor: visitor.setor || "Não informado",
+      Função: visitor.funcao || "Não informado",
       Placa: visitor.placa_veiculo || "Não informado",
+      "Tipo Veículo": visitor.tipo_veiculo || "Não informado",
       Cor: visitor.cor_veiculo || "Não informado",
       Responsável: visitor.responsavel || "Não informado",
       Observação: visitor.observacao || "Não informado",
-      Entrada: visitor.entry_date
-        ? new Date(visitor.entry_date).toLocaleString()
-        : new Date(visitor.created_at).toLocaleString(),
-      Saída: visitor.exit_date
-        ? new Date(visitor.exit_date).toLocaleString()
+      Entrada: visitor.data_de_entrada
+        ? new Date(visitor.data_de_entrada).toLocaleString()
+        : new Date(visitor.criado_em).toLocaleString(),
+      Saída: visitor.data_de_saida
+        ? new Date(visitor.data_de_saida).toLocaleString()
         : "Não informado",
     }));
 
@@ -538,7 +540,9 @@ export default function HistoricoVisitante() {
                   <th>CPF</th>
                   <th>Empresa</th>
                   <th>Setor</th>
+                  <th>Função</th>
                   <th className="th-center">Placa</th>
+                  <th className="th-center">Tipo</th>
                   <th className="th-center">Cor</th>
                   <th>Responsável</th>
                   <th>Entrada</th>
@@ -556,17 +560,21 @@ export default function HistoricoVisitante() {
                         {filteredHistoryData.length - globalIndex}
                       </td>
                       <td data-label="Nome">
-                        {visitor.name || "Não informado"}
+                        {visitor.nome || "Não informado"}
                       </td>
                       <td data-label="CPF">{visitor.cpf || "Não informado"}</td>
                       <td data-label="Empresa">
-                        {visitor.company || visitor.empresa || "Não informado"}
+                        {visitor.empresa || "Não informado"}
                       </td>
                       <td data-label="Setor">
-                        {visitor.sector || visitor.setor || "Não informado"}
+                        {visitor.setor || "Não informado"}
                       </td>
+                      <td data-label="Função">{visitor.funcao || "-"}</td>
                       <td data-label="Placa" className="historico-vehicle">
                         {visitor.placa_veiculo || "-"}
+                      </td>
+                      <td data-label="Tipo" className="historico-vehicle">
+                        {visitor.tipo_veiculo || "-"}
                       </td>
                       <td data-label="Cor" className="historico-vehicle">
                         {visitor.cor_veiculo || "-"}
@@ -575,13 +583,13 @@ export default function HistoricoVisitante() {
                         {visitor.responsavel || "Não informado"}
                       </td>
                       <td data-label="Entrada">
-                        {visitor.entry_date
-                          ? new Date(visitor.entry_date).toLocaleString()
-                          : new Date(visitor.created_at).toLocaleString()}
+                        {visitor.data_de_entrada
+                          ? new Date(visitor.data_de_entrada).toLocaleString()
+                          : new Date(visitor.criado_em).toLocaleString()}
                       </td>
                       <td data-label="Saída">
-                        {visitor.exit_date
-                          ? new Date(visitor.exit_date).toLocaleString()
+                        {visitor.data_de_saida
+                          ? new Date(visitor.data_de_saida).toLocaleString()
                           : "Não informado"}
                       </td>
                       <td data-label="Observação" className="td-center">

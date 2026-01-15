@@ -10,25 +10,27 @@ module.exports = {
         //.where('usuario_id', usuario_id)
         .select([
           "id",
-          "name",
+          "nome",
           "cpf",
-          "company",
-          "sector",
-          "entry_date",
-          "exit_date",
+          "empresa",
+          "setor",
+          "data_de_entrada",
+          "data_de_saida",
         ])
-        .orderBy("exit_date", "desc");
+        .orderBy("data_de_saida", "desc");
 
       const formattedHistory = history.map((record) => {
         const duration = module.exports.calculateDuration(
-          record.entry_date,
-          record.exit_date
+          record.data_de_entrada,
+          record.data_de_saida
         );
         return {
           ...record,
           duration,
-          entry_date: new Date(record.entry_date).toLocaleString("pt-BR"),
-          exit_date: new Date(record.exit_date).toLocaleString("pt-BR"),
+          data_de_entrada: new Date(record.data_de_entrada).toLocaleString(
+            "pt-BR"
+          ),
+          data_de_saida: new Date(record.data_de_saida).toLocaleString("pt-BR"),
         };
       });
 
@@ -48,21 +50,21 @@ module.exports = {
     const transaction = await connection.transaction();
 
     try {
-      const { name, cpf, company, sector, entry_date } = request.body;
+      const { nome, cpf, empresa, setor, data_de_entrada } = request.body;
       const usuario_id = request.headers.authorization;
 
-      if (!name || !cpf || !company || !sector) {
+      if (!nome || !cpf || !empresa || !setor) {
         await transaction.rollback();
         return response.status(400).json({ error: "Dados incompletos" });
       }
 
       const historyRecord = {
-        name,
+        nome,
         cpf,
-        company,
-        sector,
-        entry_date: entry_date || new Date().toISOString(),
-        exit_date: new Date().toISOString(),
+        empresa,
+        setor,
+        data_de_entrada: data_de_entrada || new Date().toISOString(),
+        data_de_saida: new Date().toISOString(),
         usuario_id,
       };
 
@@ -99,16 +101,16 @@ module.exports = {
         .select(
           connection.raw("COUNT(*) AS total_visits"),
           connection.raw(
-            "AVG(EXTRACT(EPOCH FROM (exit_date - entry_date)) / 60) AS avg_duration"
+            "AVG(EXTRACT(EPOCH FROM (data_de_saida - data_de_entrada)) / 60) AS avg_duration"
           ),
           connection.raw(
-            "MAX(EXTRACT(EPOCH FROM (exit_date - entry_date)) / 60) AS max_duration"
+            "MAX(EXTRACT(EPOCH FROM (data_de_saida - data_de_entrada)) / 60) AS max_duration"
           ),
           connection.raw(
-            "MIN(EXTRACT(EPOCH FROM (exit_date - entry_date)) / 60) AS min_duration"
+            "MIN(EXTRACT(EPOCH FROM (data_de_saida - data_de_entrada)) / 60) AS min_duration"
           ),
           connection.raw(
-            "SUM(EXTRACT(EPOCH FROM (exit_date - entry_date)) / 60) AS total_time"
+            "SUM(EXTRACT(EPOCH FROM (data_de_saida - data_de_entrada)) / 60) AS total_time"
           )
         )
         .first();

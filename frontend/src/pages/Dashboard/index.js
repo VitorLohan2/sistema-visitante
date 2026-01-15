@@ -307,7 +307,7 @@ export default function Dashboard() {
       </div>
 
       {/* Mensagem de erro */}
-      {error && <div className="error-message">{error}</div>}
+      {error && <div className="db-error-message">{error}</div>}
 
       {/* Grid de estatísticas */}
       <div className="stats-grid">

@@ -31,12 +31,11 @@ export default function BiparCracha() {
     try {
       setLoading(true);
       const response = await api.post(
-        "/registros-ponto",
+        "/ponto/bipar",
         { cracha },
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: localStorage.getItem("ongId"),
           },
         }
       );
@@ -82,13 +81,11 @@ export default function BiparCracha() {
         </div>
       )}
 
-      <header></header>
-
       <div className="content">
         <section className="bipar-section">
-          <h1>Registro de Ponto</h1>
-
           <div className="bipar-card">
+            <h1>Registro de Ponto</h1>
+
             <input
               type="text"
               value={cracha}

@@ -27,12 +27,14 @@ router.post(
   authMiddleware,
   celebrate({
     [Segments.BODY]: Joi.object().keys({
-      name: Joi.string().required(),
+      nome: Joi.string().required(),
       cpf: Joi.string().required(),
-      company: Joi.string().required(),
-      sector: Joi.string().required(),
+      empresa: Joi.string().required(),
+      setor: Joi.string().required(),
       placa_veiculo: Joi.string().allow("", null).optional(),
       cor_veiculo: Joi.string().allow("", null).optional(),
+      tipo_veiculo: Joi.string().allow("", null).optional(),
+      funcao: Joi.string().allow("", null).optional(),
       responsavel: Joi.string().required(),
       observacao: Joi.string().allow("", null).optional(),
     }),

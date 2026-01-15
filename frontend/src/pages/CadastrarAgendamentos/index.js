@@ -158,7 +158,7 @@ export default function NovoAgendamento() {
       console.log("Enviando FormData:", Object.fromEntries(data)); // DEBUG
 
       await api.post("/agendamentos", data, {
-        headers: { Authorization: ongId },
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       alert("Agendamento criado com sucesso!");

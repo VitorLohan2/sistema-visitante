@@ -59,7 +59,7 @@
 .profile-container header .search-wrapper:focus-within {
   border-color: #047857;
   background: #fff;
-  box-shadow: 0 0 0 4px rgba(32, 224, 176, 0.1);
+  box-shadow: 0 0 0 4px rgba(229, 231, 235, 0.1);
 }
 
 .profile-container header .search-icon {
@@ -91,13 +91,24 @@
 }
 
 .search-clear-btn {
+  position: absolute;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(229, 231, 235, 0.1);
+  color: #191d24;
+  cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .search-clear-btn:hover {
-  background: #e02041 !important;
-  color: #fff !important;
-  transform: scale(1.1);
+  background: #e5e7eb;
+  color: #374151;
 }
 
 .profile-container header a {
@@ -543,9 +554,9 @@ td .user-info {
 }
 
 .pagination-button.active {
-  background: #10b981;
+  background: #626262;
   color: #fff;
-  border-color: #10b981;
+  border-color: #626262;
 }
 
 .pagination-button svg {

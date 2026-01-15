@@ -4,8 +4,8 @@
 
 /* VARIÁVEIS CSS */
 :root {
-  --visit-primary: #e02041;
-  --visit-primary-hover: #c91b39;
+  --visit-primary: #047857;
+  --visit-primary-hover: #047857;
   --visit-success: #10b981;
   --visit-text: #41414d;
   --visit-text-light: #737380;
@@ -105,7 +105,7 @@
 .visitante-search-box:focus-within {
   border-color: var(--visit-primary);
   background: #fff;
-  box-shadow: 0 0 0 4px rgba(224, 32, 65, 0.1);
+  box-shadow: 0 0 0 4px rgb(229, 231, 235, 0.1);
 }
 
 .visitante-search-box .search-icon {
@@ -177,7 +177,7 @@
 }
 
 .visitante-table tbody tr:hover {
-  background: rgba(224, 32, 65, 0.03);
+  background: rgba(229, 231, 235, 0.3);
 }
 
 .visitante-table tbody td {
@@ -226,27 +226,6 @@
   background: var(--visit-text);
   color: #fff;
   transform: scale(1.1);
-}
-
-.visitante-end-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border: none;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #e02041 0%, #c91b39 100%);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-}
-
-.visitante-end-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(224, 32, 65, 0.4);
 }
 
 /* ESTADO VAZIO */
@@ -360,8 +339,8 @@
 }
 
 .visitante-modal-close:hover {
-  background: rgba(224, 32, 65, 0.1);
-  color: var(--visit-primary);
+  background: #e5e7eb;
+  color: #374151;
 }
 
 .visitante-modal-body {
@@ -523,14 +502,6 @@
     width: 100%;
     justify-content: center;
   }
-
-  .visitante-end-btn {
-    width: 100%;
-  }
-
-  .visitante-end-btn span {
-    display: inline;
-  }
 }
 
 @media (max-width: 480px) {
@@ -576,11 +547,6 @@
   .visitante-obs-btn {
     width: 32px;
     height: 32px;
-  }
-
-  .visitante-end-btn {
-    padding: 6px 10px;
-    font-size: 12px;
   }
 
   .visitante-modal {

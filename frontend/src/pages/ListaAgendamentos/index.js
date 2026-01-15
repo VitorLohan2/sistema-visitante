@@ -317,7 +317,6 @@ export default function ListaAgendamentos() {
 
       const response = await api.post("/agendamentos", data, {
         headers: {
-          Authorization: ongId,
           "Content-Type": "multipart/form-data",
         },
       });
@@ -340,13 +339,7 @@ export default function ListaAgendamentos() {
     if (!window.confirm("Confirmar este agendamento?")) return;
 
     try {
-      const response = await api.put(
-        `/agendamentos/${id}/confirmar`,
-        {},
-        {
-          headers: { Authorization: ongId },
-        }
-      );
+      const response = await api.put(`/agendamentos/${id}/confirmar`, {});
 
       // Não atualiza localmente - deixa o Socket fazer via listener
       alert("✅ Agendamento confirmado!");
@@ -360,13 +353,7 @@ export default function ListaAgendamentos() {
     if (!window.confirm("Registrar presença deste visitante?")) return;
 
     try {
-      const response = await api.put(
-        `/agendamentos/${id}/presenca`,
-        {},
-        {
-          headers: { Authorization: ongId },
-        }
-      );
+      const response = await api.put(`/agendamentos/${id}/presenca`, {});
 
       // Não atualiza localmente - deixa o Socket fazer via listener
       alert("✅ Presença registrada!");
@@ -381,9 +368,7 @@ export default function ListaAgendamentos() {
       return;
 
     try {
-      await api.delete(`/agendamentos/${id}`, {
-        headers: { Authorization: ongId },
-      });
+      await api.delete(`/agendamentos/${id}`);
 
       // Não remove localmente - deixa o Socket fazer via listener
       alert("✅ Agendamento excluído!");

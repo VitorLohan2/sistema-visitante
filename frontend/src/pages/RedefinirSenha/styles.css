@@ -1,0 +1,247 @@
+/* styles.css da página RedefinirSenha */
+.redefinir-senha-container {
+  width: 100%;
+  max-width: 1350px;
+  height: 100vh;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+}
+
+.redefinir-senha-container .form {
+  width: 100%;
+  max-width: 400px;
+  padding: 40px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.redefinir-senha-container .form img {
+  display: block;
+  margin: 0 auto 20px;
+}
+
+.redefinir-senha-container h1 {
+  margin-top: 20px;
+  margin-bottom: 10px;
+  text-align: center;
+  color: #1a1a2e;
+  font-size: 24px;
+}
+
+.redefinir-senha-container .descricao {
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.redefinir-senha-container .input-group {
+  margin-bottom: 16px;
+}
+
+.redefinir-senha-container .input-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #444;
+  margin-bottom: 6px;
+}
+
+.redefinir-senha-container .input-senha {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.redefinir-senha-container input {
+  width: 100%;
+  padding: 14px 50px 14px 16px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.redefinir-senha-container input:focus {
+  outline: none;
+  border-color: #cc1030;
+  box-shadow: 0 0 0 3px rgba(204, 16, 48, 0.1);
+}
+
+.btn-mostrar-senha {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.btn-mostrar-senha:hover {
+  color: #cc1030;
+}
+
+.button-redefinir {
+  width: 100%;
+  height: 50px;
+  background: linear-gradient(135deg, #cc1030 0%, #e02041 100%);
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  font-weight: 700;
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-decoration: none;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.button-redefinir:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(204, 16, 48, 0.3);
+}
+
+.button-redefinir:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.erro {
+  margin-top: 16px;
+  padding: 12px;
+  background: #fee;
+  border: 1px solid #fcc;
+  border-radius: 8px;
+  color: #c00;
+  text-align: center;
+  font-size: 14px;
+}
+
+.back-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 24px;
+  color: #cc1030;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.back-link:hover {
+  color: #e02041;
+}
+
+/* Tela de sucesso */
+.sucesso-container {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.icone-sucesso {
+  color: #10b981;
+  margin-bottom: 20px;
+}
+
+.sucesso-container h2 {
+  color: #10b981;
+  font-size: 24px;
+  margin-bottom: 16px;
+}
+
+.mensagem-sucesso {
+  color: #444;
+  font-size: 15px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.instrucoes {
+  color: #666;
+  font-size: 13px;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.button-voltar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px;
+  background: #1a1a2e;
+  color: #fff;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.button-voltar:hover {
+  background: #16213e;
+}
+
+/* Tela de erro */
+.erro-container {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.icone-erro {
+  color: #ef4444;
+  margin-bottom: 20px;
+}
+
+.erro-container h2 {
+  color: #ef4444;
+  font-size: 24px;
+  margin-bottom: 16px;
+}
+
+.mensagem-erro {
+  color: #444;
+  font-size: 15px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.button-solicitar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #cc1030 0%, #e02041 100%);
+  color: #fff;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  margin-bottom: 16px;
+}
+
+.button-solicitar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(204, 16, 48, 0.3);
+}

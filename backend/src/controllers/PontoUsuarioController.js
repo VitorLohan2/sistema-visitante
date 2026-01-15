@@ -451,3 +451,131 @@ async function atualizarHistoricoConsolidado(
     console.error("❌ Erro ao atualizar histórico consolidado:", error);
   }
 }
+
+// ═══════════════════════════════════════════════════════════════
+// BIPAR CRACHÁ - Registro simplificado de ponto por crachá
+// ═══════════════════════════════════════════════════════════════
+module.exports.biparCracha = async function (req, res) {
+  const io = getIo();
+
+  try {
+    const { cracha } = req.body;
+
+    if (!cracha) {
+      return res.status(400).json({ error: "Número do crachá é obrigatório" });
+    }
+
+    // Busca funcionário pelo crachá (id do funcionário)
+    const funcionario = await connection("funcionarios")
+      .where("id", cracha)
+      .orWhere("matricula", cracha)
+      .first();
+
+    if (!funcionario) {
+      return res.status(404).json({ error: "Funcionário não encontrado" });
+    }
+
+    const hoje = new Date();
+    const dataHoje = hoje.toISOString().split("T")[0]; // YYYY-MM-DD
+    const horaAtual = hoje.toTimeString().split(" ")[0]; // HH:MM:SS
+
+    // Verifica se já existe registro de entrada hoje
+    const registroHoje = await connection("historico_ponto_diario_funcionario")
+      .where({
+        funcionario_id: funcionario.id,
+        data: dataHoje,
+      })
+      .first();
+
+    let tipo = "entrada";
+    let registro;
+
+    if (!registroHoje || !registroHoje.hora_entrada) {
+      // Primeiro registro do dia - ENTRADA
+      if (registroHoje) {
+        // Atualiza registro existente
+        await connection("historico_ponto_diario_funcionario")
+          .where({ id: registroHoje.id })
+          .update({
+            hora_entrada: `${dataHoje} ${horaAtual}`,
+            updated_at: connection.fn.now(),
+          });
+        registro = {
+          ...registroHoje,
+          hora_entrada: `${dataHoje} ${horaAtual}`,
+        };
+      } else {
+        // Cria novo registro
+        const [novoId] = await connection("historico_ponto_diario_funcionario")
+          .insert({
+            funcionario_id: funcionario.id,
+            nome_funcionario: funcionario.nome,
+            setor_id: funcionario.setor_id,
+            data: dataHoje,
+            hora_entrada: `${dataHoje} ${horaAtual}`,
+            empresa_id: funcionario.empresa_id,
+            created_at: connection.fn.now(),
+          })
+          .returning("id");
+        registro = {
+          id: novoId,
+          hora_entrada: `${dataHoje} ${horaAtual}`,
+          tipo: "entrada",
+        };
+      }
+      tipo = "entrada";
+    } else if (!registroHoje.hora_saida) {
+      // Já tem entrada, registra SAÍDA
+      const entrada = new Date(registroHoje.hora_entrada);
+      const saida = new Date(`${dataHoje} ${horaAtual}`);
+      const totalHoras = Math.floor((saida - entrada) / 1000);
+
+      await connection("historico_ponto_diario_funcionario")
+        .where({ id: registroHoje.id })
+        .update({
+          hora_saida: `${dataHoje} ${horaAtual}`,
+          total_horas_trabalhadas: totalHoras,
+          updated_at: connection.fn.now(),
+        });
+
+      registro = {
+        ...registroHoje,
+        hora_saida: `${dataHoje} ${horaAtual}`,
+        tipo: "saida",
+      };
+      tipo = "saida";
+    } else {
+      // Já tem entrada e saída
+      return res.status(400).json({
+        error: "Ponto já registrado para hoje (entrada e saída)",
+        mensagem: "Você já registrou entrada e saída hoje.",
+      });
+    }
+
+    // Emite evento socket
+    io.to("global").emit("ponto:bipado", {
+      funcionario_id: funcionario.id,
+      nome_funcionario: funcionario.nome,
+      tipo,
+      data: dataHoje,
+      hora: horaAtual,
+    });
+
+    return res.status(200).json({
+      mensagem: `Ponto de ${tipo} registrado com sucesso!`,
+      registro: {
+        tipo,
+        hora_entrada: registro.hora_entrada,
+        hora_saida: registro.hora_saida,
+      },
+      nomeFuncionario: funcionario.nome,
+    });
+  } catch (error) {
+    console.error("❌ Erro ao bipar crachá:", error);
+    return res.status(500).json({
+      error: "Erro ao registrar ponto",
+      details:
+        process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};

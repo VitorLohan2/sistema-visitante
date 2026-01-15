@@ -125,4 +125,35 @@ router.post(
   AuthController.recuperarId
 );
 
+// ═══════════════════════════════════════════════════════════════
+// SOLICITAR RECUPERAÇÃO DE SENHA (com data de nascimento)
+// POST /auth/solicitar-recuperacao-senha
+// ═══════════════════════════════════════════════════════════════
+router.post(
+  "/solicitar-recuperacao-senha",
+  celebrate({
+    [Segments.BODY]: Joi.object().keys({
+      email: Joi.string().required().email(),
+      dataNascimento: Joi.string()
+        .required()
+        .regex(/^\d{4}-\d{2}-\d{2}$/),
+    }),
+  }),
+  AuthController.solicitarRecuperacaoSenha
+);
+
+// ═══════════════════════════════════════════════════════════════
+// VERIFICAR TOKEN DE RECUPERAÇÃO
+// GET /auth/verificar-token-recuperacao
+// ═══════════════════════════════════════════════════════════════
+router.get(
+  "/verificar-token-recuperacao",
+  celebrate({
+    [Segments.QUERY]: Joi.object().keys({
+      token: Joi.string().required(),
+    }),
+  }),
+  AuthController.verificarTokenRecuperacao
+);
+
 module.exports = router;

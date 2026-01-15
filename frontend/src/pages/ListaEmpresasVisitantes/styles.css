@@ -6,7 +6,7 @@
    VARIÁVEIS CSS
    ═══════════════════════════════════════════════════════════════ */
 :root {
-  --empresas-primary: #059669;
+  --empresas-primary: #047857;
   --empresas-primary-hover: #047857;
   --empresas-secondary: #41414d;
   --empresas-success: #28a745;
@@ -71,52 +71,6 @@
   flex-wrap: wrap;
 }
 
-.btn-nova {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  background: linear-gradient(135deg, #28a745 0%, #218838 100%);
-  color: #fff;
-  border: none;
-  border-radius: var(--empresas-radius-sm);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
-}
-
-.btn-nova:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(40, 167, 69, 0.4);
-}
-
-.btn-nova svg {
-  font-size: 16px;
-}
-
-.btn-voltar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  background: #f3f4f6;
-  color: #374151;
-  border: 1px solid #d1d5db;
-  border-radius: var(--empresas-radius-sm);
-  font-size: 14px;
-  font-weight: 500;
-  text-decoration: none;
-  transition: all 0.3s ease;
-}
-
-.btn-voltar:hover {
-  background: #e5e7eb;
-  border-color: var(--empresas-primary);
-  color: var(--empresas-primary);
-}
-
 /* ═══════════════════════════════════════════════════════════════
    SEARCH BAR - Design Elegante
    ═══════════════════════════════════════════════════════════════ */
@@ -159,7 +113,7 @@
 .search-bar .search-wrapper:focus-within {
   border-color: var(--empresas-primary);
   background: #fff;
-  box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.1);
+  box-shadow: 0 0 0 4px rgb(229, 231, 235, 0.1);
 }
 
 .search-bar .search-wrapper svg {
@@ -577,7 +531,6 @@
 
 .btn-salvar:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(5, 150, 105, 0.4);
 }
 
 .btn-salvar:disabled {
@@ -643,14 +596,6 @@
   .empresas-header .header-right {
     width: 100%;
     gap: 8px;
-  }
-
-  .btn-nova,
-  .btn-voltar {
-    flex: 1;
-    justify-content: center;
-    padding: 10px 16px;
-    font-size: 13px;
   }
 
   .search-bar {
@@ -789,11 +734,5 @@
 
   .modal-content {
     max-height: 98vh;
-  }
-
-  .btn-nova,
-  .btn-voltar {
-    font-size: 12px;
-    padding: 10px 12px;
   }
 }

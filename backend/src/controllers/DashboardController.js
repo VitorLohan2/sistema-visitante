@@ -11,9 +11,9 @@ module.exports = {
       const totalVisitantes = parseInt(totalVisitantesResult?.total || 0);
 
       // Visitantes que entraram hoje (baseado em historico_visitante)
-      // A coluna correta é entry_date
+      // A coluna correta é data_de_entrada
       const visitantesHojeResult = await connection("historico_visitante")
-        .whereRaw("DATE(entry_date) = CURRENT_DATE")
+        .whereRaw("DATE(data_de_entrada) = CURRENT_DATE")
         .count("id as total")
         .first();
       const visitantesHoje = parseInt(visitantesHojeResult?.total || 0);
@@ -39,12 +39,12 @@ module.exports = {
         .first();
       const tickets = parseInt(ticketsResult?.total || 0);
 
-      // Visitantes por hora (entradas de hoje) - usando entry_date
+      // Visitantes por hora (entradas de hoje) - usando data_de_entrada
       const visitantesPorHoraRaw = await connection("historico_visitante")
-        .select(connection.raw("EXTRACT(HOUR FROM entry_date) as hora"))
+        .select(connection.raw("EXTRACT(HOUR FROM data_de_entrada) as hora"))
         .count("id as quantidade")
-        .whereRaw("DATE(entry_date) = CURRENT_DATE")
-        .groupByRaw("EXTRACT(HOUR FROM entry_date)")
+        .whereRaw("DATE(data_de_entrada) = CURRENT_DATE")
+        .groupByRaw("EXTRACT(HOUR FROM data_de_entrada)")
         .orderByRaw("hora");
 
       // Cadastros por hora - usando cadastro_visitante.criado_em

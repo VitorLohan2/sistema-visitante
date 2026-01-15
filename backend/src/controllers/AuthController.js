@@ -6,6 +6,7 @@ const {
   gerarSenhaTemporaria,
   gerarTokenRedefinicao,
 } = require("../utils/password");
+const { enviarEmailRecuperacaoSenha } = require("../services/emailService");
 
 // Helper para verificar se usuário é admin via papéis
 async function isUsuarioAdmin(usuarioId) {
@@ -236,6 +237,7 @@ module.exports = {
 
     try {
       const usuario = await connection("usuarios")
+        .where("email", email.toLowerCase())
         .select("id", "name", "email")
         .first();
 
@@ -271,6 +273,124 @@ module.exports = {
     } catch (error) {
       console.error("❌ Erro ao solicitar redefinição de senha:", error);
       return response.status(500).json({
+        error: "Erro interno no servidor",
+        code: "INTERNAL_ERROR",
+      });
+    }
+  },
+
+  /**
+   * SOLICITAR RECUPERAÇÃO DE SENHA (com validação de data de nascimento)
+   * POST /auth/solicitar-recuperacao-senha
+   */
+  async solicitarRecuperacaoSenha(request, response) {
+    const { email, dataNascimento } = request.body;
+
+    try {
+      // Busca usuário pelo email e data de nascimento
+      const usuario = await connection("usuarios")
+        .where("email", email.toLowerCase())
+        .where("birthdate", dataNascimento)
+        .select("id", "name", "email")
+        .first();
+
+      if (!usuario) {
+        return response.status(404).json({
+          error:
+            "Dados não encontrados. Verifique o email e a data de nascimento.",
+          code: "USER_NOT_FOUND",
+        });
+      }
+
+      // Gera token de redefinição (válido por 1 hora)
+      const { token, expiracao } = gerarTokenRedefinicao();
+
+      // Salva o token no banco
+      await connection("usuarios").where("id", usuario.id).update({
+        reset_token: token,
+        reset_token_expira: expiracao,
+      });
+
+      // Tenta enviar email
+      try {
+        await enviarEmailRecuperacaoSenha({
+          email: usuario.email,
+          nome: usuario.name,
+          token,
+        });
+
+        return response.json({
+          message:
+            "Email de recuperação enviado com sucesso! Verifique sua caixa de entrada.",
+          emailEnviado: true,
+        });
+      } catch (emailError) {
+        console.error("❌ Erro ao enviar email de recuperação:", emailError);
+
+        // Em desenvolvimento, retorna o token mesmo se o email falhar
+        const isDev = process.env.NODE_ENV === "development";
+
+        return response.json({
+          message: isDev
+            ? "Email não configurado. Use o token abaixo para redefinir a senha."
+            : "Não foi possível enviar o email. Tente novamente mais tarde.",
+          emailEnviado: false,
+          ...(isDev && {
+            dev_token: token,
+            dev_link: `http://localhost:3000/redefinir-senha?token=${token}`,
+          }),
+        });
+      }
+    } catch (error) {
+      console.error("❌ Erro ao solicitar recuperação de senha:", error);
+      return response.status(500).json({
+        error: "Erro interno no servidor",
+        code: "INTERNAL_ERROR",
+      });
+    }
+  },
+
+  /**
+   * VERIFICAR TOKEN DE RECUPERAÇÃO
+   * GET /auth/verificar-token-recuperacao
+   */
+  async verificarTokenRecuperacao(request, response) {
+    const { token } = request.query;
+
+    try {
+      if (!token) {
+        return response.status(400).json({
+          valid: false,
+          error: "Token não fornecido",
+          code: "TOKEN_REQUIRED",
+        });
+      }
+
+      const usuario = await connection("usuarios")
+        .where("reset_token", token)
+        .where("reset_token_expira", ">", new Date())
+        .select("id", "name", "email")
+        .first();
+
+      if (!usuario) {
+        return response.status(400).json({
+          valid: false,
+          error: "Token inválido ou expirado",
+          code: "INVALID_TOKEN",
+        });
+      }
+
+      return response.json({
+        valid: true,
+        usuario: {
+          nome: usuario.name,
+          email: usuario.email,
+        },
+      });
+    } catch (error) {
+      console.error("❌ Erro ao verificar token de recuperação:", error);
+      return response.status(500).json({
+        valid: false,
         error: "Erro interno no servidor",
         code: "INTERNAL_ERROR",
       });

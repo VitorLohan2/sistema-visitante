@@ -51,19 +51,20 @@ module.exports = {
     try {
       const visitors = await connection("visitante")
         //.where('usuario_id', usuario_id) // Ative se for multi-usuário
-        // .leftJoin('cadastro_visitante', 'cadastro_visitante.placa_veiculo', '=', 'visitante.placa_veiculo')
         .select([
           "id",
-          "name",
+          "nome",
           "cpf",
-          "company",
-          "sector",
+          "empresa",
+          "setor",
           "placa_veiculo",
           "cor_veiculo",
+          "tipo_veiculo",
+          "funcao",
           "responsavel",
           "observacao",
-          "entry_date",
-          "created_at",
+          "data_de_entrada",
+          "criado_em",
         ]);
 
       return response.json(visitors);
@@ -81,12 +82,14 @@ module.exports = {
   async create(request, response) {
     const io = getIo();
     const {
-      name,
+      nome,
       cpf,
-      company,
-      sector,
+      empresa,
+      setor,
       placa_veiculo,
       cor_veiculo,
+      tipo_veiculo,
+      funcao,
       responsavel,
       observacao,
     } = request.body;
@@ -99,12 +102,14 @@ module.exports = {
     }
 
     console.log("🔍 Dados recebidos:", {
-      name,
+      nome,
       cpf,
-      company,
-      sector,
+      empresa,
+      setor,
       placa_veiculo,
       cor_veiculo,
+      tipo_veiculo,
+      funcao,
       responsavel,
       observacao,
       usuario_id,
@@ -127,15 +132,17 @@ module.exports = {
 
       const [visitor] = await connection("visitante")
         .insert({
-          name,
+          nome,
           cpf,
-          company,
-          sector,
+          empresa,
+          setor,
           placa_veiculo,
           cor_veiculo,
+          tipo_veiculo,
+          funcao,
           responsavel,
           observacao,
-          entry_date: new Date(),
+          data_de_entrada: new Date(),
           usuario_id,
         })
         .returning("id");
@@ -145,14 +152,16 @@ module.exports = {
       // ✅ EMITIR EVENTO DE CRIAÇÃO
       const eventData = {
         id: visitor.id,
-        name,
+        nome,
         cpf,
-        company,
-        sector,
+        empresa,
+        setor,
         placa_veiculo,
         cor_veiculo,
+        tipo_veiculo,
+        funcao,
         responsavel,
-        entry_date: new Date(),
+        data_de_entrada: new Date(),
         usuario_id,
         timestamp: new Date(),
         acao: "criado",
@@ -163,7 +172,7 @@ module.exports = {
 
       return response.status(201).json({
         id: visitor.id,
-        entry_date: new Date(),
+        data_de_entrada: new Date(),
         message: "Visita registrada com sucesso",
       });
     } catch (error) {
@@ -196,16 +205,18 @@ module.exports = {
       }
 
       await connection("historico_visitante").insert({
-        name: visitor.name,
+        nome: visitor.nome,
         cpf: visitor.cpf,
-        company: visitor.company,
-        sector: visitor.sector,
+        empresa: visitor.empresa,
+        setor: visitor.setor,
         placa_veiculo: visitor.placa_veiculo,
         cor_veiculo: visitor.cor_veiculo,
+        tipo_veiculo: visitor.tipo_veiculo,
+        funcao: visitor.funcao,
         responsavel: visitor.responsavel,
         observacao: visitor.observacao,
-        entry_date: visitor.entry_date,
-        exit_date: new Date().toISOString(),
+        data_de_entrada: visitor.data_de_entrada,
+        data_de_saida: new Date().toISOString(),
         usuario_id: visitor.usuario_id,
       });
 
@@ -213,13 +224,15 @@ module.exports = {
 
       const eventData = {
         id: parseInt(id), // Garantir que é número
-        name: visitor.name,
+        nome: visitor.nome,
         cpf: visitor.cpf,
-        company: visitor.company,
-        sector: visitor.sector,
+        empresa: visitor.empresa,
+        setor: visitor.setor,
         placa_veiculo: visitor.placa_veiculo,
         cor_veiculo: visitor.cor_veiculo,
-        exit_date: new Date(),
+        tipo_veiculo: visitor.tipo_veiculo,
+        funcao: visitor.funcao,
+        data_de_saida: new Date(),
         usuario_id: visitor.usuario_id,
         timestamp: new Date(),
         acao: "encerrado",
@@ -257,7 +270,7 @@ module.exports = {
       const results = await connection("historico_visitante")
         //.where('usuario_id', usuario_id) // Descomente se multi-usuário
         .select("*")
-        .orderBy("exit_date", "desc");
+        .orderBy("data_de_saida", "desc");
 
       return response.json(results);
     } catch (err) {

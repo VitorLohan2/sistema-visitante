@@ -199,15 +199,11 @@ export default function ListaEmpresasVisitantes() {
 
       if (empresaEditando) {
         // Atualizar
-        await api.put(`/empresas-visitantes/${empresaEditando.id}`, payload, {
-          headers: { Authorization: localStorage.getItem("ongId") },
-        });
+        await api.put(`/empresas-visitantes/${empresaEditando.id}`, payload);
         alert("✅ Empresa atualizada com sucesso!");
       } else {
         // Criar
-        await api.post("/empresas-visitantes", payload, {
-          headers: { Authorization: localStorage.getItem("ongId") },
-        });
+        await api.post("/empresas-visitantes", payload);
         alert("✅ Empresa cadastrada com sucesso!");
       }
 
@@ -232,9 +228,7 @@ export default function ListaEmpresasVisitantes() {
     }
 
     try {
-      await api.delete(`/empresas-visitantes/${empresa.id}`, {
-        headers: { Authorization: localStorage.getItem("ongId") },
-      });
+      await api.delete(`/empresas-visitantes/${empresa.id}`);
       alert("✅ Empresa excluída com sucesso!");
       carregarEmpresas(true);
     } catch (error) {
@@ -290,7 +284,7 @@ export default function ListaEmpresasVisitantes() {
           <h1>Empresas de Visitantes</h1>
         </div>
         <div className="header-right">
-          <button className="btn-nova" onClick={handleNova}>
+          <button className="btn-primary" onClick={handleNova}>
             <FiPlus size={18} />
             Nova Empresa
           </button>
@@ -461,18 +455,18 @@ export default function ListaEmpresasVisitantes() {
 
               <div className="modal-actions">
                 <button
-                  type="button"
-                  className="btn-cancelar"
-                  onClick={handleFecharModal}
-                >
-                  Cancelar
-                </button>
-                <button
                   type="submit"
                   className="btn-salvar"
                   disabled={salvando}
                 >
                   {salvando ? "Salvando..." : "Salvar"}
+                </button>
+                <button
+                  type="button"
+                  className="btn-cancelar"
+                  onClick={handleFecharModal}
+                >
+                  Cancelar
                 </button>
               </div>
             </form>

@@ -1,19 +1,27 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import './styles.css';
-import { FiSearch, FiMessageCircle, FiKey, FiShield, FiChevronRight, FiHelpCircle, FiStar } from 'react-icons/fi';
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
+import "./styles.css";
+import {
+  FiSearch,
+  FiMessageCircle,
+  FiKey,
+  FiShield,
+  FiChevronRight,
+  FiHelpCircle,
+  FiStar,
+} from "react-icons/fi";
 import { AiOutlineWhatsApp } from "react-icons/ai";
-import logoImg from '../../assets/logo.svg';
+import logoImg from "../../assets/logo.svg";
 
 export default function HelpDesk() {
-  const [searchValue, setSearchValue] = useState('');
+  const [searchValue, setSearchValue] = useState("");
   const [hoveredCard, setHoveredCard] = useState(null);
 
   const suggestedQuestions = [
     "Como faço para cadastrar?",
     "Como faço para seguir com a triagem de visitantes?",
     "Como faço para bipar crachá no aplicativo?",
-    "Como faço para recuperar id?"
+    "Como faço para recuperar id?",
   ];
 
   return (
@@ -27,8 +35,8 @@ export default function HelpDesk() {
 
       {/* Logo Section */}
       <div className="logo-section">
-          <img src={logoImg} alt="Logo" className="helpdesk-logo"/>
-          <div className="logo-shine"></div>
+        <img src={logoImg} alt="Logo" className="helpdesk-logo" />
+        <div className="logo-shine"></div>
       </div>
 
       {/* Header Section */}
@@ -54,9 +62,7 @@ export default function HelpDesk() {
                 placeholder="Digite sua dúvida aqui..."
                 className="search-inputHelpdesk"
               />
-              <button className="search-buttonHelp">
-                Buscar
-              </button>
+              <button className="search-buttonHelp">Buscar</button>
             </div>
           </div>
 
@@ -81,9 +87,9 @@ export default function HelpDesk() {
       {/* Category Cards */}
       <main className="helpdesk-categories">
         <h2 className="categories-title">Escolha uma opção de suporte</h2>
-        
+
         <div className="categories-grid">
-          <div 
+          <div
             className="category-card whatsapp-card"
             onMouseEnter={() => setHoveredCard(1)}
             onMouseLeave={() => setHoveredCard(null)}
@@ -98,13 +104,16 @@ export default function HelpDesk() {
               <p>Atendimento 14:00 às 23:59</p>
               <div className="card-action">
                 <span>Acessar</span>
-                <FiChevronRight className={`action-arrow ${hoveredCard === 1 ? 'moved' : ''}`} size={20} />
+                <FiChevronRight
+                  className={`action-arrow ${hoveredCard === 1 ? "moved" : ""}`}
+                  size={20}
+                />
               </div>
             </div>
           </div>
 
-          <Link 
-            to="/recuperar-id" 
+          <Link
+            to="/recuperar-senha"
             className="category-card recover-card"
             onMouseEnter={() => setHoveredCard(2)}
             onMouseLeave={() => setHoveredCard(null)}
@@ -115,16 +124,19 @@ export default function HelpDesk() {
               <div className="card-icon recover-icon">
                 <FiShield size={32} />
               </div>
-              <h3>Recuperar ID</h3>
+              <h3>Recuperar Senha</h3>
               <p>E-mail & Data de nascimento</p>
               <div className="card-action">
                 <span>Acessar</span>
-                <FiChevronRight className={`action-arrow ${hoveredCard === 2 ? 'moved' : ''}`} size={20} />
+                <FiChevronRight
+                  className={`action-arrow ${hoveredCard === 2 ? "moved" : ""}`}
+                  size={20}
+                />
               </div>
             </div>
           </Link>
 
-          <div 
+          <div
             className="category-card key-card"
             onMouseEnter={() => setHoveredCard(3)}
             onMouseLeave={() => setHoveredCard(null)}
@@ -139,7 +151,10 @@ export default function HelpDesk() {
               <p>Código de cadastro</p>
               <div className="card-action">
                 <span>Acessar</span>
-                <FiChevronRight className={`action-arrow ${hoveredCard === 3 ? 'moved' : ''}`} size={20} />
+                <FiChevronRight
+                  className={`action-arrow ${hoveredCard === 3 ? "moved" : ""}`}
+                  size={20}
+                />
               </div>
             </div>
           </div>
@@ -156,7 +171,7 @@ export default function HelpDesk() {
       <footer className="helpdesk-footer">
         <div className="footer-content">
           <p>
-            Sistema de visitante 
+            Sistema de visitante
             <span className="footer-brand"> Liberaê 1.0</span>
             <span className="footer-badge">Beta</span>
           </p>

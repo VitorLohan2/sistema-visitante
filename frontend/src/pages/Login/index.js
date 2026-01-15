@@ -19,11 +19,11 @@ export default function Login() {
   const history = useHistory();
   const { login, isAuthenticated } = useAuth();
 
-  // Se já está autenticado, redireciona para profile
+  // Se já está autenticado, redireciona para home
   useEffect(() => {
     if (isAuthenticated) {
       console.log("Usuário já autenticado, redirecionando...");
-      history.push("/listagem-visitante");
+      history.push("/home");
     }
   }, [isAuthenticated, history]);
 
@@ -75,7 +75,7 @@ export default function Login() {
       // Força barra a ir até 100%
       setProgress(100);
       setTimeout(() => {
-        history.push("/listagem-visitante");
+        history.push("/home");
       }, 300);
     } catch (err) {
       console.error("Erro no login:", err);
@@ -148,7 +148,7 @@ export default function Login() {
             </button>
 
             <div className="login-links">
-              <Link className="back-link" to="/recuperar-id">
+              <Link className="back-link" to="/recuperar-senha">
                 <FiKey size={18} />
                 Esqueci minha senha
               </Link>

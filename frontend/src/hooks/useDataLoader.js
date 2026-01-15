@@ -588,11 +588,17 @@ export function useDataLoader(userId) {
           .map((visitante) => ({
             ...visitante,
             empresa:
+              visitante.empresa_nome ||
               empresasData.find((e) => e.id === visitante.empresa_id)?.nome ||
               "Não informado",
             setor:
+              visitante.setor_nome ||
               setoresData.find((s) => s.id === visitante.setor_id)?.nome ||
               "Não informado",
+            // Novos campos de veículo e função já vêm do backend
+            funcao: visitante.funcao_nome || visitante.funcao || null,
+            tipo_veiculo: visitante.tipo_veiculo || null,
+            cor_veiculo: visitante.cor_veiculo || null,
           }))
           .sort((a, b) =>
             (a.nome || "")

@@ -1,132 +1,300 @@
-/* Estilo para container da página de edição */
-.edit-container {
+/* ===== VARIABLES ===== */
+:root {
+  --edit-bg: #f8fafc;
+  --edit-card-bg: #ffffff;
+  --edit-border: #e2e8f0;
+  --edit-text-primary: #1e293b;
+  --edit-text-secondary: #64748b;
+  --edit-text-muted: #94a3b8;
+  --edit-accent: #3b82f6;
+  --edit-danger: #ef4444;
+  --edit-success: #059669;
+  --edit-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --edit-shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.1);
+  --edit-radius: 12px;
+  --edit-radius-sm: 8px;
+}
+
+/* ===== CONTAINER PRINCIPAL ===== */
+.edit-visitor-container {
+  min-height: 100vh;
+  background: var(--edit-bg);
+  padding: 32px 24px;
+}
+
+.edit-visitor-container .content {
+  max-width: 720px;
+  margin: 0 auto;
+  background: var(--edit-card-bg);
+  border-radius: var(--edit-radius);
+  box-shadow: var(--edit-shadow-lg);
+  padding: 32px;
+}
+
+/* ===== HEADER ===== */
+.edit-visitor-container .edit-header {
+  margin-bottom: 32px;
+  border-bottom: 1px solid var(--edit-border);
+  padding-bottom: 24px;
+}
+
+.edit-visitor-container .edit-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--edit-text-primary);
+  margin: 0 0 8px 0;
+}
+
+.edit-visitor-container .edit-header p {
+  font-size: 14px;
+  color: var(--edit-text-secondary);
+  margin: 0;
+}
+
+/* ===== FORM ===== */
+.edit-visitor-container form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ===== FORM GROUP ===== */
+.edit-visitor-container .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.edit-visitor-container .form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--edit-text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ===== FORM ROW (2 COLUMNS) ===== */
+.edit-visitor-container .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* ===== INPUTS & SELECTS ===== */
+.edit-visitor-container input,
+.edit-visitor-container select,
+.edit-visitor-container textarea {
   width: 100%;
-  max-width: 1150px;
-  margin: 40px auto;
-  padding: 30px;
-  background: #f0f0f5;
-  border-radius: 8px;
-  box-shadow: 0 0 100px rgba(0, 0, 0, 0.1);
+  padding: 12px 16px;
+  font-size: 15px;
+  color: var(--edit-text-primary);
+  background: var(--edit-card-bg);
+  border: 1px solid var(--edit-border);
+  border-radius: var(--edit-radius-sm);
+  transition: all 0.2s ease;
+  outline: none;
 }
 
-/* Título da página */
-.edit-container h1 {
-  margin-bottom: 24px;
-  font-size: 32px;
-  color: #333;
+.edit-visitor-container input:focus,
+.edit-visitor-container select:focus,
+.edit-visitor-container textarea:focus {
+  border-color: var(--edit-accent);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-
-/* Campos do formulário */
-.edit-container form input {
-  width: 100%;
-  height: 50px;
-  color: #333;
-  border: 1px solid #dcdce6;
-  border-radius: 8px;
-  padding: 0 16px;
-  margin-bottom: 16px;
-  font-size: 16px;
+.edit-visitor-container input::placeholder,
+.edit-visitor-container textarea::placeholder {
+  color: var(--edit-text-muted);
 }
 
-/* Botão de salvar alterações */
-.edit-container form .button {
-  width: 100%;
-  height: 50px;
-  background: #e02041;
-  border: 0;
-  border-radius: 8px;
-  color: #fff;
-  font-weight: bold;
-  font-size: 18px;
-  margin-top: 8px;
-  display: inline-block;
-  text-align: center;
-  line-height: 50px;
-  transition: filter 0.2s;
+.edit-visitor-container input:disabled,
+.edit-visitor-container select:disabled {
+  background-color: #f1f5f9;
+  color: var(--edit-text-muted);
+  cursor: not-allowed;
 }
 
-.edit-container form .button:hover {
-  filter: brightness(90%);
+.edit-visitor-container textarea {
+  resize: vertical;
+  min-height: 100px;
 }
 
-/* Container do checkbox */
-.checkbox-container {
+.edit-visitor-container select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  padding-right: 40px;
+}
+
+/* ===== ERROR STATES ===== */
+.edit-visitor-container input.error,
+.edit-visitor-container select.error {
+  border-color: var(--edit-danger);
+}
+
+.edit-visitor-container .error-message {
+  font-size: 12px;
+  color: var(--edit-danger);
+  margin-top: 4px;
+}
+
+/* ===== CHECKBOX CONTAINER ===== */
+.edit-visitor-container .checkbox-container {
   display: flex;
   align-items: center;
   gap: 12px;
-  /*margin-bottom: 20px;*/
-  margin: 8px 0 0;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: var(--edit-radius-sm);
+  border: 1px solid var(--edit-border);
 }
 
-/* Oculta o checkbox padrão */
-.checkbox-container input[type="checkbox"] {
+.edit-visitor-container .checkbox-container input[type="checkbox"] {
   display: none;
 }
 
-/* Estiliza o label como botão */
-.checkbox-container label {
+.edit-visitor-container .checkbox-container label {
   padding: 10px 20px;
-  background-color: #f0f0f5;
-  color: #c41010;
-  border: 2px solid #c41010;
-  border-radius: 8px;
+  background-color: #ffffff;
+  color: var(--edit-danger);
+  border: 2px solid var(--edit-danger);
+  border-radius: var(--edit-radius-sm);
   cursor: pointer;
-  font-weight: bold;
-  transition: all 0.2s ease-in-out;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s ease;
   user-select: none;
 }
 
-/* Quando o checkbox estiver marcado (bloqueado) */
-.checkbox-container input[type="checkbox"]:checked + label {
-  background-color: #666;
-  border: 2px solid #666;
-  color: #fff;
+.edit-visitor-container
+  .checkbox-container
+  input[type="checkbox"]:checked
+  + label {
+  background-color: #64748b;
+  border-color: #64748b;
+  color: #ffffff;
 }
 
-/* Efeito hover */
-.checkbox-container label:hover {
+.edit-visitor-container .checkbox-container label:hover {
   filter: brightness(95%);
 }
 
-/* Estado desabilitado */
-.checkbox-container input[type="checkbox"]:disabled + label {
-  background-color: #f0f0f0;
-  color: #999;
-  border: 2px solid #f0f0f0;
-  opacity: 0.6;
+.edit-visitor-container
+  .checkbox-container
+  input[type="checkbox"]:disabled
+  + label {
+  background-color: #f1f5f9;
+  color: var(--edit-text-muted);
+  border-color: var(--edit-border);
   cursor: not-allowed;
+  opacity: 0.7;
 }
 
-input:disabled {
-  background-color: #f0f0f0;
-  color: #999;
-  cursor: not-allowed;
+/* ===== PHOTO SELECTOR ===== */
+.edit-visitor-container .photo-selector {
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: var(--edit-radius-sm);
+  border: 1px solid var(--edit-border);
 }
 
+.edit-visitor-container .photo-selector label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--edit-text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
 
-.photo-list {
+.edit-visitor-container .photo-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 12px;
 }
 
-.photo-item {
-  width: 80px;
-  height: 80px;
-  border-radius: 8px;
+.edit-visitor-container .photo-item {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--edit-radius-sm);
   object-fit: cover;
   cursor: pointer;
-  border: 2px solid transparent;
-  transition: border 0.2s;
+  border: 3px solid transparent;
+  transition: all 0.2s ease;
 }
 
-.photo-item.selected {
-  border-color: #10B981;
+.edit-visitor-container .photo-item:hover {
+  transform: scale(1.05);
 }
 
-.photo-selector h3{
-  margin-top: 12px;
-  margin-bottom: 12px;
+.edit-visitor-container .photo-item.selected {
+  border: 2px solid var(--edit-success);
+  box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.2);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .edit-visitor-container {
+    padding: 16px;
+  }
+
+  .edit-visitor-container .content {
+    padding: 24px 20px;
+  }
+
+  .edit-visitor-container .edit-header h1 {
+    font-size: 20px;
+  }
+
+  .edit-visitor-container .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .edit-visitor-container input,
+  .edit-visitor-container select,
+  .edit-visitor-container textarea {
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .edit-visitor-container {
+    padding: 12px;
+  }
+
+  .edit-visitor-container .content {
+    padding: 20px 16px;
+    border-radius: var(--edit-radius-sm);
+  }
+
+  .edit-visitor-container .edit-header {
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+  }
+
+  .edit-visitor-container .edit-header h1 {
+    font-size: 18px;
+  }
+
+  .edit-visitor-container .form-group label {
+    font-size: 12px;
+  }
+
+  .edit-visitor-container .photo-item {
+    width: 60px;
+    height: 60px;
+  }
+
+  .edit-visitor-container .checkbox-container {
+    padding: 12px;
+  }
+
+  .edit-visitor-container .checkbox-container label {
+    padding: 8px 16px;
+    font-size: 13px;
+  }
 }

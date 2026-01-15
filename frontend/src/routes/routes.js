@@ -3,6 +3,7 @@ import React from "react";
 import { BrowserRouter, Route, Switch } from "react-router-dom";
 
 import Login from "../pages/Login";
+import Home from "../pages/Home";
 import Dashboard from "../pages/Dashboard";
 import ListagemVisitante from "../pages/ListagemVisitante";
 import CadastrarVisitante from "../pages/CadastrarVisitante";
@@ -13,7 +14,8 @@ import VisualizarVisitante from "../pages/VisualizarVisitante";
 import TicketDashboard from "../pages/TicketDashboard";
 import ListaFuncionarios from "../pages/ListaFuncionarios";
 import BiparCracha from "../pages/BiparCracha";
-import RecuperarId from "../pages/RecuperarId";
+import RecuperarSenha from "../pages/RecuperarSenha";
+import RedefinirSenha from "../pages/RedefinirSenha";
 import HelpDesk from "../pages/HelpDesk";
 import CadastrarEmpresaVisitante from "../pages/CadastrarEmpresaVisitante";
 import ListaEmpresasVisitantes from "../pages/ListaEmpresasVisitantes";
@@ -29,7 +31,8 @@ export default function Routes() {
       <Switch>
         {/* Rotas públicas */}
         <Route path="/" exact component={Login} />
-        <Route path="/recuperar-id" exact component={RecuperarId} />
+        <Route path="/recuperar-senha" exact component={RecuperarSenha} />
+        <Route path="/redefinir-senha" exact component={RedefinirSenha} />
         <Route path="/helpdesk" exact component={HelpDesk} />
         <Route
           path="/solicitar-descarga"
@@ -40,6 +43,11 @@ export default function Routes() {
         {/* ══════════════════════════════════════════════════════════════════ */}
         {/* ROTAS PROTEGIDAS COM PERMISSÕES */}
         {/* ══════════════════════════════════════════════════════════════════ */}
+
+        {/* Home - Página inicial universal (sem permissão específica) */}
+        <ProtectedRoute path="/home">
+          <Home />
+        </ProtectedRoute>
 
         {/* Dashboard - apenas admin ou quem tem permissão */}
         <ProtectedRoute path="/dashboard" permissao="dashboard_visualizar">

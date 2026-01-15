@@ -108,4 +108,18 @@ router.get(
   PontoUsuarioController.relatorio
 );
 
+// ═══════════════════════════════════════════════════════════════
+// BIPAR CRACHÁ (Registro simplificado por crachá)
+// POST /ponto/bipar
+// ═══════════════════════════════════════════════════════════════
+router.post(
+  "/bipar",
+  celebrate({
+    [Segments.BODY]: Joi.object().keys({
+      cracha: Joi.string().required(),
+    }),
+  }),
+  PontoUsuarioController.biparCracha
+);
+
 module.exports = router;

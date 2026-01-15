@@ -11,6 +11,7 @@ import Loading from "../../components/Loading";
 import CardDeListagemVisitante from "../../components/CardDeListagemVisitante";
 
 import ModalRegistrarVisita from "../../components/ModalRegistrarVisita";
+import ModalCracha from "../../components/ModalCracha";
 
 import "./styles.css";
 import "../../styles/CardDeListagemVisitante.css";
@@ -54,7 +55,7 @@ export default function ListagemVisitante() {
 
   // Modal de registrar Visita
   const [visitModalVisible, setVisitModalVisible] = useState(false);
-  const [selectedIncident, setSelectedIncident] = useState(null);
+  const [selectedVisitante, setSelectedVisitante] = useState(null);
 
   // Tickets de segurança
   const [unseenCount, setUnseenCount] = useState(0);
@@ -88,9 +89,7 @@ export default function ListagemVisitante() {
 
     const checkNotifications = async () => {
       try {
-        const response = await api.get("/tickets/unseen", {
-          headers: { Authorization: ongId },
-        });
+        const response = await api.get("/tickets/unseen");
 
         const newCount = response.data.count;
         if (!isFirstLoad.current && newCount > unseenRef.current) {
@@ -224,9 +223,7 @@ export default function ListagemVisitante() {
       return;
 
     try {
-      const response = await api.delete(`cadastro-visitantes/${id}`, {
-        headers: { Authorization: ongId },
-      });
+      const response = await api.delete(`cadastro-visitantes/${id}`);
 
       if (response.status === 204) {
         // Remove do cache local (sem recarregar da API)
@@ -244,32 +241,91 @@ export default function ListagemVisitante() {
   }
 
   function handleRegisterVisit(id) {
-    const incident = sortedVisitantes.find((inc) => inc.id === id);
-    if (incident?.bloqueado) {
+    const visitante = sortedVisitantes.find((v) => v.id === id);
+    if (visitante?.bloqueado) {
       alert("Este visitante está bloqueado. Registro de visita não permitido.");
       return;
     }
-    setSelectedIncident(incident);
+    setSelectedVisitante(visitante);
     setVisitModalVisible(true);
   }
 
-  async function handleConfirmVisit(responsavel, observacao) {
+  async function handleConfirmVisit(responsavel, observacao, editedData = {}) {
     try {
-      // ✅ CORRIGIDO: Não passar Authorization manual - o interceptor do axios já adiciona Bearer token automaticamente
+      // Verifica se houve alteração nos dados do cadastro
+      const hasChanges =
+        (editedData.empresa &&
+          editedData.empresa !== selectedVisitante.empresa) ||
+        (editedData.placa_veiculo &&
+          editedData.placa_veiculo !== selectedVisitante.placa_veiculo) ||
+        (editedData.cor_veiculo &&
+          editedData.cor_veiculo !== selectedVisitante.cor_veiculo) ||
+        (editedData.tipo_veiculo &&
+          editedData.tipo_veiculo !== selectedVisitante.tipo_veiculo);
+
+      // Se houve alterações, atualiza o cadastro do visitante
+      if (hasChanges) {
+        // Busca IDs das cores e tipos de veículos
+        let corVeiculoId = null;
+        let tipoVeiculoId = null;
+
+        if (editedData.cor_veiculo) {
+          const coresRes = await api.get("/cores-veiculos-visitantes");
+          const corFound = coresRes.data.find(
+            (c) => c.nome === editedData.cor_veiculo
+          );
+          corVeiculoId = corFound?.id || null;
+        }
+
+        if (editedData.tipo_veiculo) {
+          const tiposRes = await api.get("/tipos-veiculos-visitantes");
+          const tipoFound = tiposRes.data.find(
+            (t) => t.nome === editedData.tipo_veiculo
+          );
+          tipoVeiculoId = tipoFound?.id || null;
+        }
+
+        // Atualiza o cadastro do visitante
+        await api.put(`/cadastro-visitantes/${selectedVisitante.id}`, {
+          nome: selectedVisitante.nome,
+          nascimento: selectedVisitante.nascimento,
+          cpf: selectedVisitante.cpf?.replace(/\D/g, ""),
+          empresa: editedData.empresa || selectedVisitante.empresa,
+          setor: selectedVisitante.setor,
+          telefone: selectedVisitante.telefone?.replace(/\D/g, ""),
+          placa_veiculo:
+            editedData.placa_veiculo || selectedVisitante.placa_veiculo || "",
+          cor_veiculo_visitante_id: corVeiculoId,
+          tipo_veiculo_visitante_id: tipoVeiculoId,
+          observacao: selectedVisitante.observacao || "",
+          avatar_imagem: selectedVisitante.avatar_imagem || null,
+        });
+
+        // Atualiza o cache local
+        reloadVisitantes();
+      }
+
+      // Registra a visita
       await api.post("/visitantes", {
-        name: selectedIncident.nome,
-        cpf: selectedIncident.cpf,
-        company: selectedIncident.empresa,
-        sector: selectedIncident.setor,
-        placa_veiculo: selectedIncident.placa_veiculo,
-        cor_veiculo: selectedIncident.cor_veiculo,
+        nome: selectedVisitante.nome,
+        cpf: selectedVisitante.cpf,
+        empresa:
+          editedData.empresa ||
+          selectedVisitante.empresa ||
+          selectedVisitante.empresa_nome,
+        setor: selectedVisitante.setor || selectedVisitante.setor_nome,
+        placa_veiculo:
+          editedData.placa_veiculo || selectedVisitante.placa_veiculo,
+        cor_veiculo: editedData.cor_veiculo || selectedVisitante.cor_veiculo,
+        tipo_veiculo: editedData.tipo_veiculo || selectedVisitante.tipo_veiculo,
+        funcao: selectedVisitante.funcao || selectedVisitante.funcao_nome,
         responsavel,
         observacao,
       });
 
       alert("Visita registrada com sucesso!");
       setVisitModalVisible(false);
-      setSelectedIncident(null);
+      setSelectedVisitante(null);
       history.push("/visitantes");
     } catch (err) {
       alert("Erro ao registrar visita: " + err.message);
@@ -292,7 +348,7 @@ export default function ListagemVisitante() {
 
   async function handleOpenBadgeModal(id) {
     try {
-      const response = await api.get(`cadastro-visitantes/${id}/badge`);
+      const response = await api.get(`cadastro-visitantes/${id}/cracha`);
       setBadgeData({
         ...response.data,
         imagem: response.data.avatar_imagem || response.data.imagem1 || null,
@@ -301,43 +357,6 @@ export default function ListagemVisitante() {
     } catch (err) {
       alert("Erro ao abrir crachá: " + err.message);
     }
-  }
-
-  function handlePrintBadge() {
-    if (!badgeData) return;
-    const printWindow = window.open("", "PRINT", "height=600,width=720");
-    printWindow.document.write(`
-    <html>
-      <head>
-        <title>Crachá de Visitante</title>
-        <style>
-          @page { size: 60mm 40mm landscape; margin: 0; }
-          html, body { width: 60mm; height: 40mm; margin: 0; padding: 0; }
-          body { display: flex; justify-content: flex-start; align-items: flex-start; }
-          .badge {
-            width: 60mm; height: 40mm; display: flex; flex-direction: column;
-            justify-content: center; align-items: flex-start;
-            font-family: Arial, sans-serif; border: 1px solid #000;
-            border-radius: 6px; padding: 2mm; box-sizing: border-box;
-          }
-          .badge h1 { font-size: 12px; margin: 0 0 2px 0; }
-          .badge p { font-size: 10px; margin: 1px 0; }
-        </style>
-      </head>
-      <body>
-        <div class="badge">
-          <h1>Crachá de Visitante</h1>
-          <p><strong>Nome:</strong> ${badgeData.nome}</p>
-          <p><strong>Empresa:</strong> ${badgeData.empresa}</p>
-          <p><strong>Setor:</strong> ${badgeData.setor}</p>
-        </div>
-      </body>
-    </html>
-  `);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-    printWindow.close();
   }
 
   function handleCloseBadgeModal() {
@@ -372,20 +391,6 @@ export default function ListagemVisitante() {
                 className="search-clear-btn"
                 onClick={() => setSearchTerm("")}
                 title="Limpar busca"
-                style={{
-                  position: "absolute",
-                  right: 14,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 28,
-                  height: 28,
-                  border: "none",
-                  borderRadius: "50%",
-                  background: "rgba(32, 224, 176, 0.1)",
-                  color: "#047857",
-                  cursor: "pointer",
-                }}
               >
                 <FiX size={16} />
               </button>
@@ -410,10 +415,10 @@ export default function ListagemVisitante() {
 
       {/* CARDS CONTAINER */}
       <div className="visitors-list">
-        {currentRecords.map((incident) => (
+        {currentRecords.map((visitante) => (
           <CardDeListagemVisitante
-            key={incident.id}
-            incident={incident}
+            key={visitante.id}
+            visitante={visitante}
             formatarData={formatarData}
             handleRegisterVisit={handleRegisterVisit}
             handleViewProfile={handleViewProfile}
@@ -505,35 +510,18 @@ export default function ListagemVisitante() {
       )}
 
       {/* MODAL DO CRACHÁ */}
-      {badgeModalVisible && badgeData && (
-        <div className="modal-overlay" onClick={handleCloseBadgeModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={handleCloseBadgeModal}>
-              X
-            </button>
-            <h2>Crachá de Visitante</h2>
-            <p>
-              <strong>Nome:</strong> {badgeData.nome}
-            </p>
-            <p>
-              <strong>Empresa:</strong> {badgeData.empresa}
-            </p>
-            <p>
-              <strong>Setor:</strong> {badgeData.setor}
-            </p>
-            <button onClick={handlePrintBadge} className="modal-print-btn">
-              Imprimir Crachá
-            </button>
-          </div>
-        </div>
-      )}
+      <ModalCracha
+        visible={badgeModalVisible}
+        onClose={handleCloseBadgeModal}
+        badgeData={badgeData}
+      />
 
       <ModalRegistrarVisita
         visible={visitModalVisible}
         onClose={() => setVisitModalVisible(false)}
         onConfirm={handleConfirmVisit}
         responsaveis={responsaveis.map((r) => r.nome)}
-        incident={selectedIncident}
+        visitante={selectedVisitante}
       />
     </div>
   );

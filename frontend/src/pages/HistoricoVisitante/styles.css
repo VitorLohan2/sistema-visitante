@@ -6,7 +6,7 @@
    VARIÁVEIS CSS
    ═══════════════════════════════════════════════════════════════ */
 :root {
-  --historico-primary: #059669;
+  --historico-primary: #047857;
   --historico-primary-hover: #047857;
   --historico-secondary: #41414d;
   --historico-success: #28a745;
@@ -113,7 +113,7 @@
 .historico-search-box:focus-within {
   border-color: var(--historico-primary);
   background: #fff;
-  box-shadow: 0 0 0 4px rgba(32, 224, 176, 0.1);
+  box-shadow: 0 0 0 4px rgb(229, 231, 235, 0.1);
 }
 
 .historico-search-box .search-icon {
@@ -543,10 +543,9 @@
 }
 
 .historico-pagination-btn:hover:not(:disabled):not(.dots) {
-  border-color: var(--historico-primary);
-  color: var(--historico-primary);
-  background: rgba(32, 224, 176, 0.05);
-  transform: translateY(-1px);
+  background: #f0f0f0;
+  border-color: #999;
+  color: #000;
 }
 
 .historico-pagination-btn:disabled {
@@ -555,10 +554,9 @@
 }
 
 .historico-pagination-btn.active {
-  background: var(--historico-primary);
-  border-color: var(--historico-primary);
+  background: #626262;
   color: #fff;
-  box-shadow: 0 2px 8px rgba(32, 224, 176, 0.3);
+  border-color: #626262;
 }
 
 .historico-pagination-btn.dots {

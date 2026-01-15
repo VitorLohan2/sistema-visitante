@@ -28,18 +28,10 @@ export default function CadastrarVisitante() {
 
   const [currentStep, setCurrentStep] = useState(1);
 
-  // Lista de cores pré-definidas
-  const opcoesCores = [
-    "PRETO",
-    "BRANCO",
-    "PRATA",
-    "CINZA",
-    "VERMELHO",
-    "AZUL",
-    "VERDE",
-    "AMARELO",
-    "LARANJA",
-  ];
+  // Dados das novas tabelas (carregados da API)
+  const [coresVeiculos, setCoresVeiculos] = useState([]);
+  const [tiposVeiculos, setTiposVeiculos] = useState([]);
+  const [funcoesVisitantes, setFuncoesVisitantes] = useState([]);
 
   const [form, setForm] = useState({
     nome: "",
@@ -49,7 +41,9 @@ export default function CadastrarVisitante() {
     setor_id: "",
     telefone: "",
     placa_veiculo: "",
-    cor_veiculo: "",
+    cor_veiculo_visitante_id: "",
+    tipo_veiculo_visitante_id: "",
+    funcao_visitante_id: "",
     observacao: "",
     fotos: [],
   });
@@ -77,10 +71,11 @@ export default function CadastrarVisitante() {
 
   const [errors, setErrors] = useState({
     placa_veiculo: "",
-    cor_veiculo: "",
+    cor_veiculo_visitante_id: "",
+    tipo_veiculo_visitante_id: "",
   });
 
-  // Busca empresas e setores do banco de dados (usa cache se disponível)
+  // Busca empresas, setores e dados de veículos do banco de dados (usa cache se disponível)
   useEffect(() => {
     async function loadData() {
       try {
@@ -92,24 +87,35 @@ export default function CadastrarVisitante() {
           console.log("📦 Usando empresas e setores do cache");
           setEmpresasVisitantes(cachedEmpresas);
           setSetoresVisitantes(cachedSetores);
-          return;
+        } else {
+          // Se não tem cache, busca da API
+          const [empresasResponse, setoresResponse] = await Promise.all([
+            api.get("/empresas-visitantes"),
+            api.get("/setores-visitantes"),
+          ]);
+
+          const empresasData = empresasResponse.data;
+          const setoresData = setoresResponse.data;
+
+          // Salva no cache para próximos acessos
+          setCache("empresas", empresasData);
+          setCache("setores", setoresData);
+
+          setEmpresasVisitantes(empresasData);
+          setSetoresVisitantes(setoresData);
         }
 
-        // Se não tem cache, busca da API
-        const [empresasResponse, setoresResponse] = await Promise.all([
-          api.get("/empresas-visitantes"),
-          api.get("/setores-visitantes"),
-        ]);
+        // Carregar dados das novas tabelas
+        const [coresResponse, tiposResponse, funcoesResponse] =
+          await Promise.all([
+            api.get("/cores-veiculos-visitantes"),
+            api.get("/tipos-veiculos-visitantes"),
+            api.get("/funcoes-visitantes"),
+          ]);
 
-        const empresasData = empresasResponse.data;
-        const setoresData = setoresResponse.data;
-
-        // Salva no cache para próximos acessos
-        setCache("empresas", empresasData);
-        setCache("setores", setoresData);
-
-        setEmpresasVisitantes(empresasData);
-        setSetoresVisitantes(setoresData);
+        setCoresVeiculos(coresResponse.data);
+        setTiposVeiculos(tiposResponse.data);
+        setFuncoesVisitantes(funcoesResponse.data);
       } catch (err) {
         console.error("Erro ao carregar dados:", err);
         alert("Erro ao carregar opções de empresa e setor");
@@ -311,23 +317,34 @@ export default function CadastrarVisitante() {
           .replace(/[^a-zA-Z0-9]/g, "")
           .toUpperCase();
         const hasPlaca = placaClean.trim().length > 0;
-        const hasCor = form.cor_veiculo.trim().length > 0;
+        const hasCor = form.cor_veiculo_visitante_id !== "";
+        const hasTipo = form.tipo_veiculo_visitante_id !== "";
 
         if (hasPlaca && !hasCor) {
           setErrors((prev) => ({
             ...prev,
-            cor_veiculo:
+            cor_veiculo_visitante_id:
               "Cor do veículo é obrigatória quando a placa é informada",
           }));
           alert("Por favor, selecione a cor do veículo.");
           return false;
         }
 
-        if (hasCor && !hasPlaca) {
+        if (hasPlaca && !hasTipo) {
+          setErrors((prev) => ({
+            ...prev,
+            tipo_veiculo_visitante_id:
+              "Tipo do veículo é obrigatório quando a placa é informada",
+          }));
+          alert("Por favor, selecione o tipo do veículo.");
+          return false;
+        }
+
+        if ((hasCor || hasTipo) && !hasPlaca) {
           setErrors((prev) => ({
             ...prev,
             placa_veiculo:
-              "Placa do veículo é obrigatória quando a cor é informada",
+              "Placa do veículo é obrigatória quando a cor/tipo é informada",
           }));
           alert("Por favor, preencha a placa do veículo.");
           return false;
@@ -387,7 +404,8 @@ export default function CadastrarVisitante() {
 
     setErrors({
       placa_veiculo: "",
-      cor_veiculo: "",
+      cor_veiculo_visitante_id: "",
+      tipo_veiculo_visitante_id: "",
     });
 
     // Validação final
@@ -417,7 +435,15 @@ export default function CadastrarVisitante() {
       dataToSend.append("setor", form.setor_id);
       dataToSend.append("telefone", telefoneClean);
       dataToSend.append("placa_veiculo", placaClean);
-      dataToSend.append("cor_veiculo", form.cor_veiculo);
+      dataToSend.append(
+        "cor_veiculo_visitante_id",
+        form.cor_veiculo_visitante_id || ""
+      );
+      dataToSend.append(
+        "tipo_veiculo_visitante_id",
+        form.tipo_veiculo_visitante_id || ""
+      );
+      dataToSend.append("funcao_visitante_id", form.funcao_visitante_id || "");
       dataToSend.append("observacao", form.observacao);
 
       form.fotos.forEach((foto) => {
@@ -429,7 +455,6 @@ export default function CadastrarVisitante() {
       await api.post("/cadastro-visitantes", dataToSend, {
         headers: {
           "Content-Type": "multipart/form-data",
-          Authorization: localStorage.getItem("ongId"),
         },
         onUploadProgress: (progressEvent) => {
           const percentCompleted =
@@ -648,6 +673,23 @@ export default function CadastrarVisitante() {
                   </span>
                 </div>
 
+                <div className="form-group">
+                  <label className="form-label">Função do Visitante</label>
+                  <select
+                    name="funcao_visitante_id"
+                    className="form-select"
+                    value={form.funcao_visitante_id}
+                    onChange={handleChange}
+                  >
+                    <option value="">Selecione a função</option>
+                    {funcoesVisitantes.map((funcao) => (
+                      <option key={funcao.id} value={funcao.id}>
+                        {funcao.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">Placa do Veículo</label>
@@ -668,26 +710,48 @@ export default function CadastrarVisitante() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Cor do Veículo</label>
+                    <label className="form-label">Tipo do Veículo</label>
                     <select
-                      name="cor_veiculo"
-                      className={`form-select ${errors.cor_veiculo ? "error" : ""}`}
-                      value={form.cor_veiculo}
+                      name="tipo_veiculo_visitante_id"
+                      className={`form-select ${errors.tipo_veiculo_visitante_id ? "error" : ""}`}
+                      value={form.tipo_veiculo_visitante_id}
                       onChange={handleChange}
                     >
-                      <option value="">Selecione a cor</option>
-                      {opcoesCores.map((cor) => (
-                        <option key={cor} value={cor}>
-                          {cor}
+                      <option value="">Selecione o tipo</option>
+                      {tiposVeiculos.map((tipo) => (
+                        <option key={tipo.id} value={tipo.id}>
+                          {tipo.nome}
                         </option>
                       ))}
                     </select>
-                    {errors.cor_veiculo && (
+                    {errors.tipo_veiculo_visitante_id && (
                       <span className="error-message">
-                        {errors.cor_veiculo}
+                        {errors.tipo_veiculo_visitante_id}
                       </span>
                     )}
                   </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Cor do Veículo</label>
+                  <select
+                    name="cor_veiculo_visitante_id"
+                    className={`form-select ${errors.cor_veiculo_visitante_id ? "error" : ""}`}
+                    value={form.cor_veiculo_visitante_id}
+                    onChange={handleChange}
+                  >
+                    <option value="">Selecione a cor</option>
+                    {coresVeiculos.map((cor) => (
+                      <option key={cor.id} value={cor.id}>
+                        {cor.nome}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.cor_veiculo_visitante_id && (
+                    <span className="error-message">
+                      {errors.cor_veiculo_visitante_id}
+                    </span>
+                  )}
                 </div>
 
                 <div className="form-group">

@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useHistory } from "react-router-dom";
-import { FiImage, FiX, FiArrowLeft } from "react-icons/fi";
+import { FiImage, FiX } from "react-icons/fi";
 import "./styles.css";
-import logoImg from "../../assets/logo.svg";
 import api from "../../services/api";
 import Loading from "../../components/Loading";
 
@@ -11,7 +10,6 @@ export default function VisualizarVisitante() {
   const history = useHistory();
   const [visitor, setVisitor] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
-  const ongId = localStorage.getItem("ongId");
 
   useEffect(() => {
     async function fetchVisitor() {
@@ -48,48 +46,76 @@ export default function VisualizarVisitante() {
 
   return (
     <div className="view-visitor-container">
-      <header>
-        <div className="ajuste-Titulo">
-          <div className="page-title-group">
-            <h1 className="page-title">Visualização de Cadastro</h1>
-            <p className="page-subtitle">
-              Informações detalhadas do visitante.
-            </p>
-          </div>
-        </div>
-      </header>
-
       <div className="content">
-        <section className="visitor-details">
-          <div className="readonly-form">
+        <div className="view-header">
+          <h1>Visualização de Cadastro</h1>
+          <p>Informações detalhadas do visitante.</p>
+        </div>
+
+        <div className="readonly-form">
+          <div className="form-group">
             <label>Nome</label>
             <input value={visitor.nome} readOnly />
+          </div>
 
-            <label>Data de Nascimento</label>
-            <input type="date" value={visitor.nascimento} readOnly />
+          <div className="form-row">
+            <div className="form-group">
+              <label>Data de Nascimento</label>
+              <input type="date" value={visitor.nascimento} readOnly />
+            </div>
 
-            <label>CPF</label>
-            <input value={formatCPF(visitor.cpf)} readOnly />
+            <div className="form-group">
+              <label>CPF</label>
+              <input value={formatCPF(visitor.cpf)} readOnly />
+            </div>
+          </div>
 
-            <label>Empresa</label>
-            <input value={visitor.empresa} readOnly />
+          <div className="form-row">
+            <div className="form-group">
+              <label>Empresa</label>
+              <input value={visitor.empresa} readOnly />
+            </div>
 
-            <label>Setor</label>
-            <input value={visitor.setor} readOnly />
+            <div className="form-group">
+              <label>Setor</label>
+              <input value={visitor.setor} readOnly />
+            </div>
+          </div>
 
+          <div className="form-group">
+            <label>Função</label>
+            <input value={visitor.funcao || "Não informado"} readOnly />
+          </div>
+
+          <div className="form-group">
             <label>Placa do Veículo</label>
             <input value={visitor.placa_veiculo || "Não informado"} readOnly />
+          </div>
 
-            <label>Cor do Veículo</label>
-            <input value={visitor.cor_veiculo || "Não informado"} readOnly />
+          <div className="form-row">
+            <div className="form-group">
+              <label>Tipo do Veículo</label>
+              <input value={visitor.tipo_veiculo || "Não informado"} readOnly />
+            </div>
 
+            <div className="form-group">
+              <label>Cor do Veículo</label>
+              <input value={visitor.cor_veiculo || "Não informado"} readOnly />
+            </div>
+          </div>
+
+          <div className="form-group">
             <label>Telefone</label>
             <input value={formatTelefone(visitor.telefone)} readOnly />
+          </div>
 
+          <div className="form-group">
             <label>Observação</label>
-            <textarea value={visitor.observacao || ""} readOnly />
+            <textarea value={visitor.observacao || ""} readOnly rows={4} />
+          </div>
 
-            {/* Seção de visualização de fotos */}
+          {/* Seção de visualização de fotos */}
+          <div className="photo-gallery-section">
             <label>Fotos do Visitante</label>
             <div className="photo-gallery">
               {visitor.fotos && visitor.fotos.length > 0 ? (
@@ -113,13 +139,13 @@ export default function VisualizarVisitante() {
                 ))
               ) : (
                 <div className="no-photos">
-                  <FiImage size={24} color="#737380" />
+                  <FiImage size={24} color="#64748b" />
                   <span>Nenhuma foto cadastrada</span>
                 </div>
               )}
             </div>
           </div>
-        </section>
+        </div>
       </div>
 
       {/* Modal para visualização ampliada */}
@@ -146,7 +172,7 @@ export default function VisualizarVisitante() {
                 e.target.src =
                   "https://via.placeholder.com/600?text=Imagem+não+encontrada";
               }}
-              onContextMenu={(e) => e.preventDefault()} // 🔹 Impede clique direito
+              onContextMenu={(e) => e.preventDefault()}
             />
           </div>
         </div>

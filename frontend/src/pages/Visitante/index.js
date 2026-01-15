@@ -47,8 +47,8 @@ export default function Visitante() {
     // Visitante atualizado (ex: saiu)
     const unsubUpdate = socketService.on("visitante:updated", (dados) => {
       console.log("📝 Visitante atualizado via socket:", dados.id);
-      // Se exit_date foi definido, remove da lista de ativos
-      if (dados.exit_date) {
+      // Se data_de_saida foi definido, remove da lista de ativos
+      if (dados.data_de_saida) {
         setVisitors((prev) => {
           const novosVisitantes = prev.filter((v) => v.id !== dados.id);
           setCache("visitors", novosVisitantes);
@@ -149,8 +149,8 @@ export default function Visitante() {
   // Filtra visitantes por nome ou CPF
   const filteredVisitors = visitors.filter((visitor) => {
     const matchesSearch =
-      (visitor.name &&
-        visitor.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (visitor.nome &&
+        visitor.nome.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (visitor.cpf && visitor.cpf.includes(searchTerm));
     return matchesSearch;
   });
@@ -230,7 +230,9 @@ export default function Visitante() {
                   <th>CPF</th>
                   <th>Empresa</th>
                   <th>Setor</th>
+                  <th>Função</th>
                   <th className="th-center">Placa</th>
+                  <th className="th-center">Tipo</th>
                   <th className="th-center">Cor</th>
                   <th>Responsável</th>
                   <th>Data/Hora Entrada</th>
@@ -241,16 +243,20 @@ export default function Visitante() {
                 {filteredVisitors.map((visitor, index) => (
                   <tr key={visitor.id}>
                     <td data-label="#">{index + 1}</td>
-                    <td data-label="Nome">{visitor.name || "Não informado"}</td>
+                    <td data-label="Nome">{visitor.nome || "Não informado"}</td>
                     <td data-label="CPF">{visitor.cpf || "Não informado"}</td>
                     <td data-label="Empresa">
-                      {visitor.company || visitor.empresa || "Não informado"}
+                      {visitor.empresa || "Não informado"}
                     </td>
                     <td data-label="Setor">
-                      {visitor.sector || visitor.setor || "Não informado"}
+                      {visitor.setor || "Não informado"}
                     </td>
+                    <td data-label="Função">{visitor.funcao || "-"}</td>
                     <td data-label="Placa" className="td-center">
                       {visitor.placa_veiculo || "-"}
+                    </td>
+                    <td data-label="Tipo" className="td-center">
+                      {visitor.tipo_veiculo || "-"}
                     </td>
                     <td data-label="Cor" className="td-center">
                       {visitor.cor_veiculo || "-"}
@@ -259,9 +265,9 @@ export default function Visitante() {
                       {visitor.responsavel || "Não informado"}
                     </td>
                     <td data-label="Entrada">
-                      {visitor.entry_date
-                        ? new Date(visitor.entry_date).toLocaleString()
-                        : new Date(visitor.created_at).toLocaleString()}
+                      {visitor.data_de_entrada
+                        ? new Date(visitor.data_de_entrada).toLocaleString()
+                        : new Date(visitor.criado_em).toLocaleString()}
                     </td>
                     <td data-label="Ações" className="td-center">
                       <div className="visitante-actions">
@@ -276,7 +282,7 @@ export default function Visitante() {
                         </button>
                         <button
                           onClick={() => handleEndVisit(visitor.id)}
-                          className="visitante-end-btn"
+                          className="btn-primary"
                         >
                           <FiLogOut size={16} />
                           <span>Encerrar Visita</span>

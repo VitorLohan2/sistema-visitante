@@ -451,8 +451,8 @@ export function removeVisitanteFromCache(id) {
 export function addHistoricoToCache(registro) {
   const historico = getCache("history") || [];
   const newHistorico = [registro, ...historico].sort((a, b) => {
-    const dateA = new Date(a.entry_date || a.created_at);
-    const dateB = new Date(b.entry_date || b.created_at);
+    const dateA = new Date(a.data_de_entrada || a.criado_em);
+    const dateB = new Date(b.data_de_entrada || b.criado_em);
     return dateB - dateA;
   });
   setCache("history", newHistorico);

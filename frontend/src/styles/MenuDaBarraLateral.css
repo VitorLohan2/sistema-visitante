@@ -109,6 +109,17 @@
   background: rgba(5, 150, 105, 0.2);
 }
 
+/* Item ativo (página atual) */
+.nav-item.active {
+  background: rgba(5, 150, 105, 0.15);
+  color: white;
+  border-left-color: #10b981;
+}
+
+.nav-item.active svg {
+  color: #10b981;
+}
+
 .nav-item svg {
   flex-shrink: 0;
   color: #059669;
