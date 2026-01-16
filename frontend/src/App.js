@@ -6,6 +6,7 @@ import { AuthProvider } from "./hooks/useAuth";
 import { TicketProvider } from "./contexts/TicketContext";
 import { AgendamentoProvider } from "./contexts/AgendamentoContext";
 import { DescargaProvider } from "./contexts/DescargaContext";
+import ChatWidget from "./components/ChatWidget";
 
 function App() {
   return (
@@ -14,6 +15,8 @@ function App() {
         <AgendamentoProvider>
           <DescargaProvider>
             <Routes />
+            {/* Widget de Chat flutuante - disponível em todas as páginas */}
+            <ChatWidget />
           </DescargaProvider>
         </AgendamentoProvider>
       </TicketProvider>

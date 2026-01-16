@@ -1,4 +1,27 @@
-// src/contexts/TicketContext.js
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * TICKET CONTEXT - Gerenciamento Centralizado de Tickets de Suporte
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Responsabilidades:
+ * - Gerenciar estado global de tickets
+ * - Sincronizar via Socket.IO em tempo real
+ * - Cachear dados no sessionStorage
+ * - Fornecer contador de tickets não visualizados (badge)
+ * - Fornecer contador de tickets abertos
+ * - Tocar som de notificação para novos tickets
+ *
+ * Eventos Socket:
+ * - ticket:create     → Novo ticket criado
+ * - ticket:update     → Ticket atualizado
+ * - ticket:viewed     → Ticket visualizado
+ * - ticket:all_viewed → Todos tickets marcados como vistos
+ *
+ * Uso: const { tickets, unseenCount, ticketsAbertos } = useTickets();
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
 import React, {
   createContext,
   useContext,
@@ -21,6 +44,7 @@ export function TicketProvider({ children }) {
   const { isAuthenticated, user } = useAuth();
   const [tickets, setTickets] = useState([]);
   const [ticketsAbertos, setTicketsAbertos] = useState(0);
+  const [unseenCount, setUnseenCount] = useState(0); // Tickets não visualizados
   const [isLoading, setIsLoading] = useState(true);
   const socketListenersRef = useRef([]);
   const isInitializedRef = useRef(false);
@@ -43,10 +67,12 @@ export function TicketProvider({ children }) {
     }
   }, []);
 
-  // Calcular tickets abertos
+  // Calcular tickets abertos e não vistos
   const calcularTicketsAbertos = useCallback((ticketList) => {
     const abertos = ticketList.filter((t) => t.status === "Aberto").length;
+    const naoVistos = ticketList.filter((t) => !t.visualizado).length;
     setTicketsAbertos(abertos);
+    setUnseenCount(naoVistos);
     return abertos;
   }, []);
 
@@ -94,20 +120,24 @@ export function TicketProvider({ children }) {
 
     // Listener para ticket visualizado
     const unsubViewed = socketService.on("ticket:viewed", (dados) => {
+      console.log("🎫 TicketContext: Ticket visualizado via socket", dados.id);
       setTickets((prev) => {
         const novosTickets = prev.map((t) =>
-          t.id === dados.id ? { ...t, visto: true } : t
+          t.id === dados.id ? { ...t, visualizado: true } : t
         );
         setCache("tickets", novosTickets);
+        calcularTicketsAbertos(novosTickets); // Recalcula unseenCount
         return novosTickets;
       });
     });
 
     // Listener para todos visualizados
     const unsubAllViewed = socketService.on("ticket:all_viewed", () => {
+      console.log("🎫 TicketContext: Todos tickets visualizados via socket");
       setTickets((prev) => {
-        const novosTickets = prev.map((t) => ({ ...t, visto: true }));
+        const novosTickets = prev.map((t) => ({ ...t, visualizado: true }));
         setCache("tickets", novosTickets);
+        calcularTicketsAbertos(novosTickets); // Recalcula unseenCount (será 0)
         return novosTickets;
       });
     });
@@ -207,6 +237,7 @@ export function TicketProvider({ children }) {
     if (!isAuthenticated) {
       setTickets([]);
       setTicketsAbertos(0);
+      setUnseenCount(0);
       isInitializedRef.current = false;
       isFirstLoadRef.current = true;
     }
@@ -221,6 +252,7 @@ export function TicketProvider({ children }) {
     tickets,
     setTickets,
     ticketsAbertos,
+    unseenCount, // Tickets não vistos (para badge de notificação)
     isLoading,
     fetchTickets,
     setupSocketListeners,

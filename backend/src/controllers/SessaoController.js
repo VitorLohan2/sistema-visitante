@@ -6,7 +6,7 @@ module.exports = {
 
     const usuario = await connection("usuarios")
       .where("id", id)
-      .select("name", "setor_id")
+      .select("nome", "setor_id")
       .first();
 
     if (!usuario) {
@@ -24,7 +24,7 @@ module.exports = {
     const isAdmin = Array.isArray(papeis) && papeis.includes("ADMIN");
 
     return response.json({
-      name: usuario.name,
+      name: usuario.nome,
       isAdmin,
       papeis,
       setor_id: usuario.setor_id,
@@ -38,7 +38,7 @@ module.exports = {
 
     try {
       const usuario = await connection("usuarios")
-        .where({ email, birthdate: data_nascimento })
+        .where({ email, nascimento: data_nascimento })
         .select("id")
         .first();
 

@@ -173,9 +173,9 @@
   font-weight: 400;
 }
 
-.funcionarios-search-bar .btn-clear {
+.search-clear-btn-lf {
   position: absolute;
-  right: 14px;
+  right: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -183,16 +183,15 @@
   height: 28px;
   border: none;
   border-radius: 50%;
-  background: rgba(5, 150, 105, 0.1);
-  color: var(--func-primary);
+  background: rgba(229, 231, 235, 0.1);
+  color: #191d24;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.funcionarios-search-bar .btn-clear:hover {
-  background: var(--func-primary);
-  color: #fff;
-  transform: scale(1.1);
+.search-clear-btn-lf:hover {
+  background: #e5e7eb;
+  color: #374151;
 }
 
 .funcionarios-search-stats {

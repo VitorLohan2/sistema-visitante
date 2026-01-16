@@ -74,7 +74,7 @@ module.exports = {
           `${TABELA_VISITANTES}.*`,
           "empresa_visitante.nome as empresa_nome",
           "setor_visitante.nome as setor_nome",
-          "usuarios.name as cadastrado_por",
+          "usuarios.nome as cadastrado_por",
           "funcao_visitante.nome as funcao_nome",
           "veiculo_visitante.placa_veiculo",
           "cor_veiculo_visitante.nome as cor_veiculo",
@@ -398,6 +398,7 @@ module.exports = {
       tipo_veiculo_visitante_id,
       funcao_visitante_id,
       avatar_imagem,
+      bloqueado,
     } = request.body;
 
     try {
@@ -497,23 +498,30 @@ module.exports = {
       }
 
       // Atualiza
-      await connection(TABELA_VISITANTES)
-        .where("id", id)
-        .update({
-          nome,
-          nascimento,
-          cpf: cpf.replace(/\D/g, ""),
-          empresa_id: empresaData.id,
-          setor_id: setorData.id,
-          telefone,
-          observacao,
-          veiculo_visitante_id: veiculoVisitanteId,
-          funcao_visitante_id: funcao_visitante_id || null,
-          avatar_imagem: avatarToSave,
-          atualizado_em: new Date(), // Data de atualização
-        });
+      const updateData = {
+        nome,
+        nascimento,
+        cpf: cpf.replace(/\D/g, ""),
+        empresa_id: empresaData.id,
+        setor_id: setorData.id,
+        telefone,
+        observacao,
+        veiculo_visitante_id: veiculoVisitanteId,
+        funcao_visitante_id: funcao_visitante_id || null,
+        avatar_imagem: avatarToSave,
+        atualizado_em: new Date(), // Data de atualização
+      };
 
-      console.log("✅ Visitante atualizado:", id);
+      // Só inclui bloqueado se foi explicitamente enviado
+      if (bloqueado !== undefined) {
+        updateData.bloqueado = !!bloqueado;
+      }
+
+      await connection(TABELA_VISITANTES).where("id", id).update(updateData);
+
+      console.log("✅ Visitante atualizado:", id, {
+        bloqueado: updateData.bloqueado,
+      });
 
       // Busca o visitante atualizado com JOINs para emitir via Socket
       const visitanteAtualizado = await connection(TABELA_VISITANTES)

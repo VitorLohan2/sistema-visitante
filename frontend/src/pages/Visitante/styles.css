@@ -57,6 +57,27 @@
   letter-spacing: -0.5px;
 }
 
+.search-clear-btn-visitante {
+  position: absolute;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(229, 231, 235, 0.1);
+  color: #191d24;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.search-clear-btn-visitante:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
 /* CONTAINER DA TABELA - Card com header */
 .visitante-table-container {
   background: #ffffff;

@@ -1,5 +1,6 @@
 // controllers/PatchNotesController.js
 const db = require("../database/connection");
+const { getIo } = require("../socket");
 
 /**
  * Listar todos os patch notes (ordenados por data, mais recentes primeiro)
@@ -9,7 +10,7 @@ const listar = async (req, res) => {
     const patchNotes = await db("patch_notes")
       .select("*")
       .orderBy("data_lancamento", "desc")
-      .orderBy("created_at", "desc");
+      .orderBy("criado_em", "desc");
 
     res.json(patchNotes);
   } catch (error) {
@@ -23,6 +24,7 @@ const listar = async (req, res) => {
  */
 const criar = async (req, res) => {
   try {
+    const io = getIo();
     const { versao, titulo, descricao, tipo, data_lancamento } = req.body;
 
     // Validações
@@ -48,6 +50,9 @@ const criar = async (req, res) => {
         data_lancamento: data_lancamento || new Date(),
       })
       .returning("*");
+
+    // Emitir evento Socket.IO
+    io.to("global").emit("patch-note:created", novoPatchNote);
 
     res.status(201).json(novoPatchNote);
   } catch (error) {
@@ -81,6 +86,7 @@ const buscarPorId = async (req, res) => {
  */
 const atualizar = async (req, res) => {
   try {
+    const io = getIo();
     const { id } = req.params;
     const { versao, titulo, descricao, tipo, data_lancamento } = req.body;
 
@@ -104,9 +110,12 @@ const atualizar = async (req, res) => {
         descricao: descricao || patchNote.descricao,
         tipo: tipo || patchNote.tipo,
         data_lancamento: data_lancamento || patchNote.data_lancamento,
-        updated_at: new Date(),
+        atualizado_em: new Date(),
       })
       .returning("*");
+
+    // Emitir evento Socket.IO
+    io.to("global").emit("patch-note:updated", patchNoteAtualizado);
 
     res.json(patchNoteAtualizado);
   } catch (error) {
@@ -120,6 +129,7 @@ const atualizar = async (req, res) => {
  */
 const deletar = async (req, res) => {
   try {
+    const io = getIo();
     const { id } = req.params;
 
     const patchNote = await db("patch_notes").where({ id }).first();
@@ -128,6 +138,9 @@ const deletar = async (req, res) => {
     }
 
     await db("patch_notes").where({ id }).del();
+
+    // Emitir evento Socket.IO
+    io.to("global").emit("patch-note:deleted", { id });
 
     res.json({ message: "Atualização removida com sucesso" });
   } catch (error) {

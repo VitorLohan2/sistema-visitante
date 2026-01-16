@@ -181,23 +181,9 @@ export default function Visitante() {
               />
               {searchTerm && (
                 <button
-                  className="search-clear-btn"
+                  className="search-clear-btn-visitante"
                   onClick={() => setSearchTerm("")}
                   title="Limpar busca"
-                  style={{
-                    position: "absolute",
-                    right: 14,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: 28,
-                    height: 28,
-                    border: "none",
-                    borderRadius: "50%",
-                    background: "rgba(224, 32, 65, 0.1)",
-                    color: "#e02041",
-                    cursor: "pointer",
-                  }}
                 >
                   <FiX size={16} />
                 </button>

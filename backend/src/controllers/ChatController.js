@@ -112,7 +112,7 @@ module.exports = {
 
       const usuario = await connection("usuarios")
         .where("id", usuario_id)
-        .select("name", "setor_id")
+        .select("nome", "setor_id")
         .first();
 
       if (!usuario) {
@@ -136,7 +136,7 @@ module.exports = {
       const [novaConversa] = await connection("conversas_suporte")
         .insert({
           usuario_id,
-          usuario_nome: usuario.name,
+          usuario_nome: usuario.nome,
           assunto: assunto || "Suporte Técnico",
           status: "aberto",
           data_criacao: brasiliaTime,
@@ -258,7 +258,7 @@ module.exports = {
 
       const remetente = await connection("usuarios")
         .where("id", usuario_id)
-        .select("name", "setor_id")
+        .select("nome", "setor_id")
         .first();
 
       if (!remetente) {
@@ -280,7 +280,7 @@ module.exports = {
         .insert({
           conversa_id,
           remetente_id: usuario_id,
-          remetente_nome: remetente.name,
+          remetente_nome: remetente.nome,
           remetente_tipo: userIsAdmTI ? "ADM" : "USER",
           mensagem: mensagem.trim(),
           data_envio: brasiliaTime,
@@ -294,7 +294,7 @@ module.exports = {
       if (isAdmTI && conversa.status === "aberto") {
         updateData.status = "em_atendimento";
         updateData.atendente_id = usuario_id;
-        updateData.atendente_nome = remetente.name;
+        updateData.atendente_nome = remetente.nome;
       }
 
       await connection("conversas_suporte")
@@ -372,7 +372,7 @@ module.exports = {
 
       const usuario = await connection("usuarios")
         .where("id", usuario_id)
-        .select("name", "setor_id")
+        .select("nome", "setor_id")
         .first();
 
       // ✅ Verifica se é ADM de TI ou dono da conversa
@@ -570,8 +570,8 @@ module.exports = {
         .join("papeis", "usuarios_papeis.papel_id", "papeis.id")
         .where("papeis.nome", "ADMIN")
         .where("usuarios.setor_id", 7)
-        .select("usuarios.id", "usuarios.name", "usuarios.email")
-        .orderBy("usuarios.name", "asc");
+        .select("usuarios.id", "usuarios.nome", "usuarios.email")
+        .orderBy("usuarios.nome", "asc");
 
       console.log(
         `✅ ${equipeADM.length} membros ADM de TI encontrados no banco`
@@ -594,7 +594,7 @@ module.exports = {
             if (userInfo && !onlineUsers.find((u) => u.id === socket.userId)) {
               onlineUsers.push({
                 id: userInfo.id,
-                nome: userInfo.name,
+                nome: userInfo.nome,
                 email: userInfo.email,
               });
             }

@@ -1,9 +1,15 @@
 // src/hooks/usePermissoes.js
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import permissoesService from "../services/permissoesService";
+import { getPermissoesCache } from "../services/cacheService";
 
 /**
  * Hook para gerenciar permissões do usuário no React
+ *
+ * OTIMIZADO: Inicializa com cache para evitar "piscar" na UI
+ * - Primeiro verifica o cache (memória + sessionStorage)
+ * - Se existir, usa imediatamente sem loading
+ * - Se não existir, carrega da API
  *
  * @example
  * const { temPermissao, isAdmin, loading, papeis } = usePermissoes();
@@ -14,20 +20,44 @@ import permissoesService from "../services/permissoesService";
  * {isAdmin && <MenuAdmin />}
  */
 export function usePermissoes() {
-  const [permissoes, setPermissoes] = useState([]);
-  const [papeis, setPapeis] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // ═══════════════════════════════════════════════════════════════
+  // INICIALIZAÇÃO COM CACHE (evita "piscar" na UI)
+  // ═══════════════════════════════════════════════════════════════
+  const initialCacheRef = useRef(() => {
+    const cached = getPermissoesCache();
+    return {
+      permissoes: cached.permissoes || [],
+      papeis: cached.papeis || [],
+      hasCache: !!(cached.permissoes && cached.papeis),
+    };
+  });
 
-  // Carregar permissões ao montar
+  const initialData = initialCacheRef.current();
+
+  const [permissoes, setPermissoes] = useState(initialData.permissoes);
+  const [papeis, setPapeis] = useState(initialData.papeis);
+  // Se já tem cache, não mostra loading
+  const [loading, setLoading] = useState(!initialData.hasCache);
+
+  // Ref para evitar carregamentos duplicados
+  const isLoadedRef = useRef(initialData.hasCache);
+
+  // Carregar permissões ao montar (apenas se não tiver cache)
   useEffect(() => {
     let isMounted = true;
 
     async function carregarPermissoes() {
+      // Se já carregou ou já tem cache válido, não recarrega
+      if (isLoadedRef.current) {
+        return;
+      }
+
       try {
         const dados = await permissoesService.buscarMinhasPermissoes();
         if (isMounted) {
           setPermissoes(dados.permissoes || []);
           setPapeis(dados.papeis || []);
+          isLoadedRef.current = true;
         }
       } catch (error) {
         console.error("Erro ao carregar permissões:", error);
@@ -95,11 +125,13 @@ export function usePermissoes() {
    */
   const recarregar = useCallback(async () => {
     setLoading(true);
+    isLoadedRef.current = false;
     permissoesService.limparCachePermissoes();
     try {
       const dados = await permissoesService.buscarMinhasPermissoes();
       setPermissoes(dados.permissoes || []);
       setPapeis(dados.papeis || []);
+      isLoadedRef.current = true;
     } catch (error) {
       console.error("Erro ao recarregar permissões:", error);
     } finally {

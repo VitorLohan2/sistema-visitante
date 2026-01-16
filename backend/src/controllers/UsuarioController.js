@@ -34,19 +34,19 @@ module.exports = {
         )
         .select(
           `${TABELA_USUARIOS}.id`,
-          `${TABELA_USUARIOS}.name as nome`,
+          `${TABELA_USUARIOS}.nome`,
           `${TABELA_USUARIOS}.email`,
           `${TABELA_USUARIOS}.whatsapp`,
           `${TABELA_USUARIOS}.cpf`,
-          `${TABELA_USUARIOS}.birthdate as data_nascimento`,
-          `${TABELA_USUARIOS}.city as cidade`,
+          `${TABELA_USUARIOS}.nascimento as data_nascimento`,
+          `${TABELA_USUARIOS}.cidade`,
           `${TABELA_USUARIOS}.uf`,
           `${TABELA_USUARIOS}.empresa_id`,
           `${TABELA_USUARIOS}.setor_id`,
           "empresa_interno.nome as empresa_nome",
           "setor_usuario.nome as setor_nome"
         )
-        .orderBy(`${TABELA_USUARIOS}.name`, "asc");
+        .orderBy(`${TABELA_USUARIOS}.nome`, "asc");
 
       return response.json(usuarios);
     } catch (error) {
@@ -117,14 +117,14 @@ module.exports = {
       // Dados para inserção
       const dadosInsercao = {
         id,
-        name,
-        birthdate: birthdate || null,
+        nome: name,
+        nascimento: birthdate || null,
         cpf: cleanedCpf,
         empresa_id: empresa_id || null,
         setor_id: setor_id || null,
         email: email.toLowerCase(),
         whatsapp: cleanedWhatsapp,
-        city: city || null,
+        cidade: city || null,
         uf: uf ? uf.toUpperCase() : null,
         type: tipoUsuario,
       };
@@ -182,21 +182,21 @@ module.exports = {
         .where(`${TABELA_USUARIOS}.id`, id)
         .select(
           `${TABELA_USUARIOS}.id`,
-          `${TABELA_USUARIOS}.name as nome`,
+          `${TABELA_USUARIOS}.nome`,
           `${TABELA_USUARIOS}.email`,
           `${TABELA_USUARIOS}.whatsapp`,
           `${TABELA_USUARIOS}.cpf`,
-          `${TABELA_USUARIOS}.birthdate as data_nascimento`,
-          `${TABELA_USUARIOS}.city as cidade`,
+          `${TABELA_USUARIOS}.nascimento as data_nascimento`,
+          `${TABELA_USUARIOS}.cidade`,
           `${TABELA_USUARIOS}.uf`,
           `${TABELA_USUARIOS}.empresa_id`,
           `${TABELA_USUARIOS}.setor_id`,
           "empresa_interno.nome as empresa_nome",
           "setor_usuario.nome as setor_nome",
           // Campos antigos para compatibilidade
-          `${TABELA_USUARIOS}.name`,
-          `${TABELA_USUARIOS}.birthdate`,
-          `${TABELA_USUARIOS}.city`,
+          `${TABELA_USUARIOS}.nome as name`,
+          `${TABELA_USUARIOS}.nascimento as birthdate`,
+          `${TABELA_USUARIOS}.cidade as city`,
           "empresa_interno.nome as empresa",
           "setor_usuario.nome as setor"
         )
@@ -310,17 +310,17 @@ module.exports = {
       await connection(TABELA_USUARIOS)
         .where("id", id)
         .update({
-          name: name || usuarioExiste.name,
-          birthdate: birthdate || usuarioExiste.birthdate,
+          nome: name || usuarioExiste.nome,
+          nascimento: birthdate || usuarioExiste.nascimento,
           cpf: cleanedCpf,
           empresa_id:
             empresa_id !== undefined ? empresa_id : usuarioExiste.empresa_id,
           setor_id: setor_id !== undefined ? setor_id : usuarioExiste.setor_id,
           email: email ? email.toLowerCase() : usuarioExiste.email,
           whatsapp: cleanedWhatsapp,
-          city: city !== undefined ? city : usuarioExiste.city,
+          cidade: city !== undefined ? city : usuarioExiste.cidade,
           uf: uf ? uf.toUpperCase() : usuarioExiste.uf,
-          updated_at: connection.fn.now(),
+          atualizado_em: connection.fn.now(),
         });
 
       console.log("✅ Usuário atualizado:", id);
@@ -417,19 +417,19 @@ module.exports = {
         .where(`${TABELA_USUARIOS}.id`, id)
         .select(
           `${TABELA_USUARIOS}.id`,
-          `${TABELA_USUARIOS}.name as nome`,
+          `${TABELA_USUARIOS}.nome`,
           `${TABELA_USUARIOS}.email`,
           `${TABELA_USUARIOS}.whatsapp`,
           `${TABELA_USUARIOS}.cpf`,
-          `${TABELA_USUARIOS}.birthdate as data_nascimento`,
-          `${TABELA_USUARIOS}.city as cidade`,
+          `${TABELA_USUARIOS}.nascimento as data_nascimento`,
+          `${TABELA_USUARIOS}.cidade`,
           `${TABELA_USUARIOS}.uf`,
           `${TABELA_USUARIOS}.empresa_id`,
           `${TABELA_USUARIOS}.setor_id`,
           "empresa_interno.nome as empresa_nome",
           "setor_usuario.nome as setor_nome",
           // Campos antigos para compatibilidade
-          `${TABELA_USUARIOS}.name`
+          `${TABELA_USUARIOS}.nome as name`
         )
         .first();
 
@@ -555,14 +555,14 @@ module.exports = {
       // Dados para inserção (sem type - agora usa papeis)
       const dadosInsercao = {
         id,
-        name: nome,
-        birthdate: data_nascimento || null,
+        nome: nome,
+        nascimento: data_nascimento || null,
         cpf: cleanedCpf,
         empresa_id: empresa_id || null,
         setor_id: setor_id || null,
         email: email.toLowerCase(),
         whatsapp: cleanedWhatsapp,
-        city: cidade || null,
+        cidade: cidade || null,
         uf: uf ? uf.toUpperCase() : null,
       };
 

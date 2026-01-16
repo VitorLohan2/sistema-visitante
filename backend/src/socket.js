@@ -64,6 +64,64 @@ function init(server) {
       return;
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // EVENTOS DO CHAT DE SUPORTE
+    // ═══════════════════════════════════════════════════════════════
+
+    // 👉 ENTRAR NA CONVERSA DE CHAT SUPORTE
+    socket.on("chat-suporte:entrar", (conversa_id) => {
+      socket.join(`conversa:${conversa_id}`);
+      console.log(
+        `💬 Socket ${socket.id} entrou na conversa de suporte ${conversa_id}`
+      );
+    });
+
+    // 👉 SAIR DA CONVERSA DE CHAT SUPORTE
+    socket.on("chat-suporte:sair", (conversa_id) => {
+      socket.leave(`conversa:${conversa_id}`);
+      console.log(
+        `💬 Socket ${socket.id} saiu da conversa de suporte ${conversa_id}`
+      );
+    });
+
+    // 👉 ATENDENTE ENTRA NA SALA DE ATENDENTES
+    socket.on("chat-suporte:atendente-online", async () => {
+      socket.join("atendentes");
+      console.log(
+        `👨‍💼 Atendente ${socket.userName} entrou na sala de atendentes`
+      );
+
+      // Emite atualização da fila para o novo atendente
+      const FilaService = require("./services/ChatFilaService");
+      const fila = await FilaService.listar();
+      socket.emit("chat-suporte:fila-atualizada", { fila });
+    });
+
+    // 👉 ATENDENTE SAI DA SALA DE ATENDENTES
+    socket.on("chat-suporte:atendente-offline", () => {
+      socket.leave("atendentes");
+      console.log(`👨‍💼 Atendente ${socket.userName} saiu da sala de atendentes`);
+    });
+
+    // 👉 DIGITANDO (usuário ou atendente)
+    socket.on("chat-suporte:digitando", ({ conversa_id, nome }) => {
+      socket.to(`conversa:${conversa_id}`).emit("chat-suporte:digitando", {
+        conversa_id,
+        nome,
+      });
+    });
+
+    // 👉 PAROU DE DIGITAR
+    socket.on("chat-suporte:parou-digitar", ({ conversa_id }) => {
+      socket.to(`conversa:${conversa_id}`).emit("chat-suporte:parou-digitar", {
+        conversa_id,
+      });
+    });
+
+    // ═══════════════════════════════════════════════════════════════
+    // EVENTOS LEGADOS (CHAT INTERNO)
+    // ═══════════════════════════════════════════════════════════════
+
     // 👉 ENTRAR NA CONVERSA
     socket.on("entrar_conversa", (conversa_id) => {
       socket.join(`conversa:${conversa_id}`);
@@ -146,8 +204,8 @@ async function enviarEquipeOnlineParaSocket(socket) {
       .join("papeis", "usuarios_papeis.papel_id", "papeis.id")
       .where("papeis.nome", "ADMIN")
       .where("usuarios.setor_id", 7)
-      .select("usuarios.id", "usuarios.name", "usuarios.email")
-      .orderBy("usuarios.name", "asc");
+      .select("usuarios.id", "usuarios.nome", "usuarios.email")
+      .orderBy("usuarios.nome", "asc");
 
     // Verificar quais ADMINs de TI estão online
     const onlineUsers = [];
@@ -160,7 +218,7 @@ async function enviarEquipeOnlineParaSocket(socket) {
             if (userInfo) {
               onlineUsers.push({
                 id: userInfo.id,
-                nome: userInfo.name,
+                nome: userInfo.nome,
                 email: userInfo.email,
               });
             }
@@ -191,8 +249,8 @@ async function emitirEquipeOnlineAtualizada() {
       .join("papeis", "usuarios_papeis.papel_id", "papeis.id")
       .where("papeis.nome", "ADMIN")
       .where("usuarios.setor_id", 7)
-      .select("usuarios.id", "usuarios.name", "usuarios.email")
-      .orderBy("usuarios.name", "asc");
+      .select("usuarios.id", "usuarios.nome", "usuarios.email")
+      .orderBy("usuarios.nome", "asc");
 
     // Verificar quais ADMINs de TI estão online
     const onlineUsers = [];
@@ -205,7 +263,7 @@ async function emitirEquipeOnlineAtualizada() {
             if (userInfo) {
               onlineUsers.push({
                 id: userInfo.id,
-                nome: userInfo.name,
+                nome: userInfo.nome,
                 email: userInfo.email,
               });
             }

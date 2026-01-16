@@ -1,6 +1,5 @@
 // src/pages/Home/index.js
-import React, { useState, useEffect } from "react";
-import { useHistory } from "react-router-dom";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   FiCheckCircle,
   FiAlertTriangle,
@@ -16,20 +15,32 @@ import {
 } from "react-icons/fi";
 import { useAuth } from "../../hooks/useAuth";
 import { usePermissoes } from "../../hooks/usePermissoes";
+import { useDataLoader } from "../../hooks/useDataLoader";
 import MenuDaBarraLateral from "../../components/MenuDaBarraLateral";
+import Loading from "../../components/Loading";
 import api from "../../services/api";
 import "./styles.css";
 
 export default function Home() {
-  const history = useHistory();
   const { user } = useAuth();
-  const { temPermissao, isAdmin } = usePermissoes();
+  const { temPermissao, isAdmin, loading: permissoesLoading } = usePermissoes();
+
+  // ═══════════════════════════════════════════════════════════════
+  // CARREGAMENTO DE DADOS DO SISTEMA (ÚNICA VEZ NO LOGIN)
+  // Atualização em tempo real via Socket.IO
+  // ═══════════════════════════════════════════════════════════════
+  const {
+    loading,
+    progress,
+    progressMessage,
+    patchNotes: cachedPatchNotes,
+  } = useDataLoader(user?.id);
+
   const [currentTime, setCurrentTime] = useState(new Date());
   const [feedback, setFeedback] = useState("");
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [sendingFeedback, setSendingFeedback] = useState(false);
   const [patchNotes, setPatchNotes] = useState([]);
-  const [loadingPatchNotes, setLoadingPatchNotes] = useState(true);
 
   // Estados para o modal de criar/editar patch note
   const [showPatchNoteModal, setShowPatchNoteModal] = useState(false);
@@ -50,22 +61,12 @@ export default function Home() {
     lastUpdate: "15/01/2026",
   });
 
-  // Busca as atualizações do sistema da API
-  const fetchPatchNotes = async () => {
-    try {
-      const response = await api.get("/patch-notes");
-      setPatchNotes(response.data);
-    } catch (err) {
-      console.error("Erro ao buscar atualizações:", err);
-      setPatchNotes([]);
-    } finally {
-      setLoadingPatchNotes(false);
-    }
-  };
-
+  // Sincroniza patchNotes do cache quando carregados
   useEffect(() => {
-    fetchPatchNotes();
-  }, []);
+    if (cachedPatchNotes && cachedPatchNotes.length > 0) {
+      setPatchNotes(cachedPatchNotes);
+    }
+  }, [cachedPatchNotes]);
 
   // Atualiza o relógio a cada segundo
   useEffect(() => {
@@ -193,7 +194,7 @@ export default function Home() {
       } else {
         await api.post("/patch-notes", patchNoteForm);
       }
-      await fetchPatchNotes();
+      // Socket.IO vai sincronizar automaticamente via cache
       handleCloseModal();
     } catch (err) {
       console.error("Erro ao salvar atualização:", err);
@@ -211,16 +212,35 @@ export default function Home() {
 
     try {
       await api.delete(`/patch-notes/${id}`);
-      await fetchPatchNotes();
+      // Socket.IO vai sincronizar automaticamente via cache
     } catch (err) {
       console.error("Erro ao excluir atualização:", err);
       alert("Erro ao excluir atualização.");
     }
   };
 
+  // Memoiza permissões para evitar re-renderizações
+  const podeGerenciarPatchNotes = useMemo(() => {
+    return isAdmin || temPermissao("patch_notes_gerenciar");
+  }, [isAdmin, temPermissao]);
+
+  // Memoiza o menu para evitar re-renderizações desnecessárias
+  const memoizedMenu = useMemo(() => {
+    // Só renderiza quando permissões estão carregadas
+    if (permissoesLoading) return null;
+    return <MenuDaBarraLateral key="home-menu" />;
+  }, [permissoesLoading]);
+
+  // ═══════════════════════════════════════════════════════════════
+  // LOADING CENTRALIZADO
+  // ═══════════════════════════════════════════════════════════════
+  if (loading || permissoesLoading) {
+    return <Loading progress={progress} message={progressMessage} />;
+  }
+
   return (
     <div className="home-container">
-      <MenuDaBarraLateral />
+      {memoizedMenu}
 
       <main className="home-content">
         {/* Header com saudação */}
@@ -279,7 +299,7 @@ export default function Home() {
             <div className="card-header">
               <FiZap size={20} />
               <h3>Atualizações do Sistema</h3>
-              {(isAdmin || temPermissao("patch_notes_gerenciar")) && (
+              {podeGerenciarPatchNotes && (
                 <button
                   className="add-patch-note-btn"
                   onClick={handleOpenCreateModal}
@@ -290,11 +310,7 @@ export default function Home() {
               )}
             </div>
             <div className="updates-list">
-              {loadingPatchNotes ? (
-                <div className="loading-updates">
-                  Carregando atualizações...
-                </div>
-              ) : patchNotes.length === 0 ? (
+              {patchNotes.length === 0 ? (
                 <div className="no-updates">Nenhuma atualização disponível</div>
               ) : (
                 patchNotes.map((note, index) => (
@@ -308,7 +324,7 @@ export default function Home() {
                             "pt-BR"
                           )}
                         </span>
-                        {(isAdmin || temPermissao("patch_notes_gerenciar")) && (
+                        {podeGerenciarPatchNotes && (
                           <div className="update-actions">
                             <button
                               className="update-action-btn edit"

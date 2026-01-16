@@ -57,6 +57,7 @@ module.exports = {
           nome_usuario: nomeUsuario,
           setor_usuario: setorUsuario,
           status: "Aberto",
+          visualizado: false, // Novos tickets não são visualizados
           data_criacao,
         })
         .returning("id");
@@ -72,6 +73,7 @@ module.exports = {
         nome_usuario: nomeUsuario,
         setor_usuario: setorUsuario,
         status: "Aberto",
+        visualizado: false, // Novos tickets não são visualizados
         data_criacao,
       });
 
@@ -119,7 +121,7 @@ module.exports = {
       const tickets = await connection("tickets")
         .select(
           "tickets.*",
-          "usuarios.name as usuario_name",
+          "usuarios.nome as usuario_name",
           "usuarios.setor_id as usuario_setor_id"
         )
         .leftJoin("usuarios", "tickets.usuario_id", "usuarios.id")
@@ -239,7 +241,7 @@ module.exports = {
         .where("tickets.id", id)
         .select(
           "tickets.*",
-          "usuarios.name as usuario_name",
+          "usuarios.nome as usuario_name",
           "usuarios.setor_id as usuario_setor_id"
         )
         .leftJoin("usuarios", "tickets.usuario_id", "usuarios.id")

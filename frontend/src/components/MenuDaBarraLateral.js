@@ -1,3 +1,20 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * MENU DA BARRA LATERAL - Componente de Navegação Principal
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Responsabilidades:
+ * - Exibir menu de navegação lateral responsivo
+ * - Exibir badge de notificações de tickets (via TicketContext)
+ * - Controlar acesso baseado em permissões
+ * - Mostrar contadores de agendamentos e descargas pendentes
+ *
+ * Dados de notificação: Fornecidos pelos Contexts (TicketContext, AgendamentoContext, DescargaContext)
+ * Atualização: Via Socket.IO em tempo real (gerenciado pelos Contexts)
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
 import React, { useState, useEffect, useRef } from "react";
 import { useHistory, useLocation } from "react-router-dom";
 import {
@@ -16,35 +33,48 @@ import {
   FiShield,
   FiTruck,
   FiList,
+  FiHeadphones,
 } from "react-icons/fi";
 import { useAuth } from "../hooks/useAuth";
 import { usePermissoes } from "../hooks/usePermissoes";
 import { useAgendamentos } from "../contexts/AgendamentoContext";
 import { useDescargas } from "../contexts/DescargaContext";
+import { useTickets } from "../contexts/TicketContext";
 import "../styles/MenuDaBarraLateral.css";
 
-export default function MenuDaBarraLateral({ unseenCount }) {
+export default function MenuDaBarraLateral() {
   const history = useHistory();
   const location = useLocation();
   const { user, logout } = useAuth();
   const { isAdmin, temPermissao, papeis } = usePermissoes();
+
+  // ═══════════════════════════════════════════════════════════════
+  // DADOS DOS CONTEXTS (atualizados via Socket.IO automaticamente)
+  // ═══════════════════════════════════════════════════════════════
   const { agendamentosAbertos } = useAgendamentos();
   const { solicitacoesPendentes } = useDescargas();
+  const { unseenCount } = useTickets(); // Badge de tickets não vistos
+
+  // Estados locais
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sidebarRef = useRef(null);
 
-  // Verificar se é da Segurança
+  // Verifica se usuário é da Segurança
   const isSeguranca =
     papeis.includes("SEGURANÇA") || papeis.includes("SEGURANCA");
 
-  // Função para verificar se a rota está ativa
+  // ═══════════════════════════════════════════════════════════════
+  // HELPERS
+  // ═══════════════════════════════════════════════════════════════
+
+  // Verifica se a rota está ativa
   const isActive = (path) => {
     return (
       location.pathname === path || location.pathname.startsWith(path + "/")
     );
   };
 
-  // Fechar sidebar ao clicar fora (mobile)
+  // Fecha sidebar ao clicar fora (mobile)
   useEffect(() => {
     function handleClickOutside(event) {
       if (sidebarRef.current && !sidebarRef.current.contains(event.target)) {
@@ -181,6 +211,21 @@ export default function MenuDaBarraLateral({ unseenCount }) {
                   {unseenCount > 9 ? "9+" : unseenCount}
                 </span>
               )}
+            </button>
+          )}
+
+          {/* ═══════════════════════════════════════════════════════════════ */}
+          {/* MÓDULO: CHAT SUPORTE */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
+
+          {/* Painel de Atendimento - chat_atendente_acessar_painel */}
+          {(isAdmin || temPermissao("chat_atendente_acessar_painel")) && (
+            <button
+              className={`nav-item ${isActive("/chat-suporte/atendente") ? "active" : ""}`}
+              onClick={() => handleNavigation("/chat-suporte/atendente")}
+            >
+              <FiHeadphones size={20} />
+              <span>Chat de Suporte</span>
             </button>
           )}
 

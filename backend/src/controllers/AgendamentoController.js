@@ -248,11 +248,11 @@ module.exports = {
         .update({
           confirmado: true,
           confirmado_em: new Date().toISOString(),
-          confirmado_por: usuario.name,
+          confirmado_por: usuario.nome,
         })
         .returning("*");
 
-      console.log("✅ Agendamento confirmado por:", usuario.name);
+      console.log("✅ Agendamento confirmado por:", usuario.nome);
 
       io.to("global").emit("agendamento:update", agendamentoAtualizado);
       console.log("📡 Evento agendamento:update emitido (confirmação)");
@@ -306,12 +306,10 @@ module.exports = {
       const autorizado = podeExcluir || agendamento.usuario_id === usuario_id;
 
       if (!autorizado) {
-        return response
-          .status(403)
-          .json({
-            error:
-              "Sem permissão para excluir este agendamento. Necessário: agendamento_deletar",
-          });
+        return response.status(403).json({
+          error:
+            "Sem permissão para excluir este agendamento. Necessário: agendamento_deletar",
+        });
       }
 
       await connection("agendamentos").where("id", id).delete();
@@ -389,11 +387,11 @@ module.exports = {
         .update({
           presente: true,
           presente_em: new Date().toISOString(),
-          presente_por: usuario.name,
+          presente_por: usuario.nome,
         })
         .returning("*");
 
-      console.log("✅ Presença registrada por:", usuario.name);
+      console.log("✅ Presença registrada por:", usuario.nome);
 
       io.to("global").emit("agendamento:update", agendamentoAtualizado);
       console.log("📡 Evento agendamento:update emitido (presença)");

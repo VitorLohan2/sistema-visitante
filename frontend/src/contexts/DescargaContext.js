@@ -1,4 +1,24 @@
-// src/contexts/DescargaContext.js
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * DESCARGA CONTEXT - Gerenciamento Centralizado de Descargas
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Responsabilidades:
+ * - Gerenciar contador de solicitações de descarga pendentes
+ * - Sincronizar via Socket.IO em tempo real
+ * - Cachear dados no sessionStorage
+ * - Fornecer contador para badge de notificação
+ * - Tocar som de notificação para novas solicitações
+ *
+ * Eventos Socket:
+ * - descarga:nova      → Nova solicitação criada
+ * - descarga:atualizada → Solicitação aprovada/rejeitada
+ *
+ * Uso: const { solicitacoesPendentes } = useDescargas();
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
 import React, {
   createContext,
   useContext,
@@ -9,6 +29,7 @@ import React, {
 } from "react";
 import api from "../services/api";
 import * as socketService from "../services/socketService";
+import { getCache, setCache } from "../services/cacheService";
 import { useAuth } from "../hooks/useAuth";
 
 // Importar som de notificação
@@ -18,10 +39,15 @@ const DescargaContext = createContext({});
 
 export function DescargaProvider({ children }) {
   const { isAuthenticated } = useAuth();
-  const [solicitacoesPendentes, setSolicitacoesPendentes] = useState(0);
+
+  // Inicializa com valor do cache se disponível
+  const [solicitacoesPendentes, setSolicitacoesPendentes] = useState(
+    () => getCache("descargasPendentes") || 0
+  );
   const [isLoading, setIsLoading] = useState(true);
   const socketListenersRef = useRef([]);
   const isInitializedRef = useRef(false);
+  const isFirstLoadRef = useRef(true);
   const audioRef = useRef(null);
 
   // Inicializar áudio
@@ -44,16 +70,26 @@ export function DescargaProvider({ children }) {
   const fetchPendentes = useCallback(async () => {
     if (!isAuthenticated) {
       setSolicitacoesPendentes(0);
+      setCache("descargasPendentes", 0);
       return;
     }
 
     try {
       setIsLoading(true);
       const response = await api.get("/solicitacoes-descarga/pendentes/count");
-      setSolicitacoesPendentes(response.data.count || 0);
+      const count = response.data.count || 0;
+
+      console.log("🚚 DescargaContext: Carregado da API", count, "pendentes");
+      setSolicitacoesPendentes(count);
+      setCache("descargasPendentes", count);
+      isFirstLoadRef.current = false;
     } catch (error) {
       console.error("Erro ao buscar solicitações pendentes:", error);
-      setSolicitacoesPendentes(0);
+      // Usar cache em caso de erro
+      const cached = getCache("descargasPendentes");
+      if (cached !== null) {
+        setSolicitacoesPendentes(cached);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -72,11 +108,17 @@ export function DescargaProvider({ children }) {
         solicitacao.protocolo
       );
 
-      // Toca som de notificação
-      playNotificationSound();
+      // Toca som de notificação (apenas se não for o primeiro load)
+      if (!isFirstLoadRef.current) {
+        playNotificationSound();
+      }
 
-      // Incrementar contador de pendentes
-      setSolicitacoesPendentes((prev) => prev + 1);
+      // Incrementar contador de pendentes e salvar no cache
+      setSolicitacoesPendentes((prev) => {
+        const novoValor = prev + 1;
+        setCache("descargasPendentes", novoValor);
+        return novoValor;
+      });
     });
 
     // Listener para solicitação atualizada (aprovada/rejeitada/ajustada)
@@ -88,7 +130,11 @@ export function DescargaProvider({ children }) {
 
       // Se foi aprovada ou rejeitada, decrementar contador de pendentes
       if (dados.status === "aprovado" || dados.status === "rejeitado") {
-        setSolicitacoesPendentes((prev) => Math.max(0, prev - 1));
+        setSolicitacoesPendentes((prev) => {
+          const novoValor = Math.max(0, prev - 1);
+          setCache("descargasPendentes", novoValor);
+          return novoValor;
+        });
       }
     });
 
@@ -114,7 +160,9 @@ export function DescargaProvider({ children }) {
   useEffect(() => {
     if (!isAuthenticated) {
       setSolicitacoesPendentes(0);
+      setCache("descargasPendentes", 0);
       isInitializedRef.current = false;
+      isFirstLoadRef.current = true;
     }
   }, [isAuthenticated]);
 

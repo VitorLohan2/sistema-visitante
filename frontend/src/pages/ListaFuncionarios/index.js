@@ -529,7 +529,7 @@ export default function ListaFuncionarios() {
           />
           {searchTerm && (
             <button
-              className="btn-clear"
+              className="search-clear-btn-lf"
               onClick={() => setSearchTerm("")}
               title="Limpar busca"
             >

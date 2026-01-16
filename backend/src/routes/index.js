@@ -123,6 +123,10 @@ router.use("/feedback", feedbackRoutes);
 // Patch Notes (atualizações do sistema)
 router.use("/patch-notes", patchNotesRoutes);
 
+// Chat de Suporte (IA + humano)
+const chatSuporteRoutes = require("./chatSuporte.routes");
+router.use("/chat-suporte", chatSuporteRoutes);
+
 // ═══════════════════════════════════════════════════════════════
 // ROTAS LEGADAS ADICIONAIS (compatibilidade com frontend)
 // ═══════════════════════════════════════════════════════════════

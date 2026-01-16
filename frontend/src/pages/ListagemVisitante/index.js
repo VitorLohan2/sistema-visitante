@@ -1,44 +1,50 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * LISTAGEM DE VISITANTES - Página de Gerenciamento de Cadastros
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Responsabilidades:
+ * - Listar visitantes cadastrados (dados do cache)
+ * - Busca por nome ou CPF
+ * - Registrar nova visita
+ * - Editar/Visualizar/Deletar cadastros
+ * - Imprimir crachá
+ *
+ * Dados: Carregados do cache (Home é responsável pelo carregamento inicial)
+ * Atualização: Via Socket.IO em tempo real
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Link, useHistory } from "react-router-dom";
 import { FiSearch, FiChevronLeft, FiChevronRight, FiX } from "react-icons/fi";
 
-import notificacaoSom from "../../assets/notificacao.mp3";
 import api from "../../services/api";
 import { useAuth } from "../../hooks/useAuth";
-import { useDataLoader } from "../../hooks/useDataLoader";
-import Loading from "../../components/Loading";
+import { getCache, setCache } from "../../services/cacheService";
+import * as socketService from "../../services/socketService";
 
 import CardDeListagemVisitante from "../../components/CardDeListagemVisitante";
-
 import ModalRegistrarVisita from "../../components/ModalRegistrarVisita";
 import ModalCracha from "../../components/ModalCracha";
 
 import "./styles.css";
 import "../../styles/CardDeListagemVisitante.css";
-
 import logo from "../../assets/logo.svg";
 
 export default function ListagemVisitante() {
   const history = useHistory();
   const { user, logout } = useAuth();
-  const ongId = user?.id;
-  const ongName = user?.name;
 
   // ═══════════════════════════════════════════════════════════════
-  // 🆕 HOOK DE DADOS COM CACHE
+  // DADOS DO CACHE (carregados pela Home)
   // ═══════════════════════════════════════════════════════════════
-  const {
-    loading,
-    progress,
-    progressMessage,
-    visitantes: allVisitantes,
-    empresas: empresasVisitantes,
-    setores: setoresVisitantes,
-    responsaveis,
-    userData,
-    removeVisitante,
-    reloadVisitantes,
-  } = useDataLoader(ongId);
+  const [visitantes, setVisitantes] = useState(
+    () => getCache("cadastroVisitantes") || []
+  );
+  const [responsaveis] = useState(() => getCache("responsaveis") || []);
+  const socketListenersRef = useRef([]);
 
   // ═══════════════════════════════════════════════════════════════
   // ESTADOS LOCAIS
@@ -53,72 +59,80 @@ export default function ListagemVisitante() {
   const [pageGroup, setPageGroup] = useState(0);
   const pagesPerGroup = 4;
 
-  // Modal de registrar Visita
+  // Modais
   const [visitModalVisible, setVisitModalVisible] = useState(false);
   const [selectedVisitante, setSelectedVisitante] = useState(null);
-
-  // Tickets de segurança
-  const [unseenCount, setUnseenCount] = useState(0);
-  const unseenRef = useRef(0);
-  const isFirstLoad = useRef(true);
-
-  // Modal do crachá
   const [badgeModalVisible, setBadgeModalVisible] = useState(false);
   const [badgeData, setBadgeData] = useState(null);
 
-  // Modal de configurações
-
   // ═══════════════════════════════════════════════════════════════
-  // EFEITO: Sincroniza visitantes carregados com estado filtrado
+  // SOCKET.IO - Sincronização em tempo real
   // ═══════════════════════════════════════════════════════════════
   useEffect(() => {
-    if (allVisitantes.length > 0 && !isSearching && !searchTerm) {
-      setFilteredVisitantes(allVisitantes);
-    }
-  }, [allVisitantes, isSearching, searchTerm]);
+    // Limpa listeners anteriores
+    socketListenersRef.current.forEach((unsub) => unsub && unsub());
+    socketListenersRef.current = [];
 
-  // ═══════════════════════════════════════════════════════════════
-  // EFEITO: Carrega tema do localStorage
-  // ═══════════════════════════════════════════════════════════════
+    // Listener: Novo visitante criado
+    const unsubCreate = socketService.on("visitante:created", (visitante) => {
+      setVisitantes((prev) => {
+        if (prev.find((v) => v.id === visitante.id)) return prev;
+        const novos = [...prev, visitante].sort((a, b) =>
+          (a.nome || "")
+            .toLowerCase()
+            .localeCompare((b.nome || "").toLowerCase(), "pt-BR")
+        );
+        setCache("cadastroVisitantes", novos);
+        return novos;
+      });
+    });
 
-  // ═══════════════════════════════════════════════════════════════
-  // EFEITO: Verifica notificações de segurança (apenas para setor Segurança)
-  // ═══════════════════════════════════════════════════════════════
-  useEffect(() => {
-    if (!ongId || userData?.setor !== "Segurança") return;
+    // Listener: Visitante atualizado
+    const unsubUpdate = socketService.on("visitante:updated", (dados) => {
+      setVisitantes((prev) => {
+        const novos = prev.map((v) =>
+          v.id === dados.id ? { ...v, ...dados } : v
+        );
+        setCache("cadastroVisitantes", novos);
+        return novos;
+      });
+    });
 
-    const checkNotifications = async () => {
-      try {
-        const response = await api.get("/tickets/unseen");
+    // Listener: Visitante deletado
+    const unsubDelete = socketService.on("visitante:deleted", (dados) => {
+      setVisitantes((prev) => {
+        const novos = prev.filter((v) => v.id !== dados.id);
+        setCache("cadastroVisitantes", novos);
+        return novos;
+      });
+    });
 
-        const newCount = response.data.count;
-        if (!isFirstLoad.current && newCount > unseenRef.current) {
-          const audio = new Audio(notificacaoSom);
-          audio.play().catch((err) => console.error("Erro ao tocar som:", err));
-        }
+    socketListenersRef.current.push(unsubCreate, unsubUpdate, unsubDelete);
 
-        unseenRef.current = newCount;
-        setUnseenCount(newCount);
-        isFirstLoad.current = false;
-      } catch (error) {
-        console.error("Erro ao verificar notificações:", error);
-      }
+    // Cleanup ao desmontar
+    return () => {
+      socketListenersRef.current.forEach((unsub) => unsub && unsub());
+      socketListenersRef.current = [];
     };
-
-    checkNotifications();
-    const intervalId = setInterval(checkNotifications, 30000); // A cada 30 segundos
-
-    return () => clearInterval(intervalId);
-  }, [ongId, userData?.setor]);
+  }, []);
 
   // ═══════════════════════════════════════════════════════════════
-  // EFEITO: Busca com debounce (usando dados em cache)
+  // SINCRONIZAÇÃO: Visitantes → Lista Filtrada
+  // ═══════════════════════════════════════════════════════════════
+  useEffect(() => {
+    if (visitantes.length > 0 && !isSearching && !searchTerm) {
+      setFilteredVisitantes(visitantes);
+    }
+  }, [visitantes, isSearching, searchTerm]);
+
+  // ═══════════════════════════════════════════════════════════════
+  // BUSCA: Filtro com debounce (300ms)
   // ═══════════════════════════════════════════════════════════════
   useEffect(() => {
     const timer = setTimeout(() => {
       if (!searchTerm.trim()) {
         setIsSearching(false);
-        setFilteredVisitantes(allVisitantes);
+        setFilteredVisitantes(visitantes);
         return;
       }
 
@@ -130,7 +144,7 @@ export default function ListagemVisitante() {
       const cpfNumbers = searchTerm.replace(/\D/g, "");
 
       // Busca local nos dados em cache (instantâneo)
-      const results = allVisitantes.filter((visitante) => {
+      const results = visitantes.filter((visitante) => {
         const hasName = visitante.nome && typeof visitante.nome === "string";
         const hasCpf = visitante.cpf && typeof visitante.cpf === "string";
 
@@ -156,7 +170,7 @@ export default function ListagemVisitante() {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchTerm, allVisitantes]);
+  }, [searchTerm, visitantes]);
 
   // ═══════════════════════════════════════════════════════════════
   // FUNÇÕES UTILITÁRIAS
@@ -226,8 +240,12 @@ export default function ListagemVisitante() {
       const response = await api.delete(`cadastro-visitantes/${id}`);
 
       if (response.status === 204) {
-        // Remove do cache local (sem recarregar da API)
-        removeVisitante(id);
+        // Remove do estado local e do cache
+        setVisitantes((prev) => {
+          const novos = prev.filter((v) => v.id !== id);
+          setCache("cadastroVisitantes", novos);
+          return novos;
+        });
 
         // Atualiza a lista filtrada também
         setFilteredVisitantes((prev) => prev.filter((v) => v.id !== id));
@@ -301,8 +319,7 @@ export default function ListagemVisitante() {
           avatar_imagem: selectedVisitante.avatar_imagem || null,
         });
 
-        // Atualiza o cache local
-        reloadVisitantes();
+        // Atualização via Socket.IO será automática
       }
 
       // Registra a visita
@@ -367,10 +384,6 @@ export default function ListagemVisitante() {
   // ═══════════════════════════════════════════════════════════════
   // RENDERIZAÇÃO
   // ═══════════════════════════════════════════════════════════════
-  if (loading) {
-    return <Loading progress={progress} message={progressMessage} />;
-  }
-
   return (
     <div className="profile-container">
       <header>
@@ -388,7 +401,7 @@ export default function ListagemVisitante() {
             />
             {searchTerm && (
               <button
-                className="search-clear-btn"
+                className="search-clear-btn-lv"
                 onClick={() => setSearchTerm("")}
                 title="Limpar busca"
               >
@@ -430,7 +443,7 @@ export default function ListagemVisitante() {
       </div>
 
       {/* Mensagem quando não há resultados */}
-      {sortedVisitantes.length === 0 && !loading && (
+      {sortedVisitantes.length === 0 && (
         <div className="no-results">
           {searchTerm
             ? `Nenhum resultado encontrado para "${searchTerm}"`

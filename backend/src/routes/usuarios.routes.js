@@ -33,10 +33,9 @@ router.post(
         nome: Joi.string(),
         data_nascimento: Joi.string(),
         cidade: Joi.string(),
-        // Campos antigos (inglês) - para compatibilidade
+        // Campos antigos (inglês) - para compatibilidade (DEPRECATED - usar os novos)
         name: Joi.string(),
-        birthdate: Joi.string(),
-        city: Joi.string(),
+        nascimento: Joi.string(),
         // Campos comuns
         cpf: Joi.string()
           .required()
@@ -126,14 +125,13 @@ router.put(
         nome: Joi.string(),
         name: Joi.string(),
         data_nascimento: Joi.string(),
-        birthdate: Joi.string(),
+        nascimento: Joi.string(),
         cpf: Joi.string().regex(/^\d{3}\.\d{3}\.\d{3}-\d{2}$|^\d{11}$/),
         empresa_id: Joi.number().integer(),
         setor_id: Joi.number().integer(),
         email: Joi.string().email(),
         whatsapp: Joi.string().min(10).max(11),
         cidade: Joi.string(),
-        city: Joi.string(),
         uf: Joi.string().length(2),
       })
       .min(1),

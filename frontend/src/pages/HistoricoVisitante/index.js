@@ -431,7 +431,7 @@ export default function HistoricoVisitante() {
             />
             {searchTerm && (
               <button
-                className="search-clear-btn"
+                className="search-clear-btn-hv"
                 onClick={() => setSearchTerm("")}
                 title="Limpar busca"
               >

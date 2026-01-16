@@ -144,9 +144,9 @@
   font-weight: 400;
 }
 
-.search-bar .btn-clear {
+.search-clear-btn-lev {
   position: absolute;
-  right: 14px;
+  right: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -154,16 +154,15 @@
   height: 28px;
   border: none;
   border-radius: 50%;
-  background: rgba(5, 150, 105, 0.1);
-  color: var(--empresas-primary);
+  background: rgba(229, 231, 235, 0.1);
+  color: #191d24;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.search-bar .btn-clear:hover {
-  background: var(--empresas-primary);
-  color: #fff;
-  transform: scale(1.1);
+.search-clear-btn-lev:hover {
+  background: #e5e7eb;
+  color: #374151;
 }
 
 .total-empresas {

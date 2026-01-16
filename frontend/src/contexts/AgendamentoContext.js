@@ -1,4 +1,25 @@
-// src/contexts/AgendamentoContext.js
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * AGENDAMENTO CONTEXT - Gerenciamento Centralizado de Agendamentos
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Responsabilidades:
+ * - Gerenciar estado global de agendamentos
+ * - Sincronizar via Socket.IO em tempo real
+ * - Cachear dados no sessionStorage
+ * - Fornecer contador de agendamentos não confirmados (badge)
+ * - Tocar som de notificação para novos agendamentos
+ *
+ * Eventos Socket:
+ * - agendamento:create  → Novo agendamento criado
+ * - agendamento:update  → Agendamento atualizado
+ * - agendamento:delete  → Agendamento removido
+ *
+ * Uso: const { agendamentos, agendamentosAbertos } = useAgendamentos();
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
 import React, {
   createContext,
   useContext,

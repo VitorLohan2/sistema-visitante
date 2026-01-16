@@ -571,7 +571,7 @@ module.exports = {
         // 1. Atualizar status da solicitação
         await trx("solicitacoes_descarga").where("id", id).update({
           status: "APROVADO",
-          validado_por: usuario.name,
+          validado_por: usuario.nome,
           validado_em: new Date().toISOString(),
         });
 
@@ -594,7 +594,7 @@ module.exports = {
             setor: setorEstoque.nome || "ESTOQUE",
             horario_agendado: solicitacao.horario_solicitado,
             observacao: observacaoAgendamento,
-            criado_por: usuario.name,
+            criado_por: usuario.nome,
             usuario_id: usuario_id,
             solicitacao_descarga_id: parseInt(id),
           })
@@ -611,7 +611,7 @@ module.exports = {
         io.to("global").emit("descarga:atualizada", {
           id: parseInt(id),
           status: "APROVADO",
-          validado_por: usuario.name,
+          validado_por: usuario.nome,
         });
 
         io.to("global").emit("agendamento:create", {
@@ -633,7 +633,7 @@ module.exports = {
             tipo_carga: solicitacao.tipo_carga,
             status: "APROVADO",
             observacao: observacao || "Solicitação aprovada",
-            validado_por: usuario.name,
+            validado_por: usuario.nome,
           });
         } catch (emailError) {
           console.error("⚠️ Erro ao enviar e-mail:", emailError.message);
@@ -704,7 +704,7 @@ module.exports = {
       // Atualizar status
       await connection("solicitacoes_descarga").where("id", id).update({
         status: "REJEITADO",
-        validado_por: usuario.name,
+        validado_por: usuario.nome,
         validado_em: new Date().toISOString(),
       });
 
@@ -722,7 +722,7 @@ module.exports = {
       io.to("global").emit("descarga:atualizada", {
         id: parseInt(id),
         status: "REJEITADO",
-        validado_por: usuario.name,
+        validado_por: usuario.nome,
       });
 
       // Enviar e-mail
@@ -737,7 +737,7 @@ module.exports = {
           tipo_carga: solicitacao.tipo_carga,
           status: "REJEITADO",
           observacao: observacao || "Solicitação rejeitada",
-          validado_por: usuario.name,
+          validado_por: usuario.nome,
         });
       } catch (emailError) {
         console.error("⚠️ Erro ao enviar e-mail:", emailError.message);
@@ -877,7 +877,7 @@ module.exports = {
           horario_novo: horarioParaSalvar,
           tipo_carga: solicitacao.tipo_carga,
           observacao: observacao || "Horário ajustado pela equipe interna",
-          ajustado_por: usuario.name,
+          ajustado_por: usuario.nome,
         });
       } catch (emailError) {
         console.error("⚠️ Erro ao enviar e-mail:", emailError.message);

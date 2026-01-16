@@ -128,7 +128,7 @@ module.exports = {
         });
       }
 
-      console.log("✅ LOGIN encontrado(a):", usuario.name);
+      console.log("✅ LOGIN encontrado(a):", usuario.nome);
 
       const [visitor] = await connection("visitante")
         .insert({

@@ -9,7 +9,7 @@ async function desativarTodosComunicados() {
   try {
     await connection("comunicados")
       .where({ ativo: true })
-      .update({ ativo: false, updated_at: new Date() });
+      .update({ ativo: false, atualizado_em: new Date() });
 
     console.log("🔄 Todos os comunicados foram desativados");
   } catch (error) {
@@ -38,7 +38,7 @@ module.exports = {
 
       const comunicadoAtivo = await connection("comunicados")
         .where({ ativo: true })
-        .orderBy("created_at", "desc")
+        .orderBy("criado_em", "desc")
         .first();
 
       console.log("📦 Comunicado ativo encontrado:", comunicadoAtivo);
@@ -75,7 +75,7 @@ module.exports = {
       }
 
       const comunicados = await connection("comunicados").orderBy(
-        "created_at",
+        "criado_em",
         "desc"
       );
 
@@ -141,8 +141,8 @@ module.exports = {
           mensagem: mensagem.trim(),
           prioridade: prioridade || "normal",
           ativo: ativarComunicado,
-          created_at: new Date(),
-          updated_at: new Date(),
+          criado_em: new Date(),
+          atualizado_em: new Date(),
         })
         .returning("id");
 
@@ -221,7 +221,7 @@ module.exports = {
 
       const dadosAtualizados = {
         ...updates,
-        updated_at: new Date(),
+        atualizado_em: new Date(),
       };
 
       await connection("comunicados").where({ id }).update(dadosAtualizados);

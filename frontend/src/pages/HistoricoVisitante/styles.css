@@ -144,7 +144,7 @@
   font-weight: 400;
 }
 
-.search-clear-btn {
+.search-clear-btn-hv {
   position: absolute;
   right: 14px;
   display: flex;
@@ -154,16 +154,15 @@
   height: 28px;
   border: none;
   border-radius: 50%;
-  background: rgba(32, 224, 176, 0.1);
-  color: var(--historico-primary);
+  background: rgba(229, 231, 235, 0.1);
+  color: #191d24;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.search-clear-btn:hover {
-  background: var(--historico-primary);
-  color: #fff;
-  transform: scale(1.1);
+.search-clear-btn-hv:hover {
+  background: #e5e7eb;
+  color: #374151;
 }
 
 /* ═══════════════════════════════════════════════════════════════

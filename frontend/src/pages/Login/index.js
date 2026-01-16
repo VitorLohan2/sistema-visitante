@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { Link, useHistory } from "react-router-dom";
-import { FiLogIn, FiHelpCircle, FiKey, FiLock, FiMail } from "react-icons/fi";
+import { FiLock, FiMail } from "react-icons/fi";
 
 import api from "../../services/api";
 import { useAuth } from "../../hooks/useAuth";
 import "./styles.css";
 
 import logoImg from "../../assets/logo.svg";
-import heroesImg from "../../assets/ilustracao-seguranca.png";
 import Loading from "../../components/Loading";
 
 export default function Login() {
@@ -103,24 +102,24 @@ export default function Login() {
   }
 
   return (
-    <div className="logon-container">
-      <div className="logon-content">
-        <section className="form">
-          <img src={logoImg} alt="DIME" className="logon-logo" />
+    <div className="login-container">
+      <div className="login-content">
+        <section className="login-card">
+          <img src={logoImg} alt="DIME" className="login-logo" />
 
           <form onSubmit={handleLogin} className="login-form">
-            <h1>Acesse sua Conta</h1>
+            <h1>Login</h1>
 
             {erro && <div className="error-message">{erro}</div>}
 
             <div className="form-group">
               <label htmlFor="email">Email</label>
               <div className="input-wrapper">
-                <FiMail size={20} className="input-icon" />
+                <FiMail size={18} className="input-icon" />
                 <input
                   id="email"
                   type="email"
-                  placeholder="Digite@exemplo.com"
+                  placeholder="seu@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -131,47 +130,27 @@ export default function Login() {
             <div className="form-group">
               <label htmlFor="senha">Senha</label>
               <div className="input-wrapper">
-                <FiLock size={20} className="input-icon" />
+                <FiLock size={18} className="input-icon" />
                 <input
                   id="senha"
                   type="password"
-                  placeholder="Digite sua senha"
+                  placeholder="••••••••"
                   value={senha}
                   onChange={(e) => setSenha(e.target.value)}
                   required
                 />
               </div>
+              <Link className="forgot-password-link" to="/recuperar-senha">
+                Esqueceu sua senha?
+              </Link>
             </div>
 
-            <button className="button" type="submit">
+            <button className="login-button" type="submit">
               Entrar
             </button>
-
-            <div className="login-links">
-              <Link className="back-link" to="/recuperar-senha">
-                <FiKey size={18} />
-                Esqueci minha senha
-              </Link>
-              <Link className="back-link" to="/helpdesk">
-                <FiHelpCircle size={18} />
-                Suporte
-              </Link>
-            </div>
           </form>
         </section>
-        <img src={heroesImg} alt="IMAGEM ILUSTRATIVA" className="logon-hero" />
       </div>
-
-      {/* Footer */}
-      <footer className="logon-footer">
-        <div className="footer-content">
-          <p>
-            Sistema de Visitante
-            <span className="footer-brand-name"> Liberaê 1.0</span>
-            <span className="footer-badge-beta">Beta</span>
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }

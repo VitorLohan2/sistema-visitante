@@ -79,8 +79,8 @@ module.exports = {
         latitude: latitude || null,
         longitude: longitude || null,
         empresa_id,
-        created_at: connection.fn.now(),
-        updated_at: connection.fn.now(),
+        criado_em: connection.fn.now(),
+        atualizado_em: connection.fn.now(),
       };
 
       const [id] = await connection("registro_ponto_detalhado_funcionario")
@@ -323,7 +323,7 @@ module.exports = {
         )
         .select(
           "historico_ponto_diario_funcionario.*",
-          "setor_usuario.name as setor_nome"
+          "setor_usuario.nome as setor_nome"
         )
         .orderBy("historico_ponto_diario_funcionario.data", "desc");
 
@@ -442,7 +442,7 @@ async function atualizarHistoricoConsolidado(
     } else {
       await connection("historico_ponto_diario_funcionario").insert({
         ...dadosHistorico,
-        created_at: connection.fn.now(),
+        criado_em: connection.fn.now(),
       });
     }
 
@@ -498,7 +498,7 @@ module.exports.biparCracha = async function (req, res) {
           .where({ id: registroHoje.id })
           .update({
             hora_entrada: `${dataHoje} ${horaAtual}`,
-            updated_at: connection.fn.now(),
+            atualizado_em: connection.fn.now(),
           });
         registro = {
           ...registroHoje,
@@ -514,7 +514,7 @@ module.exports.biparCracha = async function (req, res) {
             data: dataHoje,
             hora_entrada: `${dataHoje} ${horaAtual}`,
             empresa_id: funcionario.empresa_id,
-            created_at: connection.fn.now(),
+            criado_em: connection.fn.now(),
           })
           .returning("id");
         registro = {
@@ -535,7 +535,7 @@ module.exports.biparCracha = async function (req, res) {
         .update({
           hora_saida: `${dataHoje} ${horaAtual}`,
           total_horas_trabalhadas: totalHoras,
-          updated_at: connection.fn.now(),
+          atualizado_em: connection.fn.now(),
         });
 
       registro = {

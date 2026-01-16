@@ -81,6 +81,7 @@ const memoryCache = {
   agendamentos: null,
   tickets: null,
   comunicados: null,
+  patchNotes: null,
 
   // Dados de descarga
   solicitacoesDescarga: null,
@@ -133,6 +134,7 @@ const CACHE_KEYS = {
   AGENDAMENTOS: "cache_agendamentos",
   TICKETS: "cache_tickets",
   COMUNICADOS: "cache_comunicados",
+  PATCHNOTES: "cache_patch_notes",
 
   // Dados de descarga
   SOLICITACOESDESCARGA: "cache_solicitacoes_descarga",

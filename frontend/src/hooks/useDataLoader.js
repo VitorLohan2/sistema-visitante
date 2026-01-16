@@ -76,9 +76,6 @@ import {
   getCache,
   isCacheLoaded,
   clearCache,
-  removeVisitanteFromCache,
-  addVisitanteToCache,
-  updateVisitanteInCache,
 } from "../services/cacheService";
 
 export function useDataLoader(userId) {
@@ -86,6 +83,19 @@ export function useDataLoader(userId) {
   // VERIFICAÇÃO INICIAL DE CACHE
   // ═══════════════════════════════════════════════════════════════
   const hasInitialCacheRef = useRef(isCacheLoaded());
+
+  // ═══════════════════════════════════════════════════════════════
+  // REFS PARA CONTROLE DE EXECUÇÃO
+  // ═══════════════════════════════════════════════════════════════
+  const currentUserIdRef = useRef(null);
+  const isDataLoadedRef = useRef(hasInitialCacheRef.current); // Inicia com true se tem cache
+  const isLoadingRef = useRef(false);
+  const socketListenersRef = useRef([]);
+
+  // Marca como carregado se já tem cache no início
+  if (hasInitialCacheRef.current && !isDataLoadedRef.current) {
+    isDataLoadedRef.current = true;
+  }
 
   // ═══════════════════════════════════════════════════════════════
   // ESTADOS
@@ -122,12 +132,10 @@ export function useDataLoader(userId) {
   const [comunicados, setComunicados] = useState(
     () => getCache("comunicados") || []
   );
+  const [patchNotes, setPatchNotes] = useState(
+    () => getCache("patchNotes") || []
+  );
   const [userData, setUserData] = useState(() => getCache("userData"));
-
-  // Controle
-  const isLoadingRef = useRef(false);
-  const isDataLoadedRef = useRef(false);
-  const socketListenersRef = useRef([]);
 
   // ═══════════════════════════════════════════════════════════════
   // CONFIGURAÇÃO DE LISTENERS DO SOCKET.IO
@@ -440,6 +448,48 @@ export function useDataLoader(userId) {
       }
     );
 
+    // ─────────────────────────────────────────────────────────────
+    // PATCH NOTES
+    // ─────────────────────────────────────────────────────────────
+    const unsubPatchNoteCreated = socketService.on(
+      "patch-note:created",
+      (patchNote) => {
+        console.log("🔄 Socket: Novo patch note", patchNote.id);
+        setPatchNotes((prev) => {
+          if (prev.find((p) => p.id === patchNote.id)) return prev;
+          const novos = [patchNote, ...prev];
+          setCache("patchNotes", novos);
+          return novos;
+        });
+      }
+    );
+
+    const unsubPatchNoteUpdated = socketService.on(
+      "patch-note:updated",
+      (dados) => {
+        console.log("🔄 Socket: Patch note atualizado", dados.id);
+        setPatchNotes((prev) => {
+          const novos = prev.map((p) =>
+            p.id === dados.id ? { ...p, ...dados } : p
+          );
+          setCache("patchNotes", novos);
+          return novos;
+        });
+      }
+    );
+
+    const unsubPatchNoteDeleted = socketService.on(
+      "patch-note:deleted",
+      (dados) => {
+        console.log("🔄 Socket: Patch note removido", dados.id);
+        setPatchNotes((prev) => {
+          const novos = prev.filter((p) => p.id !== dados.id);
+          setCache("patchNotes", novos);
+          return novos;
+        });
+      }
+    );
+
     // Guarda referências para cleanup
     socketListenersRef.current = [
       // Visitantes
@@ -471,6 +521,10 @@ export function useDataLoader(userId) {
       unsubComunicadoCreated,
       unsubComunicadoUpdated,
       unsubComunicadoDeleted,
+      // Patch Notes
+      unsubPatchNoteCreated,
+      unsubPatchNoteUpdated,
+      unsubPatchNoteDeleted,
     ];
 
     console.log(
@@ -507,6 +561,7 @@ export function useDataLoader(userId) {
         setTickets(getCache("tickets") || []);
         setFuncionarios(getCache("funcionarios") || []);
         setComunicados(getCache("comunicados") || []);
+        setPatchNotes(getCache("patchNotes") || []);
         setUserData(getCache("userData"));
 
         // Conecta ao Socket para atualizações em tempo real
@@ -698,7 +753,24 @@ export function useDataLoader(userId) {
         setProgress(95);
 
         // ═══════════════════════════════════════════════════════════
-        // ETAPA 10: Conectar ao Socket.IO (100%)
+        // ETAPA 10: Patch Notes (97%)
+        // ═══════════════════════════════════════════════════════════
+        setProgressMessage("Carregando atualizações do sistema...");
+
+        try {
+          const patchNotesRes = await api.get("/patch-notes");
+          const patchNotesData = patchNotesRes.data || [];
+          setPatchNotes(patchNotesData);
+          setCache("patchNotes", patchNotesData);
+        } catch (err) {
+          console.log("⚠️ Patch Notes não disponíveis:", err.message);
+          setCache("patchNotes", []);
+        }
+
+        setProgress(97);
+
+        // ═══════════════════════════════════════════════════════════
+        // ETAPA 11: Conectar ao Socket.IO (100%)
         // ═══════════════════════════════════════════════════════════
         setProgressMessage("Conectando sincronização em tempo real...");
 
@@ -728,7 +800,7 @@ export function useDataLoader(userId) {
         }, 300);
       }
     },
-    [userId, setupSocketListeners]
+    [userId] // Removida dependência setupSocketListeners
   );
 
   // ═══════════════════════════════════════════════════════════════
@@ -883,21 +955,64 @@ export function useDataLoader(userId) {
 
   // Carrega dados automaticamente quando userId muda
   useEffect(() => {
-    if (userId && !isDataLoadedRef.current) {
-      loadAllData();
+    // Evita execuções múltiplas durante navegação
+    if (!userId) return;
+
+    // Se é o mesmo usuário e dados já foram carregados, não faz nada
+    if (currentUserIdRef.current === userId && isDataLoadedRef.current) {
+      return;
     }
-  }, [userId, loadAllData]);
+
+    // Se mudou de usuário, reseta o estado
+    if (currentUserIdRef.current !== userId) {
+      currentUserIdRef.current = userId;
+      isDataLoadedRef.current = false;
+    }
+
+    // Se dados já foram carregados para este userId, não faz nada
+    if (isDataLoadedRef.current) {
+      return;
+    }
+
+    // Se não tem cache, carrega tudo da API
+    if (!isCacheLoaded()) {
+      console.log("🔄 Carregando dados...");
+      // Chama loadAllData diretamente sem dependências
+      loadAllData();
+    } else {
+      // Tem cache válido - inicializa sem re-carregar
+      isDataLoadedRef.current = true;
+
+      // Conecta socket se necessário
+      if (!socketService.isConnected()) {
+        const token = localStorage.getItem("token");
+        if (token) {
+          socketService.connect(token);
+          // Chama setupSocketListeners diretamente sem dependências
+          setupSocketListeners();
+        }
+      }
+    }
+  }, [userId]); // Apenas userId como dependência
 
   // Reconecta socket se já tem cache mas socket não está conectado
   useEffect(() => {
     if (userId && hasInitialCacheRef.current && !socketService.isConnected()) {
       console.log("🔌 Reconectando socket após navegação com cache...");
-      const token = localStorage.getItem("token");
-      if (token) {
-        socketService.connect(token);
-        setupSocketListeners();
-        isDataLoadedRef.current = true;
-      }
+
+      // Pequeno delay para evitar reconexões desnecessárias durante navegação rápida
+      const reconnectTimer = setTimeout(() => {
+        if (!socketService.isConnected()) {
+          const token = localStorage.getItem("token");
+          if (token) {
+            socketService.connect(token);
+            setupSocketListeners();
+            isDataLoadedRef.current = true;
+          }
+        }
+      }, 100); // 100ms de delay
+
+      return () => clearTimeout(reconnectTimer);
     }
   }, [userId, setupSocketListeners]);
 
@@ -928,6 +1043,7 @@ export function useDataLoader(userId) {
     tickets,
     funcionarios,
     comunicados,
+    patchNotes,
     userData,
 
     // Ações

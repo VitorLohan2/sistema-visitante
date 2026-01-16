@@ -30,7 +30,7 @@ module.exports = {
       // Busca usuário pelo email
       const usuario = await connection("usuarios")
         .where("email", email.toLowerCase())
-        .select("id", "name", "email", "empresa_id", "setor_id", "senha")
+        .select("id", "nome", "email", "empresa_id", "setor_id", "senha")
         .first();
 
       if (!usuario) {
@@ -67,7 +67,7 @@ module.exports = {
       // Gera o token JWT
       const token = gerarToken({
         id: usuario.id,
-        nome: usuario.name,
+        nome: usuario.nome,
         email: usuario.email,
         empresa_id: usuario.empresa_id,
         setor_id: usuario.setor_id,
@@ -78,7 +78,7 @@ module.exports = {
         token,
         usuario: {
           id: usuario.id,
-          nome: usuario.name,
+          nome: usuario.nome,
           email: usuario.email,
           empresa_id: usuario.empresa_id,
           setor_id: usuario.setor_id,
@@ -104,7 +104,7 @@ module.exports = {
     try {
       const usuario = await connection("usuarios")
         .where("id", id)
-        .select("id", "name", "email", "empresa_id", "setor_id")
+        .select("id", "nome", "email", "empresa_id", "setor_id")
         .first();
 
       if (!usuario) {
@@ -120,7 +120,7 @@ module.exports = {
       // Gera o token JWT
       const token = gerarToken({
         id: usuario.id,
-        nome: usuario.name,
+        nome: usuario.nome,
         email: usuario.email,
         empresa_id: usuario.empresa_id,
         setor_id: usuario.setor_id,
@@ -131,14 +131,14 @@ module.exports = {
         token,
         usuario: {
           id: usuario.id,
-          nome: usuario.name,
+          nome: usuario.nome,
           email: usuario.email,
           empresa_id: usuario.empresa_id,
           setor_id: usuario.setor_id,
           isAdmin,
         },
         // Mantém campos antigos para compatibilidade
-        name: usuario.name,
+        name: usuario.nome,
         setor_id: usuario.setor_id,
         isAdmin,
       });
@@ -176,7 +176,7 @@ module.exports = {
 
       const usuario = await connection("usuarios")
         .where("id", userId)
-        .select("id", "name", "email", "empresa_id", "setor_id", "senha")
+        .select("id", "nome", "email", "empresa_id", "setor_id", "senha")
         .first();
 
       if (!usuario) {
@@ -200,7 +200,7 @@ module.exports = {
       // Gera o token JWT
       const token = gerarToken({
         id: usuario.id,
-        nome: usuario.name,
+        nome: usuario.nome,
         email: usuario.email,
         empresa_id: usuario.empresa_id,
         setor_id: usuario.setor_id,
@@ -212,7 +212,7 @@ module.exports = {
         token,
         usuario: {
           id: usuario.id,
-          nome: usuario.name,
+          nome: usuario.nome,
           email: usuario.email,
           empresa_id: usuario.empresa_id,
           setor_id: usuario.setor_id,
@@ -238,7 +238,7 @@ module.exports = {
     try {
       const usuario = await connection("usuarios")
         .where("email", email.toLowerCase())
-        .select("id", "name", "email")
+        .select("id", "nome", "email")
         .first();
 
       if (!usuario) {
@@ -290,8 +290,8 @@ module.exports = {
       // Busca usuário pelo email e data de nascimento
       const usuario = await connection("usuarios")
         .where("email", email.toLowerCase())
-        .where("birthdate", dataNascimento)
-        .select("id", "name", "email")
+        .where("nascimento", dataNascimento)
+        .select("id", "nome", "email")
         .first();
 
       if (!usuario) {
@@ -315,7 +315,7 @@ module.exports = {
       try {
         await enviarEmailRecuperacaoSenha({
           email: usuario.email,
-          nome: usuario.name,
+          nome: usuario.nome,
           token,
         });
 
@@ -369,7 +369,7 @@ module.exports = {
       const usuario = await connection("usuarios")
         .where("reset_token", token)
         .where("reset_token_expira", ">", new Date())
-        .select("id", "name", "email")
+        .select("id", "nome", "email")
         .first();
 
       if (!usuario) {
@@ -383,7 +383,7 @@ module.exports = {
       return response.json({
         valid: true,
         usuario: {
-          nome: usuario.name,
+          nome: usuario.nome,
           email: usuario.email,
         },
       });
@@ -423,7 +423,7 @@ module.exports = {
       const usuario = await connection("usuarios")
         .where("reset_token", token)
         .where("reset_token_expira", ">", new Date())
-        .select("id", "name", "email")
+        .select("id", "nome", "email")
         .first();
 
       if (!usuario) {
@@ -543,7 +543,7 @@ module.exports = {
       const usuario = await connection("usuarios")
         .where({
           email: email.toLowerCase(),
-          birthdate: data_nascimento,
+          nascimento: data_nascimento,
         })
         .select("id")
         .first();
@@ -576,7 +576,7 @@ module.exports = {
     try {
       const usuario = await connection("usuarios")
         .where("id", id)
-        .select("id", "name", "email", "empresa_id", "setor_id")
+        .select("id", "nome", "email", "empresa_id", "setor_id")
         .first();
 
       if (!usuario) {
@@ -592,7 +592,7 @@ module.exports = {
       // Gera o token JWT
       const token = gerarToken({
         id: usuario.id,
-        nome: usuario.name,
+        nome: usuario.nome,
         email: usuario.email,
         empresa_id: usuario.empresa_id,
         setor_id: usuario.setor_id,
@@ -602,7 +602,7 @@ module.exports = {
       // Retorna no formato esperado pelo frontend legado
       return response.json({
         token,
-        name: usuario.name,
+        name: usuario.nome,
         setor_id: usuario.setor_id,
         isAdmin,
       });

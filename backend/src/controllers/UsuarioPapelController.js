@@ -9,8 +9,8 @@ module.exports = {
   async index(req, res) {
     try {
       const usuarios = await connection("usuarios")
-        .select("id", "name", "email", "setor_id")
-        .orderBy("name");
+        .select("id", "nome as name", "email", "setor_id")
+        .orderBy("nome");
 
       // Para cada usuário, buscar seus papéis
       const usuariosComPapeis = await Promise.all(
@@ -40,7 +40,7 @@ module.exports = {
     try {
       const usuario = await connection("usuarios")
         .where("id", usuario_id)
-        .select("id", "name", "email")
+        .select("id", "nome as name", "email")
         .first();
 
       if (!usuario) {
@@ -104,7 +104,7 @@ module.exports = {
 
       return res.json({
         id: usuario.id,
-        name: usuario.name,
+        name: usuario.nome,
         email: usuario.email,
         papeis,
       });

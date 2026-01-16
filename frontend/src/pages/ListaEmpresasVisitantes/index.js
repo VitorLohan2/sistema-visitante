@@ -303,7 +303,7 @@ export default function ListaEmpresasVisitantes() {
           />
           {searchTerm && (
             <button
-              className="btn-clear"
+              className="search-clear-btn-lev"
               onClick={() => setSearchTerm("")}
               title="Limpar busca"
             >
