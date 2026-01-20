@@ -34,7 +34,7 @@ const AuditoriaService = require("./ChatAuditoriaService");
  * @param {string} [dados.assunto] - Assunto da conversa
  * @param {string} [dados.ip_visitante] - IP do visitante
  * @param {string} [dados.user_agent] - User Agent do navegador
- * @returns {Promise<Object>} Conversa criada
+ * @returns {Promise<Object>} Conversa criada ou existente
  */
 async function criarConversa({
   usuario_id,
@@ -45,6 +45,22 @@ async function criarConversa({
   user_agent,
 }) {
   try {
+    // VERIFICAÇÃO: Para usuários logados, verifica se já existe conversa ativa
+    if (usuario_id) {
+      const conversaExistente = await db("chat_conversas")
+        .where({ usuario_id })
+        .whereIn("status", ["BOT", "AGUARDANDO_ATENDENTE", "EM_ATENDIMENTO"])
+        .orderBy("criado_em", "desc")
+        .first();
+
+      if (conversaExistente) {
+        console.log(
+          `ℹ️ Usuário ${usuario_id} já possui conversa ativa #${conversaExistente.id}`
+        );
+        return { ...conversaExistente, jaExistente: true };
+      }
+    }
+
     const [conversa] = await db("chat_conversas")
       .insert({
         usuario_id: usuario_id || null,
@@ -87,7 +103,11 @@ async function criarConversa({
  * @returns {Promise<Object|null>} Conversa ou null
  */
 async function buscarConversa(conversa_id) {
-  return db("chat_conversas").where({ id: conversa_id }).first();
+  return db("chat_conversas as c")
+    .leftJoin("usuarios as u", "c.atendente_id", "u.id")
+    .select("c.*", "u.nome as atendente_nome")
+    .where({ "c.id": conversa_id })
+    .first();
 }
 
 /**
@@ -95,7 +115,7 @@ async function buscarConversa(conversa_id) {
  * @param {Object} filtros - Filtros de busca
  * @param {string} [filtros.usuario_id] - ID do usuário
  * @param {string} [filtros.email] - Email do visitante
- * @param {string} [filtros.status] - Status da conversa
+ * @param {string} [filtros.status] - Status da conversa (pode ser lista separada por vírgula)
  * @param {number} [filtros.limite=20] - Limite de resultados
  * @returns {Promise<Array>} Lista de conversas
  */
@@ -105,16 +125,22 @@ async function listarConversasUsuario({
   status,
   limite = 20,
 }) {
-  let query = db("chat_conversas").orderBy("criado_em", "desc").limit(limite);
+  let query = db("chat_conversas as c")
+    .leftJoin("usuarios as u", "c.atendente_id", "u.id")
+    .select("c.*", "u.nome as atendente_nome")
+    .orderBy("c.criado_em", "desc")
+    .limit(limite);
 
   if (usuario_id) {
-    query = query.where({ usuario_id });
+    query = query.where({ "c.usuario_id": usuario_id });
   } else if (email) {
-    query = query.where({ email_visitante: email });
+    query = query.where({ "c.email_visitante": email });
   }
 
   if (status) {
-    query = query.where({ status });
+    // Suporta múltiplos status separados por vírgula
+    const statusList = status.split(",").map((s) => s.trim());
+    query = query.whereIn("c.status", statusList);
   }
 
   return query;
@@ -442,8 +468,10 @@ async function aceitarAtendimento(
   conversa_id,
   { atendente_id, atendente_nome }
 ) {
+  let conversaAtualizada;
+
   // Usa transação para garantir atomicidade (evitar dois atendentes pegarem a mesma conversa)
-  return db.transaction(async (trx) => {
+  await db.transaction(async (trx) => {
     // Verifica se a conversa está disponível
     const conversa = await trx("chat_conversas")
       .where({ id: conversa_id, status: "AGUARDANDO_ATENDENTE" })
@@ -455,7 +483,7 @@ async function aceitarAtendimento(
     }
 
     // Atualiza a conversa
-    const [conversaAtualizada] = await trx("chat_conversas")
+    const [updated] = await trx("chat_conversas")
       .where({ id: conversa_id })
       .update({
         atendente_id,
@@ -464,16 +492,25 @@ async function aceitarAtendimento(
       })
       .returning("*");
 
+    conversaAtualizada = updated;
+
     // Remove da fila
     await trx("chat_fila").where({ conversa_id }).del();
+  });
 
-    // Registra auditoria (fora da transação está ok)
+  // FORA da transação - para evitar deadlock
+  // Registra auditoria
+  try {
     await AuditoriaService.atendenteAceitou(conversa_id, {
       atendente_id,
       atendente_nome,
     });
+  } catch (err) {
+    console.error(`⚠️ Erro na auditoria (não crítico):`, err.message);
+  }
 
-    // Envia mensagem de início de atendimento
+  // Envia mensagem de início de atendimento
+  try {
     await enviarMensagem({
       conversa_id,
       origem: "SISTEMA",
@@ -481,12 +518,14 @@ async function aceitarAtendimento(
       remetente_id: atendente_id,
       remetente_nome: atendente_nome,
     });
+  } catch (err) {
+    console.error(`⚠️ Erro ao enviar mensagem (não crítico):`, err.message);
+  }
 
-    console.log(
-      `✅ Conversa #${conversa_id} aceita pelo atendente ${atendente_nome}`
-    );
-    return conversaAtualizada;
-  });
+  console.log(
+    `✅ Conversa #${conversa_id} aceita pelo atendente ${atendente_nome}`
+  );
+  return conversaAtualizada;
 }
 
 /**

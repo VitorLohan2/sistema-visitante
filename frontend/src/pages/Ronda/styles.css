@@ -1,0 +1,778 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * ESTILOS: Ronda de Vigilante
+ * Estilos da página de ronda do vigilante
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+/* Container principal */
+.ronda-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: calc(100vh - 60px);
+}
+
+/* Header */
+.ronda-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.ronda-header-titulo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ronda-header-titulo h1 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin: 0;
+}
+
+.ronda-header-titulo svg {
+  color: #4361ee;
+}
+
+.ronda-header-acoes {
+  display: flex;
+  gap: 12px;
+}
+
+/* Botões */
+.btn-secundario {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #f0f2f5;
+  color: #4a5568;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.btn-secundario:hover {
+  background: #e2e8f0;
+  color: #2d3748;
+}
+
+/* Mensagens de feedback */
+.ronda-mensagem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  animation: slideIn 0.3s ease;
+}
+
+.ronda-mensagem.erro {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.ronda-mensagem.aviso {
+  background: #fef3c7;
+  color: #d97706;
+  border: 1px solid #fde68a;
+}
+
+.ronda-mensagem.sucesso {
+  background: #d1fae5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+.ronda-mensagem button {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  transition: background 0.2s;
+}
+
+.ronda-mensagem button:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+/* Loading */
+.ronda-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  color: #6b7280;
+}
+
+.ronda-loading p {
+  margin-top: 16px;
+  font-size: 1rem;
+}
+
+/* Animação de spin */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Animação de slide */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Acesso negado */
+.ronda-acesso-negado {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  text-align: center;
+  color: #6b7280;
+}
+
+.ronda-acesso-negado svg {
+  color: #ef4444;
+  margin-bottom: 16px;
+}
+
+.ronda-acesso-negado h2 {
+  margin: 0 0 8px 0;
+  color: #374151;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TELA DE INICIAR RONDA
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ronda-iniciar-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 20px;
+}
+
+.ronda-iniciar-card {
+  background: white;
+  border-radius: 16px;
+  padding: 48px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  max-width: 480px;
+  width: 100%;
+}
+
+.ronda-iniciar-icone {
+  width: 120px;
+  height: 120px;
+  background: linear-gradient(135deg, #4361ee, #3730a3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 24px;
+}
+
+.ronda-iniciar-icone svg {
+  color: white;
+}
+
+.ronda-iniciar-card h2 {
+  font-size: 1.5rem;
+  color: #1a1a2e;
+  margin: 0 0 12px 0;
+}
+
+.ronda-iniciar-card p {
+  color: #6b7280;
+  margin: 0 0 24px 0;
+  line-height: 1.6;
+}
+
+.ronda-posicao-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #f0f2f5;
+  padding: 10px 16px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  font-size: 0.875rem;
+  color: #4a5568;
+}
+
+.btn-iniciar-ronda {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 40px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+}
+
+.btn-iniciar-ronda:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+}
+
+.btn-iniciar-ronda:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TELA DE RONDA EM ANDAMENTO
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ronda-em-andamento {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Card de informações */
+.ronda-info-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.ronda-info-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.ronda-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.ronda-status-badge.ativa {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.ronda-status-badge .pulse {
+  width: 8px;
+  height: 8px;
+  background: #10b981;
+  border-radius: 50%;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+}
+
+.ronda-id {
+  color: #9ca3af;
+  font-size: 0.875rem;
+}
+
+.ronda-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 20px;
+}
+
+.ronda-info-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.ronda-info-item svg {
+  color: #4361ee;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.ronda-info-item .label {
+  display: block;
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.ronda-info-item .valor {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.ronda-info-item .valor.destaque {
+  color: #4361ee;
+  font-size: 1.5rem;
+}
+
+.ronda-info-item .valor.ativo {
+  color: #10b981;
+}
+
+.ronda-info-item .valor.inativo {
+  color: #ef4444;
+}
+
+.ronda-info-item .valor.coordenadas {
+  font-size: 0.875rem;
+  font-family: monospace;
+}
+
+.ronda-info-item.posicao {
+  grid-column: 1 / -1;
+}
+
+/* Card de checkpoint */
+.ronda-checkpoint-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.ronda-checkpoint-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.125rem;
+  color: #1a1a2e;
+  margin: 0 0 16px 0;
+}
+
+.ronda-checkpoint-card h3 svg {
+  color: #4361ee;
+}
+
+.ronda-checkpoint-form {
+  display: flex;
+  gap: 12px;
+}
+
+.ronda-checkpoint-form input {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.ronda-checkpoint-form input:focus {
+  outline: none;
+  border-color: #4361ee;
+  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+}
+
+.btn-checkpoint {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: #4361ee;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-checkpoint:hover:not(:disabled) {
+  background: #3730a3;
+}
+
+.btn-checkpoint:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Lista de checkpoints */
+.ronda-checkpoints-lista {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.ronda-checkpoints-lista h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.125rem;
+  color: #1a1a2e;
+  margin: 0 0 16px 0;
+}
+
+.ronda-checkpoints-lista h3 svg {
+  color: #4361ee;
+}
+
+.ronda-checkpoints-lista ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.checkpoint-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f2f5;
+}
+
+.checkpoint-item:last-child {
+  border-bottom: none;
+}
+
+.checkpoint-numero {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #4361ee, #3730a3);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.checkpoint-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.checkpoint-hora {
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.checkpoint-descricao {
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.checkpoint-tempo {
+  color: #10b981;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Botões de ação */
+.ronda-acoes {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.btn-finalizar {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 32px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-finalizar:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+}
+
+.btn-finalizar:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-cancelar {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 32px;
+  background: #f0f2f5;
+  color: #6b7280;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-cancelar:hover:not(:disabled) {
+  background: #e2e8f0;
+  color: #4a5568;
+}
+
+.btn-cancelar:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 32px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.btn-danger:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MODAIS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ronda-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.ronda-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 480px;
+  width: 100%;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ronda-modal h3 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.25rem;
+  color: #1a1a2e;
+  margin: 0 0 16px 0;
+}
+
+.ronda-modal p {
+  color: #6b7280;
+  margin: 0 0 20px 0;
+  line-height: 1.6;
+}
+
+.ronda-modal textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 1rem;
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+  margin-bottom: 20px;
+}
+
+.ronda-modal textarea:focus {
+  outline: none;
+  border-color: #4361ee;
+  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+}
+
+.ronda-modal-acoes {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVIDADE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .ronda-container {
+    padding: 16px;
+  }
+
+  .ronda-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .ronda-header-titulo h1 {
+    font-size: 1.5rem;
+  }
+
+  .ronda-iniciar-card {
+    padding: 32px 24px;
+  }
+
+  .ronda-iniciar-icone {
+    width: 100px;
+    height: 100px;
+  }
+
+  .ronda-iniciar-icone svg {
+    width: 48px;
+    height: 48px;
+  }
+
+  .btn-iniciar-ronda {
+    width: 100%;
+    padding: 14px 24px;
+  }
+
+  .ronda-checkpoint-form {
+    flex-direction: column;
+  }
+
+  .btn-checkpoint {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .ronda-acoes {
+    flex-direction: column;
+  }
+
+  .btn-finalizar,
+  .btn-cancelar {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .ronda-modal {
+    padding: 24px;
+  }
+
+  .ronda-modal-acoes {
+    flex-direction: column-reverse;
+  }
+
+  .ronda-modal-acoes button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .ronda-info-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .ronda-info-item.posicao {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 480px) {
+  .ronda-info-grid {
+    grid-template-columns: 1fr;
+  }
+}

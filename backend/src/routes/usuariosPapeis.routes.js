@@ -7,10 +7,7 @@ const express = require("express");
 const { celebrate, Segments, Joi } = require("celebrate");
 const UsuarioPapelController = require("../controllers/UsuarioPapelController");
 const { authMiddleware } = require("../middleware/authMiddleware");
-const {
-  requerPermissao,
-  requerAdmin,
-} = require("../middleware/permissaoMiddleware");
+const { requerPermissao } = require("../middleware/permissaoMiddleware");
 
 const router = express.Router();
 

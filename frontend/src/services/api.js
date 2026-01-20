@@ -26,7 +26,14 @@ api.interceptors.response.use(
       console.log("Token inválido ou expirado, redirecionando para login");
       localStorage.removeItem("token");
       localStorage.removeItem("usuario");
-      window.location.href = "/";
+
+      // Evita loop: só redireciona se não estiver já na página de login
+      if (
+        window.location.pathname !== "/" &&
+        window.location.pathname !== "/login"
+      ) {
+        window.location.href = "/";
+      }
     }
     return Promise.reject(error);
   }

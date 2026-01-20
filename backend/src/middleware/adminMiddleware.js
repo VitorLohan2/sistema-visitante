@@ -1,7 +1,9 @@
 const connection = require("../database/connection");
+const { getPermissoesUsuario } = require("./permissaoMiddleware");
 
 /**
- * Middleware que verifica se o usuário é administrador via papéis
+ * @deprecated Use requerPermissao do permissaoMiddleware.js
+ * Middleware legado para compatibilidade - agora verifica permissão 'usuario_gerenciar'
  * DEVE ser usado APÓS authMiddleware
  */
 async function adminMiddleware(req, res, next) {
@@ -14,62 +16,23 @@ async function adminMiddleware(req, res, next) {
   }
 
   try {
-    // Verificar via papéis no banco
-    const papeis = await connection("usuarios_papeis")
-      .join("papeis", "usuarios_papeis.papel_id", "papeis.id")
-      .where("usuarios_papeis.usuario_id", req.usuario.id)
-      .pluck("papeis.nome");
+    // Buscar permissões do usuário via RBAC
+    const resultado = await getPermissoesUsuario(req.usuario.id);
+    const permissoesUsuario = resultado?.permissoes || [];
 
-    const isAdmin = Array.isArray(papeis) && papeis.includes("ADMIN");
+    // Verifica se tem permissão de gerenciar usuários
+    const temPermissao = permissoesUsuario.includes("usuario_gerenciar");
 
-    if (!isAdmin) {
+    if (!temPermissao) {
       return res.status(403).json({
         error:
-          "Acesso negado. Apenas administradores podem acessar este recurso.",
-        code: "ADMIN_REQUIRED",
+          "Acesso negado. Você não tem permissão para acessar este recurso.",
+        code: "PERMISSION_DENIED",
       });
     }
 
-    // Adiciona flag isAdmin ao request para uso posterior
-    req.usuario.isAdmin = true;
-
-    return next();
-  } catch (error) {
-    console.error("Erro ao verificar permissões de admin:", error);
-    return res.status(500).json({
-      error: "Erro ao verificar permissões",
-      code: "PERMISSION_CHECK_ERROR",
-    });
-  }
-}
-
-/**
- * Middleware que verifica se o usuário NÃO é admin (usuário comum)
- * DEVE ser usado APÓS authMiddleware
- */
-async function userMiddleware(req, res, next) {
-  if (!req.usuario) {
-    return res.status(401).json({
-      error: "Autenticação necessária",
-      code: "AUTH_REQUIRED",
-    });
-  }
-
-  try {
-    // Verificar via papéis no banco
-    const papeis = await connection("usuarios_papeis")
-      .join("papeis", "usuarios_papeis.papel_id", "papeis.id")
-      .where("usuarios_papeis.usuario_id", req.usuario.id)
-      .pluck("papeis.nome");
-
-    const isAdmin = Array.isArray(papeis) && papeis.includes("ADMIN");
-
-    if (isAdmin) {
-      return res.status(403).json({
-        error: "Acesso negado. Recurso disponível apenas para usuários comuns.",
-        code: "USER_ONLY",
-      });
-    }
+    // Adiciona permissões ao request para uso posterior
+    req.permissoesUsuario = permissoesUsuario;
 
     return next();
   } catch (error) {
@@ -82,6 +45,22 @@ async function userMiddleware(req, res, next) {
 }
 
 /**
+ * @deprecated Não usar - sistema agora usa apenas RBAC
+ * Middleware legado que verificava se o usuário NÃO era admin
+ */
+async function userMiddleware(req, res, next) {
+  // Middleware legado - agora permite todos os usuários
+  if (!req.usuario) {
+    return res.status(401).json({
+      error: "Autenticação necessária",
+      code: "AUTH_REQUIRED",
+    });
+  }
+  return next();
+}
+
+/**
+ * @deprecated Use requerPermissao do permissaoMiddleware.js
  * Middleware que verifica se o usuário pertence a um setor específico
  * @param {number|number[]} setoresPermitidos - ID(s) do(s) setor(es) permitido(s)
  */
@@ -95,19 +74,6 @@ function setorMiddleware(setoresPermitidos) {
     }
 
     try {
-      // Verificar se é admin via papéis
-      const papeis = await connection("usuarios_papeis")
-        .join("papeis", "usuarios_papeis.papel_id", "papeis.id")
-        .where("usuarios_papeis.usuario_id", req.usuario.id)
-        .pluck("papeis.nome");
-
-      const isAdmin = Array.isArray(papeis) && papeis.includes("ADMIN");
-
-      // Admin sempre tem acesso
-      if (isAdmin) {
-        return next();
-      }
-
       const setores = Array.isArray(setoresPermitidos)
         ? setoresPermitidos
         : [setoresPermitidos];

@@ -95,15 +95,8 @@ function requerPermissao(permissoesRequeridas, opcoes = { todas: false }) {
 
       const resultado = await getPermissoesUsuario(usuario_id);
       const permissoesUsuario = resultado?.permissoes || [];
-      const isAdmin = resultado?.isAdmin || false;
 
-      // ADMIN tem todas as permissões
-      if (isAdmin) {
-        req.isAdmin = true;
-        req.permissoesUsuario = permissoesUsuario;
-        return next();
-      }
-
+      // Verifica permissões RBAC - sem privilégio automático para ninguém
       let temPermissao;
 
       if (opcoes.todas) {
@@ -133,60 +126,40 @@ function requerPermissao(permissoesRequeridas, opcoes = { todas: false }) {
 }
 
 /**
- * Middleware para verificar se é ADMIN
- */
-function requerAdmin() {
-  return async (req, res, next) => {
-    try {
-      const usuario_id = getUsuarioId(req);
-
-      if (!usuario_id) {
-        return res.status(401).json({ error: "Usuário não autenticado" });
-      }
-
-      const resultado = await getPermissoesUsuario(usuario_id);
-      const isAdminUser = resultado?.isAdmin || false;
-      const permissoesUsuario = resultado?.permissoes || [];
-
-      if (!isAdminUser) {
-        return res.status(403).json({
-          error: "Acesso restrito a administradores",
-        });
-      }
-
-      req.isAdmin = true;
-      req.permissoesUsuario = permissoesUsuario;
-      next();
-    } catch (err) {
-      console.error("Erro ao verificar admin:", err);
-      return res.status(500).json({ error: "Erro ao verificar permissões" });
-    }
-  };
-}
-
-/**
  * Verifica se usuário tem permissão (função auxiliar para uso em controllers)
+ * Usa apenas RBAC - sem privilégios automáticos
  */
 async function temPermissao(usuario_id, permissao) {
   const resultado = await getPermissoesUsuario(usuario_id);
   const permissoesUsuario = resultado?.permissoes || [];
-  const isAdminUser = resultado?.isAdmin || false;
-  return isAdminUser || permissoesUsuario.includes(permissao);
+  return permissoesUsuario.includes(permissao);
 }
 
 /**
- * Verifica se usuário é ADMIN (função auxiliar para uso em controllers)
+ * Verifica se usuário tem alguma das permissões (função auxiliar para uso em controllers)
+ * Usa apenas RBAC - sem privilégios automáticos
  */
-async function isAdmin(usuario_id) {
+async function temAlgumaPermissao(usuario_id, permissoes) {
   const resultado = await getPermissoesUsuario(usuario_id);
-  return resultado?.isAdmin || false;
+  const permissoesUsuario = resultado?.permissoes || [];
+  return permissoes.some((p) => permissoesUsuario.includes(p));
+}
+
+/**
+ * Verifica se usuário tem todas as permissões (função auxiliar para uso em controllers)
+ * Usa apenas RBAC - sem privilégios automáticos
+ */
+async function temTodasPermissoes(usuario_id, permissoes) {
+  const resultado = await getPermissoesUsuario(usuario_id);
+  const permissoesUsuario = resultado?.permissoes || [];
+  return permissoes.every((p) => permissoesUsuario.includes(p));
 }
 
 module.exports = {
   requerPermissao,
-  requerAdmin,
   temPermissao,
-  isAdmin,
+  temAlgumaPermissao,
+  temTodasPermissoes,
   getPermissoesUsuario,
   limparCacheUsuario,
   limparTodoCache,

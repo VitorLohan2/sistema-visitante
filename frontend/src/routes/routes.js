@@ -18,6 +18,7 @@ import { BrowserRouter, Route, Switch } from "react-router-dom";
 import Login from "../pages/Login";
 import RecuperarSenha from "../pages/RecuperarSenha";
 import RedefinirSenha from "../pages/RedefinirSenha";
+import CriarSenha from "../pages/CriarSenha";
 import SolicitacaoDescarga from "../pages/SolicitacaoDescarga";
 
 // Páginas protegidas - Navegação principal
@@ -50,6 +51,11 @@ import GerenciamentoDescargas from "../pages/GerenciamentoDescargas";
 // Páginas protegidas - Administração
 import GerenciamentoPermissoes from "../pages/GerenciamentoPermissoes";
 
+// Páginas protegidas - Ronda de Vigilante
+import Ronda from "../pages/Ronda";
+import HistoricoRondas from "../pages/Ronda/HistoricoRondas";
+import PainelRondas from "../pages/PainelRondas";
+
 // Componente de rota protegida
 import ProtectedRoute from "./protectedRoutes";
 
@@ -63,6 +69,7 @@ export default function Routes() {
         <Route path="/" exact component={Login} />
         <Route path="/recuperar-senha" exact component={RecuperarSenha} />
         <Route path="/redefinir-senha" exact component={RedefinirSenha} />
+        <Route path="/criar-senha" exact component={CriarSenha} />
         <Route
           path="/solicitar-descarga"
           exact
@@ -209,9 +216,34 @@ export default function Routes() {
         {/* MÓDULO: ADMINISTRAÇÃO */}
         {/* ════════════════════════════════════════════════════════════ */}
 
-        {/* Gerenciamento de Permissões - SOMENTE ADMIN */}
-        <ProtectedRoute path="/gerenciamento-permissoes" adminOnly>
+        {/* Gerenciamento de Permissões - permissao_gerenciar */}
+        <ProtectedRoute
+          path="/gerenciamento-permissoes"
+          permissao="permissao_gerenciar"
+        >
           <GerenciamentoPermissoes />
+        </ProtectedRoute>
+
+        {/* ════════════════════════════════════════════════════════════ */}
+        {/* MÓDULO: RONDA DE VIGILANTE */}
+        {/* ════════════════════════════════════════════════════════════ */}
+
+        {/* Página principal - Iniciar/Gerenciar Ronda */}
+        <ProtectedRoute path="/ronda" exact permissao="ronda_iniciar">
+          <Ronda />
+        </ProtectedRoute>
+
+        {/* Histórico de Rondas do Vigilante */}
+        <ProtectedRoute
+          path="/ronda/historico"
+          permissao="ronda_visualizar_historico"
+        >
+          <HistoricoRondas />
+        </ProtectedRoute>
+
+        {/* Painel Administrativo de Rondas */}
+        <ProtectedRoute path="/painel-rondas" permissao="ronda_gerenciar">
+          <PainelRondas />
         </ProtectedRoute>
       </Switch>
     </BrowserRouter>

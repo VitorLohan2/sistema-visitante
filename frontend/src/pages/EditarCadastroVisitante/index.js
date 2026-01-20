@@ -39,7 +39,10 @@ export default function EditarCadastroVisitante() {
     tipo_veiculo_visitante_id: "",
   });
 
-  const { isAdmin, temPermissao } = usePermissoes();
+  const { temPermissao } = usePermissoes();
+
+  // Permissão para bloquear/desbloquear visitantes
+  const podeBloquer = temPermissao("cadastro_bloquear");
 
   useEffect(() => {
     async function loadData() {
@@ -187,7 +190,7 @@ export default function EditarCadastroVisitante() {
 
   // Função para alternar estado do bloqueio (apenas localmente)
   const handleBlockChange = (e) => {
-    if (!isAdmin) return;
+    if (!podeBloquer) return;
     const novoEstado = e.target.checked;
     setForm((prev) => ({ ...prev, bloqueado: novoEstado }));
   };
@@ -312,7 +315,6 @@ export default function EditarCadastroVisitante() {
               value={form.nome}
               onChange={handleChange}
               required
-              disabled={!isAdmin}
             />
           </div>
 
@@ -325,7 +327,6 @@ export default function EditarCadastroVisitante() {
                 value={form.nascimento}
                 onChange={handleChange}
                 required
-                disabled={!isAdmin}
               />
             </div>
 
@@ -338,7 +339,6 @@ export default function EditarCadastroVisitante() {
                 onChange={handleCpfChange}
                 maxLength={14}
                 required
-                disabled={!isAdmin}
               />
             </div>
           </div>
@@ -474,8 +474,8 @@ export default function EditarCadastroVisitante() {
               id="bloqueado-checkbox"
               checked={form.bloqueado}
               onChange={handleBlockChange}
-              disabled={!isAdmin}
-              className={!isAdmin ? "disabled-checkbox" : ""}
+              disabled={!podeBloquer}
+              className={!podeBloquer ? "disabled-checkbox" : ""}
             />
             <label htmlFor="bloqueado-checkbox">
               {form.bloqueado ? "✅ Cadastro Bloqueado" : "⛔ Bloquear Acesso"}

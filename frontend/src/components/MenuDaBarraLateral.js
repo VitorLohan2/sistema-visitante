@@ -34,19 +34,22 @@ import {
   FiTruck,
   FiList,
   FiHeadphones,
+  FiMapPin,
+  FiMap,
 } from "react-icons/fi";
 import { useAuth } from "../hooks/useAuth";
 import { usePermissoes } from "../hooks/usePermissoes";
 import { useAgendamentos } from "../contexts/AgendamentoContext";
 import { useDescargas } from "../contexts/DescargaContext";
 import { useTickets } from "../contexts/TicketContext";
+import { useChatSuporte } from "../contexts/ChatSuporteContext";
 import "../styles/MenuDaBarraLateral.css";
 
 export default function MenuDaBarraLateral() {
   const history = useHistory();
   const location = useLocation();
   const { user, logout } = useAuth();
-  const { isAdmin, temPermissao, papeis } = usePermissoes();
+  const { temPermissao, papeis } = usePermissoes();
 
   // ═══════════════════════════════════════════════════════════════
   // DADOS DOS CONTEXTS (atualizados via Socket.IO automaticamente)
@@ -54,6 +57,7 @@ export default function MenuDaBarraLateral() {
   const { agendamentosAbertos } = useAgendamentos();
   const { solicitacoesPendentes } = useDescargas();
   const { unseenCount } = useTickets(); // Badge de tickets não vistos
+  const { filaCount } = useChatSuporte(); // Badge de chat suporte - APENAS fila de espera
 
   // Estados locais
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -62,6 +66,9 @@ export default function MenuDaBarraLateral() {
   // Verifica se usuário é da Segurança
   const isSeguranca =
     papeis.includes("SEGURANÇA") || papeis.includes("SEGURANCA");
+
+  // Notificação de chat = APENAS fila de espera (conversas aguardando atendente)
+  const chatNotificationCount = filaCount;
 
   // ═══════════════════════════════════════════════════════════════
   // HELPERS
@@ -128,11 +135,17 @@ export default function MenuDaBarraLateral() {
           <div className="user-info">
             <h3>{user?.nome}</h3>
             <p>{user?.email}</p>
-            {isAdmin && <span className="badge-admin">Administrador</span>}
+            {papeis.includes("ADMIN") && (
+              <span className="badge-admin">Administrador</span>
+            )}
+            {papeis.includes("GESTOR") && !papeis.includes("ADMIN") && (
+              <span className="badge-gestor">Gestor</span>
+            )}
           </div>
         </div>
 
-        {/* Menu items - TODOS controlados por permissão */}
+        {/* Menu items - TODOS controlados por permissão RBAC */}
+        {/* NOTA: temPermissao() já verifica se é ADMIN internamente */}
         <nav className="sidebar-nav">
           {/* ═══════════════════════════════════════════════════════════════ */}
           {/* PÁGINA INICIAL - UNIVERSAL (sem permissão) */}
@@ -151,7 +164,7 @@ export default function MenuDaBarraLateral() {
           {/* ═══════════════════════════════════════════════════════════════ */}
 
           {/* Visitantes Cadastrados (antiga Página Inicial) - visitante_visualizar */}
-          {(isAdmin || temPermissao("visitante_visualizar")) && (
+          {temPermissao("visitante_visualizar") && (
             <button
               className={`nav-item ${isActive("/listagem-visitante") ? "active" : ""}`}
               onClick={() => handleNavigation("/listagem-visitante")}
@@ -162,7 +175,7 @@ export default function MenuDaBarraLateral() {
           )}
 
           {/* Cadastrar Visitante - cadastro_criar */}
-          {(isAdmin || temPermissao("cadastro_criar")) && (
+          {temPermissao("cadastro_criar") && (
             <button
               className={`nav-item ${isActive("/cadastro-visitantes/novo") ? "active" : ""}`}
               onClick={() => handleNavigation("/cadastro-visitantes/novo")}
@@ -173,7 +186,7 @@ export default function MenuDaBarraLateral() {
           )}
 
           {/* Visitantes do Dia - cadastro_visualizar */}
-          {(isAdmin || temPermissao("cadastro_visualizar")) && (
+          {temPermissao("cadastro_visualizar") && (
             <button
               className={`nav-item ${isActive("/visitantes") ? "active" : ""}`}
               onClick={() => handleNavigation("/visitantes")}
@@ -184,7 +197,7 @@ export default function MenuDaBarraLateral() {
           )}
 
           {/* Histórico de Visitantes - visitante_historico */}
-          {(isAdmin || temPermissao("visitante_historico")) && (
+          {temPermissao("visitante_historico") && (
             <button
               className={`nav-item ${isActive("/historico-visitante") ? "active" : ""}`}
               onClick={() => handleNavigation("/historico-visitante")}
@@ -195,11 +208,37 @@ export default function MenuDaBarraLateral() {
           )}
 
           {/* ═══════════════════════════════════════════════════════════════ */}
+          {/* MÓDULO: RONDA DE VIGILANTE */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
+
+          {/* Minha Ronda - ronda_iniciar */}
+          {temPermissao("ronda_iniciar") && (
+            <button
+              className={`nav-item ${isActive("/ronda") ? "active" : ""}`}
+              onClick={() => handleNavigation("/ronda")}
+            >
+              <FiMapPin size={20} />
+              <span>Minha Ronda</span>
+            </button>
+          )}
+
+          {/* Painel de Rondas (Admin) - ronda_gerenciar */}
+          {temPermissao("ronda_gerenciar") && (
+            <button
+              className={`nav-item ${isActive("/painel-rondas") ? "active" : ""}`}
+              onClick={() => handleNavigation("/painel-rondas")}
+            >
+              <FiMap size={20} />
+              <span>Painel de Rondas</span>
+            </button>
+          )}
+
+          {/* ═══════════════════════════════════════════════════════════════ */}
           {/* MÓDULO: TICKETS */}
           {/* ═══════════════════════════════════════════════════════════════ */}
 
           {/* Tickets - ticket_visualizar */}
-          {(isAdmin || temPermissao("ticket_visualizar")) && (
+          {temPermissao("ticket_visualizar") && (
             <button
               className={`nav-item ${isActive("/ticket-dashboard") ? "active" : ""}`}
               onClick={() => handleNavigation("/ticket-dashboard")}
@@ -219,13 +258,19 @@ export default function MenuDaBarraLateral() {
           {/* ═══════════════════════════════════════════════════════════════ */}
 
           {/* Painel de Atendimento - chat_atendente_acessar_painel */}
-          {(isAdmin || temPermissao("chat_atendente_acessar_painel")) && (
+          {temPermissao("chat_atendente_acessar_painel") && (
             <button
               className={`nav-item ${isActive("/chat-suporte/atendente") ? "active" : ""}`}
               onClick={() => handleNavigation("/chat-suporte/atendente")}
             >
               <FiHeadphones size={20} />
               <span>Chat de Suporte</span>
+              {/* Badge de notificação: fila + mensagens não lidas */}
+              {chatNotificationCount > 0 && (
+                <span className="notification-badge">
+                  {chatNotificationCount > 9 ? "9+" : chatNotificationCount}
+                </span>
+              )}
             </button>
           )}
 
@@ -234,15 +279,15 @@ export default function MenuDaBarraLateral() {
           {/* ═══════════════════════════════════════════════════════════════ */}
 
           {/* Agendamentos - agendamento_visualizar */}
-          {(isAdmin || temPermissao("agendamento_visualizar")) && (
+          {temPermissao("agendamento_visualizar") && (
             <button
               className={`nav-item ${isActive("/agendamentos") ? "active" : ""}`}
               onClick={() => handleNavigation("/agendamentos")}
             >
               <FiCalendar size={20} />
               <span>Agendamentos</span>
-              {/* Badge de notificação para SEGURANÇA e Admin */}
-              {(isSeguranca || isAdmin) && agendamentosAbertos > 0 && (
+              {/* Badge de notificação para SEGURANÇA */}
+              {isSeguranca && agendamentosAbertos > 0 && (
                 <span className="notification-badge">
                   {agendamentosAbertos > 9 ? "9+" : agendamentosAbertos}
                 </span>
@@ -255,7 +300,7 @@ export default function MenuDaBarraLateral() {
           {/* ═══════════════════════════════════════════════════════════════ */}
 
           {/* Gerenciar Descargas - descarga_visualizar */}
-          {(isAdmin || temPermissao("descarga_visualizar")) && (
+          {temPermissao("descarga_visualizar") && (
             <button
               className={`nav-item ${isActive("/gerenciamento-descargas") ? "active" : ""}`}
               onClick={() => handleNavigation("/gerenciamento-descargas")}
@@ -276,7 +321,7 @@ export default function MenuDaBarraLateral() {
           {/* ═══════════════════════════════════════════════════════════════ */}
 
           {/* Dashboard - dashboard_visualizar */}
-          {(isAdmin || temPermissao("dashboard_visualizar")) && (
+          {temPermissao("dashboard_visualizar") && (
             <button
               className={`nav-item ${isActive("/dashboard") ? "active" : ""}`}
               onClick={() => handleNavigation("/dashboard")}
@@ -291,7 +336,7 @@ export default function MenuDaBarraLateral() {
           {/* ═══════════════════════════════════════════════════════════════ */}
 
           {/* Empresas de Visitantes - empresa_visualizar */}
-          {(isAdmin || temPermissao("empresa_visualizar")) && (
+          {temPermissao("empresa_visualizar") && (
             <button
               className={`nav-item ${isActive("/empresas-visitantes") ? "active" : ""}`}
               onClick={() => handleNavigation("/empresas-visitantes")}
@@ -306,7 +351,7 @@ export default function MenuDaBarraLateral() {
           {/* ═══════════════════════════════════════════════════════════════ */}
 
           {/* Gerenciar Funcionários - funcionario_visualizar */}
-          {(isAdmin || temPermissao("funcionario_visualizar")) && (
+          {temPermissao("funcionario_visualizar") && (
             <button
               className={`nav-item ${isActive("/funcionarios") ? "active" : ""}`}
               onClick={() => handleNavigation("/funcionarios")}
@@ -321,7 +366,7 @@ export default function MenuDaBarraLateral() {
           {/* ═══════════════════════════════════════════════════════════════ */}
 
           {/* Ponto / Bipagem - ponto_visualizar */}
-          {(isAdmin || temPermissao("ponto_visualizar")) && (
+          {temPermissao("ponto_visualizar") && (
             <button
               className={`nav-item ${isActive("/ponto") ? "active" : ""}`}
               onClick={() => handleNavigation("/ponto")}
@@ -332,11 +377,11 @@ export default function MenuDaBarraLateral() {
           )}
 
           {/* ═══════════════════════════════════════════════════════════════ */}
-          {/* MÓDULO: ADMINISTRAÇÃO - SOMENTE ADMIN */}
+          {/* MÓDULO: ADMINISTRAÇÃO */}
           {/* ═══════════════════════════════════════════════════════════════ */}
 
-          {/* Gerenciar Permissões - SOMENTE ADMIN */}
-          {isAdmin && (
+          {/* Gerenciar Permissões - permissao_gerenciar */}
+          {temPermissao("permissao_gerenciar") && (
             <button
               className={`nav-item admin-item ${isActive("/gerenciamento-permissoes") ? "active" : ""}`}
               onClick={() => handleNavigation("/gerenciamento-permissoes")}

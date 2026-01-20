@@ -9,6 +9,8 @@
 const connection = require("../database/connection");
 const cloudinary = require("../config/cloudinary");
 const { getIo } = require("../socket");
+const { temPermissao } = require("../middleware/permissaoMiddleware");
+const { getUsuarioId } = require("../utils/authHelper");
 
 // Nome da tabela (facilita futura migration)
 const TABELA_VISITANTES = "cadastro_visitante"; // Tabela atualizada
@@ -603,11 +605,13 @@ module.exports = {
     const { id } = request.params;
     const { bloqueado } = request.body;
 
-    // Verifica se é admin (vem do adminMiddleware)
-    if (!request.usuario || !request.usuario.isAdmin) {
+    // Verifica se tem permissão de bloquear cadastros
+    const usuario_id = getUsuarioId(request);
+    const podeFazer = await temPermissao(usuario_id, "cadastro_bloquear");
+    if (!podeFazer) {
       return response.status(403).json({
-        error: "Somente administradores podem bloquear cadastros.",
-        code: "ADMIN_REQUIRED",
+        error: "Você não tem permissão para bloquear cadastros.",
+        code: "PERMISSION_DENIED",
       });
     }
 
@@ -662,11 +666,13 @@ module.exports = {
     const io = getIo();
     const { id } = request.params;
 
-    // Verifica se é admin
-    if (!request.usuario || !request.usuario.isAdmin) {
+    // Verifica se tem permissão de deletar cadastros
+    const usuario_id = getUsuarioId(request);
+    const podeFazer = await temPermissao(usuario_id, "cadastro_deletar");
+    if (!podeFazer) {
       return response.status(403).json({
-        error: "Somente administradores podem excluir cadastros.",
-        code: "ADMIN_REQUIRED",
+        error: "Você não tem permissão para excluir cadastros.",
+        code: "PERMISSION_DENIED",
       });
     }
 
@@ -910,27 +916,20 @@ module.exports = {
     const { id } = request.params;
     const { bloqueado } = request.body;
 
-    // Extrai o token do header Authorization
-    const authHeader = request.headers.authorization;
-    const usuario_id = authHeader ? authHeader.replace("Bearer ", "") : null;
+    const usuario_id = getUsuarioId(request);
 
     console.log("🚫 Bloqueio solicitado:", { id, bloqueado, usuario_id });
 
     try {
-      // Verificar se é admin via papéis
-      const papeis = await connection("usuarios_papeis")
-        .join("papeis", "usuarios_papeis.papel_id", "papeis.id")
-        .where("usuarios_papeis.usuario_id", usuario_id)
-        .pluck("papeis.nome");
+      // Verificar se tem permissão de bloquear cadastros
+      const podeFazer = await temPermissao(usuario_id, "cadastro_bloquear");
 
-      const isAdmin = Array.isArray(papeis) && papeis.includes("ADMIN");
-
-      if (!isAdmin) {
+      if (!podeFazer) {
         console.log(
           `❌ Tentativa de bloqueio não autorizada por: ${usuario_id}`
         );
         return response.status(403).json({
-          error: "Somente administradores podem bloquear cadastros.",
+          error: "Você não tem permissão para bloquear cadastros.",
         });
       }
 

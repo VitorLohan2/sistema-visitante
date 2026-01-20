@@ -64,6 +64,12 @@ export default function ChatWidget() {
   const [enviando, setEnviando] = useState(false);
   const [posicaoFila, setPosicaoFila] = useState(null);
   const [digitando, setDigitando] = useState(null);
+  const [conversaCarregada, setConversaCarregada] = useState(false);
+
+  // Estado para mensagens não lidas (quando minimizado)
+  const [mensagensNaoLidas, setMensagensNaoLidas] = useState(0);
+  // Guarda os IDs das mensagens já vistas (mais confiável que usar length)
+  const mensagensVistasRef = useRef(new Set());
 
   // Estados de avaliação
   const [showAvaliacao, setShowAvaliacao] = useState(false);
@@ -75,11 +81,18 @@ export default function ChatWidget() {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const digitandoTimeoutRef = useRef(null);
+  const pollingRef = useRef(null);
 
   // Token para visitantes (armazenado no sessionStorage)
   const [tokenVisitante, setTokenVisitante] = useState(() =>
     sessionStorage.getItem("chatSuporteToken")
   );
+
+  // ID da conversa salva (para persistência)
+  const [conversaIdSalva] = useState(() => {
+    const saved = sessionStorage.getItem("chatSuporteConversaId");
+    return saved ? parseInt(saved) : null;
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // EFEITOS
@@ -92,6 +105,137 @@ export default function ChatWidget() {
       setEmail(user.email || "");
     }
   }, [isAuthenticated, user]);
+
+  // PERSISTÊNCIA: Carrega conversa ativa ao montar o componente ou quando usuário muda
+  useEffect(() => {
+    const carregarConversaAtiva = async () => {
+      // Reset estados antes de carregar
+      setConversa(null);
+      setMensagens([]);
+      setPosicaoFila(null);
+      setShowAvaliacao(false);
+
+      try {
+        // Para usuário logado
+        if (isAuthenticated && user?.id) {
+          setShowIdentification(false);
+
+          const response = await api.get("/chat-suporte/conversas", {
+            params: { status: "BOT,AGUARDANDO_ATENDENTE,EM_ATENDIMENTO" },
+          });
+
+          const conversas = response.data || [];
+          const conversaAtiva = conversas[0];
+
+          if (conversaAtiva) {
+            console.log(
+              "📂 Conversa ativa encontrada:",
+              conversaAtiva.id,
+              conversaAtiva.status
+            );
+            setConversa(conversaAtiva);
+
+            // Carrega mensagens
+            const msgResponse = await api.get(
+              `/chat-suporte/conversas/${conversaAtiva.id}`
+            );
+            setMensagens(msgResponse.data.mensagens || []);
+
+            if (conversaAtiva.status === STATUS.AGUARDANDO_ATENDENTE) {
+              setPosicaoFila(msgResponse.data.posicaoFila);
+            }
+          } else {
+            console.log("📂 Nenhuma conversa ativa para usuário logado");
+          }
+        }
+        // Para visitante com token salvo
+        else if (tokenVisitante && conversaIdSalva) {
+          try {
+            const response = await api.get(
+              `/chat-suporte/visitante/conversas/${conversaIdSalva}`,
+              { headers: { "x-chat-token": tokenVisitante } }
+            );
+
+            const conversaData = response.data.conversa || response.data;
+
+            if (conversaData && conversaData.status !== STATUS.FINALIZADA) {
+              console.log(
+                "📂 Conversa de visitante encontrada:",
+                conversaData.id,
+                conversaData.status
+              );
+              setConversa(conversaData);
+              setMensagens(response.data.mensagens || []);
+              setShowIdentification(false);
+
+              if (conversaData.status === STATUS.AGUARDANDO_ATENDENTE) {
+                setPosicaoFila(response.data.posicaoFila);
+              }
+            } else {
+              // Conversa finalizada, mostra identificação
+              setShowIdentification(true);
+            }
+          } catch (err) {
+            // Conversa não encontrada ou expirada, limpa dados
+            console.log("⚠️ Conversa de visitante não encontrada ou expirada");
+            sessionStorage.removeItem("chatSuporteToken");
+            sessionStorage.removeItem("chatSuporteConversaId");
+            setShowIdentification(true);
+          }
+        } else if (!isAuthenticated) {
+          // Visitante sem token - mostrar identificação
+          setShowIdentification(true);
+        }
+      } catch (err) {
+        console.error("Erro ao carregar conversa ativa:", err);
+      } finally {
+        setConversaCarregada(true);
+      }
+    };
+
+    carregarConversaAtiva();
+  }, [isAuthenticated, user?.id]); // Remove outras dependências para evitar loops
+
+  // Salva ID da conversa quando ela é criada
+  useEffect(() => {
+    if (conversa?.id) {
+      sessionStorage.setItem("chatSuporteConversaId", conversa.id.toString());
+    }
+  }, [conversa?.id]);
+
+  // Controla contador de mensagens não lidas quando minimiza/abre
+  useEffect(() => {
+    if (isOpen && !isMinimized) {
+      // Quando abre o chat, zera o contador e marca todas as mensagens como vistas
+      setMensagensNaoLidas(0);
+      mensagens.forEach((m) => mensagensVistasRef.current.add(m.id));
+    }
+  }, [isOpen, isMinimized, mensagens]);
+
+  // Quando recebe novas mensagens e está minimizado, incrementa contador
+  useEffect(() => {
+    if (!isMinimized) return;
+
+    // Encontra mensagens que ainda não foram vistas
+    const mensagensNovas = mensagens.filter(
+      (m) => m.id && !mensagensVistasRef.current.has(m.id)
+    );
+
+    if (mensagensNovas.length === 0) return;
+
+    // Filtra apenas mensagens que não são do próprio usuário
+    const mensagensDeOutros = mensagensNovas.filter(
+      (m) => m.origem !== "USUARIO" || m.remetente_id !== user?.id
+    );
+
+    // Marca todas as novas mensagens como processadas (mesmo as do próprio usuário)
+    mensagensNovas.forEach((m) => mensagensVistasRef.current.add(m.id));
+
+    // Incrementa contador apenas com mensagens de outros
+    if (mensagensDeOutros.length > 0) {
+      setMensagensNaoLidas((prev) => prev + mensagensDeOutros.length);
+    }
+  }, [mensagens, isMinimized, user?.id]);
 
   // Rola para a última mensagem
   useEffect(() => {
@@ -146,6 +290,7 @@ export default function ChatWidget() {
       "chat-suporte:atendente-entrou",
       (data) => {
         if (data.conversa_id === conversa.id) {
+          console.log("🎉 Atendente entrou na conversa:", data);
           setConversa((prev) => ({
             ...prev,
             status: STATUS.EM_ATENDIMENTO,
@@ -189,6 +334,108 @@ export default function ChatWidget() {
       unsubFilaAtualizada && unsubFilaAtualizada();
     };
   }, [conversa?.id, isAuthenticated]);
+
+  // Polling para verificar atualizações da conversa
+  // Funciona para visitantes não autenticados e também como fallback para usuários logados
+  useEffect(() => {
+    if (!conversa?.id) {
+      console.log("🔄 Polling: Sem conversa ativa");
+      return;
+    }
+    if (conversa.status === STATUS.FINALIZADA) {
+      console.log("🔄 Polling: Conversa finalizada, polling não necessário");
+      return;
+    }
+
+    const conversaId = conversa.id;
+    console.log(
+      `🔄 Polling iniciado para conversa ${conversaId}, isAuth: ${isAuthenticated}, token: ${tokenVisitante ? "presente" : "ausente"}`
+    );
+
+    // Para visitantes: usa o token
+    // Para usuários logados: usa autenticação normal
+    const checkStatus = async () => {
+      try {
+        let response;
+
+        if (!isAuthenticated && tokenVisitante) {
+          console.log(
+            `📡 Polling visitante: /chat-suporte/visitante/conversas/${conversaId}`
+          );
+          response = await api.get(
+            `/chat-suporte/visitante/conversas/${conversaId}`,
+            { headers: { "x-chat-token": tokenVisitante } }
+          );
+        } else if (isAuthenticated) {
+          response = await api.get(`/chat-suporte/conversas/${conversaId}`);
+        } else {
+          console.log("⚠️ Polling: Não autenticado e sem token visitante");
+          return;
+        }
+
+        const conversaAtualizada = response.data.conversa || response.data;
+        const novasMensagens = response.data.mensagens || [];
+
+        console.log(
+          `📡 Polling resposta: status=${conversaAtualizada.status}, mensagens=${novasMensagens.length}`
+        );
+
+        // Atualiza conversa com dados novos
+        setConversa((prev) => {
+          if (!prev) return prev;
+
+          // Se o status mudou, loga
+          if (
+            conversaAtualizada.status &&
+            conversaAtualizada.status !== prev.status
+          ) {
+            console.log(
+              `🔄 Status mudou: ${prev.status} -> ${conversaAtualizada.status}`
+            );
+
+            if (conversaAtualizada.status === STATUS.EM_ATENDIMENTO) {
+              console.log("✅ Atendente aceitou a conversa!");
+              setPosicaoFila(null);
+            }
+
+            if (conversaAtualizada.status === STATUS.FINALIZADA) {
+              setShowAvaliacao(true);
+            }
+          }
+
+          return {
+            ...prev,
+            status: conversaAtualizada.status,
+            atendente_nome: conversaAtualizada.atendente_nome,
+          };
+        });
+
+        // Atualiza posição na fila
+        if (response.data.posicaoFila !== undefined) {
+          setPosicaoFila(response.data.posicaoFila);
+        }
+
+        // Atualiza mensagens - sempre sincronizar (substitui completamente)
+        if (novasMensagens.length > 0) {
+          setMensagens(novasMensagens);
+        }
+      } catch (err) {
+        console.error("Erro no polling:", err);
+      }
+    };
+
+    // Executa imediatamente ao montar
+    checkStatus();
+
+    // Intervalo de polling: 3 segundos
+    pollingRef.current = setInterval(checkStatus, 3000);
+
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+      }
+    };
+  }, [conversa?.id, isAuthenticated, tokenVisitante]);
 
   // Foca no input quando abre
   useEffect(() => {
@@ -406,6 +653,13 @@ export default function ChatWidget() {
 
   // Inicia nova conversa após finalizar
   const iniciarNovaConversa = () => {
+    // Limpa dados salvos
+    sessionStorage.removeItem("chatSuporteConversaId");
+    if (!isAuthenticated) {
+      sessionStorage.removeItem("chatSuporteToken");
+      setTokenVisitante(null);
+    }
+
     setConversa(null);
     setMensagens([]);
     setShowIdentification(!isAuthenticated);
@@ -660,10 +914,25 @@ export default function ChatWidget() {
             <div className="chat-widget-header-info">
               <h3>Suporte</h3>
               {getStatusBadge()}
+              {/* Badge de mensagens não lidas quando minimizado */}
+              {isMinimized && mensagensNaoLidas > 0 && (
+                <span className="chat-unread-badge">
+                  {mensagensNaoLidas > 9 ? "9+" : mensagensNaoLidas}
+                </span>
+              )}
             </div>
             <div className="chat-widget-header-actions">
               <button
-                onClick={() => setIsMinimized(!isMinimized)}
+                onClick={() => {
+                  setIsMinimized(!isMinimized);
+                  if (isMinimized) {
+                    // Ao maximizar, zera contador e marca todas como vistas
+                    setMensagensNaoLidas(0);
+                    mensagens.forEach((m) =>
+                      mensagensVistasRef.current.add(m.id)
+                    );
+                  }
+                }}
                 title={isMinimized ? "Maximizar" : "Minimizar"}
               >
                 {isMinimized ? (
@@ -683,8 +952,46 @@ export default function ChatWidget() {
             <div className="chat-widget-body">
               {showAvaliacao ? (
                 renderAvaliacao()
+              ) : conversa?.status === STATUS.FINALIZADA ? (
+                // Conversa finalizada - mostrar opção de iniciar nova
+                <div className="chat-widget-finished">
+                  <div className="chat-widget-finished-icon">
+                    <FiCheck size={48} />
+                  </div>
+                  <h4>Atendimento Finalizado</h4>
+                  <p>Obrigado por entrar em contato conosco!</p>
+                  <button
+                    className="chat-widget-new-btn"
+                    onClick={iniciarNovaConversa}
+                  >
+                    Iniciar Nova Conversa
+                  </button>
+                </div>
               ) : showIdentification ? (
                 renderIdentificacao()
+              ) : !conversa ? (
+                // Usuário logado sem conversa ativa - mostrar botão para iniciar
+                <div className="chat-widget-start">
+                  <div className="chat-widget-start-icon">
+                    <FiMessageCircle size={48} />
+                  </div>
+                  <h4>Olá, {nome || "usuário"}! 👋</h4>
+                  <p>Como podemos ajudar você hoje?</p>
+                  <button
+                    className="chat-widget-start-btn"
+                    onClick={iniciarConversa}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <FiLoader className="spin" size={18} />
+                    ) : (
+                      <>
+                        <FiMessageCircle size={18} />
+                        Iniciar Conversa
+                      </>
+                    )}
+                  </button>
+                </div>
               ) : (
                 <>
                   {renderMensagens()}

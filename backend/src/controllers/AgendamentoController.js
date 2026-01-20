@@ -2,10 +2,7 @@
 const connection = require("../database/connection");
 const { getIo } = require("../socket");
 const { getUsuarioId } = require("../utils/authHelper");
-const {
-  isAdmin: verificarAdmin,
-  temPermissao,
-} = require("../middleware/permissaoMiddleware");
+const { temPermissao } = require("../middleware/permissaoMiddleware");
 
 module.exports = {
   async create(request, response) {

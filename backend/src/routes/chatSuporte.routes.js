@@ -122,12 +122,7 @@ router.get(
   authMiddleware,
   celebrate({
     [Segments.QUERY]: Joi.object().keys({
-      status: Joi.string().valid(
-        "BOT",
-        "AGUARDANDO_ATENDENTE",
-        "EM_ATENDIMENTO",
-        "FINALIZADA"
-      ),
+      status: Joi.string().max(100), // Permite status único ou múltiplos separados por vírgula
       limite: Joi.number().integer().min(1).max(100),
     }),
   }),

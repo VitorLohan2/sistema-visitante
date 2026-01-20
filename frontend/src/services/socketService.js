@@ -314,6 +314,44 @@ export function connect(token) {
     eventCallbacks["descarga:atualizada"].forEach((cb) => cb(data));
   });
 
+  // ═══════════════════════════════════════════════════════════════
+  // EVENTOS DE CHAT DE SUPORTE
+  // ═══════════════════════════════════════════════════════════════
+  socket.on("chat-suporte:mensagem", (data) => {
+    console.log("💬 Mensagem de chat recebida via Socket:", data);
+    eventCallbacks["chat-suporte:mensagem"].forEach((cb) => cb(data));
+  });
+
+  socket.on("chat-suporte:digitando", (data) => {
+    eventCallbacks["chat-suporte:digitando"].forEach((cb) => cb(data));
+  });
+
+  socket.on("chat-suporte:parou-digitar", (data) => {
+    eventCallbacks["chat-suporte:parou-digitar"].forEach((cb) => cb(data));
+  });
+
+  socket.on("chat-suporte:atendente-entrou", (data) => {
+    console.log("👨‍💼 Atendente entrou via Socket:", data);
+    eventCallbacks["chat-suporte:atendente-entrou"].forEach((cb) => cb(data));
+  });
+
+  socket.on("chat-suporte:conversa-finalizada", (data) => {
+    console.log("🔚 Conversa finalizada via Socket:", data);
+    eventCallbacks["chat-suporte:conversa-finalizada"].forEach((cb) =>
+      cb(data)
+    );
+  });
+
+  socket.on("chat-suporte:fila-atualizada", (data) => {
+    console.log("📋 Fila atualizada via Socket:", data);
+    eventCallbacks["chat-suporte:fila-atualizada"].forEach((cb) => cb(data));
+  });
+
+  socket.on("chat-suporte:nova-fila", (data) => {
+    console.log("📢 Nova conversa na fila via Socket:", data);
+    eventCallbacks["chat-suporte:nova-fila"].forEach((cb) => cb(data));
+  });
+
   return socket;
 }
 

@@ -23,6 +23,7 @@ import api from "../../services/api";
 import { getCache, setCache } from "../../services/cacheService";
 import socketService from "../../services/socketService";
 import { useAuth } from "../../hooks/useAuth";
+import { usePermissoes } from "../../hooks/usePermissoes";
 import "./styles.css";
 
 // Registrar componentes do Chart.js
@@ -40,6 +41,7 @@ ChartJS.register(
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { temPermissao, loading: permissoesLoading } = usePermissoes();
   const [stats, setStats] = useState({
     totalVisitantes: 0,
     visitantesHoje: 0,
@@ -283,12 +285,23 @@ export default function Dashboard() {
     },
   };
 
-  if (!user?.isAdmin) {
+  // Verifica permissão via RBAC (temPermissao já considera ADMIN)
+  if (permissoesLoading) {
+    return (
+      <div className="dashboard-container">
+        <div className="dashboard-loading">
+          <p>Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!temPermissao("dashboard_visualizar")) {
     return (
       <div className="dashboard-container">
         <div className="dashboard-error">
           <h2>Acesso Negado</h2>
-          <p>Apenas administradores podem acessar o dashboard.</p>
+          <p>Você não tem permissão para acessar o dashboard.</p>
         </div>
       </div>
     );

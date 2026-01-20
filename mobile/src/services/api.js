@@ -1,8 +1,29 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * SERVIÇO: API
+ * Configuração do Axios para comunicação com o backend
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CONFIGURAÇÃO BASE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Obtém a URL da API do app.json > extra ou usa fallback
+const API_URL =
+  Constants.expoConfig?.extra?.API_URL || "http://192.168.137.1:3001";
+
+// Log da URL sendo usada
+if (__DEV__) {
+  console.log("🔗 API URL configurada:", API_URL);
+}
 
 const api = axios.create({
-  baseURL: process.env.API_URL || "http://localhost:3333", // Substitua pelo seu IP real baseURL: process.env.API_URL || 'http://localhost:3333' / baseURL: 'https://sistema-visitante.onrender.com'
+  baseURL: API_URL,
   timeout: 15000,
   headers: {
     Accept: "application/json",
@@ -10,74 +31,76 @@ const api = axios.create({
   },
 });
 
-// Interceptores com logs detalhados
+// ═══════════════════════════════════════════════════════════════════════════════
+// INTERCEPTOR DE REQUISIÇÃO
+// Adiciona token de autenticação automaticamente
+// ═══════════════════════════════════════════════════════════════════════════════
+
 api.interceptors.request.use(
   async (config) => {
     try {
-      // Tenta pegar o token (seguindo padrão frontend)
       const token = await AsyncStorage.getItem("@Auth:token");
 
-      // Se não tiver token, tenta pegar o ongId (padrão antigo)
-      const ongId = token || (await AsyncStorage.getItem("@Auth:ongId"));
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
 
-      console.log("📡 Requisição para:", {
-        method: config.method?.toUpperCase(),
-        url: `${config.baseURL}${config.url}`,
-        hasAuth: !!ongId,
-        authType: token ? "Bearer token" : "ongId",
-        isFormData: config.data instanceof FormData,
-      });
+      // Para FormData, deixa o axios definir o Content-Type
+      if (config.data instanceof FormData) {
+        delete config.headers["Content-Type"];
+      }
 
-      if (ongId) {
-        // IMPORTANTE: Frontend web usa "Bearer" prefix
-        // Verifique qual o backend espera
-        if (token) {
-          // Se tem token salvo (como frontend web)
-          config.headers.Authorization = `Bearer ${ongId}`;
-        } else {
-          // Se tem apenas ongId (padrão antigo)
-          config.headers.Authorization = ongId;
-        }
-
-        // Para FormData, NÃO defina Content-Type manualmente
-        if (!(config.data instanceof FormData)) {
-          config.headers["Content-Type"] = "application/json";
-        }
+      // Log em desenvolvimento
+      if (__DEV__) {
+        console.log("📡 Requisição:", {
+          method: config.method?.toUpperCase(),
+          url: `${config.baseURL}${config.url}`,
+          hasAuth: !!token,
+        });
       }
 
       return config;
     } catch (error) {
-      console.log("❌ Erro no interceptor:", error);
+      console.error("❌ Erro no interceptor de requisição:", error);
       return config;
     }
   },
   (error) => {
-    console.error("Erro no interceptor de requisição:", error);
+    console.error("❌ Erro na requisição:", error);
     return Promise.reject(error);
   }
 );
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// INTERCEPTOR DE RESPOSTA
+// Trata erros e faz logout automático em 401
+// ═══════════════════════════════════════════════════════════════════════════════
+
 api.interceptors.response.use(
   (response) => {
-    console.log("✅ Resposta recebida:", {
-      status: response.status,
-      url: response.config.url,
-    });
+    if (__DEV__) {
+      console.log("✅ Resposta:", {
+        url: response.config.url,
+        status: response.status,
+      });
+    }
     return response;
   },
-  (error) => {
-    const errorDetails = {
-      message: error.message,
-      code: error.code,
-      url: error.config?.url,
-      status: error.response?.status,
-      responseData: error.response?.data,
-    };
+  async (error) => {
+    const status = error.response?.status;
+    const mensagem = error.response?.data?.error || error.message;
 
-    console.error("❌ Erro na resposta:", errorDetails);
+    if (__DEV__) {
+      console.error("❌ Erro na resposta:", {
+        url: error.config?.url,
+        status,
+        mensagem,
+      });
+    }
 
-    if (error.response?.status === 401) {
-      AsyncStorage.multiRemove(["@Auth:ongId", "@Auth:ongName", "@Auth:token"]);
+    // Token expirado ou inválido - limpa dados de autenticação
+    if (status === 401) {
+      await AsyncStorage.multiRemove(["@Auth:token", "@Auth:usuario"]);
     }
 
     return Promise.reject(error);

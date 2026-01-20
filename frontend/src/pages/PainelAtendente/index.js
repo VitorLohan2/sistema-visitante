@@ -40,6 +40,7 @@ import {
 import { useAuth } from "../../hooks/useAuth";
 import api from "../../services/api";
 import * as socketService from "../../services/socketService";
+import { useChatSuporte } from "../../contexts/ChatSuporteContext";
 import "./PainelAtendente.css";
 
 // Status da conversa
@@ -52,6 +53,12 @@ const STATUS = {
 
 export default function PainelAtendente() {
   const { user } = useAuth();
+  const {
+    mensagensNaoLidas,
+    visualizandoConversa,
+    saiuConversa,
+    atualizarDados: atualizarDadosContext,
+  } = useChatSuporte();
 
   // Estados principais
   const [loading, setLoading] = useState(true);
@@ -66,6 +73,9 @@ export default function PainelAtendente() {
   const [conversasAtivas, setConversasAtivas] = useState([]);
   const [conversaSelecionada, setConversaSelecionada] = useState(null);
   const [mensagens, setMensagens] = useState([]);
+
+  // Cache de mensagens por conversa (para não perder ao trocar)
+  const mensagensCache = useRef({});
 
   // Estados do histórico
   const [historico, setHistorico] = useState([]);
@@ -87,7 +97,12 @@ export default function PainelAtendente() {
 
   useEffect(() => {
     carregarDados();
-  }, []);
+
+    // Cleanup: quando sair da página, marca que não está mais visualizando
+    return () => {
+      saiuConversa();
+    };
+  }, [saiuConversa]);
 
   const carregarDados = async () => {
     setLoading(true);
@@ -145,32 +160,28 @@ export default function PainelAtendente() {
   const carregarMensagens = async (conversaId) => {
     try {
       const response = await api.get(`/chat-suporte/conversas/${conversaId}`);
-      setMensagens(response.data.mensagens || []);
+      const novasMensagens = response.data.mensagens || [];
+
+      // Salva no cache
+      mensagensCache.current[conversaId] = novasMensagens;
+
+      // Atualiza o estado diretamente - esta função é chamada dentro de selecionarConversa
+      setMensagens(novasMensagens);
+
+      return novasMensagens;
     } catch (err) {
       console.error("Erro ao carregar mensagens:", err);
+      return [];
     }
   };
 
   // ═══════════════════════════════════════════════════════════════
-  // SOCKET.IO
+  // SOCKET.IO - Listeners locais da página (contexto global gerencia presença)
   // ═══════════════════════════════════════════════════════════════
 
   useEffect(() => {
-    // Função para entrar na sala de atendentes
-    const entrarSalaAtendentes = () => {
-      if (socketService.isConnected()) {
-        socketService.emit("chat-suporte:atendente-online", {
-          atendente_id: user?.id,
-        });
-        console.log("👨‍💼 Entrou na sala de atendentes");
-      }
-    };
-
-    // Entra na sala imediatamente se já estiver conectado
-    entrarSalaAtendentes();
-
-    // Também registra para quando o socket conectar
-    const unsubConnected = socketService.on("connected", entrarSalaAtendentes);
+    // O ChatSuporteContext já gerencia a entrada na sala de atendentes
+    // Aqui apenas registramos listeners locais para atualizar a UI desta página
 
     // Listener para nova conversa na fila
     const unsubNovaFila = socketService.on("chat-suporte:nova-fila", () => {
@@ -187,17 +198,43 @@ export default function PainelAtendente() {
       }
     );
 
-    return () => {
-      if (socketService.isConnected()) {
-        socketService.emit("chat-suporte:atendente-offline", {
-          atendente_id: user?.id,
+    // Listener GLOBAL para novas mensagens em qualquer conversa do atendente
+    // Isso atualiza a lista de conversas ativas mesmo quando não está visualizando
+    const unsubMensagemGlobal = socketService.on(
+      "chat-suporte:mensagem",
+      (data) => {
+        console.log("📢 Nova mensagem recebida (global):", data.conversa_id);
+
+        // Atualiza a lista de conversas ativas com a última mensagem
+        setConversasAtivas((prev) => {
+          const conversaIndex = prev.findIndex(
+            (c) => c.id === data.conversa_id
+          );
+          if (conversaIndex === -1) return prev;
+
+          const updatedConversas = [...prev];
+          updatedConversas[conversaIndex] = {
+            ...updatedConversas[conversaIndex],
+            ultima_mensagem: data.mensagem?.mensagem,
+            atualizado_em: data.mensagem?.criado_em || new Date().toISOString(),
+          };
+          return updatedConversas;
         });
+
+        // Atualiza também o contexto global
+        atualizarDadosContext();
       }
-      unsubConnected && unsubConnected();
+    );
+
+    return () => {
+      // NÃO emitir atendente-offline aqui!
+      // O ChatSuporteContext gerencia a presença global do atendente
+      // Se emitirmos aqui, o atendente sai da sala ao mudar de página
       unsubNovaFila && unsubNovaFila();
       unsubFilaAtualizada && unsubFilaAtualizada();
+      unsubMensagemGlobal && unsubMensagemGlobal();
     };
-  }, [user?.id]);
+  }, [user?.id, atualizarDadosContext]);
 
   // Listeners específicos da conversa selecionada
   useEffect(() => {
@@ -209,8 +246,24 @@ export default function PainelAtendente() {
       if (data.conversa_id === conversaSelecionada.id) {
         setMensagens((prev) => {
           if (prev.find((m) => m.id === data.mensagem.id)) return prev;
-          return [...prev, data.mensagem];
+          const novasMensagens = [...prev, data.mensagem];
+          // Atualiza o cache também
+          mensagensCache.current[conversaSelecionada.id] = novasMensagens;
+          return novasMensagens;
         });
+
+        // Atualiza a última mensagem na lista de conversas ativas
+        setConversasAtivas((prev) =>
+          prev.map((c) =>
+            c.id === data.conversa_id
+              ? {
+                  ...c,
+                  ultima_mensagem: data.mensagem.mensagem,
+                  atualizado_em: data.mensagem.criado_em,
+                }
+              : c
+          )
+        );
       }
     });
 
@@ -274,23 +327,33 @@ export default function PainelAtendente() {
 
   // Aceita uma conversa da fila
   const aceitarConversa = async (conversaId) => {
+    if (!conversaId) {
+      setError("ID da conversa inválido");
+      return;
+    }
+
     try {
       const response = await api.post(
         `/chat-suporte/atendente/aceitar/${conversaId}`
       );
 
-      if (response.data.conversa) {
+      // Backend retorna a conversa diretamente, não dentro de { conversa: ... }
+      const conversa = response.data;
+
+      if (conversa && conversa.id) {
         // Adiciona às conversas ativas
-        setConversasAtivas((prev) => [...prev, response.data.conversa]);
+        setConversasAtivas((prev) => [...prev, conversa]);
 
         // Remove da fila
         setFila((prev) => prev.filter((f) => f.conversa_id !== conversaId));
 
         // Seleciona a conversa
-        selecionarConversa(response.data.conversa);
+        selecionarConversa(conversa);
 
         // Muda para tab de ativas
         setTab("ativas");
+      } else {
+        setError("Resposta inválida do servidor");
       }
     } catch (err) {
       console.error("Erro ao aceitar conversa:", err);
@@ -300,8 +363,23 @@ export default function PainelAtendente() {
 
   // Seleciona uma conversa para visualizar
   const selecionarConversa = async (conversa) => {
+    // Salva mensagens da conversa atual no cache antes de trocar
+    if (conversaSelecionada?.id && mensagens.length > 0) {
+      mensagensCache.current[conversaSelecionada.id] = mensagens;
+    }
+
     setConversaSelecionada(conversa);
-    await carregarMensagens(conversa.id);
+
+    // Marca no context que está visualizando esta conversa (zera contador de não lidas)
+    visualizandoConversa(conversa.id);
+
+    // Verifica se tem mensagens no cache
+    if (mensagensCache.current[conversa.id]) {
+      setMensagens(mensagensCache.current[conversa.id]);
+    } else {
+      setMensagens([]);
+      await carregarMensagens(conversa.id);
+    }
   };
 
   // Envia mensagem
@@ -319,16 +397,21 @@ export default function PainelAtendente() {
     });
 
     try {
+      // Usa endpoint de atendente para enviar mensagem
       const response = await api.post(
-        `/chat-suporte/conversas/${conversaSelecionada.id}/mensagens`,
+        `/chat-suporte/atendente/mensagem/${conversaSelecionada.id}`,
         { mensagem: mensagemTexto }
       );
 
-      if (response.data.mensagemUsuario) {
+      // O endpoint de atendente retorna a mensagem diretamente
+      if (response.data) {
+        const novaMensagemObj = response.data;
         setMensagens((prev) => {
-          if (prev.find((m) => m.id === response.data.mensagemUsuario.id))
-            return prev;
-          return [...prev, response.data.mensagemUsuario];
+          if (prev.find((m) => m.id === novaMensagemObj.id)) return prev;
+          const novasMensagens = [...prev, novaMensagemObj];
+          // Atualiza o cache
+          mensagensCache.current[conversaSelecionada.id] = novasMensagens;
+          return novasMensagens;
         });
       }
     } catch (err) {
@@ -423,7 +506,10 @@ export default function PainelAtendente() {
       </div>
       <button
         className="queue-item-accept-btn"
-        onClick={() => aceitarConversa(item.conversa_id)}
+        onClick={(e) => {
+          e.stopPropagation();
+          aceitarConversa(item.conversa_id);
+        }}
       >
         <FiCheck size={16} />
         Atender
@@ -432,47 +518,56 @@ export default function PainelAtendente() {
   );
 
   // Renderiza conversa na lista
-  const renderConversaItem = (conversa, isHistorico = false) => (
-    <div
-      key={conversa.id}
-      className={`painel-atendente-conversa-item ${
-        conversaSelecionada?.id === conversa.id ? "selected" : ""
-      }`}
-      onClick={() => selecionarConversa(conversa)}
-    >
-      <div className="conversa-item-avatar">
-        <FiUser size={18} />
-      </div>
-      <div className="conversa-item-info">
-        <span className="conversa-item-name">
-          {conversa.nome_visitante || conversa.nome_usuario || "Visitante"}
-        </span>
-        <span className="conversa-item-preview">
-          {conversa.ultima_mensagem || "Sem mensagens"}
-        </span>
-      </div>
-      <div className="conversa-item-meta">
-        {!isHistorico && (
-          <span
-            className={`conversa-item-status ${conversa.status.toLowerCase()}`}
-          >
-            {conversa.status === STATUS.EM_ATENDIMENTO
-              ? "Ativo"
-              : conversa.status}
+  const renderConversaItem = (conversa, isHistorico = false) => {
+    const naoLidas = mensagensNaoLidas[conversa.id] || 0;
+    const isSelected = conversaSelecionada?.id === conversa.id;
+
+    return (
+      <div
+        key={conversa.id}
+        className={`painel-atendente-conversa-item ${isSelected ? "selected" : ""} ${naoLidas > 0 ? "has-unread" : ""}`}
+        onClick={() => selecionarConversa(conversa)}
+      >
+        <div className="conversa-item-avatar">
+          <FiUser size={18} />
+          {/* Badge de mensagens não lidas */}
+          {naoLidas > 0 && !isSelected && (
+            <span className="conversa-unread-badge">
+              {naoLidas > 9 ? "9+" : naoLidas}
+            </span>
+          )}
+        </div>
+        <div className="conversa-item-info">
+          <span className="conversa-item-name">
+            {conversa.nome_visitante || conversa.nome_usuario || "Visitante"}
           </span>
-        )}
-        <span className="conversa-item-time">
-          {new Date(
-            conversa.atualizado_em || conversa.criado_em
-          ).toLocaleTimeString("pt-BR", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </span>
+          <span className="conversa-item-preview">
+            {conversa.ultima_mensagem || "Sem mensagens"}
+          </span>
+        </div>
+        <div className="conversa-item-meta">
+          {!isHistorico && (
+            <span
+              className={`conversa-item-status ${conversa.status.toLowerCase()}`}
+            >
+              {conversa.status === STATUS.EM_ATENDIMENTO
+                ? "Ativo"
+                : conversa.status}
+            </span>
+          )}
+          <span className="conversa-item-time">
+            {new Date(
+              conversa.atualizado_em || conversa.criado_em
+            ).toLocaleTimeString("pt-BR", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </span>
+        </div>
+        <FiChevronRight size={16} className="conversa-item-arrow" />
       </div>
-      <FiChevronRight size={16} className="conversa-item-arrow" />
-    </div>
-  );
+    );
+  };
 
   // Renderiza área de mensagens
   const renderMensagens = () => (
@@ -516,6 +611,12 @@ export default function PainelAtendente() {
     );
   }
 
+  // Calcula total de mensagens não lidas nas conversas ativas
+  const totalNaoLidas = Object.values(mensagensNaoLidas).reduce(
+    (acc, count) => acc + count,
+    0
+  );
+
   return (
     <div className="painel-atendente">
       {/* Sidebar */}
@@ -536,9 +637,14 @@ export default function PainelAtendente() {
           >
             <FiMessageSquare size={16} />
             Ativas
-            {conversasAtivas.length > 0 && (
+            {/* Mostra badge com mensagens não lidas ou total de conversas */}
+            {totalNaoLidas > 0 ? (
+              <span className="badge unread">
+                {totalNaoLidas > 9 ? "9+" : totalNaoLidas}
+              </span>
+            ) : conversasAtivas.length > 0 ? (
               <span className="badge">{conversasAtivas.length}</span>
-            )}
+            ) : null}
           </button>
           <button
             className={tab === "historico" ? "active" : ""}

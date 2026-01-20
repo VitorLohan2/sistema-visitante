@@ -47,7 +47,7 @@ export default function ListaAgendamentos() {
 
   // Auth e Permissões
   const { user } = useAuth();
-  const { isAdmin, temPermissao, papeis } = usePermissoes();
+  const { temPermissao, papeis } = usePermissoes();
   const ongId = user?.id;
   const ongName = user?.name;
   const userSetorId = user?.setor_id;
@@ -56,11 +56,11 @@ export default function ListaAgendamentos() {
   const isSeguranca =
     papeis.includes("SEGURANÇA") || papeis.includes("SEGURANCA");
 
-  // Permissões baseadas em RBAC - qualquer papel com permissão habilitada pode executar
-  const podeCriar = temPermissao("agendamento_criar") || isAdmin;
-  const podeConfirmar = temPermissao("agendamento_editar") || isAdmin;
-  const podeExcluir = temPermissao("agendamento_deletar") || isAdmin;
-  const podeRegistrarPresenca = temPermissao("agendamento_editar") || isAdmin;
+  // Permissões baseadas em RBAC - temPermissao() já verifica ADMIN internamente
+  const podeCriar = temPermissao("agendamento_criar");
+  const podeConfirmar = temPermissao("agendamento_editar");
+  const podeExcluir = temPermissao("agendamento_deletar");
+  const podeRegistrarPresenca = temPermissao("agendamento_editar");
 
   // Estados locais
   const [searchTerm, setSearchTerm] = useState("");

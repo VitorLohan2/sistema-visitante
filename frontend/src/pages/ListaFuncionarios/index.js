@@ -81,7 +81,7 @@ export default function ListaFuncionarios() {
 
   // Socket e permissões
   const socket = useSocket();
-  const { isAdmin, temPermissao, loading: permissoesLoading } = usePermissoes();
+  const { temPermissao, loading: permissoesLoading } = usePermissoes();
 
   // ═══════════════════════════════════════════════════════════════
   // CARREGAR FUNCIONÁRIOS
@@ -490,8 +490,8 @@ export default function ListaFuncionarios() {
   // ═══════════════════════════════════════════════════════════════
   // PERMISSÕES
   // ═══════════════════════════════════════════════════════════════
-  const podeEditar = isAdmin || temPermissao("funcionario_editar");
-  const podeCriar = isAdmin || temPermissao("funcionario_criar");
+  const podeEditar = temPermissao("funcionario_editar");
+  const podeCriar = temPermissao("funcionario_criar");
 
   // ═══════════════════════════════════════════════════════════════
   // RENDER

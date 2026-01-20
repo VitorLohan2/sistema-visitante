@@ -1,27 +1,42 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * APP - Aplicação Principal
+ * Sistema Visitante Mobile - Refatorado com RBAC
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
 import "react-native-gesture-handler";
 import React from "react";
-import { NavigationContainer } from "@react-navigation/native";
+import { StatusBar } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+
+// Rotas
 import Routes from "./routes";
-import { SocketProvider } from "./contexts/SocketContext";
-import { IncidentsProvider } from "./contexts/IncidentsContext";
-import { TicketsProvider } from "./contexts/TicketsContext";
-import { EmpresasProvider } from "./contexts/EmpresasContext";
-import { UsuariosProvider } from "./contexts/UsuariosContext";
+
+// Providers
+import { AuthProvider } from "./contexts";
+
+// Estilos
+import { cores } from "./styles/tema";
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// COMPONENTE PRINCIPAL
+// ═══════════════════════════════════════════════════════════════════════════════
 
 export default function App() {
   return (
-    <SocketProvider>
-      <IncidentsProvider>
-        <TicketsProvider>
-          <EmpresasProvider>
-            <UsuariosProvider>
-              <NavigationContainer>
-                <Routes />
-              </NavigationContainer>
-            </UsuariosProvider>
-          </EmpresasProvider>
-        </TicketsProvider>
-      </IncidentsProvider>
-    </SocketProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor={cores.primaria}
+          translucent={false}
+        />
+        <AuthProvider>
+          <Routes />
+        </AuthProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

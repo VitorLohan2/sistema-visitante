@@ -19,7 +19,6 @@ const ticketsRoutes = require("./tickets.routes");
 const funcionariosRoutes = require("./funcionarios.routes");
 const agendamentosRoutes = require("./agendamentos.routes");
 const comunicadosRoutes = require("./comunicados.routes");
-const chatRoutes = require("./chat.routes");
 const pontoRoutes = require("./ponto.routes");
 const empresasSetoresRoutes = require("./empresasSetores.routes");
 const papeisRoutes = require("./papeis.routes");
@@ -90,9 +89,6 @@ router.use("/agendamentos", agendamentosRoutes);
 // Comunicados
 router.use("/comunicados", comunicadosRoutes);
 
-// Chat
-router.use("/chat", chatRoutes);
-
 // Ponto eletrônico
 router.use("/ponto", pontoRoutes);
 
@@ -126,6 +122,10 @@ router.use("/patch-notes", patchNotesRoutes);
 // Chat de Suporte (IA + humano)
 const chatSuporteRoutes = require("./chatSuporte.routes");
 router.use("/chat-suporte", chatSuporteRoutes);
+
+// Ronda de Vigilante (GPS e checkpoints)
+const rondaRoutes = require("./ronda.routes");
+router.use("/rondas", rondaRoutes);
 
 // ═══════════════════════════════════════════════════════════════
 // ROTAS LEGADAS ADICIONAIS (compatibilidade com frontend)

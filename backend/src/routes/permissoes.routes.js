@@ -7,10 +7,7 @@ const express = require("express");
 const { celebrate, Segments, Joi } = require("celebrate");
 const PermissaoController = require("../controllers/PermissaoController");
 const { authMiddleware } = require("../middleware/authMiddleware");
-const {
-  requerPermissao,
-  requerAdmin,
-} = require("../middleware/permissaoMiddleware");
+const { requerPermissao } = require("../middleware/permissaoMiddleware");
 
 const router = express.Router();
 
@@ -59,7 +56,7 @@ router.get(
 router.post(
   "/",
   authMiddleware,
-  requerAdmin(),
+  requerPermissao("permissao_gerenciar"),
   celebrate({
     [Segments.BODY]: Joi.object().keys({
       chave: Joi.string()
@@ -80,7 +77,7 @@ router.post(
 router.put(
   "/:id",
   authMiddleware,
-  requerAdmin(),
+  requerPermissao("permissao_gerenciar"),
   celebrate({
     [Segments.PARAMS]: Joi.object().keys({
       id: Joi.number().integer().required(),
@@ -104,7 +101,7 @@ router.put(
 router.delete(
   "/:id",
   authMiddleware,
-  requerAdmin(),
+  requerPermissao("permissao_gerenciar"),
   celebrate({
     [Segments.PARAMS]: Joi.object().keys({
       id: Joi.number().integer().required(),

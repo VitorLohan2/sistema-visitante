@@ -52,6 +52,14 @@ export function usePermissoes() {
         return;
       }
 
+      // NÃO tenta carregar se não há token (usuário deslogado)
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.log("[usePermissoes] Sem token, não carregando permissões");
+        setLoading(false);
+        return;
+      }
+
       try {
         const dados = await permissoesService.buscarMinhasPermissoes();
         if (isMounted) {
@@ -77,16 +85,13 @@ export function usePermissoes() {
 
   /**
    * Verifica se o usuário tem determinada permissão
+   * Agora verifica SOMENTE as permissões RBAC atribuídas
    */
   const temPermissao = useCallback(
     (permissao) => {
-      // ADMIN tem todas as permissões
-      if (papeis.includes("ADMIN")) {
-        return true;
-      }
       return permissoes.includes(permissao);
     },
-    [permissoes, papeis]
+    [permissoes]
   );
 
   /**
@@ -94,12 +99,9 @@ export function usePermissoes() {
    */
   const temAlgumaPermissao = useCallback(
     (permissoesRequeridas) => {
-      if (papeis.includes("ADMIN")) {
-        return true;
-      }
       return permissoesRequeridas.some((p) => permissoes.includes(p));
     },
-    [permissoes, papeis]
+    [permissoes]
   );
 
   /**
@@ -107,12 +109,9 @@ export function usePermissoes() {
    */
   const temTodasPermissoes = useCallback(
     (permissoesRequeridas) => {
-      if (papeis.includes("ADMIN")) {
-        return true;
-      }
       return permissoesRequeridas.every((p) => permissoes.includes(p));
     },
-    [permissoes, papeis]
+    [permissoes]
   );
 
   /**

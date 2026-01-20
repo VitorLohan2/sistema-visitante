@@ -60,12 +60,12 @@ const TicketDashboard = () => {
 
   const history = useHistory();
   const { user } = useAuth();
-  const { papeis, isAdmin, loading: permissoesLoading } = usePermissoes();
+  const { papeis, temPermissao, loading: permissoesLoading } = usePermissoes();
 
   // Verificar se é da Segurança via papéis
   const isSeguranca =
     papeis.includes("SEGURANÇA") || papeis.includes("SEGURANCA");
-  const podeEditarTicket = isAdmin || isSeguranca;
+  const podeEditarTicket = temPermissao("ticket_editar") || isSeguranca;
 
   // Refs para controle
   const isDataLoadedRef = useRef(false);

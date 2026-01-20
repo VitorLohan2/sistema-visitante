@@ -23,7 +23,7 @@ import "./styles.css";
 
 export default function Home() {
   const { user } = useAuth();
-  const { temPermissao, isAdmin, loading: permissoesLoading } = usePermissoes();
+  const { temPermissao, loading: permissoesLoading } = usePermissoes();
 
   // ═══════════════════════════════════════════════════════════════
   // CARREGAMENTO DE DADOS DO SISTEMA (ÚNICA VEZ NO LOGIN)
@@ -221,8 +221,8 @@ export default function Home() {
 
   // Memoiza permissões para evitar re-renderizações
   const podeGerenciarPatchNotes = useMemo(() => {
-    return isAdmin || temPermissao("patch_notes_gerenciar");
-  }, [isAdmin, temPermissao]);
+    return temPermissao("patch_notes_gerenciar");
+  }, [temPermissao]);
 
   // Memoiza o menu para evitar re-renderizações desnecessárias
   const memoizedMenu = useMemo(() => {

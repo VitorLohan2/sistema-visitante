@@ -12,7 +12,14 @@ import {
  * Usa cache em memória e sessionStorage para persistir entre navegações
  */
 export async function buscarMinhasPermissoes() {
-  // Primeiro tenta o cache (memória + sessionStorage)
+  // Primeiro verifica se há token (usuário logado)
+  const token = localStorage.getItem("token");
+  if (!token) {
+    console.log("[permissoesService] Sem token, retornando vazio");
+    return { permissoes: [], papeis: [] };
+  }
+
+  // Depois tenta o cache (memória + sessionStorage)
   const cached = getPermissoesCache();
   if (cached.permissoes && cached.papeis) {
     return cached;

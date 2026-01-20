@@ -8,8 +8,8 @@
    VARIÁVEIS E CONFIGURAÇÕES
    =================================== */
 :root {
-  --chat-primary: #007bff;
-  --chat-primary-hover: #0056b3;
+  --chat-primary: #10b981;
+  --chat-primary-hover: #059669;
   --chat-secondary: #6c757d;
   --chat-success: #28a745;
   --chat-warning: #ffc107;
@@ -52,18 +52,18 @@
 
 .chat-widget-fab:hover {
   transform: scale(1.1);
-  box-shadow: 0 15px 50px rgba(0, 123, 255, 0.4);
+  box-shadow: 0 15px 50px rgb(5, 150, 105, 0.4);
 }
 
 @keyframes pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.4);
+    box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.4);
   }
   70% {
-    box-shadow: 0 0 0 15px rgba(0, 123, 255, 0);
+    box-shadow: 0 0 0 15px rgba(5, 150, 105, 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(0, 123, 255, 0);
+    box-shadow: 0 0 0 0 rgba(5, 150, 105, 0);
   }
 }
 
@@ -129,6 +129,37 @@
   margin: 0;
   font-size: 16px;
   font-weight: 600;
+}
+
+/* Badge de mensagens não lidas */
+.chat-unread-badge {
+  min-width: 20px;
+  height: 20px;
+  background: #dc3545;
+  color: white;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  animation: pulseUnreadChat 2s infinite;
+}
+
+@keyframes pulseUnreadChat {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 8px rgba(220, 53, 69, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+  }
 }
 
 .chat-widget-status {
@@ -642,6 +673,112 @@
 
 .chat-widget-rating-success button:hover {
   background: var(--chat-primary-hover);
+}
+
+/* ===================================
+   TELA DE CONVERSA FINALIZADA
+   =================================== */
+.chat-widget-finished {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  text-align: center;
+  height: 100%;
+}
+
+.chat-widget-finished-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #28a745, #20c997);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.chat-widget-finished-icon svg {
+  color: white;
+}
+
+.chat-widget-finished h4 {
+  margin: 0 0 8px 0;
+  font-size: 1.25rem;
+  color: var(--chat-dark);
+}
+
+.chat-widget-finished p {
+  margin: 0 0 24px 0;
+  color: var(--chat-secondary);
+}
+
+.chat-widget-new-btn {
+  padding: 12px 24px;
+  background: linear-gradient(
+    135deg,
+    var(--chat-primary),
+    var(--chat-primary-hover)
+  );
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: var(--chat-transition);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-widget-new-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+/* ===================================
+   TELA DE INÍCIO (USUÁRIO LOGADO)
+   =================================== */
+.chat-widget-start {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  text-align: center;
+  height: 100%;
+}
+
+.chat-widget-start-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(
+    135deg,
+    var(--chat-primary),
+    var(--chat-primary-hover)
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.chat-widget-start-icon svg {
+  color: white;
+}
+
+.chat-widget-start h4 {
+  margin: 0 0 8px 0;
+  font-size: 1.25rem;
+  color: var(--chat-dark);
+}
+
+.chat-widget-start p {
+  margin: 0 0 24px 0;
+  color: var(--chat-secondary);
 }
 
 /* ===================================

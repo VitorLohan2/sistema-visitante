@@ -2,7 +2,7 @@
 const connection = require("../database/connection");
 const { getIo } = require("../socket");
 const { getUsuarioId } = require("../utils/authHelper");
-const { isAdmin } = require("../middleware/permissaoMiddleware");
+const { temPermissao } = require("../middleware/permissaoMiddleware");
 
 // ✅ FUNÇÃO AUXILIAR: Desativar todos os comunicados
 async function desativarTodosComunicados() {
@@ -108,11 +108,14 @@ module.exports = {
         return response.status(401).json({ error: "Não autorizado" });
       }
 
-      const adminCheck = await isAdmin(usuario_id);
-      if (!adminCheck) {
+      const temPermissaoCriar = await temPermissao(
+        usuario_id,
+        "comunicado_criar"
+      );
+      if (!temPermissaoCriar) {
         return response.status(403).json({
           error:
-            "Acesso negado. Apenas administradores podem criar comunicados.",
+            "Acesso negado. Você não tem permissão para criar comunicados.",
         });
       }
 
@@ -193,9 +196,17 @@ module.exports = {
         return response.status(401).json({ error: "Não autorizado" });
       }
 
-      const adminCheck = await isAdmin(usuario_id);
-      if (!adminCheck) {
-        return response.status(403).json({ error: "Acesso negado" });
+      const temPermissaoEditar = await temPermissao(
+        usuario_id,
+        "comunicado_editar"
+      );
+      if (!temPermissaoEditar) {
+        return response
+          .status(403)
+          .json({
+            error:
+              "Acesso negado. Você não tem permissão para editar comunicados.",
+          });
       }
 
       const comunicadoExistente = await connection("comunicados")
@@ -270,9 +281,17 @@ module.exports = {
         return response.status(401).json({ error: "Não autorizado" });
       }
 
-      const adminCheck = await isAdmin(usuario_id);
-      if (!adminCheck) {
-        return response.status(403).json({ error: "Acesso negado" });
+      const temPermissaoDeletar = await temPermissao(
+        usuario_id,
+        "comunicado_deletar"
+      );
+      if (!temPermissaoDeletar) {
+        return response
+          .status(403)
+          .json({
+            error:
+              "Acesso negado. Você não tem permissão para excluir comunicados.",
+          });
       }
 
       const comunicadoExistente = await connection("comunicados")

@@ -80,8 +80,29 @@
   text-align: center;
 }
 
+.painel-atendente-tabs button .badge.unread {
+  background: #dc3545;
+  animation: pulseBadge 2s infinite;
+}
+
+@keyframes pulseBadge {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 .painel-atendente-tabs button.active .badge {
   background: #007bff;
+}
+
+.painel-atendente-tabs button.active .badge.unread {
+  background: #dc3545;
 }
 
 /* Conteúdo da Sidebar */
@@ -301,6 +322,21 @@
   border-color: #007bff;
 }
 
+/* Item com mensagens não lidas */
+.painel-atendente-conversa-item.has-unread {
+  background: #fff8e6;
+  border-color: #ffc107;
+}
+
+.painel-atendente-conversa-item.has-unread .conversa-item-name {
+  font-weight: 700;
+}
+
+.painel-atendente-conversa-item.has-unread .conversa-item-preview {
+  color: #343a40;
+  font-weight: 500;
+}
+
 .conversa-item-avatar {
   width: 36px;
   height: 36px;
@@ -311,6 +347,39 @@
   justify-content: center;
   color: #6c757d;
   flex-shrink: 0;
+  position: relative;
+}
+
+/* Badge de mensagens não lidas no avatar */
+.conversa-unread-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  background: #dc3545;
+  color: white;
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 2px solid white;
+  animation: pulseUnread 2s infinite;
+}
+
+@keyframes pulseUnread {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .conversa-item-info {

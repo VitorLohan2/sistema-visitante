@@ -1,121 +1,137 @@
-// src/routes.js
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * ROTAS - Configuração de Navegação
+ * Sistema de rotas com proteção RBAC
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
 import React from "react";
+import { ActivityIndicator, View, StyleSheet } from "react-native";
+import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-// 📌 Telas
-import Logon from "./pages/Logon";
-import Register from "./pages/Register";
-import RecuperarId from "./pages/RecuperarId";
+// Contexto
+import { useAuth } from "./contexts";
 
-import Profile from "./pages/Profile";
-import Visitors from "./pages/Visitors";
-import History from "./pages/History";
+// Páginas
+import {
+  // Autenticação
+  Login,
+  RecuperarSenha,
+  // Principal
+  Home,
+  // Sistema Visitante
+  SistemaVisitante,
+  ListagemVisitante,
+  Visitante,
+  VisualizarVisitante,
+  EditarCadastroVisitante,
+  HistoricoVisitante,
+  ListaAgendamentos,
+  TicketDashboard,
+  BiparCracha,
+  // Vigilante
+  Ronda,
+} from "./pages";
 
-import NewIncident from "./pages/NewIncident";
-import EditIncident from "./pages/EditIncident";
-import ViewVisitor from "./pages/ViewVisitor";
+// Estilos
+import { cores } from "./styles/tema";
 
-import TicketDashboard from "./pages/TicketDashboard";
-import Tickets from "./pages/Tickets";
-
-import BiparCracha from "./pages/BiparCracha";
-
-import Agendamentos from "./pages/Agendamentos";
-import ListaAgendamentos from "./pages/ListaAgendamentos";
-import CadastrarAgendamentos from "./pages/CadastrarAgendamentos";
-
-import Admin from "./pages/Admin";
-
-import Cadastro from "./pages/Cadastro";
-import CadastrarEmpresa from "./pages/CadastrarEmpresaVisitantes";
-import GerenciarUsuarios from "./pages/GerenciarUsuarios";
-import EditarUsuario from "./pages/EditarUsuario";
-import GerenciarEmpresas from "./pages/GerenciarEmpresas";
-import EditarEmpresa from "./pages/EditarEmpresa";
-import ComunicadoAdmin from "./pages/ComunicadoAdmin";
-
-import ChatLista from "./pages/ChatLista";
-import ChatConversa from "./pages/ChatConversa";
-import GerenciarFuncionarios from "./pages/GerenciarFuncionarios";
-import CadastrarFuncionarios from "./pages/CadastrarFuncionarios";
-import HistoricoFuncionario from "./pages/HistoricoFuncionario";
-
-import MarcadorPontoUsuario from "./pages/MarcadorPontoUsuario";
-import HistoricoPontoUsuario from "./pages/HistoricoPontoUsuario";
+// ═══════════════════════════════════════════════════════════════════════════════
+// STACKS DE NAVEGAÇÃO
+// ═══════════════════════════════════════════════════════════════════════════════
 
 const Stack = createNativeStackNavigator();
 
-export default function Routes() {
+// ═══════════════════════════════════════════════════════════════════════════════
+// STACK DE AUTENTICAÇÃO (Usuário não logado)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function AuthStack() {
   return (
     <Stack.Navigator
-      initialRouteName="Logon"
       screenOptions={{
         headerShown: false,
         animation: "slide_from_right",
       }}
     >
-      {/* ----------- ROTAS PÚBLICAS ------------ */}
-      <Stack.Screen name="Logon" component={Logon} />
-      <Stack.Screen name="Register" component={Register} />
-      <Stack.Screen name="RecuperarId" component={RecuperarId} />
-
-      {/* ----------- ROTAS INTERNAS / APÓS LOGIN ------------ */}
-      <Stack.Screen name="Profile" component={Profile} />
-      <Stack.Screen name="Visitors" component={Visitors} />
-      <Stack.Screen name="History" component={History} />
-
-      {/* ----------- INCIDENTES ------------ */}
-      <Stack.Screen name="NewIncident" component={NewIncident} />
-      <Stack.Screen name="EditIncident" component={EditIncident} />
-      <Stack.Screen name="ViewVisitor" component={ViewVisitor} />
-
-      {/* ----------- CHAMADOS / TICKETS ------------ */}
-      <Stack.Screen name="Tickets" component={Tickets} />
-      <Stack.Screen name="TicketDashboard" component={TicketDashboard} />
-
-      {/* ----------- BIPAGEM / CRACHÁ ------------ */}
-      <Stack.Screen name="BiparCracha" component={BiparCracha} />
-
-      <Stack.Screen name="Agendamentos" component={Agendamentos} />
-      <Stack.Screen name="ListaAgendamentos" component={ListaAgendamentos} />
-      <Stack.Screen
-        name="CadastrarAgendamentos"
-        component={CadastrarAgendamentos}
-      />
-
-      <Stack.Screen name="Admin" component={Admin} />
-
-      <Stack.Screen name="Cadastro" component={Cadastro} />
-      <Stack.Screen name="CadastrarEmpresa" component={CadastrarEmpresa} />
-      <Stack.Screen name="GerenciarUsuarios" component={GerenciarUsuarios} />
-      <Stack.Screen name="EditarUsuario" component={EditarUsuario} />
-      <Stack.Screen name="GerenciarEmpresas" component={GerenciarEmpresas} />
-      <Stack.Screen name="EditarEmpresa" component={EditarEmpresa} />
-      <Stack.Screen name="ComunicadoAdmin" component={ComunicadoAdmin} />
-
-      <Stack.Screen name="ChatLista" component={ChatLista} />
-      <Stack.Screen name="ChatConversa" component={ChatConversa} />
-      <Stack.Screen
-        name="GerenciarFuncionarios"
-        component={GerenciarFuncionarios}
-      />
-      <Stack.Screen
-        name="CadastrarFuncionarios"
-        component={CadastrarFuncionarios}
-      />
-      <Stack.Screen
-        name="HistoricoFuncionario"
-        component={HistoricoFuncionario}
-      />
-
-      <Stack.Screen
-        name="MarcadorPontoUsuario"
-        component={MarcadorPontoUsuario}
-      />
-      <Stack.Screen
-        name="HistoricoPontoUsuario"
-        component={HistoricoPontoUsuario}
-      />
+      <Stack.Screen name="Login" component={Login} />
+      <Stack.Screen name="RecuperarSenha" component={RecuperarSenha} />
     </Stack.Navigator>
   );
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STACK PRINCIPAL (Usuário logado)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function AppStack() {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        animation: "slide_from_right",
+      }}
+      initialRouteName="Home"
+    >
+      {/* Home */}
+      <Stack.Screen name="Home" component={Home} />
+
+      {/* Sistema Visitante */}
+      <Stack.Screen name="SistemaVisitante" component={SistemaVisitante} />
+      <Stack.Screen name="ListagemVisitante" component={ListagemVisitante} />
+      <Stack.Screen name="Visitante" component={Visitante} />
+      <Stack.Screen
+        name="VisualizarVisitante"
+        component={VisualizarVisitante}
+      />
+      <Stack.Screen
+        name="EditarCadastroVisitante"
+        component={EditarCadastroVisitante}
+      />
+      <Stack.Screen name="HistoricoVisitante" component={HistoricoVisitante} />
+      <Stack.Screen name="ListaAgendamentos" component={ListaAgendamentos} />
+      <Stack.Screen name="TicketDashboard" component={TicketDashboard} />
+      <Stack.Screen name="BiparCracha" component={BiparCracha} />
+
+      {/* Vigilante */}
+      <Stack.Screen name="Ronda" component={Ronda} />
+    </Stack.Navigator>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// COMPONENTE PRINCIPAL DE ROTAS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export default function Routes() {
+  const { autenticado, carregando } = useAuth();
+
+  // Tela de loading enquanto verifica autenticação
+  if (carregando) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={cores.destaque} />
+      </View>
+    );
+  }
+
+  return (
+    <NavigationContainer>
+      {autenticado ? <AppStack /> : <AuthStack />}
+    </NavigationContainer>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ESTILOS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: cores.fundoPagina,
+  },
+});

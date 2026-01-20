@@ -138,7 +138,7 @@ const iniciarConversaVisitante = async (req, res) => {
  */
 const listarConversas = async (req, res) => {
   try {
-    const usuario_id = req.userId;
+    const usuario_id = req.usuario?.id;
     const { status, limite } = req.query;
 
     const conversas = await ChatSuporteService.listarConversasUsuario({
@@ -163,9 +163,9 @@ const criarConversa = async (req, res) => {
     const { assunto } = req.body;
 
     const conversa = await ChatSuporteService.criarConversa({
-      usuario_id: req.userId,
-      nome: req.userName,
-      email: req.userEmail,
+      usuario_id: req.usuario?.id,
+      nome: req.usuario?.nome,
+      email: req.usuario?.email,
       assunto,
       ip_visitante: req.ip,
       user_agent: req.headers["user-agent"],
@@ -173,7 +173,12 @@ const criarConversa = async (req, res) => {
 
     const mensagens = await ChatSuporteService.buscarMensagens(conversa.id);
 
-    // Emite evento para atendentes
+    // Se é uma conversa já existente, retorna sem emitir evento de nova conversa
+    if (conversa.jaExistente) {
+      return res.status(200).json({ conversa, mensagens, jaExistente: true });
+    }
+
+    // Emite evento para atendentes (só para novas conversas)
     emitirEvento("chat-suporte:nova-conversa", conversa, "atendentes");
 
     res.status(201).json({ conversa, mensagens });
@@ -197,9 +202,19 @@ const buscarConversa = async (req, res) => {
     }
 
     // Verifica se o usuário tem acesso à conversa
-    if (conversa.usuario_id && conversa.usuario_id !== req.userId) {
+    // Permite: dono da conversa OU atendente da conversa OU qualquer atendente se está em atendimento
+    const isOwner =
+      conversa.usuario_id && conversa.usuario_id === req.usuario?.id;
+    const isAtendente =
+      conversa.atendente_id && conversa.atendente_id === req.usuario?.id;
+    const isEmAtendimento = conversa.status === "EM_ATENDIMENTO";
+
+    if (!isOwner && !isAtendente && !isEmAtendimento) {
       return res.status(403).json({ error: "Acesso negado" });
     }
+
+    // Busca mensagens
+    const mensagens = await ChatSuporteService.buscarMensagens(parseInt(id));
 
     // Busca posição na fila se estiver aguardando
     let posicaoFila = null;
@@ -207,7 +222,7 @@ const buscarConversa = async (req, res) => {
       posicaoFila = await FilaService.obterPosicao(conversa.id);
     }
 
-    res.json({ ...conversa, posicaoFila });
+    res.json({ conversa, mensagens, posicaoFila });
   } catch (error) {
     console.error("Erro ao buscar conversa:", error);
     res.status(500).json({ error: "Erro ao buscar conversa" });
@@ -253,12 +268,13 @@ const enviarMensagem = async (req, res) => {
       conversa_id,
       mensagem.trim(),
       {
-        usuario_id: req.userId,
-        usuario_nome: req.userName,
+        usuario_id: req.usuario?.id,
+        usuario_nome: req.usuario?.nome,
       }
     );
 
     // Emite eventos via Socket.IO
+    // Para a sala da conversa (quem está visualizando)
     emitirEvento(
       "chat-suporte:mensagem",
       {
@@ -266,6 +282,16 @@ const enviarMensagem = async (req, res) => {
         mensagem: resultado.mensagemUsuario,
       },
       `conversa:${conversa_id}`
+    );
+
+    // TAMBÉM emite para a sala de atendentes (para badges globais e notificações)
+    emitirEvento(
+      "chat-suporte:mensagem",
+      {
+        conversa_id,
+        mensagem: resultado.mensagemUsuario,
+      },
+      "atendentes"
     );
 
     if (resultado.mensagemBot) {
@@ -309,8 +335,8 @@ const solicitarAtendente = async (req, res) => {
     const resultado = await ChatSuporteService.solicitarAtendimentoHumano(
       parseInt(id),
       {
-        usuario_id: req.userId,
-        usuario_nome: req.userName,
+        usuario_id: req.usuario?.id,
+        usuario_nome: req.usuario?.nome,
       }
     );
 
@@ -336,8 +362,8 @@ const finalizarConversa = async (req, res) => {
     const { motivo } = req.body;
 
     const conversa = await ChatSuporteService.finalizarConversa(parseInt(id), {
-      finalizado_por_id: req.userId,
-      finalizado_por_nome: req.userName,
+      finalizado_por_id: req.usuario?.id,
+      finalizado_por_nome: req.usuario?.nome,
       motivo,
     });
 
@@ -430,7 +456,7 @@ const listarConversasAtendente = async (req, res) => {
     const { status, limite } = req.query;
 
     const conversas = await ChatSuporteService.listarConversasAtendente({
-      atendente_id: req.userId,
+      atendente_id: req.usuario?.id,
       status: status ? status.split(",") : ["EM_ATENDIMENTO"],
       limite: limite ? parseInt(limite) : 50,
     });
@@ -451,7 +477,7 @@ const listarHistoricoAtendente = async (req, res) => {
     const { page = 1, search = "", limite = 20 } = req.query;
 
     const conversas = await ChatSuporteService.listarConversasAtendente({
-      atendente_id: req.userId,
+      atendente_id: req.usuario?.id,
       status: ["FINALIZADA", "RESOLVIDA_IA"],
       limite: parseInt(limite),
       offset: (parseInt(page) - 1) * parseInt(limite),
@@ -470,25 +496,43 @@ const listarHistoricoAtendente = async (req, res) => {
  * POST /chat-suporte/atendente/aceitar/:id
  */
 const aceitarConversa = async (req, res) => {
+  const atendente_id = req.usuario?.id;
+  const atendente_nome = req.usuario?.nome;
+
   try {
     const { id } = req.params;
 
     const conversa = await ChatSuporteService.aceitarAtendimento(parseInt(id), {
-      atendente_id: req.userId,
-      atendente_nome: req.userName,
+      atendente_id,
+      atendente_nome,
     });
 
-    // Emite eventos
+    // Emite evento para a sala da conversa (cliente recebe)
     emitirEvento(
       "chat-suporte:atendente-entrou",
       {
         conversa_id: parseInt(id),
-        atendente_nome: req.userName,
+        atendente_nome,
       },
       `conversa:${id}`
     );
 
-    emitirEvento("chat-suporte:fila-atualizada", null, "atendentes");
+    // Emite também como broadcast geral para visitantes não autenticados
+    // (eles fazem polling ou verificam pelo ID da conversa)
+    const io = getIo();
+    if (io) {
+      io.emit("chat-suporte:atendente-entrou", {
+        conversa_id: parseInt(id),
+        atendente_nome,
+      });
+    }
+
+    // Notifica atendentes que a fila mudou
+    emitirEvento(
+      "chat-suporte:fila-atualizada",
+      { conversa_id: parseInt(id) },
+      "atendentes"
+    );
 
     res.json(conversa);
   } catch (error) {
@@ -517,8 +561,8 @@ const enviarMensagemAtendente = async (req, res) => {
       conversa_id,
       mensagem.trim(),
       {
-        atendente_id: req.userId,
-        atendente_nome: req.userName,
+        atendente_id: req.usuario?.id,
+        atendente_nome: req.usuario?.nome,
       }
     );
 
@@ -549,8 +593,8 @@ const finalizarAtendimento = async (req, res) => {
     const { motivo } = req.body;
 
     const conversa = await ChatSuporteService.finalizarConversa(parseInt(id), {
-      finalizado_por_id: req.userId,
-      finalizado_por_nome: req.userName,
+      finalizado_por_id: req.usuario?.id,
+      finalizado_por_nome: req.usuario?.nome,
       motivo,
     });
 
@@ -765,6 +809,7 @@ const enviarMensagemVisitante = async (req, res) => {
     );
 
     // Emite eventos via Socket.IO
+    // Para a sala da conversa (quem está visualizando)
     emitirEvento(
       "chat-suporte:mensagem",
       {
@@ -772,6 +817,16 @@ const enviarMensagemVisitante = async (req, res) => {
         mensagem: resultado.mensagemUsuario,
       },
       `conversa:${conversa_id}`
+    );
+
+    // TAMBÉM emite para a sala de atendentes (para badges globais e notificações)
+    emitirEvento(
+      "chat-suporte:mensagem",
+      {
+        conversa_id,
+        mensagem: resultado.mensagemUsuario,
+      },
+      "atendentes"
     );
 
     if (resultado.mensagemBot) {
@@ -787,6 +842,18 @@ const enviarMensagemVisitante = async (req, res) => {
 
     // Se solicitou humano, notifica atendentes
     if (resultado.solicitouHumano) {
+      // Evento específico para nova conversa na fila
+      emitirEvento(
+        "chat-suporte:nova-fila",
+        {
+          conversa_id,
+          posicao: resultado.posicaoFila,
+          nome: conversa.nome_visitante, // Adiciona nome para notificação
+        },
+        "atendentes"
+      );
+
+      // Evento genérico de fila atualizada
       emitirEvento(
         "chat-suporte:fila-atualizada",
         {
@@ -813,6 +880,10 @@ const buscarConversaVisitante = async (req, res) => {
     const { id } = req.params;
     const token = req.headers["x-chat-token"];
 
+    console.log(
+      `📡 [Visitante] Busca conversa ${id}, token: ${token ? "presente" : "ausente"}`
+    );
+
     if (!token) {
       return res.status(401).json({ error: "Token não fornecido" });
     }
@@ -820,11 +891,19 @@ const buscarConversaVisitante = async (req, res) => {
     const conversa = await ChatSuporteService.buscarConversa(parseInt(id));
 
     if (!conversa) {
+      console.log(`❌ [Visitante] Conversa ${id} não encontrada`);
       return res.status(404).json({ error: "Conversa não encontrada" });
     }
 
+    console.log(
+      `📡 [Visitante] Conversa ${id} encontrada, status: ${conversa.status}, usuario_id: ${conversa.usuario_id}`
+    );
+
     // Verifica se é de visitante
     if (conversa.usuario_id) {
+      console.log(
+        `❌ [Visitante] Conversa ${id} pertence a usuário logado, acesso negado`
+      );
       return res.status(403).json({ error: "Acesso negado" });
     }
 
@@ -837,6 +916,9 @@ const buscarConversaVisitante = async (req, res) => {
       posicaoFila = await FilaService.obterPosicao(conversa.id);
     }
 
+    console.log(
+      `✅ [Visitante] Retornando conversa ${id}: status=${conversa.status}, mensagens=${mensagens.length}`
+    );
     res.json({ conversa, mensagens, posicaoFila });
   } catch (error) {
     console.error("Erro ao buscar conversa (visitante):", error);

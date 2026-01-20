@@ -1,0 +1,122 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * TOAST NOTIFICATIONS - Estilos customizados para react-toastify
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Customiza as notificações toast do sistema de chat de suporte
+ * para combinar com o tema dark do sistema.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/* Container de toasts */
+.Toastify__toast-container {
+  z-index: 99999 !important;
+}
+
+/* Estilo base dos toasts */
+.Toastify__toast {
+  border-radius: 12px !important;
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+  font-family: inherit !important;
+  cursor: pointer !important;
+}
+
+/* Toast tema dark */
+.Toastify__toast--dark {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+  color: #fff !important;
+}
+
+/* Toast de informação (usado para notificações de chat) */
+.Toastify__toast--info {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+}
+
+/* Ícone do toast */
+.Toastify__toast-icon {
+  width: 24px !important;
+  margin-right: 12px !important;
+}
+
+/* Corpo do toast */
+.Toastify__toast-body {
+  padding: 6px 0 !important;
+  font-size: 14px !important;
+  line-height: 1.4 !important;
+}
+
+/* Barra de progresso */
+.Toastify__progress-bar {
+  height: 3px !important;
+}
+
+.Toastify__progress-bar--info {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+}
+
+/* Botão de fechar */
+.Toastify__close-button {
+  color: #94a3b8 !important;
+  opacity: 0.7 !important;
+  transition: all 0.2s ease !important;
+}
+
+.Toastify__close-button:hover {
+  color: #dc2626 !important;
+  opacity: 1 !important;
+}
+
+/* Animação de entrada */
+.Toastify__toast--animate-in {
+  animation: slideInRight 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55) !important;
+}
+
+/* Animação de saída */
+.Toastify__toast--animate-out {
+  animation: slideOutRight 0.3s ease-in-out !important;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+}
+
+/* Hover effect */
+.Toastify__toast:hover {
+  transform: scale(1.02);
+  box-shadow:
+    0 15px 50px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(16, 185, 129, 0.3) !important;
+}
+
+/* Mobile responsivo */
+@media (max-width: 768px) {
+  .Toastify__toast-container {
+    width: 100% !important;
+    padding: 10px !important;
+  }
+
+  .Toastify__toast {
+    margin-bottom: 8px !important;
+  }
+}
