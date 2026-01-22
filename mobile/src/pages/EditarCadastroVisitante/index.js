@@ -1,7 +1,7 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
- * PÁGINA: Editar Cadastro de Visitante
- * Formulário para editar visitante existente
+ * PÁGINA: Editar Cadastro de Visitante (COMPLETO - Igual ao Frontend)
+ * Formulário completo com todos os campos, selects e função de bloqueio
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
@@ -17,17 +17,23 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  Switch,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 // Componentes
-import { Button, Input, Loading } from "../../components";
+import { Button, Input, Loading, Select } from "../../components";
 
 // Services
-import { visitantesService } from "../../services";
+import { visitantesService, dadosApoioService } from "../../services";
+import { getCacheAsync, setCache } from "../../services/cacheService";
+
+// Hooks
+import { usePermissoes } from "../../hooks";
 
 // Estilos
 import {
@@ -46,93 +52,248 @@ export default function EditarCadastroVisitante() {
   const navigation = useNavigation();
   const route = useRoute();
   const insets = useSafeAreaInsets();
+  const { temPermissao } = usePermissoes();
   const { visitante } = route.params || {};
 
-  // Estados do formulário
-  const [nome, setNome] = useState("");
-  const [cpf, setCpf] = useState("");
-  const [rg, setRg] = useState("");
-  const [telefone, setTelefone] = useState("");
-  const [email, setEmail] = useState("");
-  const [empresa, setEmpresa] = useState("");
-  const [funcao, setFuncao] = useState("");
-  const [observacao, setObservacao] = useState("");
+  // Permissão para bloquear/desbloquear visitantes
+  const podeBloquer = temPermissao("cadastro_bloquear");
+
+  // Estados do formulário (igual ao frontend)
+  const [form, setForm] = useState({
+    nome: "",
+    nascimento: "",
+    cpf: "",
+    empresa: "",
+    setor: "",
+    telefone: "",
+    placa_veiculo: "",
+    cor_veiculo_visitante_id: "",
+    tipo_veiculo_visitante_id: "",
+    funcao_visitante_id: "",
+    observacao: "",
+    bloqueado: false,
+  });
+
+  // Dados de apoio (carregados do cache/API)
+  const [empresasVisitantes, setEmpresasVisitantes] = useState([]);
+  const [setoresVisitantes, setSetoresVisitantes] = useState([]);
+  const [coresVeiculos, setCoresVeiculos] = useState([]);
+  const [tiposVeiculos, setTiposVeiculos] = useState([]);
+  const [funcoesVisitantes, setFuncoesVisitantes] = useState([]);
+
+  // Fotos
+  const [fotos, setFotos] = useState([]);
+  const [avatar, setAvatar] = useState("");
   const [foto, setFoto] = useState(null);
   const [fotoAlterada, setFotoAlterada] = useState(false);
 
   // Estados de controle
-  const [carregando, setCarregando] = useState(false);
+  const [carregando, setCarregando] = useState(true);
+  const [salvando, setSalvando] = useState(false);
   const [erros, setErros] = useState({});
 
+  // Date picker
+  const [mostrarDatePicker, setMostrarDatePicker] = useState(false);
+  const [dataNascimento, setDataNascimento] = useState(null);
+
   // ═══════════════════════════════════════════════════════════════════════════
-  // CARREGAR DADOS DO VISITANTE
+  // CARREGAR DADOS
   // ═══════════════════════════════════════════════════════════════════════════
 
   useEffect(() => {
-    if (visitante) {
-      setNome(visitante.nome || "");
-      setCpf(formatarCPF(visitante.cpf || ""));
-      setRg(visitante.rg || "");
-      setTelefone(formatarTelefone(visitante.telefone || ""));
-      setEmail(visitante.email || "");
-      setEmpresa(visitante.empresa?.nome || visitante.empresa_nome || "");
-      setFuncao(visitante.funcao || "");
-      setObservacao(visitante.observacao || "");
-      setFoto(visitante.foto_url || null);
+    carregarDados();
+  }, []);
+
+  async function carregarDados() {
+    try {
+      setCarregando(true);
+
+      // Carrega dados de apoio
+      let empresas = await getCacheAsync("empresasVisitantes");
+      let setores = await getCacheAsync("setoresVisitantes");
+      let cores = await getCacheAsync("coresVeiculos");
+      let tipos = await getCacheAsync("tiposVeiculos");
+      let funcoes = await getCacheAsync("funcoesVisitantes");
+
+      if (!empresas || !setores || !cores || !tipos || !funcoes) {
+        console.log("📡 Carregando dados de apoio da API...");
+        const dados = await dadosApoioService.carregarTodosDados();
+        empresas = dados.empresas || [];
+        setores = dados.setores || [];
+        cores = dados.cores || [];
+        tipos = dados.tipos || [];
+        funcoes = dados.funcoes || [];
+
+        await setCache("empresasVisitantes", empresas);
+        await setCache("setoresVisitantes", setores);
+        await setCache("coresVeiculos", cores);
+        await setCache("tiposVeiculos", tipos);
+        await setCache("funcoesVisitantes", funcoes);
+      }
+
+      setEmpresasVisitantes(empresas);
+      setSetoresVisitantes(setores);
+      setCoresVeiculos(cores);
+      setTiposVeiculos(tipos);
+      setFuncoesVisitantes(funcoes);
+
+      // Preenche o formulário com dados do visitante
+      if (visitante) {
+        // Parse da data de nascimento
+        let dataNasc = null;
+        if (visitante.nascimento) {
+          dataNasc = new Date(visitante.nascimento);
+          setDataNascimento(dataNasc);
+        }
+
+        // Encontra empresa e setor pelo ID ou nome
+        const empresaId =
+          visitante.empresa_id ||
+          empresas.find(
+            (e) =>
+              e.nome === visitante.empresa || e.nome === visitante.empresa_nome,
+          )?.id ||
+          "";
+        const setorId =
+          visitante.setor_id ||
+          setores.find(
+            (s) =>
+              s.nome === visitante.setor || s.nome === visitante.setor_nome,
+          )?.id ||
+          "";
+
+        setForm({
+          nome: visitante.nome || "",
+          nascimento: visitante.nascimento || "",
+          cpf: formatarCPF(visitante.cpf || ""),
+          empresa: empresaId,
+          setor: setorId,
+          telefone: formatarTelefone(visitante.telefone || ""),
+          placa_veiculo: formatarPlaca(visitante.placa_veiculo || ""),
+          cor_veiculo_visitante_id: visitante.cor_veiculo_visitante_id || "",
+          tipo_veiculo_visitante_id: visitante.tipo_veiculo_visitante_id || "",
+          funcao_visitante_id: visitante.funcao_visitante_id || "",
+          observacao: visitante.observacao || "",
+          bloqueado: Boolean(visitante.bloqueado),
+        });
+
+        setFotos(visitante.fotos || []);
+        setAvatar(visitante.avatar_imagem || visitante.fotos?.[0] || "");
+        setFoto(visitante.foto_url || visitante.avatar_imagem || null);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar dados:", error);
+      Alert.alert("Erro", "Não foi possível carregar os dados.");
+    } finally {
+      setCarregando(false);
     }
-  }, [visitante]);
+  }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // FORMATADORES
+  // FORMATADORES (igual ao frontend)
   // ═══════════════════════════════════════════════════════════════════════════
 
   const formatarCPF = (texto) => {
     if (!texto) return "";
-    const numeros = texto.replace(/\D/g, "");
+    const numeros = texto.replace(/\D/g, "").slice(0, 11);
     return numeros
       .replace(/(\d{3})(\d)/, "$1.$2")
       .replace(/(\d{3})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d{1,2})/, "$1-$2")
-      .replace(/(-\d{2})\d+?$/, "$1");
+      .replace(/(\d{3})(\d{1,2})/, "$1-$2");
   };
 
   const formatarTelefone = (texto) => {
     if (!texto) return "";
-    const numeros = texto.replace(/\D/g, "");
-    if (numeros.length <= 10) {
-      return numeros
-        .replace(/(\d{2})(\d)/, "($1) $2")
-        .replace(/(\d{4})(\d)/, "$1-$2");
+    const numeros = texto.replace(/\D/g, "").slice(0, 11);
+    if (numeros.length === 11) {
+      return numeros.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
     }
-    return numeros
-      .replace(/(\d{2})(\d)/, "($1) $2")
-      .replace(/(\d{5})(\d)/, "$1-$2")
-      .replace(/(-\d{4})\d+?$/, "$1");
+    if (numeros.length === 10) {
+      return numeros.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+    }
+    return numeros;
+  };
+
+  const formatarPlaca = (texto) => {
+    if (!texto) return "";
+    return texto
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .toUpperCase()
+      .slice(0, 7);
+  };
+
+  const formatarData = (data) => {
+    if (!data) return "";
+    const d = new Date(data);
+    const dia = String(d.getDate()).padStart(2, "0");
+    const mes = String(d.getMonth() + 1).padStart(2, "0");
+    const ano = d.getFullYear();
+    return `${dia}/${mes}/${ano}`;
+  };
+
+  const formatarDataParaAPI = (data) => {
+    if (!data) return "";
+    const d = new Date(data);
+    const ano = d.getFullYear();
+    const mes = String(d.getMonth() + 1).padStart(2, "0");
+    const dia = String(d.getDate()).padStart(2, "0");
+    return `${ano}-${mes}-${dia}`;
   };
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // VALIDAÇÃO
+  // HANDLERS
   // ═══════════════════════════════════════════════════════════════════════════
 
-  const validarFormulario = () => {
-    const novosErros = {};
+  const handleChange = (campo, valor) => {
+    let novoValor = valor;
 
-    if (!nome.trim()) {
-      novosErros.nome = "Nome é obrigatório";
+    if (campo === "nome") {
+      novoValor = valor.toUpperCase();
+    } else if (campo === "placa_veiculo") {
+      novoValor = formatarPlaca(valor);
     }
 
-    if (!cpf.trim()) {
-      novosErros.cpf = "CPF é obrigatório";
-    } else if (cpf.replace(/\D/g, "").length !== 11) {
-      novosErros.cpf = "CPF inválido";
-    }
+    setForm((prev) => ({ ...prev, [campo]: novoValor }));
 
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      novosErros.email = "E-mail inválido";
+    if (erros[campo]) {
+      setErros((prev) => ({ ...prev, [campo]: "" }));
     }
+  };
 
-    setErros(novosErros);
-    return Object.keys(novosErros).length === 0;
+  const handleCpfChange = (texto) => {
+    const formatted = formatarCPF(texto);
+    setForm((prev) => ({ ...prev, cpf: formatted }));
+    if (erros.cpf) {
+      setErros((prev) => ({ ...prev, cpf: "" }));
+    }
+  };
+
+  const handleTelefoneChange = (texto) => {
+    const formatted = formatarTelefone(texto);
+    setForm((prev) => ({ ...prev, telefone: formatted }));
+  };
+
+  const handleDateChange = (event, selectedDate) => {
+    setMostrarDatePicker(Platform.OS === "ios");
+    if (selectedDate) {
+      setDataNascimento(selectedDate);
+      setForm((prev) => ({
+        ...prev,
+        nascimento: formatarDataParaAPI(selectedDate),
+      }));
+    }
+  };
+
+  const handleSelectChange = (campo, valor) => {
+    setForm((prev) => ({ ...prev, [campo]: valor || "" }));
+    if (erros[campo]) {
+      setErros((prev) => ({ ...prev, [campo]: "" }));
+    }
+  };
+
+  const handleBlockChange = (value) => {
+    if (!podeBloquer) return;
+    setForm((prev) => ({ ...prev, bloqueado: value }));
   };
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -141,16 +302,12 @@ export default function EditarCadastroVisitante() {
 
   const handleSelecionarFoto = async () => {
     const opcoes = [
-      { titulo: "Tirar Foto", icone: "camera", acao: "camera" },
-      { titulo: "Escolher da Galeria", icone: "image", acao: "galeria" },
+      { titulo: "Tirar Foto", acao: "camera" },
+      { titulo: "Escolher da Galeria", acao: "galeria" },
     ];
 
     if (foto) {
-      opcoes.push({
-        titulo: "Remover Foto",
-        icone: "trash-2",
-        acao: "remover",
-      });
+      opcoes.push({ titulo: "Remover Foto", acao: "remover" });
     }
 
     Alert.alert("Foto do Visitante", "Selecione uma opção", [
@@ -201,34 +358,118 @@ export default function EditarCadastroVisitante() {
   };
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // VALIDAÇÃO (igual ao frontend)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const validarFormulario = () => {
+    const novosErros = {};
+    const cpfClean = form.cpf.replace(/\D/g, "");
+    const telefoneClean = form.telefone.replace(/\D/g, "");
+    const placaClean = form.placa_veiculo
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .toUpperCase();
+
+    if (!form.nome.trim()) {
+      novosErros.nome = "Nome é obrigatório";
+    }
+
+    if (cpfClean.length !== 11) {
+      novosErros.cpf = "CPF inválido. Deve conter 11 dígitos.";
+    }
+
+    if (telefoneClean.length !== 11 && telefoneClean.length !== 10) {
+      novosErros.telefone = "Telefone inválido";
+    }
+
+    if (!form.empresa) {
+      novosErros.empresa = "Empresa é obrigatória";
+    }
+
+    if (!form.setor) {
+      novosErros.setor = "Setor é obrigatório";
+    }
+
+    // Validação de veículo (igual ao frontend)
+    const hasPlaca = placaClean.trim().length > 0;
+    const hasCor =
+      form.cor_veiculo_visitante_id !== "" &&
+      form.cor_veiculo_visitante_id !== null;
+    const hasTipo =
+      form.tipo_veiculo_visitante_id !== "" &&
+      form.tipo_veiculo_visitante_id !== null;
+
+    if (hasPlaca && !hasCor) {
+      novosErros.cor_veiculo_visitante_id =
+        "Cor é obrigatória quando a placa é informada";
+    }
+
+    if (hasPlaca && !hasTipo) {
+      novosErros.tipo_veiculo_visitante_id =
+        "Tipo é obrigatório quando a placa é informada";
+    }
+
+    if ((hasCor || hasTipo) && !hasPlaca) {
+      novosErros.placa_veiculo =
+        "Placa é obrigatória quando cor/tipo é informado";
+    }
+
+    if (hasPlaca && placaClean.length < 7) {
+      novosErros.placa_veiculo = "Placa deve ter 7 caracteres";
+    }
+
+    setErros(novosErros);
+    return Object.keys(novosErros).length === 0;
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // ATUALIZAR
   // ═══════════════════════════════════════════════════════════════════════════
 
   const handleAtualizar = async () => {
     if (!validarFormulario()) {
+      Alert.alert("Erro", "Por favor, corrija os erros no formulário.");
       return;
     }
 
     try {
-      setCarregando(true);
+      setSalvando(true);
 
-      const dados = {
-        nome: nome.trim(),
-        cpf: cpf.replace(/\D/g, ""),
-        rg: rg.trim(),
-        telefone: telefone.replace(/\D/g, ""),
-        email: email.trim().toLowerCase(),
-        empresa_nome: empresa.trim(),
-        funcao: funcao.trim(),
-        observacao: observacao.trim(),
+      const cpfClean = form.cpf.replace(/\D/g, "");
+      const telefoneClean = form.telefone.replace(/\D/g, "");
+      const placaClean = form.placa_veiculo
+        .replace(/[^a-zA-Z0-9]/g, "")
+        .toUpperCase();
+
+      // Encontra os nomes da empresa e setor pelos IDs
+      const empresaSelecionada = empresasVisitantes.find(
+        (e) => e.id === form.empresa,
+      );
+      const setorSelecionado = setoresVisitantes.find(
+        (s) => s.id === form.setor,
+      );
+
+      const payload = {
+        nome: form.nome,
+        nascimento: form.nascimento,
+        cpf: cpfClean,
+        empresa: empresaSelecionada?.nome || form.empresa,
+        setor: setorSelecionado?.nome || form.setor,
+        telefone: telefoneClean,
+        placa_veiculo: placaClean,
+        cor_veiculo_visitante_id: form.cor_veiculo_visitante_id || null,
+        tipo_veiculo_visitante_id: form.tipo_veiculo_visitante_id || null,
+        funcao_visitante_id: form.funcao_visitante_id || null,
+        observacao: form.observacao,
+        avatar_imagem: avatar,
+        bloqueado: form.bloqueado,
       };
 
-      // Se a foto foi alterada
+      // Se a foto foi alterada, usa FormData
       if (fotoAlterada) {
         const formData = new FormData();
-        Object.keys(dados).forEach((key) => {
-          if (dados[key]) {
-            formData.append(key, dados[key]);
+        Object.keys(payload).forEach((key) => {
+          if (payload[key] !== null && payload[key] !== undefined) {
+            formData.append(key, payload[key]);
           }
         });
 
@@ -244,7 +485,7 @@ export default function EditarCadastroVisitante() {
 
         await visitantesService.atualizar(visitante.id, formData);
       } else {
-        await visitantesService.atualizar(visitante.id, dados);
+        await visitantesService.atualizar(visitante.id, payload);
       }
 
       Alert.alert("Sucesso!", "Visitante atualizado com sucesso.", [
@@ -258,10 +499,11 @@ export default function EditarCadastroVisitante() {
       Alert.alert(
         "Erro",
         erro.response?.data?.message ||
-          "Não foi possível atualizar o visitante."
+          erro.response?.data?.error ||
+          "Não foi possível atualizar o visitante.",
       );
     } finally {
-      setCarregando(false);
+      setSalvando(false);
     }
   };
 
@@ -280,18 +522,18 @@ export default function EditarCadastroVisitante() {
           style: "destructive",
           onPress: async () => {
             try {
-              setCarregando(true);
-              await visitantesService.excluir(visitante.id);
+              setSalvando(true);
+              await visitantesService.deletar(visitante.id);
               Alert.alert("Sucesso", "Visitante excluído com sucesso.");
               navigation.navigate("ListagemVisitante");
             } catch (erro) {
               Alert.alert("Erro", "Não foi possível excluir o visitante.");
             } finally {
-              setCarregando(false);
+              setSalvando(false);
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -299,10 +541,10 @@ export default function EditarCadastroVisitante() {
   // RENDERIZAÇÃO
   // ═══════════════════════════════════════════════════════════════════════════
 
-  if (!visitante) {
+  if (carregando) {
     return (
       <View style={styles.container}>
-        {/* Header Padronizado */}
+        <StatusBar barStyle="light-content" backgroundColor={cores.primaria} />
         <View
           style={[styles.header, { paddingTop: insets.top + espacamento.md }]}
         >
@@ -312,9 +554,30 @@ export default function EditarCadastroVisitante() {
           >
             <Feather name="arrow-left" size={24} color={cores.branco} />
           </TouchableOpacity>
-
           <Text style={styles.headerTitulo}>Editar Visitante</Text>
+          <View style={styles.headerEspaco} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <Loading mensagem="Carregando dados..." />
+        </View>
+      </View>
+    );
+  }
 
+  if (!visitante) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor={cores.primaria} />
+        <View
+          style={[styles.header, { paddingTop: insets.top + espacamento.md }]}
+        >
+          <TouchableOpacity
+            style={styles.headerVoltar}
+            onPress={() => navigation.goBack()}
+          >
+            <Feather name="arrow-left" size={24} color={cores.branco} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitulo}>Editar Visitante</Text>
           <View style={styles.headerEspaco} />
         </View>
         <View style={styles.vazio}>
@@ -329,7 +592,7 @@ export default function EditarCadastroVisitante() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={cores.primaria} />
 
-      {/* Header Padronizado */}
+      {/* Header */}
       <View
         style={[styles.header, { paddingTop: insets.top + espacamento.md }]}
       >
@@ -339,9 +602,7 @@ export default function EditarCadastroVisitante() {
         >
           <Feather name="arrow-left" size={24} color={cores.branco} />
         </TouchableOpacity>
-
         <Text style={styles.headerTitulo}>Editar Visitante</Text>
-
         <View style={styles.headerEspaco} />
       </View>
 
@@ -384,18 +645,53 @@ export default function EditarCadastroVisitante() {
 
           <Input
             label="Nome Completo *"
-            valor={nome}
-            onChangeText={setNome}
+            valor={form.nome}
+            onChangeText={(texto) => handleChange("nome", texto)}
             placeholder="Digite o nome completo"
             iconeEsquerda="user"
             erro={erros.nome}
-            autoCapitalize="words"
+            autoCapitalize="characters"
           />
+
+          {/* Data de Nascimento */}
+          <View style={styles.campoContainer}>
+            <Text style={styles.label}>Data de Nascimento</Text>
+            <TouchableOpacity
+              style={[styles.campoData, erros.nascimento && styles.campoErro]}
+              onPress={() => setMostrarDatePicker(true)}
+            >
+              <Feather
+                name="calendar"
+                size={20}
+                color={cores.textoSecundario}
+              />
+              <Text
+                style={[
+                  styles.campoDataTexto,
+                  !dataNascimento && styles.placeholder,
+                ]}
+              >
+                {dataNascimento
+                  ? formatarData(dataNascimento)
+                  : "Selecione a data"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {mostrarDatePicker && (
+            <DateTimePicker
+              value={dataNascimento || new Date(2000, 0, 1)}
+              mode="date"
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+              onChange={handleDateChange}
+              maximumDate={new Date()}
+            />
+          )}
 
           <Input
             label="CPF *"
-            valor={cpf}
-            onChangeText={(texto) => setCpf(formatarCPF(texto))}
+            valor={form.cpf}
+            onChangeText={handleCpfChange}
             placeholder="000.000.000-00"
             iconeEsquerda="credit-card"
             erro={erros.cpf}
@@ -403,54 +699,92 @@ export default function EditarCadastroVisitante() {
             maxLength={14}
           />
 
-          <Input
-            label="RG"
-            valor={rg}
-            onChangeText={setRg}
-            placeholder="Digite o RG"
-            iconeEsquerda="file-text"
-          />
-
           {/* Contato */}
           <Text style={styles.secaoTitulo}>Contato</Text>
 
           <Input
-            label="Telefone"
-            valor={telefone}
-            onChangeText={(texto) => setTelefone(formatarTelefone(texto))}
+            label="Telefone *"
+            valor={form.telefone}
+            onChangeText={handleTelefoneChange}
             placeholder="(00) 00000-0000"
             iconeEsquerda="phone"
+            erro={erros.telefone}
             tipo="numero"
             maxLength={15}
           />
 
-          <Input
-            label="E-mail"
-            valor={email}
-            onChangeText={setEmail}
-            placeholder="email@exemplo.com"
-            iconeEsquerda="mail"
-            tipo="email"
-            erro={erros.email}
-          />
-
-          {/* Empresa */}
+          {/* Empresa e Setor */}
           <Text style={styles.secaoTitulo}>Empresa</Text>
 
-          <Input
+          <Select
             label="Empresa"
-            valor={empresa}
-            onChangeText={setEmpresa}
-            placeholder="Nome da empresa"
-            iconeEsquerda="briefcase"
+            placeholder="Selecione a empresa"
+            value={form.empresa}
+            onValueChange={(valor) => handleSelectChange("empresa", valor)}
+            options={empresasVisitantes}
+            icone="briefcase"
+            erro={erros.empresa}
+            obrigatorio
           />
 
+          <Select
+            label="Setor"
+            placeholder="Selecione o setor"
+            value={form.setor}
+            onValueChange={(valor) => handleSelectChange("setor", valor)}
+            options={setoresVisitantes}
+            icone="grid"
+            erro={erros.setor}
+            obrigatorio
+          />
+
+          <Select
+            label="Função do Visitante"
+            placeholder="Selecione a função (opcional)"
+            value={form.funcao_visitante_id}
+            onValueChange={(valor) =>
+              handleSelectChange("funcao_visitante_id", valor)
+            }
+            options={funcoesVisitantes}
+            icone="award"
+          />
+
+          {/* Veículo */}
+          <Text style={styles.secaoTitulo}>Veículo (Opcional)</Text>
+
           <Input
-            label="Função"
-            valor={funcao}
-            onChangeText={setFuncao}
-            placeholder="Cargo ou função"
-            iconeEsquerda="award"
+            label="Placa do Veículo"
+            valor={form.placa_veiculo}
+            onChangeText={(texto) => handleChange("placa_veiculo", texto)}
+            placeholder="ABC1D23"
+            iconeEsquerda="hash"
+            erro={erros.placa_veiculo}
+            autoCapitalize="characters"
+            maxLength={7}
+          />
+
+          <Select
+            label="Tipo do Veículo"
+            placeholder="Selecione o tipo"
+            value={form.tipo_veiculo_visitante_id}
+            onValueChange={(valor) =>
+              handleSelectChange("tipo_veiculo_visitante_id", valor)
+            }
+            options={tiposVeiculos}
+            icone="truck"
+            erro={erros.tipo_veiculo_visitante_id}
+          />
+
+          <Select
+            label="Cor do Veículo"
+            placeholder="Selecione a cor"
+            value={form.cor_veiculo_visitante_id}
+            onValueChange={(valor) =>
+              handleSelectChange("cor_veiculo_visitante_id", valor)
+            }
+            options={coresVeiculos}
+            icone="droplet"
+            erro={erros.cor_veiculo_visitante_id}
           />
 
           {/* Observações */}
@@ -458,21 +792,90 @@ export default function EditarCadastroVisitante() {
 
           <Input
             label="Observação"
-            valor={observacao}
-            onChangeText={setObservacao}
+            valor={form.observacao}
+            onChangeText={(texto) => handleChange("observacao", texto)}
             placeholder="Informações adicionais..."
             iconeEsquerda="file-text"
             multiline
-            numberOfLines={3}
+            numberOfLines={4}
           />
+
+          {/* Status de Bloqueio */}
+          <Text style={styles.secaoTitulo}>Status do Cadastro</Text>
+
+          <View style={styles.bloqueioContainer}>
+            <View style={styles.bloqueioInfo}>
+              <Feather
+                name={form.bloqueado ? "lock" : "unlock"}
+                size={24}
+                color={form.bloqueado ? cores.erro : cores.sucesso}
+              />
+              <View style={styles.bloqueioTextos}>
+                <Text style={styles.bloqueioTitulo}>
+                  {form.bloqueado ? "Cadastro Bloqueado" : "Cadastro Ativo"}
+                </Text>
+                <Text style={styles.bloqueioDescricao}>
+                  {form.bloqueado
+                    ? "O visitante não poderá fazer check-in"
+                    : "O visitante pode fazer check-in normalmente"}
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={form.bloqueado}
+              onValueChange={handleBlockChange}
+              trackColor={{ false: cores.cinzaMedio, true: `${cores.erro}50` }}
+              thumbColor={form.bloqueado ? cores.erro : cores.sucesso}
+              disabled={!podeBloquer}
+            />
+          </View>
+
+          {!podeBloquer && (
+            <Text style={styles.semPermissao}>
+              Você não tem permissão para bloquear/desbloquear visitantes
+            </Text>
+          )}
+
+          {/* Fotos do visitante (se houver) */}
+          {fotos.length > 0 && (
+            <>
+              <Text style={styles.secaoTitulo}>Selecionar Avatar</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.fotosLista}
+              >
+                {fotos.map((fotoUrl, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.fotoItem,
+                      avatar === fotoUrl && styles.fotoItemSelecionada,
+                    ]}
+                    onPress={() => setAvatar(fotoUrl)}
+                  >
+                    <Image
+                      source={{ uri: fotoUrl }}
+                      style={styles.fotoItemImage}
+                    />
+                    {avatar === fotoUrl && (
+                      <View style={styles.fotoItemCheck}>
+                        <Feather name="check" size={16} color={cores.branco} />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </>
+          )}
 
           {/* Botões */}
           <View style={styles.botoesContainer}>
             <Button
               titulo="Salvar Alterações"
               onPress={handleAtualizar}
-              carregando={carregando}
-              variante="destaque"
+              carregando={salvando}
+              variante="primario"
               icone="check"
               tamanho="grande"
             />
@@ -482,17 +885,19 @@ export default function EditarCadastroVisitante() {
               onPress={() => navigation.goBack()}
               variante="outline"
               tamanho="grande"
-              desabilitado={carregando}
+              desabilitado={salvando}
             />
 
-            <Button
-              titulo="Excluir Visitante"
-              onPress={handleExcluir}
-              variante="erro"
-              icone="trash-2"
-              tamanho="grande"
-              desabilitado={carregando}
-            />
+            {temPermissao("cadastro_excluir") && (
+              <Button
+                titulo="Excluir Visitante"
+                onPress={handleExcluir}
+                variante="erro"
+                icone="trash-2"
+                tamanho="grande"
+                desabilitado={salvando}
+              />
+            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -510,7 +915,7 @@ const styles = StyleSheet.create({
     backgroundColor: cores.primaria,
   },
 
-  // Header Padronizado
+  // Header
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -547,6 +952,15 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: espacamento.lg,
     paddingBottom: espacamento.xxl,
+  },
+
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: cores.fundoPagina,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   // Vazio
@@ -622,6 +1036,123 @@ const styles = StyleSheet.create({
     color: cores.texto,
     marginTop: espacamento.lg,
     marginBottom: espacamento.md,
+  },
+
+  // Campo de data
+  campoContainer: {
+    marginBottom: espacamento.md,
+  },
+
+  label: {
+    fontSize: tipografia.tamanhoTextoMedio,
+    fontWeight: tipografia.pesoMedio,
+    color: cores.texto,
+    marginBottom: espacamento.xs,
+  },
+
+  campoData: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: cores.fundoCard,
+    borderWidth: 1,
+    borderColor: cores.borda,
+    borderRadius: bordas.raioMedio,
+    paddingHorizontal: espacamento.md,
+    height: 50,
+    gap: espacamento.sm,
+  },
+
+  campoErro: {
+    borderColor: cores.erro,
+  },
+
+  campoDataTexto: {
+    flex: 1,
+    fontSize: tipografia.tamanhoTexto,
+    color: cores.texto,
+  },
+
+  placeholder: {
+    color: cores.textoSecundario,
+  },
+
+  // Bloqueio
+  bloqueioContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: cores.fundoCard,
+    padding: espacamento.md,
+    borderRadius: bordas.raioMedio,
+    ...sombras.pequena,
+  },
+
+  bloqueioInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: espacamento.md,
+  },
+
+  bloqueioTextos: {
+    flex: 1,
+  },
+
+  bloqueioTitulo: {
+    fontSize: tipografia.tamanhoTextoMedio,
+    fontWeight: tipografia.pesoSemiBold,
+    color: cores.texto,
+  },
+
+  bloqueioDescricao: {
+    fontSize: tipografia.tamanhoTextoPequeno,
+    color: cores.textoSecundario,
+    marginTop: 2,
+  },
+
+  semPermissao: {
+    fontSize: tipografia.tamanhoTextoPequeno,
+    color: cores.textoSecundario,
+    fontStyle: "italic",
+    marginTop: espacamento.sm,
+    textAlign: "center",
+  },
+
+  // Fotos lista
+  fotosLista: {
+    marginBottom: espacamento.md,
+  },
+
+  fotoItem: {
+    width: 80,
+    height: 80,
+    borderRadius: bordas.raioMedio,
+    marginRight: espacamento.sm,
+    borderWidth: 2,
+    borderColor: cores.borda,
+    overflow: "hidden",
+  },
+
+  fotoItemSelecionada: {
+    borderColor: cores.destaque,
+    borderWidth: 3,
+  },
+
+  fotoItemImage: {
+    width: "100%",
+    height: "100%",
+  },
+
+  fotoItemCheck: {
+    position: "absolute",
+    bottom: 4,
+    right: 4,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: cores.destaque,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   // Botões

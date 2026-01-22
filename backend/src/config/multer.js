@@ -40,8 +40,8 @@ const upload = multer({
     } else {
       cb(
         new Error(
-          `Tipo de arquivo inválido: ${file.mimetype}. Apenas JPEG, PNG ou WEBP são permitidos.`
-        )
+          `Tipo de arquivo inválido: ${file.mimetype}. Apenas JPEG, PNG ou WEBP são permitidos.`,
+        ),
       );
     }
   },

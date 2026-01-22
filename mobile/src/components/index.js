@@ -15,4 +15,5 @@ export {
   BottomNavigation,
   ModuloCard,
   EmptyState,
+  Select,
 } from "./ui";

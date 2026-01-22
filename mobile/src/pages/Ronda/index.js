@@ -89,7 +89,7 @@ export default function Ronda() {
           setPermissaoLocalizacao(false);
           Alert.alert(
             "Permissão Necessária",
-            "Permita o acesso à localização para usar a funcionalidade de ronda."
+            "Permita o acesso à localização para usar a funcionalidade de ronda.",
           );
           return;
         }
@@ -152,7 +152,7 @@ export default function Ronda() {
               latitudeDelta: LATITUDE_DELTA,
               longitudeDelta: LONGITUDE_DELTA,
             });
-          }
+          },
         );
       })();
     }
@@ -189,7 +189,7 @@ export default function Ronda() {
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -211,7 +211,7 @@ export default function Ronda() {
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -238,7 +238,7 @@ export default function Ronda() {
           },
         },
       ],
-      "plain-text"
+      "plain-text",
     );
   };
 
@@ -294,7 +294,7 @@ export default function Ronda() {
             <Feather name="arrow-left" size={24} color={cores.branco} />
           </TouchableOpacity>
 
-          <Text style={styles.headerTitulo}>Ronda</Text>
+          <Text style={styles.headerTitulo}>Ronda Vigilante</Text>
 
           <View style={styles.headerEspaco} />
         </View>
@@ -326,7 +326,7 @@ export default function Ronda() {
             <Feather name="arrow-left" size={24} color={cores.branco} />
           </TouchableOpacity>
 
-          <Text style={styles.headerTitulo}>Ronda</Text>
+          <Text style={styles.headerTitulo}>Ronda Vigilante</Text>
 
           <View style={styles.headerEspaco} />
         </View>
@@ -367,7 +367,7 @@ export default function Ronda() {
           <Feather name="arrow-left" size={24} color={cores.branco} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitulo}>Ronda</Text>
+        <Text style={styles.headerTitulo}>Ronda Vigilante</Text>
 
         <View style={styles.headerEspaco} />
       </View>
@@ -689,9 +689,12 @@ const styles = StyleSheet.create({
   // Painel de Controle
   painelControle: {
     backgroundColor: cores.fundoCard,
-    padding: espacamento.lg,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    paddingHorizontal: espacamento.lg,
+    paddingTop: espacamento.lg,
+    paddingBottom: espacamento.xl,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    marginTop: -24,
     ...sombras.grande,
   },
 

@@ -18,10 +18,17 @@ import api from "./api";
  * Lista visitantes cadastrados com paginação
  * GET /cadastro-visitantes
  * @param {object} params - { page, limit, search }
+ * @returns {object} { data, total, totalPages }
  */
 async function listar(params = {}) {
   const response = await api.get("/cadastro-visitantes", { params });
-  return response.data;
+  const total = parseInt(response.headers["x-total-count"] || 0, 10);
+  const limit = params.limit || 10;
+  return {
+    data: response.data,
+    total,
+    totalPages: Math.ceil(total / limit),
+  };
 }
 
 /**
@@ -85,8 +92,11 @@ async function buscarPorCracha(codigo) {
  */
 async function criar(dados) {
   const isFormData = dados instanceof FormData;
+
+  // Para FormData no React Native, não definir Content-Type
+  // O axios define automaticamente com o boundary correto
   const config = isFormData
-    ? { headers: { "Content-Type": "multipart/form-data" } }
+    ? { timeout: 120000 } // 2 minutos para upload de imagens
     : {};
 
   const response = await api.post("/cadastro-visitantes", dados, config);
@@ -143,9 +153,34 @@ async function listarEmVisita() {
 /**
  * Registra entrada de visitante
  * POST /visitantes
- * @param {object} dados - Dados da visita
+ * @param {object} dados - Dados da visita (pode ser objeto com dados ou apenas cadastro_visitante_id)
  */
 async function registrarEntrada(dados) {
+  // Se for apenas um ID, busca os dados do cadastro primeiro
+  if (typeof dados === "number" || typeof dados === "string") {
+    const cadastro = await api.get(`/cadastro-visitantes/${dados}`);
+    const visitante = cadastro.data;
+
+    // Prepara os dados para registrar a entrada
+    const dadosEntrada = {
+      nome: visitante.nome,
+      cpf: visitante.cpf,
+      empresa: visitante.empresa || visitante.empresa_nome || "",
+      setor: visitante.setor || visitante.setor_nome || "",
+      placa_veiculo: visitante.placa_veiculo || "",
+      cor_veiculo: visitante.cor_veiculo_nome || visitante.cor_veiculo || "",
+      tipo_veiculo: visitante.tipo_veiculo_nome || visitante.tipo_veiculo || "",
+      funcao: visitante.funcao_nome || visitante.funcao || "",
+      responsavel: "Portaria Mobile",
+      observacao: visitante.observacao || "",
+      cadastro_visitante_id: visitante.id,
+    };
+
+    const response = await api.post("/visitantes", dadosEntrada);
+    return response.data;
+  }
+
+  // Se já vier com todos os dados
   const response = await api.post("/visitantes", dados);
   return response.data;
 }
@@ -195,6 +230,7 @@ export default {
   atualizar,
   bloquear,
   deletar,
+  excluir: deletar, // Alias para compatibilidade
   // Visitas
   listarEmVisita,
   registrarEntrada,

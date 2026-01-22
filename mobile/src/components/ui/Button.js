@@ -11,19 +11,22 @@ import {
   Text,
   StyleSheet,
   ActivityIndicator,
+  View,
 } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { cores, tipografia, espacamento, bordas } from "../../styles/tema";
 
 /**
  * Botão customizado
  *
- * @param {string} variante - "primario" | "secundario" | "outline" | "ghost" | "destaque"
+ * @param {string} variante - "primario" | "secundario" | "outline" | "ghost" | "destaque" | "erro"
  * @param {string} tamanho - "pequeno" | "medio" | "grande"
  * @param {boolean} carregando - Exibe indicador de carregamento
  * @param {boolean} desabilitado - Desabilita o botão
- * @param {ReactNode} icone - Ícone opcional à esquerda
+ * @param {string|ReactNode} icone - Nome do ícone Feather ou componente de ícone
  * @param {function} onPress - Callback ao pressionar
  * @param {string} texto - Texto do botão
+ * @param {string} titulo - Alias para texto (compatibilidade)
  * @param {object} estilo - Estilos adicionais
  */
 export function Button({
@@ -34,11 +37,14 @@ export function Button({
   icone,
   onPress,
   texto,
+  titulo, // Alias para compatibilidade
   estilo,
   estiloTexto,
   children,
   ...props
 }) {
+  // Usa 'titulo' como fallback se 'texto' não for fornecido
+  const textoExibido = texto || titulo;
   // ═══════════════════════════════════════════════════════════════════════════
   // ESTILOS DINÂMICOS
   // ═══════════════════════════════════════════════════════════════════════════
@@ -108,8 +114,25 @@ export function Button({
         />
       ) : (
         <>
-          {icone && <>{icone}</>}
-          {(texto || children) && (
+          {icone &&
+            (typeof icone === "string" ? (
+              <Feather
+                name={icone}
+                size={
+                  tamanho === "pequeno" ? 16 : tamanho === "grande" ? 22 : 18
+                }
+                color={
+                  variante === "outline" || variante === "ghost"
+                    ? cores.primaria
+                    : variante === "secundario"
+                      ? cores.texto
+                      : cores.branco
+                }
+              />
+            ) : (
+              <>{icone}</>
+            ))}
+          {(textoExibido || children) && (
             <Text
               style={[
                 styles.textoBase,
@@ -118,7 +141,7 @@ export function Button({
                 estiloTexto,
               ]}
             >
-              {texto || children}
+              {textoExibido || children}
             </Text>
           )}
         </>

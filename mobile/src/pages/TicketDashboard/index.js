@@ -1,7 +1,7 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
- * PÁGINA: Dashboard de Tickets
- * Acompanhamento de tickets de visitantes
+ * PÁGINA: Central de Tickets
+ * Acompanhamento de tickets (igual ao frontend)
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
@@ -22,7 +22,7 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Componentes
-import { Loading, EmptyState, Card } from "../../components";
+import { Loading, EmptyState } from "../../components";
 
 // Services
 import { ticketsService } from "../../services";
@@ -47,7 +47,12 @@ export default function TicketDashboard() {
   const insets = useSafeAreaInsets();
 
   // Estados
-  const [dashboard, setDashboard] = useState(null);
+  const [dashboard, setDashboard] = useState({
+    total: 0,
+    abertos: 0,
+    em_andamento: 0,
+    concluidos: 0,
+  });
   const [tickets, setTickets] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [atualizando, setAtualizando] = useState(false);
@@ -61,30 +66,53 @@ export default function TicketDashboard() {
     try {
       setCarregando(true);
 
-      // Busca dashboard e tickets em paralelo
-      const [dashboardResp, ticketsResp] = await Promise.all([
-        ticketsService.buscarDashboard(),
-        ticketsService.listar({
-          status: filtroStatus !== "todos" ? filtroStatus : undefined,
-        }),
-      ]);
-
-      // Dashboard pode retornar dados diretamente ou em .data
-      const dadosDashboard = dashboardResp?.data || dashboardResp;
-      if (dadosDashboard) {
-        setDashboard(dadosDashboard);
-      }
-
-      // Tickets pode retornar array ou objeto com .data
+      // Busca todos os tickets
+      const ticketsResp = await ticketsService.listar();
       const dadosTickets = Array.isArray(ticketsResp)
         ? ticketsResp
-        : ticketsResp?.data || ticketsResp;
-      if (dadosTickets) {
-        setTickets(Array.isArray(dadosTickets) ? dadosTickets : []);
+        : ticketsResp?.data || [];
+
+      // Calcula estatísticas
+      const total = dadosTickets.length;
+      const abertos = dadosTickets.filter(
+        (t) => t.status?.toLowerCase() === "aberto",
+      ).length;
+      const em_andamento = dadosTickets.filter(
+        (t) =>
+          t.status?.toLowerCase() === "em andamento" ||
+          t.status?.toLowerCase() === "em_andamento",
+      ).length;
+      const concluidos = dadosTickets.filter(
+        (t) =>
+          t.status?.toLowerCase() === "resolvido" ||
+          t.status?.toLowerCase() === "fechado" ||
+          t.status?.toLowerCase() === "concluido",
+      ).length;
+
+      setDashboard({ total, abertos, em_andamento, concluidos });
+
+      // Filtra se necessário
+      let ticketsFiltrados = dadosTickets;
+      if (filtroStatus !== "todos") {
+        ticketsFiltrados = dadosTickets.filter((t) => {
+          const status = t.status?.toLowerCase();
+          if (filtroStatus === "aberto") return status === "aberto";
+          if (filtroStatus === "em_andamento")
+            return status === "em andamento" || status === "em_andamento";
+          if (filtroStatus === "fechado")
+            return (
+              status === "resolvido" ||
+              status === "fechado" ||
+              status === "concluido"
+            );
+          return true;
+        });
       }
+
+      setTickets(ticketsFiltrados);
     } catch (erro) {
       console.error("Erro ao buscar dados:", erro);
-      Alert.alert("Erro", "Não foi possível carregar os dados.");
+      Alert.alert("Erro", "Não foi possível carregar os tickets.");
     } finally {
       setCarregando(false);
       setAtualizando(false);
@@ -95,7 +123,7 @@ export default function TicketDashboard() {
   useFocusEffect(
     useCallback(() => {
       buscarDados();
-    }, [filtroStatus])
+    }, [filtroStatus]),
   );
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -105,6 +133,10 @@ export default function TicketDashboard() {
   const handleAtualizar = () => {
     setAtualizando(true);
     buscarDados();
+  };
+
+  const handleCriarTicket = () => {
+    navigation.navigate("CriarTicket");
   };
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -118,11 +150,12 @@ export default function TicketDashboard() {
       case "em_andamento":
       case "em andamento":
         return { cor: cores.info, texto: "Em Andamento", icone: "clock" };
+      case "resolvido":
       case "fechado":
       case "concluido":
         return {
           cor: cores.sucesso,
-          texto: "Concluído",
+          texto: "Resolvido",
           icone: "check-circle",
         };
       case "cancelado":
@@ -130,10 +163,24 @@ export default function TicketDashboard() {
       default:
         return {
           cor: cores.textoSecundario,
-          texto: status,
+          texto: status || "Pendente",
           icone: "help-circle",
         };
     }
+  };
+
+  const getMotivoCor = (motivo) => {
+    const motivoLower = (motivo || "").toLowerCase();
+    if (motivoLower.includes("urgente") || motivoLower.includes("incidente")) {
+      return cores.erro;
+    }
+    if (motivoLower.includes("suporte") || motivoLower.includes("duvida")) {
+      return cores.info;
+    }
+    if (motivoLower.includes("sugestao") || motivoLower.includes("objeto")) {
+      return cores.sucesso;
+    }
+    return cores.destaque;
   };
 
   const formatarData = (data) => {
@@ -143,8 +190,6 @@ export default function TicketDashboard() {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
     });
   };
 
@@ -152,126 +197,106 @@ export default function TicketDashboard() {
   // CARDS DO DASHBOARD
   // ═══════════════════════════════════════════════════════════════════════════
 
-  const DashboardCard = ({ titulo, valor, icone, cor }) => (
-    <View style={[styles.dashboardCard, { borderLeftColor: cor }]}>
+  const DashboardCard = ({ titulo, valor, icone, cor, onPress, ativo }) => (
+    <TouchableOpacity
+      style={[
+        styles.dashboardCard,
+        { borderLeftColor: cor },
+        ativo && styles.dashboardCardAtivo,
+      ]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
       <View style={[styles.dashboardIcone, { backgroundColor: `${cor}15` }]}>
-        <Feather name={icone} size={24} color={cor} />
+        <Feather name={icone} size={20} color={cor} />
       </View>
       <View style={styles.dashboardInfo}>
         <Text style={styles.dashboardValor}>{valor || 0}</Text>
         <Text style={styles.dashboardTitulo}>{titulo}</Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // RENDERIZAR ITEM
+  // RENDERIZAR ITEM (IGUAL AO FRONTEND)
   // ═══════════════════════════════════════════════════════════════════════════
 
   const renderItem = ({ item }) => {
     const statusConfig = getStatusConfig(item.status);
+    const motivoCor = getMotivoCor(item.motivo);
 
     return (
-      <TouchableOpacity
-        style={styles.ticketCard}
-        activeOpacity={0.7}
-        onPress={() => {
-          // Pode navegar para detalhes do ticket se existir
-        }}
-      >
-        {/* Header */}
+      <View style={styles.ticketCard}>
+        {/* Menu de 3 pontos */}
+        <TouchableOpacity style={styles.ticketMenu}>
+          <Feather
+            name="more-vertical"
+            size={18}
+            color={cores.textoSecundario}
+          />
+        </TouchableOpacity>
+
+        {/* Header com ID e Descrição */}
         <View style={styles.ticketHeader}>
-          <View style={styles.ticketNumero}>
-            <Feather name="hash" size={14} color={cores.destaque} />
-            <Text style={styles.ticketNumeroTexto}>{item.id}</Text>
-          </View>
-
-          <View
-            style={[
-              styles.statusBadge,
-              { backgroundColor: `${statusConfig.cor}15` },
-            ]}
-          >
-            <Feather
-              name={statusConfig.icone}
-              size={12}
-              color={statusConfig.cor}
-            />
-            <Text style={[styles.statusTexto, { color: statusConfig.cor }]}>
-              {statusConfig.texto}
-            </Text>
-          </View>
-        </View>
-
-        {/* Título */}
-        <Text style={styles.ticketTitulo} numberOfLines={2}>
-          {item.titulo || item.assunto || "Sem título"}
-        </Text>
-
-        {/* Visitante */}
-        <View style={styles.ticketVisitante}>
-          <Feather name="user" size={14} color={cores.textoSecundario} />
-          <Text style={styles.ticketVisitanteNome} numberOfLines={1}>
-            {item.visitante?.nome || item.visitante_nome || "Visitante"}
+          <Text style={styles.ticketId}>#{item.id}</Text>
+          <Text style={styles.ticketSeparador}> - </Text>
+          <Text style={styles.ticketDescricao} numberOfLines={1}>
+            {item.funcionario || "Sem funcionário"}
           </Text>
         </View>
 
-        {/* Footer */}
-        <View style={styles.ticketFooter}>
-          <View style={styles.ticketData}>
-            <Feather name="calendar" size={12} color={cores.textoTerciario} />
-            <Text style={styles.ticketDataTexto}>
-              {formatarData(item.created_at)}
+        {/* Descrição do ticket */}
+        <Text style={styles.ticketTexto} numberOfLines={2}>
+          {item.descricao || "Sem descrição"}
+        </Text>
+
+        {/* Tags: Motivo e Setor */}
+        <View style={styles.tagsContainer}>
+          {/* Tag Motivo */}
+          <View style={[styles.tag, { backgroundColor: `${motivoCor}15` }]}>
+            <Text style={[styles.tagTexto, { color: motivoCor }]}>
+              {item.motivo || "objeto"}
             </Text>
           </View>
 
-          {item.prioridade && (
-            <View
-              style={[
-                styles.prioridadeBadge,
-                {
-                  backgroundColor:
-                    item.prioridade === "alta"
-                      ? `${cores.erro}15`
-                      : item.prioridade === "media"
-                        ? `${cores.alerta}15`
-                        : `${cores.sucesso}15`,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.prioridadeTexto,
-                  {
-                    color:
-                      item.prioridade === "alta"
-                        ? cores.erro
-                        : item.prioridade === "media"
-                          ? cores.alerta
-                          : cores.sucesso,
-                  },
-                ]}
-              >
-                {item.prioridade.charAt(0).toUpperCase() +
-                  item.prioridade.slice(1)}
+          {/* Tag Setor */}
+          <View style={[styles.tag, { backgroundColor: `${cores.info}15` }]}>
+            <Text style={[styles.tagTexto, { color: cores.info }]}>
+              {item.setor_responsavel || item.setor_usuario || "segurança"}
+            </Text>
+          </View>
+        </View>
+
+        {/* Footer: Data e Usuário */}
+        <View style={styles.ticketFooter}>
+          <View style={styles.ticketData}>
+            <Feather name="calendar" size={14} color={cores.textoTerciario} />
+            <Text style={styles.ticketDataTexto}>
+              {formatarData(item.data_criacao || item.created_at)}
+            </Text>
+          </View>
+
+          {/* Avatar do usuário que abriu */}
+          <View style={styles.ticketUsuario}>
+            <View style={styles.avatarPequeno}>
+              <Text style={styles.avatarPequenoTexto}>
+                {(item.nome_usuario || "U").charAt(0).toUpperCase()}
               </Text>
             </View>
-          )}
+          </View>
         </View>
-      </TouchableOpacity>
+      </View>
     );
   };
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // RENDERIZAÇÃO
+  // RENDERIZAÇÃO - LOADING
   // ═══════════════════════════════════════════════════════════════════════════
 
   if (carregando) {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor={cores.primaria} />
-
-        {/* Header Padronizado */}
         <View
           style={[styles.header, { paddingTop: insets.top + espacamento.md }]}
         >
@@ -281,23 +306,25 @@ export default function TicketDashboard() {
           >
             <Feather name="arrow-left" size={24} color={cores.branco} />
           </TouchableOpacity>
-
-          <Text style={styles.headerTitulo}>Dashboard de Tickets</Text>
-
+          <Text style={styles.headerTitulo}>Central de Tickets</Text>
           <View style={styles.headerEspaco} />
         </View>
         <View style={styles.loadingContainer}>
-          <Loading mensagem="Carregando dashboard..." />
+          <Loading mensagem="Carregando tickets..." />
         </View>
       </View>
     );
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // RENDERIZAÇÃO PRINCIPAL
+  // ═══════════════════════════════════════════════════════════════════════════
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={cores.primaria} />
 
-      {/* Header Padronizado */}
+      {/* Header */}
       <View
         style={[styles.header, { paddingTop: insets.top + espacamento.md }]}
       >
@@ -308,9 +335,14 @@ export default function TicketDashboard() {
           <Feather name="arrow-left" size={24} color={cores.branco} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitulo}>Dashboard de Tickets</Text>
+        <Text style={styles.headerTitulo}>Central de Tickets</Text>
 
-        <View style={styles.headerEspaco} />
+        <TouchableOpacity
+          style={styles.headerBotao}
+          onPress={handleCriarTicket}
+        >
+          <Feather name="plus" size={24} color={cores.branco} />
+        </TouchableOpacity>
       </View>
 
       {/* Conteúdo */}
@@ -334,60 +366,48 @@ export default function TicketDashboard() {
             <View style={styles.dashboardGrid}>
               <DashboardCard
                 titulo="Total"
-                valor={dashboard?.total}
+                valor={dashboard.total}
                 icone="file-text"
-                cor={cores.info}
+                cor={cores.primaria}
+                onPress={() => setFiltroStatus("todos")}
+                ativo={filtroStatus === "todos"}
               />
               <DashboardCard
                 titulo="Abertos"
-                valor={dashboard?.abertos}
+                valor={dashboard.abertos}
                 icone="alert-circle"
                 cor={cores.alerta}
+                onPress={() => setFiltroStatus("aberto")}
+                ativo={filtroStatus === "aberto"}
               />
               <DashboardCard
                 titulo="Em Andamento"
-                valor={dashboard?.em_andamento}
+                valor={dashboard.em_andamento}
                 icone="clock"
-                cor={cores.destaque}
+                cor={cores.info}
+                onPress={() => setFiltroStatus("em_andamento")}
+                ativo={filtroStatus === "em_andamento"}
               />
               <DashboardCard
-                titulo="Concluídos"
-                valor={dashboard?.concluidos}
+                titulo="Resolvidos"
+                valor={dashboard.concluidos}
                 icone="check-circle"
                 cor={cores.sucesso}
+                onPress={() => setFiltroStatus("fechado")}
+                ativo={filtroStatus === "fechado"}
               />
             </View>
 
-            {/* Filtros */}
-            <View style={styles.filtrosContainer}>
-              <Text style={styles.filtrosTitulo}>Tickets Recentes</Text>
-              <View style={styles.filtros}>
-                {[
-                  { key: "todos", texto: "Todos" },
-                  { key: "aberto", texto: "Abertos" },
-                  { key: "em_andamento", texto: "Em Andamento" },
-                  { key: "fechado", texto: "Concluídos" },
-                ].map((filtro) => (
-                  <TouchableOpacity
-                    key={filtro.key}
-                    style={[
-                      styles.filtro,
-                      filtroStatus === filtro.key && styles.filtroAtivo,
-                    ]}
-                    onPress={() => setFiltroStatus(filtro.key)}
-                  >
-                    <Text
-                      style={[
-                        styles.filtroTexto,
-                        filtroStatus === filtro.key && styles.filtroTextoAtivo,
-                      ]}
-                    >
-                      {filtro.texto}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
+            {/* Título da seção */}
+            <Text style={styles.secaoTitulo}>
+              {filtroStatus === "todos"
+                ? "Todos os Tickets"
+                : filtroStatus === "aberto"
+                  ? "Tickets Abertos"
+                  : filtroStatus === "em_andamento"
+                    ? "Em Andamento"
+                    : "Resolvidos"}
+            </Text>
           </>
         }
         ListEmptyComponent={
@@ -412,7 +432,7 @@ const styles = StyleSheet.create({
     backgroundColor: cores.primaria,
   },
 
-  // Header Padronizado
+  // Header
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -433,6 +453,12 @@ const styles = StyleSheet.create({
 
   headerEspaco: {
     width: 40,
+  },
+
+  headerBotao: {
+    padding: espacamento.xs,
+    backgroundColor: cores.destaque,
+    borderRadius: bordas.raioPequeno,
   },
 
   loadingContainer: {
@@ -472,10 +498,15 @@ const styles = StyleSheet.create({
     ...sombras.pequena,
   },
 
+  dashboardCardAtivo: {
+    borderWidth: 2,
+    borderColor: cores.destaque,
+  },
+
   dashboardIcone: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
     marginRight: espacamento.sm,
@@ -486,7 +517,7 @@ const styles = StyleSheet.create({
   },
 
   dashboardValor: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: tipografia.pesoBold,
     color: cores.texto,
   },
@@ -496,105 +527,83 @@ const styles = StyleSheet.create({
     color: cores.textoSecundario,
   },
 
-  // Filtros
-  filtrosContainer: {
-    marginBottom: espacamento.md,
-  },
-
-  filtrosTitulo: {
+  // Seção
+  secaoTitulo: {
     fontSize: tipografia.tamanhoTextoMedio,
     fontWeight: tipografia.pesoBold,
     color: cores.texto,
-    marginBottom: espacamento.sm,
+    marginBottom: espacamento.md,
   },
 
-  filtros: {
-    flexDirection: "row",
-    gap: espacamento.xs,
-  },
-
-  filtro: {
-    paddingHorizontal: espacamento.sm,
-    paddingVertical: espacamento.xs,
-    borderRadius: bordas.raioPequeno,
-    backgroundColor: cores.fundoCard,
-  },
-
-  filtroAtivo: {
-    backgroundColor: cores.destaque,
-  },
-
-  filtroTexto: {
-    fontSize: tipografia.tamanhoTextoPequeno,
-    fontWeight: tipografia.pesoMedio,
-    color: cores.texto,
-  },
-
-  filtroTextoAtivo: {
-    color: cores.branco,
-  },
-
-  // Ticket Card
+  // Ticket Card (Igual ao Frontend)
   ticketCard: {
     backgroundColor: cores.fundoCard,
     borderRadius: bordas.raioMedio,
     padding: espacamento.md,
     marginBottom: espacamento.sm,
+    position: "relative",
     ...sombras.pequena,
+  },
+
+  ticketMenu: {
+    position: "absolute",
+    top: espacamento.sm,
+    right: espacamento.sm,
+    padding: espacamento.xs,
   },
 
   ticketHeader: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: espacamento.sm,
+    marginBottom: espacamento.xs,
+    paddingRight: espacamento.xl,
   },
 
-  ticketNumero: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-  },
-
-  ticketNumeroTexto: {
-    fontSize: tipografia.tamanhoTextoPequeno,
-    fontWeight: tipografia.pesoBold,
-    color: cores.destaque,
-  },
-
-  statusBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: espacamento.sm,
-    paddingVertical: 2,
-    borderRadius: bordas.raioPequeno,
-    gap: 4,
-  },
-
-  statusTexto: {
-    fontSize: tipografia.tamanhoTextoMini,
-    fontWeight: tipografia.pesoSemiBold,
-  },
-
-  ticketTitulo: {
+  ticketId: {
     fontSize: tipografia.tamanhoTextoMedio,
-    fontWeight: tipografia.pesoSemiBold,
+    fontWeight: tipografia.pesoBold,
     color: cores.texto,
-    marginBottom: espacamento.sm,
   },
 
-  ticketVisitante: {
+  ticketSeparador: {
+    fontSize: tipografia.tamanhoTextoMedio,
+    color: cores.textoSecundario,
+  },
+
+  ticketDescricao: {
+    flex: 1,
+    fontSize: tipografia.tamanhoTextoMedio,
+    fontWeight: tipografia.pesoMedium,
+    color: cores.texto,
+  },
+
+  ticketTexto: {
+    fontSize: tipografia.tamanhoTextoPequeno,
+    color: cores.textoSecundario,
+    marginBottom: espacamento.sm,
+    lineHeight: 18,
+  },
+
+  // Tags
+  tagsContainer: {
     flexDirection: "row",
-    alignItems: "center",
+    flexWrap: "wrap",
     gap: espacamento.xs,
     marginBottom: espacamento.sm,
   },
 
-  ticketVisitanteNome: {
-    fontSize: tipografia.tamanhoTextoPequeno,
-    color: cores.textoSecundario,
+  tag: {
+    paddingHorizontal: espacamento.sm,
+    paddingVertical: 4,
+    borderRadius: bordas.raioPequeno,
   },
 
+  tagTexto: {
+    fontSize: tipografia.tamanhoTextoMini,
+    fontWeight: tipografia.pesoMedium,
+  },
+
+  // Footer
   ticketFooter: {
     flexDirection: "row",
     alignItems: "center",
@@ -607,22 +616,31 @@ const styles = StyleSheet.create({
   ticketData: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: espacamento.xs,
   },
 
   ticketDataTexto: {
-    fontSize: tipografia.tamanhoTextoMini,
+    fontSize: tipografia.tamanhoTextoPequeno,
     color: cores.textoTerciario,
   },
 
-  prioridadeBadge: {
-    paddingHorizontal: espacamento.sm,
-    paddingVertical: 2,
-    borderRadius: bordas.raioPequeno,
+  ticketUsuario: {
+    flexDirection: "row",
+    alignItems: "center",
   },
 
-  prioridadeTexto: {
-    fontSize: tipografia.tamanhoTextoMini,
-    fontWeight: tipografia.pesoSemiBold,
+  avatarPequeno: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: cores.destaque,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  avatarPequenoTexto: {
+    fontSize: 12,
+    fontWeight: tipografia.pesoBold,
+    color: cores.branco,
   },
 });

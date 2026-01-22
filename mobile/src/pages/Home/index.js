@@ -160,7 +160,7 @@ export default function Home() {
       console.error("Erro ao enviar feedback:", erro);
       Alert.alert(
         "Erro",
-        "Não foi possível enviar o feedback. Tente novamente."
+        "Não foi possível enviar o feedback. Tente novamente.",
       );
     } finally {
       setEnviandoFeedback(false);
@@ -191,7 +191,12 @@ export default function Home() {
 
         <TouchableOpacity
           style={styles.headerChat}
-          onPress={() => navigation.navigate("Chat")}
+          onPress={() =>
+            Alert.alert(
+              "Em Breve",
+              "O chat de suporte estará disponível em breve!",
+            )
+          }
         >
           <Feather name="message-circle" size={24} color={cores.branco} />
           <View style={styles.headerChatBadge} />

@@ -20,6 +20,7 @@ export { default as EditarCadastroVisitante } from "./EditarCadastroVisitante";
 export { default as HistoricoVisitante } from "./HistoricoVisitante";
 export { default as ListaAgendamentos } from "./ListaAgendamentos";
 export { default as TicketDashboard } from "./TicketDashboard";
+export { default as CriarTicket } from "./CriarTicket";
 export { default as BiparCracha } from "./BiparCracha";
 
 // Vigilante

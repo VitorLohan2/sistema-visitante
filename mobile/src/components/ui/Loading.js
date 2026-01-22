@@ -13,16 +13,21 @@ import { cores, tipografia, espacamento } from "../../styles/tema";
  * Indicador de carregamento
  *
  * @param {string} mensagem - Mensagem opcional
+ * @param {string} texto - Alias para mensagem
  * @param {string} tamanho - "pequeno" | "medio" | "grande"
  * @param {boolean} telaCheia - Ocupa tela inteira
  * @param {string} cor - Cor do indicador
  */
 export function Loading({
   mensagem,
+  texto,
   tamanho = "grande",
   telaCheia = true,
   cor = cores.destaque,
 }) {
+  // Usa texto como alias para mensagem
+  const textoExibido = mensagem || texto;
+
   const tamanhos = {
     pequeno: "small",
     medio: "small",
@@ -32,7 +37,7 @@ export function Loading({
   const Conteudo = (
     <View style={styles.conteudo}>
       <ActivityIndicator size={tamanhos[tamanho]} color={cor} />
-      {mensagem && <Text style={styles.mensagem}>{mensagem}</Text>}
+      {textoExibido && <Text style={styles.mensagem}>{textoExibido}</Text>}
     </View>
   );
 

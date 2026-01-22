@@ -8,12 +8,41 @@
 import api from "./api";
 
 /**
- * Busca dados do dashboard geral (estatísticas)
- * GET /dashboard/estatisticas-hoje
+ * Busca dados do dashboard (estatísticas calculadas dos tickets)
+ * GET /tickets - Calcula estatísticas localmente
  */
 async function buscarDashboard() {
-  const response = await api.get("/dashboard/estatisticas-hoje");
-  return response.data;
+  try {
+    const response = await api.get("/tickets");
+    const tickets = Array.isArray(response.data) ? response.data : [];
+
+    // Calcula estatísticas
+    const total = tickets.length;
+    const abertos = tickets.filter(
+      (t) => t.status?.toLowerCase() === "aberto",
+    ).length;
+    const em_andamento = tickets.filter(
+      (t) =>
+        t.status?.toLowerCase() === "em andamento" ||
+        t.status?.toLowerCase() === "em_andamento",
+    ).length;
+    const concluidos = tickets.filter(
+      (t) =>
+        t.status?.toLowerCase() === "resolvido" ||
+        t.status?.toLowerCase() === "fechado" ||
+        t.status?.toLowerCase() === "concluido",
+    ).length;
+
+    return {
+      total,
+      abertos,
+      em_andamento,
+      concluidos,
+    };
+  } catch (error) {
+    console.error("Erro ao buscar dashboard de tickets:", error);
+    return { total: 0, abertos: 0, em_andamento: 0, concluidos: 0 };
+  }
 }
 
 /**

@@ -110,7 +110,7 @@ export default function ListaAgendamentos() {
   useFocusEffect(
     useCallback(() => {
       buscarAgendamentos(1);
-    }, [filtroStatus])
+    }, [filtroStatus]),
   );
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -165,7 +165,7 @@ export default function ListaAgendamentos() {
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -239,9 +239,22 @@ export default function ListaAgendamentos() {
   // ═══════════════════════════════════════════════════════════════════════════
 
   const renderItem = ({ item }) => {
-    const statusConfig = getStatusConfig(item.status);
-    const hoje = isHoje(item.data_agendamento);
-    const amanha = isAmanha(item.data_agendamento);
+    const statusConfig = getStatusConfig(
+      item.confirmado ? "confirmado" : item.status || "pendente",
+    );
+    const hoje = isHoje(item.horario_agendado || item.data_agendamento);
+    const amanha = isAmanha(item.horario_agendado || item.data_agendamento);
+
+    // Dados do agendamento (o backend retorna campos diretos, não objetos aninhados)
+    const nomeVisitante =
+      item.nome || item.visitante?.nome || item.visitante_nome || "Visitante";
+    const empresaVisitante =
+      item.empresa ||
+      item.visitante?.empresa?.nome ||
+      item.empresa_nome ||
+      "Sem empresa";
+    const setorNome = item.setor || item.setor_nome || "";
+    const dataAgendamento = item.horario_agendado || item.data_agendamento;
 
     return (
       <View style={styles.agendamentoCard}>
@@ -264,19 +277,15 @@ export default function ListaAgendamentos() {
           <View style={styles.visitanteInfo}>
             <View style={styles.avatar}>
               <Text style={styles.avatarTexto}>
-                {item.visitante?.nome?.charAt(0)?.toUpperCase() ||
-                  item.visitante_nome?.charAt(0)?.toUpperCase() ||
-                  "V"}
+                {nomeVisitante.charAt(0)?.toUpperCase() || "V"}
               </Text>
             </View>
             <View>
               <Text style={styles.visitanteNome} numberOfLines={1}>
-                {item.visitante?.nome || item.visitante_nome || "Visitante"}
+                {nomeVisitante}
               </Text>
               <Text style={styles.visitanteEmpresa} numberOfLines={1}>
-                {item.visitante?.empresa?.nome ||
-                  item.empresa_nome ||
-                  "Sem empresa"}
+                {empresaVisitante}
               </Text>
             </View>
           </View>
@@ -304,36 +313,36 @@ export default function ListaAgendamentos() {
           <View style={styles.detalheItem}>
             <Feather name="calendar" size={16} color={cores.textoSecundario} />
             <Text style={styles.detalheTexto}>
-              {formatarData(item.data_agendamento)}
+              {formatarData(dataAgendamento)}
             </Text>
           </View>
 
           <View style={styles.detalheItem}>
             <Feather name="clock" size={16} color={cores.textoSecundario} />
             <Text style={styles.detalheTexto}>
-              {formatarHora(item.data_agendamento)}
+              {formatarHora(dataAgendamento)}
             </Text>
           </View>
 
-          {item.setor && (
+          {setorNome && (
             <View style={styles.detalheItem}>
               <Feather name="map-pin" size={16} color={cores.textoSecundario} />
               <Text style={styles.detalheTexto} numberOfLines={1}>
-                {item.setor.nome || item.setor}
+                {setorNome}
               </Text>
             </View>
           )}
         </View>
 
-        {/* Motivo */}
-        {item.motivo && (
+        {/* Motivo/Observação */}
+        {(item.motivo || item.observacao) && (
           <Text style={styles.motivo} numberOfLines={2}>
-            {item.motivo}
+            {item.motivo || item.observacao}
           </Text>
         )}
 
         {/* Ações */}
-        {item.status === "pendente" && temPermissao("agendamento_editar") && (
+        {!item.confirmado && temPermissao("agendamento_editar") && (
           <View style={styles.cardAcoes}>
             <TouchableOpacity
               style={[styles.botaoAcao, styles.botaoConfirmar]}

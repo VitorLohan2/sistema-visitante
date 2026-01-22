@@ -24,7 +24,7 @@ if (__DEV__) {
 
 const api = axios.create({
   baseURL: API_URL,
-  timeout: 15000,
+  timeout: 60000, // 60 segundos para uploads
   headers: {
     Accept: "application/json",
     "Content-Type": "application/json",
@@ -68,7 +68,7 @@ api.interceptors.request.use(
   (error) => {
     console.error("❌ Erro na requisição:", error);
     return Promise.reject(error);
-  }
+  },
 );
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -104,7 +104,7 @@ api.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;

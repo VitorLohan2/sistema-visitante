@@ -29,9 +29,11 @@ export function useRonda() {
   const [rondaAtual, setRondaAtual] = useState(null);
   const [posicaoAtual, setPosicaoAtual] = useState(null);
   const [trajeto, setTrajeto] = useState([]);
+  const [checkpoints, setCheckpoints] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(null);
   const [tempoDecorrido, setTempoDecorrido] = useState(0);
+  const [distanciaTotal, setDistanciaTotal] = useState(0);
   const [gpsAtivo, setGpsAtivo] = useState(false);
   const [erroGps, setErroGps] = useState(null);
 
@@ -53,7 +55,7 @@ export function useRonda() {
 
       if (status !== "granted") {
         setErroGps(
-          "Permissão de localização negada. Habilite nas configurações."
+          "Permissão de localização negada. Habilite nas configurações.",
         );
         return false;
       }
@@ -125,7 +127,7 @@ export function useRonda() {
 
         // Adiciona ao trajeto local
         setTrajeto((prev) => [...prev, pos]);
-      }
+      },
     );
 
     watchSubscriptionRef.current = subscription;
@@ -152,10 +154,17 @@ export function useRonda() {
   const verificarRondaEmAndamento = useCallback(async () => {
     try {
       setCarregando(true);
-      const { ronda } = await rondaService.buscarRondaEmAndamento();
+      const resposta = await rondaService.buscarRondaEmAndamento();
+      const ronda = resposta?.ronda || resposta;
 
-      if (ronda) {
+      if (ronda && ronda.id) {
         setRondaAtual(ronda);
+        // Inicializa checkpoints da ronda se existirem
+        setCheckpoints(
+          Array.isArray(ronda.checkpoints) ? ronda.checkpoints : [],
+        );
+        // Inicializa trajeto se existir
+        setTrajeto(Array.isArray(ronda.trajeto) ? ronda.trajeto : []);
 
         // Solicita permissão e inicia GPS
         const temPermissao = await solicitarPermissaoGps();
@@ -254,7 +263,7 @@ export function useRonda() {
         }
       }, 30000); // Envia a cada 30 segundos
     },
-    [obterPosicaoAtual]
+    [obterPosicaoAtual],
   );
 
   /**
@@ -270,18 +279,20 @@ export function useRonda() {
         setErro(null);
         const posicao = await obterPosicaoAtual();
 
-        const { checkpoint } = await rondaService.registrarCheckpoint(
-          rondaAtual.id,
-          {
-            ...posicao,
-            descricao,
-          }
-        );
+        const resposta = await rondaService.registrarCheckpoint(rondaAtual.id, {
+          ...posicao,
+          descricao,
+        });
+
+        const checkpoint = resposta?.checkpoint || resposta;
+
+        // Atualiza lista de checkpoints
+        setCheckpoints((prev) => [...prev, checkpoint]);
 
         // Atualiza ronda com novo checkpoint
         setRondaAtual((prev) => ({
           ...prev,
-          checkpoints: [...(prev.checkpoints || []), checkpoint],
+          checkpoints: [...(prev?.checkpoints || []), checkpoint],
         }));
 
         return checkpoint;
@@ -291,7 +302,7 @@ export function useRonda() {
         throw error;
       }
     },
-    [rondaAtual, obterPosicaoAtual]
+    [rondaAtual, obterPosicaoAtual],
   );
 
   /**
@@ -322,7 +333,7 @@ export function useRonda() {
         throw error;
       }
     },
-    [rondaAtual, obterPosicaoAtual]
+    [rondaAtual, obterPosicaoAtual],
   );
 
   /**
@@ -344,7 +355,7 @@ export function useRonda() {
         throw error;
       }
     },
-    [rondaAtual]
+    [rondaAtual],
   );
 
   /**
@@ -365,7 +376,9 @@ export function useRonda() {
 
     setRondaAtual(null);
     setTrajeto([]);
+    setCheckpoints([]);
     setTempoDecorrido(0);
+    setDistanciaTotal(0);
   }, [pararMonitoramentoGps]);
 
   /**
@@ -413,13 +426,16 @@ export function useRonda() {
   return {
     // Estados
     rondaAtual,
+    rondaAtiva: rondaAtual, // Alias para compatibilidade
     posicaoAtual,
     trajeto,
+    checkpoints,
     carregando,
     erro,
     erroGps,
     tempoDecorrido,
     tempoDecorridoFormatado,
+    distanciaTotal,
     gpsAtivo,
 
     // Funções

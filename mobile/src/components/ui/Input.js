@@ -25,8 +25,8 @@ import { cores, tipografia, espacamento, bordas } from "../../styles/tema";
  * @param {function} onChangeText - Callback de mudança
  * @param {string} erro - Mensagem de erro
  * @param {string} tipo - "texto" | "email" | "senha" | "numero" | "telefone" | "cpf"
- * @param {ReactNode} iconeEsquerda - Ícone à esquerda
- * @param {ReactNode} iconeDireita - Ícone à direita
+ * @param {string|ReactNode} iconeEsquerda - Nome do ícone Feather ou componente
+ * @param {string|ReactNode} iconeDireita - Nome do ícone Feather ou componente
  * @param {boolean} desabilitado - Desabilita o campo
  */
 export function Input({
@@ -41,12 +41,22 @@ export function Input({
   desabilitado = false,
   multiline = false,
   numeroLinhas = 1,
+  obrigatorio = false,
   estilo,
   estiloContainer,
   ...props
 }) {
   const [focado, setFocado] = useState(false);
   const [mostrarSenha, setMostrarSenha] = useState(false);
+
+  // Renderiza ícone - aceita string (nome Feather) ou componente JSX
+  const renderizarIcone = (icone) => {
+    if (!icone) return null;
+    if (typeof icone === "string") {
+      return <Feather name={icone} size={20} color={cores.cinzaEscuro} />;
+    }
+    return icone;
+  };
 
   // ═══════════════════════════════════════════════════════════════════════════
   // CONFIGURAÇÕES POR TIPO
@@ -86,7 +96,12 @@ export function Input({
 
   return (
     <View style={[styles.container, estiloContainer]}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label && (
+        <Text style={styles.label}>
+          {label}
+          {obrigatorio && <Text style={styles.obrigatorio}> *</Text>}
+        </Text>
+      )}
 
       <View
         style={[
@@ -97,7 +112,9 @@ export function Input({
         ]}
       >
         {iconeEsquerda && (
-          <View style={styles.iconeEsquerda}>{iconeEsquerda}</View>
+          <View style={styles.iconeEsquerda}>
+            {renderizarIcone(iconeEsquerda)}
+          </View>
         )}
 
         <TextInput
@@ -135,7 +152,9 @@ export function Input({
         )}
 
         {iconeDireita && tipo !== "senha" && (
-          <View style={styles.iconeDireita}>{iconeDireita}</View>
+          <View style={styles.iconeDireita}>
+            {renderizarIcone(iconeDireita)}
+          </View>
         )}
       </View>
 
@@ -158,6 +177,10 @@ const styles = StyleSheet.create({
     fontWeight: tipografia.pesoMedio,
     color: cores.texto,
     marginBottom: espacamento.sm,
+  },
+
+  obrigatorio: {
+    color: cores.erro,
   },
 
   inputContainer: {

@@ -13,3 +13,4 @@ export { Header } from "./Header";
 export { BottomNavigation } from "./BottomNavigation";
 export { ModuloCard } from "./ModuloCard";
 export { EmptyState } from "./EmptyState";
+export { Select } from "./Select";

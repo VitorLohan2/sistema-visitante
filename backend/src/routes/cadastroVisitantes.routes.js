@@ -43,7 +43,7 @@ router.get(
       limit: Joi.number().default(10),
     }),
   }),
-  CadastroVisitanteController.index
+  CadastroVisitanteController.index,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -57,7 +57,7 @@ router.get(
       query: Joi.string().required(),
     }),
   }),
-  CadastroVisitanteController.buscar
+  CadastroVisitanteController.buscar,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -71,7 +71,7 @@ router.get(
       cpf: Joi.string().required(),
     }),
   }),
-  CadastroVisitanteController.verificarCpf
+  CadastroVisitanteController.verificarCpf,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -98,7 +98,7 @@ router.post(
       observacao: Joi.string().allow("", null),
     }),
   }),
-  CadastroVisitanteController.create
+  CadastroVisitanteController.create,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -112,7 +112,7 @@ router.get(
       id: Joi.number().required(),
     }),
   }),
-  CadastroVisitanteController.show
+  CadastroVisitanteController.show,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -126,7 +126,7 @@ router.get(
       id: Joi.number().required(),
     }),
   }),
-  CadastroVisitanteController.cracha
+  CadastroVisitanteController.cracha,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -156,7 +156,7 @@ router.put(
       avatar_imagem: Joi.string().uri().allow(null, ""),
     }),
   }),
-  CadastroVisitanteController.update
+  CadastroVisitanteController.update,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -175,7 +175,7 @@ router.put(
       bloqueado: Joi.boolean().required(),
     }),
   }),
-  CadastroVisitanteController.bloquear
+  CadastroVisitanteController.bloquear,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -191,7 +191,7 @@ router.delete(
       id: Joi.number().required(),
     }),
   }),
-  CadastroVisitanteController.delete
+  CadastroVisitanteController.delete,
 );
 
 module.exports = router;

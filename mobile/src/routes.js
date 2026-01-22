@@ -29,6 +29,7 @@ import {
   HistoricoVisitante,
   ListaAgendamentos,
   TicketDashboard,
+  CriarTicket,
   BiparCracha,
   // Vigilante
   Ronda,
@@ -92,6 +93,7 @@ function AppStack() {
       <Stack.Screen name="HistoricoVisitante" component={HistoricoVisitante} />
       <Stack.Screen name="ListaAgendamentos" component={ListaAgendamentos} />
       <Stack.Screen name="TicketDashboard" component={TicketDashboard} />
+      <Stack.Screen name="CriarTicket" component={CriarTicket} />
       <Stack.Screen name="BiparCracha" component={BiparCracha} />
 
       {/* Vigilante */}

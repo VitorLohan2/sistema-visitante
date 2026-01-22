@@ -11,10 +11,10 @@ export const cores = {
   primariaClara: "#333333",
   primariaEscura: "#000000",
 
-  // Cores de Destaque
-  destaque: "#FF6B35",
-  destaqueClara: "#FF8A5B",
-  destaqueEscura: "#E65525",
+  // Cores de Destaque (Verde - igual ao Frontend)
+  destaque: "#22C55E",
+  destaqueClara: "#4ADE80",
+  destaqueEscura: "#16A34A",
 
   // Cores de Status
   sucesso: "#22C55E",
@@ -59,7 +59,7 @@ export const cores = {
 
   // Bordas
   borda: "#E5E5E5",
-  bordaFocada: "#FF6B35",
+  bordaFocada: "#22C55E",
 };
 
 export const tipografia = {
@@ -96,6 +96,10 @@ export const bordas = {
   raioPequeno: 4,
   raioGrande: 16,
   raioCircular: 9999,
+  // Aliases
+  medio: 8,
+  pequeno: 4,
+  grande: 16,
 };
 
 export const sombras = {

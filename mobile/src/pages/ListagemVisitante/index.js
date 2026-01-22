@@ -25,10 +25,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Loading, EmptyState, Card } from "../../components";
 
 // Services
-import { visitantesService } from "../../services";
+import { visitantesService, setCache, getCacheAsync } from "../../services";
 
 // Hooks
 import { usePermissoes } from "../../hooks";
+
+// Chave do cache
+const CACHE_KEY = "visitantes_cadastrados";
 
 // Estilos
 import {
@@ -49,90 +52,128 @@ export default function ListagemVisitante() {
   const { temPermissao } = usePermissoes();
 
   // Estados
-  const [visitantes, setVisitantes] = useState([]);
+  const [todosVisitantes, setTodosVisitantes] = useState([]);
+  const [visitantesFiltrados, setVisitantesFiltrados] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [atualizando, setAtualizando] = useState(false);
   const [busca, setBusca] = useState("");
-  const [paginaAtual, setPaginaAtual] = useState(1);
-  const [totalPaginas, setTotalPaginas] = useState(1);
-  const [carregandoMais, setCarregandoMais] = useState(false);
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // BUSCAR VISITANTES
+  // CARREGAR VISITANTES (CACHE)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  const buscarVisitantes = async (
-    pagina = 1,
-    termoBusca = busca,
-    limparLista = true
-  ) => {
+  const carregarVisitantes = async (forcarAtualizacao = false) => {
     try {
-      if (pagina === 1) {
-        setCarregando(true);
-      } else {
-        setCarregandoMais(true);
-      }
+      setCarregando(true);
 
-      const params = {
-        page: pagina,
-        limit: 20,
-      };
-
-      // Se tiver busca, usa endpoint de busca
-      let resposta;
-      if (termoBusca && termoBusca.trim()) {
-        resposta = await visitantesService.buscar(termoBusca);
-      } else {
-        resposta = await visitantesService.listar(params);
-      }
-
-      // Backend retorna array diretamente ou objeto com data
-      const dados = Array.isArray(resposta)
-        ? resposta
-        : resposta.data || resposta;
-
-      if (dados) {
-        if (limparLista) {
-          setVisitantes(Array.isArray(dados) ? dados : []);
-        } else {
-          setVisitantes((prev) => [
-            ...prev,
-            ...(Array.isArray(dados) ? dados : []),
-          ]);
+      // Tenta carregar do cache primeiro
+      if (!forcarAtualizacao) {
+        const cache = await getCacheAsync(CACHE_KEY);
+        if (cache && Array.isArray(cache) && cache.length > 0) {
+          setTodosVisitantes(cache);
+          setVisitantesFiltrados(cache);
+          setCarregando(false);
+          // Atualiza em background
+          atualizarEmBackground();
+          return;
         }
-        // Total de páginas vem no header X-Total-Count
-        setTotalPaginas(
-          resposta.totalPages ||
-            Math.ceil((resposta.total || dados.length) / 20) ||
-            1
-        );
-        setPaginaAtual(pagina);
       }
+
+      // Busca todos da API (limit alto para pegar todos)
+      const resposta = await visitantesService.listar({ page: 1, limit: 9999 });
+      const dados = resposta.data || resposta;
+      const lista = Array.isArray(dados) ? dados : [];
+
+      // Salva no cache
+      await setCache(CACHE_KEY, lista);
+      setTodosVisitantes(lista);
+      setVisitantesFiltrados(lista);
     } catch (erro) {
-      console.error("Erro ao buscar visitantes:", erro);
+      console.error("Erro ao carregar visitantes:", erro);
       Alert.alert("Erro", "Não foi possível carregar os visitantes.");
     } finally {
       setCarregando(false);
       setAtualizando(false);
-      setCarregandoMais(false);
     }
+  };
+
+  const atualizarEmBackground = async () => {
+    try {
+      const resposta = await visitantesService.listar({ page: 1, limit: 9999 });
+      const dados = resposta.data || resposta;
+      const lista = Array.isArray(dados) ? dados : [];
+      await setCache(CACHE_KEY, lista);
+      setTodosVisitantes(lista);
+      // Atualiza filtrados mantendo o filtro atual
+      if (busca.trim()) {
+        filtrarVisitantes(lista, busca);
+      } else {
+        setVisitantesFiltrados(lista);
+      }
+    } catch (erro) {
+      console.error("Erro ao atualizar em background:", erro);
+    }
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FILTRAR VISITANTES LOCALMENTE
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const filtrarVisitantes = (lista, termo) => {
+    if (!termo || !termo.trim()) {
+      setVisitantesFiltrados(lista);
+      return;
+    }
+
+    const termoLower = termo.toLowerCase().trim();
+    const filtrados = lista.filter((v) => {
+      const nome = (v.nome || "").toLowerCase();
+      const cpf = (v.cpf || "").replace(/\D/g, "");
+      const empresa = (v.empresa_nome || v.empresa?.nome || "").toLowerCase();
+      const termoNumeros = termoLower.replace(/\D/g, "");
+
+      return (
+        nome.includes(termoLower) ||
+        cpf.includes(termoNumeros) ||
+        empresa.includes(termoLower)
+      );
+    });
+
+    setVisitantesFiltrados(filtrados);
   };
 
   // Carrega ao montar e ao focar
   useFocusEffect(
     useCallback(() => {
-      buscarVisitantes(1, busca);
-    }, [])
+      carregarVisitantes();
+    }, []),
   );
 
-  // Atualiza quando busca muda (com debounce)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      buscarVisitantes(1, busca);
-    }, 500);
+  // Filtra quando busca muda
+  const handleBuscaChange = (texto) => {
+    setBusca(texto);
+    if (!texto || !texto.trim()) {
+      setVisitantesFiltrados(todosVisitantes);
+      return;
+    }
 
-    return () => clearTimeout(timer);
-  }, [busca]);
+    const termoLower = texto.toLowerCase().trim();
+    const termoNumeros = termoLower.replace(/\D/g, "");
+
+    const filtrados = todosVisitantes.filter((v) => {
+      const nome = (v.nome || "").toLowerCase();
+      const cpf = (v.cpf || "").replace(/\D/g, "");
+      const empresa = (v.empresa_nome || v.empresa?.nome || "").toLowerCase();
+
+      return (
+        nome.includes(termoLower) ||
+        (termoNumeros && cpf.includes(termoNumeros)) ||
+        empresa.includes(termoLower)
+      );
+    });
+
+    setVisitantesFiltrados(filtrados);
+  };
 
   // ═══════════════════════════════════════════════════════════════════════════
   // HANDLERS
@@ -140,13 +181,7 @@ export default function ListagemVisitante() {
 
   const handleAtualizar = () => {
     setAtualizando(true);
-    buscarVisitantes(1, busca);
-  };
-
-  const handleCarregarMais = () => {
-    if (!carregandoMais && paginaAtual < totalPaginas) {
-      buscarVisitantes(paginaAtual + 1, busca, false);
-    }
+    carregarVisitantes(true);
   };
 
   const handleVisualizarVisitante = (visitante) => {
@@ -215,20 +250,6 @@ export default function ListagemVisitante() {
   );
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // RENDERIZAR FOOTER (CARREGANDO MAIS)
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  const renderFooter = () => {
-    if (!carregandoMais) return null;
-
-    return (
-      <View style={styles.footer}>
-        <Loading tamanho="small" />
-      </View>
-    );
-  };
-
-  // ═══════════════════════════════════════════════════════════════════════════
   // RENDERIZAÇÃO
   // ═══════════════════════════════════════════════════════════════════════════
 
@@ -260,14 +281,14 @@ export default function ListagemVisitante() {
             <Feather name="search" size={20} color={cores.textoSecundario} />
             <TextInput
               style={styles.buscaInput}
-              placeholder="Buscar por nome, CPF ou RG..."
+              placeholder="Buscar por nome, CPF ou empresa..."
               placeholderTextColor={cores.textoTerciario}
               value={busca}
-              onChangeText={setBusca}
+              onChangeText={handleBuscaChange}
               autoCapitalize="none"
             />
             {busca.length > 0 && (
-              <TouchableOpacity onPress={() => setBusca("")}>
+              <TouchableOpacity onPress={() => handleBuscaChange("")}>
                 <Feather name="x" size={20} color={cores.textoSecundario} />
               </TouchableOpacity>
             )}
@@ -286,14 +307,15 @@ export default function ListagemVisitante() {
 
         {/* Contador */}
         <Text style={styles.contador}>
-          {visitantes.length} visitante{visitantes.length !== 1 ? "s" : ""}{" "}
-          encontrado{visitantes.length !== 1 ? "s" : ""}
+          {visitantesFiltrados.length} visitante
+          {visitantesFiltrados.length !== 1 ? "s" : ""} encontrado
+          {visitantesFiltrados.length !== 1 ? "s" : ""}
         </Text>
 
         {/* Lista ou Loading */}
         {carregando ? (
           <Loading mensagem="Carregando visitantes..." />
-        ) : visitantes.length === 0 ? (
+        ) : visitantesFiltrados.length === 0 ? (
           <EmptyState
             icone="users"
             titulo="Nenhum visitante encontrado"
@@ -311,7 +333,7 @@ export default function ListagemVisitante() {
           />
         ) : (
           <FlatList
-            data={visitantes}
+            data={visitantesFiltrados}
             keyExtractor={(item) => String(item.id)}
             renderItem={renderItem}
             refreshControl={
@@ -322,9 +344,6 @@ export default function ListagemVisitante() {
                 tintColor={cores.destaque}
               />
             }
-            onEndReached={handleCarregarMais}
-            onEndReachedThreshold={0.3}
-            ListFooterComponent={renderFooter}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.lista}
           />
