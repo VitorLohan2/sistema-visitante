@@ -37,7 +37,7 @@
 .redefinir-senha-container .form img {
   display: block;
   margin: 0 auto 24px;
-  max-width: 200px;
+  /* max-width: 200px; */
 }
 
 .redefinir-senha-container h1 {

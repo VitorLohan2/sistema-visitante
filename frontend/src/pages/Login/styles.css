@@ -40,7 +40,7 @@
 
 .login-logo {
   width: 100%;
-  max-width: 200px;
+  /* max-width: 200px; */
   height: auto;
   margin: 0 auto 24px;
   display: block;
