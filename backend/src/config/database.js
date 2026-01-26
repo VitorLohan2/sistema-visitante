@@ -172,7 +172,7 @@ const configurations = {
  * Obtém o ambiente atual
  */
 function getCurrentEnvironment() {
-  return process.env.NODE_ENV || "docker";
+  return process.env.NODE_ENV || "production_local";
 }
 
 /**
@@ -183,9 +183,9 @@ function getConfig(env = null) {
 
   if (!configurations[environment]) {
     console.error(
-      `❌ [Database Config] Ambiente '${environment}' não configurado. Usando 'docker'.`,
+      `❌ [Database Config] Ambiente '${environment}' não configurado. Usando 'production_local'.`,
     );
-    return configurations.docker;
+    return configurations.production_local;
   }
 
   // Valida variáveis de ambiente
