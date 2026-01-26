@@ -57,7 +57,9 @@
           "locationAlwaysAndWhenInUsePermission": "Permite acesso à localização para registrar o ponto de trabalho.",
           "locationWhenInUsePermission": "Permite acesso à localização enquanto o app está em uso."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker",
+      "expo-font"
     ],
     "extra": {
       "API_URL": "http://192.168.10.165:3001",

@@ -576,7 +576,6 @@
 }
 
 .nav-btn-next:hover {
-  transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(30, 41, 59, 0.4);
 }
 
@@ -588,7 +587,6 @@
 }
 
 .nav-btn-submit:hover {
-  transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
 }
 
@@ -658,10 +656,122 @@
   padding: var(--spacing-lg);
 }
 
-.webcam-video {
-  width: 100%;
+/* Loading da Webcam */
+.webcam-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border-radius: 12px;
+  gap: 16px;
+}
+
+.webcam-loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #10b981;
+  border-radius: 50%;
+  animation: spinWebcam 1s linear infinite;
+}
+
+@keyframes spinWebcam {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.webcam-loading p {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0;
+}
+
+/* Container do Vídeo com Zoom */
+.webcam-video-container {
+  position: relative;
+  overflow: hidden;
   border-radius: 12px;
   background: #1e293b;
+}
+
+.webcam-video {
+  width: 100%;
+  display: block;
+  border-radius: 12px;
+  background: #1e293b;
+  transition: transform 0.3s ease;
+  transform-origin: center center;
+}
+
+/* Controles de Zoom */
+.webcam-zoom-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px 0 8px;
+  background: linear-gradient(
+    180deg,
+    rgba(30, 41, 59, 0.05) 0%,
+    transparent 100%
+  );
+  border-radius: 0 0 12px 12px;
+}
+
+.zoom-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  min-width: 80px;
+}
+
+.zoom-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 50px;
+}
+
+.zoom-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #334155;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.zoom-btn:hover:not(:disabled) {
+  background: #10b981;
+  color: white;
+  transform: scale(1.05);
+}
+
+.zoom-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.zoom-btn-reset {
+  width: auto;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 18px;
 }
 
 .modal-webcam-actions {
@@ -669,6 +779,11 @@
   gap: var(--spacing-md);
   justify-content: center;
   padding-top: var(--spacing-lg);
+}
+
+.modal-webcam-actions .nav-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Modal de Confirmação */
@@ -841,6 +956,20 @@
 
   .modal-webcam-actions {
     flex-direction: column;
+  }
+
+  .webcam-loading {
+    min-height: 280px;
+  }
+
+  .webcam-zoom-controls {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .zoom-buttons {
+    width: 100%;
+    justify-content: center;
   }
 
   .modal-confirm-actions {

@@ -1,4 +1,15 @@
-import React, { useState, useEffect } from "react";
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * CADASTRAR AGENDAMENTOS - Página de Criação de Novos Agendamentos
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Dados: Carregados do cache (useDataLoader é responsável pelo carregamento inicial)
+ * Atualização: Via Socket.IO em tempo real
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useHistory } from "react-router-dom";
 import {
   FiPower,
@@ -14,6 +25,7 @@ import {
 
 import api from "../../services/api";
 import { getCache, setCache } from "../../services/cacheService";
+import * as socketService from "../../services/socketService";
 import { useAuth } from "../../hooks/useAuth";
 import Loading from "../../components/Loading";
 
@@ -22,8 +34,11 @@ import logoImg from "../../assets/logo.svg";
 
 export default function NovoAgendamento() {
   const [loading, setLoading] = useState(false);
-  const [setoresVisitantes, setSetoresVisitantes] = useState([]);
+  const [setoresVisitantes, setSetoresVisitantes] = useState(
+    () => getCache("setoresVisitantes") || [],
+  );
   const history = useHistory();
+  const socketListenersRef = useRef([]);
 
   const { user, logout } = useAuth();
   const ongId = user?.id;
@@ -39,13 +54,16 @@ export default function NovoAgendamento() {
 
   const [file, setFile] = useState(null); // 🔹 novo estado para imagem
 
+  // ═══════════════════════════════════════════════════════════════
+  // CARREGAMENTO DE DADOS - Primeiro do cache, depois API se necessário
+  // ═══════════════════════════════════════════════════════════════
   useEffect(() => {
     async function loadSetores() {
       try {
         // ✅ Primeiro verifica se já tem no cache
-        const cachedSetores = getCache("setores");
+        const cachedSetores = getCache("setoresVisitantes");
 
-        if (cachedSetores) {
+        if (cachedSetores && cachedSetores.length > 0) {
           console.log("📦 Usando setores do cache");
           setSetoresVisitantes(cachedSetores);
           return;
@@ -56,7 +74,7 @@ export default function NovoAgendamento() {
         const setoresData = response.data;
 
         // Salva no cache
-        setCache("setores", setoresData);
+        setCache("setoresVisitantes", setoresData);
         setSetoresVisitantes(setoresData);
       } catch (error) {
         console.error("Erro ao carregar setores:", error);
@@ -64,6 +82,62 @@ export default function NovoAgendamento() {
     }
 
     loadSetores();
+  }, []);
+
+  // ═══════════════════════════════════════════════════════════════
+  // SOCKET.IO - Sincronização em tempo real
+  // ═══════════════════════════════════════════════════════════════
+  useEffect(() => {
+    // Limpa listeners anteriores
+    socketListenersRef.current.forEach((unsub) => unsub && unsub());
+    socketListenersRef.current = [];
+
+    // Listener: Novo setor criado
+    const unsubSetorCreate = socketService.on("setor:created", (setor) => {
+      console.log("📥 Socket: Novo setor recebido", setor.nome);
+      setSetoresVisitantes((prev) => {
+        if (prev.find((s) => s.id === setor.id)) return prev;
+        const novos = [...prev, setor].sort((a, b) =>
+          (a.nome || "").localeCompare(b.nome || "", "pt-BR"),
+        );
+        setCache("setoresVisitantes", novos);
+        return novos;
+      });
+    });
+
+    // Listener: Setor atualizado
+    const unsubSetorUpdate = socketService.on("setor:updated", (dados) => {
+      console.log("📝 Socket: Setor atualizado", dados.id);
+      setSetoresVisitantes((prev) => {
+        const novos = prev.map((s) =>
+          s.id === dados.id ? { ...s, ...dados } : s,
+        );
+        setCache("setoresVisitantes", novos);
+        return novos;
+      });
+    });
+
+    // Listener: Setor deletado
+    const unsubSetorDelete = socketService.on("setor:deleted", (dados) => {
+      console.log("🗑️ Socket: Setor removido", dados.id);
+      setSetoresVisitantes((prev) => {
+        const novos = prev.filter((s) => s.id !== dados.id);
+        setCache("setoresVisitantes", novos);
+        return novos;
+      });
+    });
+
+    socketListenersRef.current.push(
+      unsubSetorCreate,
+      unsubSetorUpdate,
+      unsubSetorDelete,
+    );
+
+    // Cleanup ao desmontar
+    return () => {
+      socketListenersRef.current.forEach((unsub) => unsub && unsub());
+      socketListenersRef.current = [];
+    };
   }, []);
 
   function handleInputChange(e) {
@@ -138,7 +212,7 @@ export default function NovoAgendamento() {
 
     try {
       const setorSelecionado = setoresVisitantes.find(
-        (s) => s.id === parseInt(formData.setor_id)
+        (s) => s.id === parseInt(formData.setor_id),
       );
 
       // 🔹 montar FormData

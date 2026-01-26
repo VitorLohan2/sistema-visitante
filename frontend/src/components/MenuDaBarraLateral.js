@@ -36,6 +36,7 @@ import {
   FiHeadphones,
   FiMapPin,
   FiMap,
+  FiTarget,
 } from "react-icons/fi";
 import { useAuth } from "../hooks/useAuth";
 import { usePermissoes } from "../hooks/usePermissoes";
@@ -230,6 +231,17 @@ export default function MenuDaBarraLateral() {
             >
               <FiMap size={20} />
               <span>Painel de Rondas</span>
+            </button>
+          )}
+
+          {/* Pontos de Controle - ronda_pontos_controle_visualizar */}
+          {temPermissao("ronda_pontos_controle_visualizar") && (
+            <button
+              className={`nav-item ${isActive("/pontos-controle") ? "active" : ""}`}
+              onClick={() => handleNavigation("/pontos-controle")}
+            >
+              <FiTarget size={20} />
+              <span>Pontos de Controle</span>
             </button>
           )}
 

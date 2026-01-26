@@ -1,3 +1,14 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * CADASTRAR VISITANTE - Página de Criação de Novos Visitantes
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Dados: Carregados do cache (useDataLoader é responsável pelo carregamento inicial)
+ * Atualização: Via Socket.IO em tempo real
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
 // src/pages/CadastrarVisitante/index.js
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useHistory } from "react-router-dom";
@@ -15,6 +26,7 @@ import {
 import api from "../../services/api";
 import Loading from "../../components/Loading";
 import { getCache, setCache } from "../../services/cacheService";
+import * as socketService from "../../services/socketService";
 import "./styles.css";
 import logoImg from "../../assets/logo.svg";
 
@@ -49,14 +61,26 @@ export default function CadastrarVisitante() {
   });
 
   const history = useHistory();
-  const [empresasVisitantes, setEmpresasVisitantes] = useState([]);
-  const [setoresVisitantes, setSetoresVisitantes] = useState([]);
+
+  // ═══════════════════════════════════════════════════════════════
+  // DADOS DO CACHE (carregados pelo useDataLoader)
+  // ═══════════════════════════════════════════════════════════════
+  const [empresasVisitantes, setEmpresasVisitantes] = useState(
+    () => getCache("empresasVisitantes") || [],
+  );
+  const [setoresVisitantes, setSetoresVisitantes] = useState(
+    () => getCache("setoresVisitantes") || [],
+  );
+  const socketListenersRef = useRef([]);
 
   // Referências para câmera
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [cameraAtiva, setCameraAtiva] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [cameraLoading, setCameraLoading] = useState(false);
+  const [cameraZoom, setCameraZoom] = useState(1);
+  const [cameraReady, setCameraReady] = useState(false);
 
   // Tela de carregamento com progresso real
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -75,15 +99,22 @@ export default function CadastrarVisitante() {
     tipo_veiculo_visitante_id: "",
   });
 
-  // Busca empresas, setores e dados de veículos do banco de dados (usa cache se disponível)
+  // ═══════════════════════════════════════════════════════════════
+  // CARREGAMENTO DE DADOS - Primeiro do cache, depois API se necessário
+  // ═══════════════════════════════════════════════════════════════
   useEffect(() => {
     async function loadData() {
       try {
         // ✅ Primeiro verifica se já tem no cache
-        const cachedEmpresas = getCache("empresas");
-        const cachedSetores = getCache("setores");
+        const cachedEmpresas = getCache("empresasVisitantes");
+        const cachedSetores = getCache("setoresVisitantes");
 
-        if (cachedEmpresas && cachedSetores) {
+        if (
+          cachedEmpresas &&
+          cachedEmpresas.length > 0 &&
+          cachedSetores &&
+          cachedSetores.length > 0
+        ) {
           console.log("📦 Usando empresas e setores do cache");
           setEmpresasVisitantes(cachedEmpresas);
           setSetoresVisitantes(cachedSetores);
@@ -98,8 +129,8 @@ export default function CadastrarVisitante() {
           const setoresData = setoresResponse.data;
 
           // Salva no cache para próximos acessos
-          setCache("empresas", empresasData);
-          setCache("setores", setoresData);
+          setCache("empresasVisitantes", empresasData);
+          setCache("setoresVisitantes", setoresData);
 
           setEmpresasVisitantes(empresasData);
           setSetoresVisitantes(setoresData);
@@ -123,6 +154,103 @@ export default function CadastrarVisitante() {
     }
 
     loadData();
+  }, []);
+
+  // ═══════════════════════════════════════════════════════════════
+  // SOCKET.IO - Sincronização em tempo real
+  // ═══════════════════════════════════════════════════════════════
+  useEffect(() => {
+    // Limpa listeners anteriores
+    socketListenersRef.current.forEach((unsub) => unsub && unsub());
+    socketListenersRef.current = [];
+
+    // Listener: Nova empresa criada
+    const unsubEmpresaCreate = socketService.on(
+      "empresa:created",
+      (empresa) => {
+        console.log("📥 Socket: Nova empresa recebida", empresa.nome);
+        setEmpresasVisitantes((prev) => {
+          if (prev.find((e) => e.id === empresa.id)) return prev;
+          const novos = [...prev, empresa].sort((a, b) =>
+            (a.nome || "").localeCompare(b.nome || "", "pt-BR"),
+          );
+          setCache("empresasVisitantes", novos);
+          return novos;
+        });
+      },
+    );
+
+    // Listener: Empresa atualizada
+    const unsubEmpresaUpdate = socketService.on("empresa:updated", (dados) => {
+      console.log("📝 Socket: Empresa atualizada", dados.id);
+      setEmpresasVisitantes((prev) => {
+        const novos = prev.map((e) =>
+          e.id === dados.id ? { ...e, ...dados } : e,
+        );
+        setCache("empresasVisitantes", novos);
+        return novos;
+      });
+    });
+
+    // Listener: Empresa deletada
+    const unsubEmpresaDelete = socketService.on("empresa:deleted", (dados) => {
+      console.log("🗑️ Socket: Empresa removida", dados.id);
+      setEmpresasVisitantes((prev) => {
+        const novos = prev.filter((e) => e.id !== dados.id);
+        setCache("empresasVisitantes", novos);
+        return novos;
+      });
+    });
+
+    // Listener: Novo setor criado
+    const unsubSetorCreate = socketService.on("setor:created", (setor) => {
+      console.log("📥 Socket: Novo setor recebido", setor.nome);
+      setSetoresVisitantes((prev) => {
+        if (prev.find((s) => s.id === setor.id)) return prev;
+        const novos = [...prev, setor].sort((a, b) =>
+          (a.nome || "").localeCompare(b.nome || "", "pt-BR"),
+        );
+        setCache("setoresVisitantes", novos);
+        return novos;
+      });
+    });
+
+    // Listener: Setor atualizado
+    const unsubSetorUpdate = socketService.on("setor:updated", (dados) => {
+      console.log("📝 Socket: Setor atualizado", dados.id);
+      setSetoresVisitantes((prev) => {
+        const novos = prev.map((s) =>
+          s.id === dados.id ? { ...s, ...dados } : s,
+        );
+        setCache("setoresVisitantes", novos);
+        return novos;
+      });
+    });
+
+    // Listener: Setor deletado
+    const unsubSetorDelete = socketService.on("setor:deleted", (dados) => {
+      console.log("🗑️ Socket: Setor removido", dados.id);
+      setSetoresVisitantes((prev) => {
+        const novos = prev.filter((s) => s.id !== dados.id);
+        setCache("setoresVisitantes", novos);
+        return novos;
+      });
+    });
+
+    socketListenersRef.current.push(
+      unsubEmpresaCreate,
+      unsubEmpresaUpdate,
+      unsubEmpresaDelete,
+      unsubSetorCreate,
+      unsubSetorUpdate,
+      unsubSetorDelete,
+    );
+
+    // Cleanup ao desmontar
+    return () => {
+      socketListenersRef.current.forEach((unsub) => unsub && unsub());
+      socketListenersRef.current = [];
+    };
   }, []);
 
   // === Funções de formatação ===
@@ -208,8 +336,8 @@ export default function CadastrarVisitante() {
             (existingFile) =>
               existingFile.name === newFile.name &&
               existingFile.size === newFile.size &&
-              existingFile.lastModified === newFile.lastModified
-          )
+              existingFile.lastModified === newFile.lastModified,
+          ),
       );
 
       const combinedFiles = [...prev.fotos, ...nonDuplicateFiles].slice(0, 3);
@@ -227,18 +355,30 @@ export default function CadastrarVisitante() {
   // === Funções da Câmera ===
   useEffect(() => {
     const iniciarCamera = async () => {
+      setCameraLoading(true);
+      setCameraReady(false);
+      setCameraZoom(1);
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: "user",
+          },
         });
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
+          videoRef.current.onloadedmetadata = () => {
+            setCameraLoading(false);
+            setCameraReady(true);
+          };
         }
       } catch (err) {
         console.error("Erro ao acessar a câmera:", err);
         alert("Não foi possível acessar a câmera.");
         setCameraAtiva(false);
         setShowModal(false);
+        setCameraLoading(false);
       }
     };
 
@@ -261,12 +401,59 @@ export default function CadastrarVisitante() {
     }
     setCameraAtiva(false);
     setShowModal(false);
+    setCameraLoading(false);
+    setCameraReady(false);
+    setCameraZoom(1);
+  };
+
+  // Controles de zoom da câmera
+  const handleZoomIn = () => {
+    setCameraZoom((prev) => Math.min(prev + 0.25, 3));
+  };
+
+  const handleZoomOut = () => {
+    setCameraZoom((prev) => Math.max(prev - 0.25, 1));
+  };
+
+  const handleZoomReset = () => {
+    setCameraZoom(1);
   };
 
   const tirarFoto = () => {
+    const video = videoRef.current;
     const canvas = canvasRef.current;
     const context = canvas.getContext("2d");
-    context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+
+    // Usa as dimensões reais do vídeo para manter proporção
+    const videoWidth = video.videoWidth;
+    const videoHeight = video.videoHeight;
+
+    // Calcula a área visível considerando o zoom
+    const zoomFactor = cameraZoom;
+    const visibleWidth = videoWidth / zoomFactor;
+    const visibleHeight = videoHeight / zoomFactor;
+
+    // Calcula o offset para centralizar a captura (área do zoom)
+    const offsetX = (videoWidth - visibleWidth) / 2;
+    const offsetY = (videoHeight - visibleHeight) / 2;
+
+    // Define o canvas com as proporções corretas da área capturada
+    canvas.width = visibleWidth;
+    canvas.height = visibleHeight;
+
+    // Desenha apenas a área visível (com zoom) do vídeo no canvas
+    context.drawImage(
+      video,
+      offsetX,
+      offsetY,
+      visibleWidth,
+      visibleHeight, // Área de origem (com zoom)
+      0,
+      0,
+      visibleWidth,
+      visibleHeight, // Área de destino no canvas
+    );
+
     canvas.toBlob((blob) => {
       if (!blob) return;
       const file = new File([blob], `webcam_${Date.now()}.png`, {
@@ -437,11 +624,11 @@ export default function CadastrarVisitante() {
       dataToSend.append("placa_veiculo", placaClean);
       dataToSend.append(
         "cor_veiculo_visitante_id",
-        form.cor_veiculo_visitante_id || ""
+        form.cor_veiculo_visitante_id || "",
       );
       dataToSend.append(
         "tipo_veiculo_visitante_id",
-        form.tipo_veiculo_visitante_id || ""
+        form.tipo_veiculo_visitante_id || "",
       );
       dataToSend.append("funcao_visitante_id", form.funcao_visitante_id || "");
       dataToSend.append("observacao", form.observacao);
@@ -907,18 +1094,78 @@ export default function CadastrarVisitante() {
                 </button>
               </div>
               <div className="modal-webcam-body">
-                <video ref={videoRef} autoPlay className="webcam-video" />
+                {/* Loading enquanto câmera inicializa */}
+                {cameraLoading && (
+                  <div className="webcam-loading">
+                    <div className="webcam-loading-spinner"></div>
+                    <p>Iniciando câmera...</p>
+                  </div>
+                )}
+
+                {/* Container do vídeo com zoom */}
+                <div
+                  className="webcam-video-container"
+                  style={{ display: cameraLoading ? "none" : "block" }}
+                >
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    className="webcam-video"
+                    style={{ transform: `scale(${cameraZoom})` }}
+                  />
+                </div>
+
                 <canvas
                   ref={canvasRef}
                   width="640"
                   height="480"
                   style={{ display: "none" }}
                 />
+
+                {/* Controles de Zoom */}
+                {cameraReady && (
+                  <div className="webcam-zoom-controls">
+                    <span className="zoom-label">
+                      Zoom: {Math.round(cameraZoom * 100)}%
+                    </span>
+                    <div className="zoom-buttons">
+                      <button
+                        type="button"
+                        className="zoom-btn"
+                        onClick={handleZoomOut}
+                        disabled={cameraZoom <= 1}
+                        title="Diminuir zoom"
+                      >
+                        −
+                      </button>
+                      <button
+                        type="button"
+                        className="zoom-btn zoom-btn-reset"
+                        onClick={handleZoomReset}
+                        title="Resetar zoom"
+                      >
+                        100%
+                      </button>
+                      <button
+                        type="button"
+                        className="zoom-btn"
+                        onClick={handleZoomIn}
+                        disabled={cameraZoom >= 3}
+                        title="Aumentar zoom"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="modal-webcam-actions">
                   <button
                     type="button"
                     className="nav-btn nav-btn-submit"
                     onClick={tirarFoto}
+                    disabled={!cameraReady}
                   >
                     <FiCamera size={18} />
                     Tirar Foto

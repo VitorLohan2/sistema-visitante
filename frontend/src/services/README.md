@@ -129,7 +129,7 @@ api.interceptors.response.use(
       window.location.href = "/";
     }
     return Promise.reject(error);
-  }
+  },
 );
 ```
 
@@ -204,7 +204,6 @@ await api.delete("/agendamentos/5");
 | `history`      | history      | Histórico de visitas     |
 | `agendamentos` | agendamentos | Agendamentos             |
 | `tickets`      | tickets      | Tickets de suporte       |
-| `comunicados`  | comunicados  | Comunicados do sistema   |
 
 ##### Dados de Descarga
 
@@ -303,11 +302,6 @@ setPermissoesCache(permissoes, papeis);
 getPermissoesCache();
 clearPermissoesCache();
 
-// Comunicados
-addComunicadoToCache(comunicado);
-updateComunicadoInCache(id, dados);
-removeComunicadoFromCache(id);
-
 // Solicitações de Descarga
 addSolicitacaoDescargaToCache(solicitacao);
 updateSolicitacaoDescargaInCache(id, dados);
@@ -353,7 +347,6 @@ removeSolicitacaoDescargaFromCache(id);
 │   │  • agendamento:create/update/delete                    │  │
 │   │  • descarga:nova/atualizada                            │  │
 │   │  • funcionario:created/updated/deleted                 │  │
-│   │  • comunicado:created/updated/deleted                  │  │
 │   │                                                        │  │
 │   └───────────────────────────────────────────────────────┘  │
 │                                                               │
@@ -519,7 +512,7 @@ const papeis = await meusPapeis();
                   ├── Etapa 6 (65%): tickets
                   ├── Etapa 7 (75%): funcionários
                   ├── Etapa 8 (85%): permissões/papéis
-                  ├── Etapa 9 (95%): comunicados
+                  ├── Etapa 9 (95%): patch notes
                   └── Etapa 10 (100%): conecta Socket.IO
                         │
                         ▼
@@ -639,11 +632,9 @@ async function verificarAcesso() {
 │   /agendamentos              │    │   • empresa:*                    │
 │   /tickets                   │    │   • setor:*                      │
 │   /funcionarios              │    │   • ticket:*                     │
-│   /comunicados               │    │   • agendamento:*                │
 │   /usuarios                  │    │   • descarga:*                   │
 │   /usuarios-papeis           │    │   • funcionario:*                │
-│   etc...                     │    │   • comunicado:*                 │
-│                              │    │                                  │
+│   etc...                     │    │                                  │
 └──────────────────────────────┘    └──────────────────────────────────┘
 ```
 

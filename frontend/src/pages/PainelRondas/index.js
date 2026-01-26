@@ -2,10 +2,13 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  * PÁGINA: Painel de Gerenciamento de Rondas
  * Interface administrativa para visualizar e gerenciar rondas de vigilantes
+ *
+ * Dados: Carregados do cache (useDataLoader é responsável pelo carregamento inicial)
+ * Atualização: Via Socket.IO em tempo real
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   FiNavigation,
   FiSearch,
@@ -26,9 +29,13 @@ import {
   FiCheckCircle,
   FiAlertCircle,
   FiXCircle,
+  FiWifi,
 } from "react-icons/fi";
 import rondaService from "../../services/rondaService";
+import * as socketService from "../../services/socketService";
+import { getCache, setCache } from "../../services/cacheService";
 import { usePermissoes } from "../../hooks/usePermissoes";
+import MapaRonda from "../../components/MapaRonda";
 import "./styles.css";
 
 export default function PainelRondas() {
@@ -44,8 +51,10 @@ export default function PainelRondas() {
   const [rondas, setRondas] = useState([]);
   const [estatisticas, setEstatisticas] = useState(null);
   const [auditoria, setAuditoria] = useState([]);
-  const [vigilantes, setVigilantes] = useState([]);
-  const [carregando, setCarregando] = useState(true);
+  const [vigilantes, setVigilantes] = useState(
+    () => getCache("vigilantes") || [],
+  );
+  const [carregando, setCarregando] = useState(false); // ✅ Dados carregados no login via useDataLoader
   const [erro, setErro] = useState(null);
 
   // Filtros
@@ -69,50 +78,77 @@ export default function PainelRondas() {
   const [rondaSelecionada, setRondaSelecionada] = useState(null);
   const [carregandoDetalhes, setCarregandoDetalhes] = useState(false);
 
+  // Estados para tempo real (Socket.IO)
+  const [socketConectado, setSocketConectado] = useState(false);
+  const [rondasTempoReal, setRondasTempoReal] = useState({}); // {ronda_id: {latitude, longitude, ...}}
+  const ultimaAtualizacaoRef = useRef(new Date());
+  const primeiraRenderizacaoRef = useRef(true); // ✅ Controla se é a primeira renderização
+
   // ═══════════════════════════════════════════════════════════════════════════
-  // FUNÇÕES DE CARREGAMENTO
+  // FUNÇÕES DE CARREGAMENTO - Primeiro do cache, depois API se necessário
   // ═══════════════════════════════════════════════════════════════════════════
 
   /**
    * Carrega lista de vigilantes para filtros
    */
-  const carregarVigilantes = useCallback(async () => {
-    try {
-      const { vigilantes: lista } = await rondaService.listarVigilantes();
-      setVigilantes(lista || []);
-    } catch (err) {
-      console.error("Erro ao carregar vigilantes:", err);
-    }
-  }, []);
+  const carregarVigilantes = useCallback(
+    async (forceRefresh = false) => {
+      try {
+        // ✅ Se já tem vigilantes do cache (estado inicial), não precisa buscar
+        if (vigilantes.length > 0 && !forceRefresh) {
+          console.log("📦 Usando vigilantes do cache (estado inicial)");
+          return;
+        }
+
+        // Se não tem cache ou forceRefresh, busca da API
+        const { vigilantes: lista } = await rondaService.listarVigilantes();
+        const vigilantesData = lista || [];
+        setVigilantes(vigilantesData);
+
+        // Salva no cache
+        setCache("vigilantes", vigilantesData);
+      } catch (err) {
+        console.error("Erro ao carregar vigilantes:", err);
+      }
+    },
+    [vigilantes.length],
+  );
 
   /**
    * Carrega lista de rondas
    */
-  const carregarRondas = useCallback(async () => {
-    try {
-      setCarregando(true);
-      setErro(null);
+  const carregarRondas = useCallback(
+    async (showLoading = true) => {
+      try {
+        // ✅ Só mostra loading se não for a primeira renderização
+        if (showLoading && !primeiraRenderizacaoRef.current) {
+          setCarregando(true);
+        }
+        primeiraRenderizacaoRef.current = false;
+        setErro(null);
 
-      const { rondas: lista, paginacao: pag } =
-        await rondaService.listarTodasRondas({
-          ...filtros,
-          pagina: paginacao.pagina,
-          limite: paginacao.limite,
-        });
+        const { rondas: lista, paginacao: pag } =
+          await rondaService.listarTodasRondas({
+            ...filtros,
+            pagina: paginacao.pagina,
+            limite: paginacao.limite,
+          });
 
-      setRondas(lista || []);
-      setPaginacao((prev) => ({
-        ...prev,
-        total: pag.total,
-        totalPaginas: pag.totalPaginas,
-      }));
-    } catch (err) {
-      console.error("Erro ao carregar rondas:", err);
-      setErro("Erro ao carregar rondas. Tente novamente.");
-    } finally {
-      setCarregando(false);
-    }
-  }, [filtros, paginacao.pagina, paginacao.limite]);
+        setRondas(lista || []);
+        setPaginacao((prev) => ({
+          ...prev,
+          total: pag.total,
+          totalPaginas: pag.totalPaginas,
+        }));
+      } catch (err) {
+        console.error("Erro ao carregar rondas:", err);
+        setErro("Erro ao carregar rondas. Tente novamente.");
+      } finally {
+        setCarregando(false);
+      }
+    },
+    [filtros, paginacao.pagina, paginacao.limite],
+  );
 
   /**
    * Carrega estatísticas
@@ -219,6 +255,100 @@ export default function PainelRondas() {
     carregarVigilantes();
   }, [carregarVigilantes]);
 
+  // Socket.IO para atualizações em tempo real
+  useEffect(() => {
+    // Verifica conexão do Socket
+    setSocketConectado(socketService.isConnected());
+
+    // Listeners para eventos de ronda
+    const unsubscribeNovaRonda = socketService.on(
+      "ronda:nova-iniciada",
+      (data) => {
+        console.log("🚶 Nova ronda iniciada (tempo real):", data);
+        // Recarrega lista se estiver na aba lista
+        if (abaAtiva === "lista") {
+          carregarRondas();
+        }
+        // Adiciona ao tracking em tempo real
+        setRondasTempoReal((prev) => ({
+          ...prev,
+          [data.id]: {
+            ...data,
+            posicao_atual: null,
+          },
+        }));
+      },
+    );
+
+    const unsubscribePosicao = socketService.on(
+      "ronda:posicao-atualizada",
+      (data) => {
+        // Atualiza posição em tempo real
+        setRondasTempoReal((prev) => ({
+          ...prev,
+          [data.ronda_id]: {
+            ...(prev[data.ronda_id] || {}),
+            posicao_atual: {
+              latitude: data.latitude,
+              longitude: data.longitude,
+              precisao: data.precisao,
+              velocidade: data.velocidade,
+              timestamp: data.timestamp,
+            },
+          },
+        }));
+        ultimaAtualizacaoRef.current = new Date();
+      },
+    );
+
+    const unsubscribeCheckpoint = socketService.on(
+      "ronda:checkpoint-registrado",
+      (data) => {
+        console.log("📍 Checkpoint registrado (tempo real):", data);
+        // Atualiza contador de checkpoints se a ronda está na lista
+        setRondas((prev) =>
+          prev.map((r) =>
+            r.id === data.ronda_id
+              ? { ...r, total_checkpoints: (r.total_checkpoints || 0) + 1 }
+              : r,
+          ),
+        );
+      },
+    );
+
+    const unsubscribeEncerrada = socketService.on("ronda:encerrada", (data) => {
+      console.log("🔴 Ronda encerrada (tempo real):", data);
+      // Remove do tracking em tempo real
+      setRondasTempoReal((prev) => {
+        const novo = { ...prev };
+        delete novo[data.id];
+        return novo;
+      });
+      // Recarrega lista
+      if (abaAtiva === "lista") {
+        carregarRondas();
+      }
+    });
+
+    const unsubscribeConectado = socketService.on("connected", () => {
+      setSocketConectado(true);
+    });
+
+    const unsubscribeDesconectado = socketService.on("disconnected", () => {
+      setSocketConectado(false);
+    });
+
+    // Cleanup
+    return () => {
+      unsubscribeNovaRonda();
+      unsubscribePosicao();
+      unsubscribeCheckpoint();
+      unsubscribeEncerrada();
+      unsubscribeConectado();
+      unsubscribeDesconectado();
+    };
+  }, [abaAtiva, carregarRondas]);
+
   useEffect(() => {
     if (abaAtiva === "lista") {
       carregarRondas();
@@ -307,14 +437,21 @@ export default function PainelRondas() {
     <div className="painel-rondas-container">
       {/* Header */}
       <header className="painel-rondas-header">
-        <div className="header-titulo">
+        <div className="pr-header-titulo">
           <FiNavigation size={28} />
           <h1>Painel de Rondas</h1>
+          {/* Indicador de conexão em tempo real */}
+          <span
+            className={`status-tempo-real ${socketConectado ? "conectado" : "desconectado"}`}
+          >
+            <FiWifi size={14} />
+            {socketConectado ? "Tempo Real" : "Offline"}
+          </span>
         </div>
-        <div className="header-acoes">
+        <div className="pr-header-acoes">
           <button
             onClick={() => setMostrarFiltros(!mostrarFiltros)}
-            className={`btn-filtros ${mostrarFiltros ? "ativo" : ""}`}
+            className={`pr-btn-filtros ${mostrarFiltros ? "ativo" : ""}`}
           >
             <FiFilter size={18} />
             Filtros
@@ -325,7 +462,7 @@ export default function PainelRondas() {
       {/* Filtros */}
       {mostrarFiltros && (
         <div className="painel-filtros">
-          <div className="filtro-grupo">
+          <div className="pr-filtro-grupo">
             <label>
               <FiUser size={16} />
               Vigilante
@@ -343,7 +480,7 @@ export default function PainelRondas() {
             </select>
           </div>
 
-          <div className="filtro-grupo">
+          <div className="pr-filtro-grupo">
             <label>
               <FiActivity size={16} />
               Status
@@ -359,7 +496,7 @@ export default function PainelRondas() {
             </select>
           </div>
 
-          <div className="filtro-grupo">
+          <div className="pr-filtro-grupo">
             <label>
               <FiCalendar size={16} />
               Data Início
@@ -373,7 +510,7 @@ export default function PainelRondas() {
             />
           </div>
 
-          <div className="filtro-grupo">
+          <div className="pr-filtro-grupo">
             <label>
               <FiCalendar size={16} />
               Data Fim
@@ -385,7 +522,7 @@ export default function PainelRondas() {
             />
           </div>
 
-          <button onClick={handleLimparFiltros} className="btn-limpar-filtros">
+          <button onClick={handleLimparFiltros} className="pr-btn-limpar">
             <FiX size={16} />
             Limpar
           </button>
@@ -404,23 +541,23 @@ export default function PainelRondas() {
       )}
 
       {/* Abas */}
-      <div className="painel-abas">
+      <div className="pr-abas">
         <button
-          className={`aba ${abaAtiva === "lista" ? "ativa" : ""}`}
+          className={`pr-aba ${abaAtiva === "lista" ? "ativa" : ""}`}
           onClick={() => setAbaAtiva("lista")}
         >
           <FiList size={18} />
           Lista de Rondas
         </button>
         <button
-          className={`aba ${abaAtiva === "estatisticas" ? "ativa" : ""}`}
+          className={`pr-aba ${abaAtiva === "estatisticas" ? "ativa" : ""}`}
           onClick={() => setAbaAtiva("estatisticas")}
         >
           <FiTrendingUp size={18} />
           Estatísticas
         </button>
         <button
-          className={`aba ${abaAtiva === "auditoria" ? "ativa" : ""}`}
+          className={`pr-aba ${abaAtiva === "auditoria" ? "ativa" : ""}`}
           onClick={() => setAbaAtiva("auditoria")}
         >
           <FiActivity size={18} />
@@ -843,7 +980,7 @@ export default function PainelRondas() {
                             <div className="checkpoint-dados">
                               <span className="hora">
                                 {new Date(cp.data_hora).toLocaleTimeString(
-                                  "pt-BR"
+                                  "pt-BR",
                                 )}
                               </span>
                               {cp.descricao && (
@@ -872,31 +1009,17 @@ export default function PainelRondas() {
                         <FiMap size={18} />
                         Trajeto ({rondaSelecionada.trajeto.length} pontos)
                       </h3>
-                      <div className="trajeto-info">
-                        <p>
-                          Para visualizar o trajeto completo no mapa, integre
-                          com uma biblioteca de mapas como Google Maps ou
-                          Leaflet.
-                        </p>
-                        <div className="trajeto-coordenadas">
-                          <strong>Início:</strong>{" "}
-                          {rondaSelecionada.trajeto[0]?.latitude},{" "}
-                          {rondaSelecionada.trajeto[0]?.longitude}
-                          <br />
-                          <strong>Fim:</strong>{" "}
-                          {
-                            rondaSelecionada.trajeto[
-                              rondaSelecionada.trajeto.length - 1
-                            ]?.latitude
-                          }
-                          ,{" "}
-                          {
-                            rondaSelecionada.trajeto[
-                              rondaSelecionada.trajeto.length - 1
-                            ]?.longitude
-                          }
-                        </div>
-                      </div>
+                      <MapaRonda
+                        trajeto={rondaSelecionada.trajeto}
+                        checkpoints={rondaSelecionada.checkpoints}
+                        inicio={rondaSelecionada.trajeto[0]}
+                        fim={
+                          rondaSelecionada.trajeto[
+                            rondaSelecionada.trajeto.length - 1
+                          ]
+                        }
+                        altura={350}
+                      />
                     </section>
                   )}
               </div>

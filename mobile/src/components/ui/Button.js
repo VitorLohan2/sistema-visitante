@@ -161,20 +161,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: bordas.raio,
+    gap: espacamento.sm,
   },
 
   // Tamanhos
   pequeno: {
     paddingVertical: espacamento.sm,
     paddingHorizontal: espacamento.md,
+    minHeight: 36,
   },
   medio: {
-    paddingVertical: espacamento.md - 4,
+    paddingVertical: espacamento.md,
     paddingHorizontal: espacamento.lg,
+    minHeight: 48,
   },
   grande: {
-    paddingVertical: espacamento.md,
+    paddingVertical: espacamento.md + 4,
     paddingHorizontal: espacamento.xl,
+    minHeight: 56,
   },
 
   // Variantes - Container
@@ -223,9 +227,10 @@ const styles = StyleSheet.create({
   textoBase: {
     fontSize: tipografia.tamanhoTexto,
     fontWeight: tipografia.pesoSemibold,
+    textAlign: "center",
   },
   textoComIcone: {
-    marginLeft: espacamento.sm,
+    marginLeft: 0,
   },
 
   // Estados

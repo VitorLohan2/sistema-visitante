@@ -18,7 +18,6 @@ const visitantesRoutes = require("./visitantes.routes");
 const ticketsRoutes = require("./tickets.routes");
 const funcionariosRoutes = require("./funcionarios.routes");
 const agendamentosRoutes = require("./agendamentos.routes");
-const comunicadosRoutes = require("./comunicados.routes");
 const pontoRoutes = require("./ponto.routes");
 const empresasSetoresRoutes = require("./empresasSetores.routes");
 const papeisRoutes = require("./papeis.routes");
@@ -44,7 +43,7 @@ router.post(
       id: Joi.string().required(),
     }),
   }),
-  AuthController.sessions
+  AuthController.sessions,
 );
 
 // POST /recuperar-id - Recuperar ID por email e data nascimento
@@ -58,7 +57,7 @@ router.post(
         .regex(/^\d{4}-\d{2}-\d{2}$/),
     }),
   }),
-  AuthController.recuperarId
+  AuthController.recuperarId,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -85,9 +84,6 @@ router.use("/funcionarios", funcionariosRoutes);
 
 // Agendamentos
 router.use("/agendamentos", agendamentosRoutes);
-
-// Comunicados
-router.use("/comunicados", comunicadosRoutes);
 
 // Ponto eletrônico
 router.use("/ponto", pontoRoutes);
@@ -145,7 +141,7 @@ router.get(
       authorization: Joi.string().required(),
     }).unknown(),
   }),
-  VisitanteController.history
+  VisitanteController.history,
 );
 
 // ═══════════════════════════════════════════════════════════════

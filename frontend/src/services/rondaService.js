@@ -129,7 +129,7 @@ const rondaService = {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /**
-   * Lista todas as rondas (painel admin)
+   * Lista todas as rondas (painel de gestão)
    * @param {Object} [filtros] - Filtros
    * @param {number} [filtros.pagina] - Página
    * @param {number} [filtros.limite] - Limite
@@ -152,7 +152,9 @@ const rondaService = {
       }
     });
 
-    const response = await api.get(`/rondas/admin/listar?${params.toString()}`);
+    const response = await api.get(
+      `/rondas/gestao/listar?${params.toString()}`,
+    );
     return response.data;
   },
 
@@ -171,7 +173,7 @@ const rondaService = {
     if (filtros.empresa_id) params.append("empresa_id", filtros.empresa_id);
 
     const response = await api.get(
-      `/rondas/admin/estatisticas?${params.toString()}`
+      `/rondas/gestao/estatisticas?${params.toString()}`,
     );
     return response.data;
   },
@@ -194,7 +196,7 @@ const rondaService = {
     });
 
     const response = await api.get(
-      `/rondas/admin/auditoria?${params.toString()}`
+      `/rondas/gestao/auditoria?${params.toString()}`,
     );
     return response.data;
   },
@@ -204,7 +206,134 @@ const rondaService = {
    * @returns {Promise} Lista de vigilantes
    */
   async listarVigilantes() {
-    const response = await api.get("/rondas/admin/vigilantes");
+    const response = await api.get("/rondas/gestao/vigilantes");
+    return response.data;
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FUNÇÕES DE PONTOS DE CONTROLE
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Lista pontos de controle
+   * @param {Object} [filtros] - Filtros (ativo, obrigatorio, setor, empresa_id)
+   * @returns {Promise} Lista de pontos de controle
+   */
+  async listarPontosControle(filtros = {}) {
+    const params = new URLSearchParams();
+    Object.keys(filtros).forEach((key) => {
+      if (
+        filtros[key] !== null &&
+        filtros[key] !== undefined &&
+        filtros[key] !== ""
+      ) {
+        params.append(key, filtros[key]);
+      }
+    });
+
+    const response = await api.get(
+      `/rondas/pontos-controle?${params.toString()}`,
+    );
+    return response.data;
+  },
+
+  /**
+   * Busca ponto de controle por ID
+   * @param {number} id - ID do ponto
+   * @returns {Promise} Dados do ponto de controle
+   */
+  async buscarPontoControle(id) {
+    const response = await api.get(`/rondas/pontos-controle/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Cria um novo ponto de controle
+   * @param {Object} dados - Dados do ponto
+   * @returns {Promise} Ponto criado
+   */
+  async criarPontoControle(dados) {
+    const response = await api.post("/rondas/pontos-controle", dados);
+    return response.data;
+  },
+
+  /**
+   * Atualiza um ponto de controle
+   * @param {number} id - ID do ponto
+   * @param {Object} dados - Dados para atualizar
+   * @returns {Promise} Ponto atualizado
+   */
+  async atualizarPontoControle(id, dados) {
+    const response = await api.put(`/rondas/pontos-controle/${id}`, dados);
+    return response.data;
+  },
+
+  /**
+   * Exclui ou desativa um ponto de controle
+   * @param {number} id - ID do ponto
+   * @returns {Promise} Resultado da operação
+   */
+  async excluirPontoControle(id) {
+    const response = await api.delete(`/rondas/pontos-controle/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Lista setores distintos dos pontos de controle
+   * @returns {Promise} Lista de setores
+   */
+  async listarSetoresPontosControle() {
+    const response = await api.get("/rondas/pontos-controle/setores");
+    return response.data;
+  },
+
+  /**
+   * Busca estatísticas dos pontos de controle
+   * @param {Object} [filtros] - Filtros (empresa_id, data_inicio, data_fim)
+   * @returns {Promise} Estatísticas
+   */
+  async estatisticasPontosControle(filtros = {}) {
+    const params = new URLSearchParams();
+    Object.keys(filtros).forEach((key) => {
+      if (
+        filtros[key] !== null &&
+        filtros[key] !== undefined &&
+        filtros[key] !== ""
+      ) {
+        params.append(key, filtros[key]);
+      }
+    });
+
+    const response = await api.get(
+      `/rondas/pontos-controle/estatisticas?${params.toString()}`,
+    );
+    return response.data;
+  },
+
+  /**
+   * Reordena pontos de controle
+   * @param {Array<{id: number, ordem: number}>} ordenacao - Array com IDs e novas ordens
+   * @returns {Promise} Resultado da operação
+   */
+  async reordenarPontosControle(ordenacao) {
+    const response = await api.put("/rondas/pontos-controle/reordenar", {
+      ordenacao,
+    });
+    return response.data;
+  },
+
+  /**
+   * Valida proximidade de coordenadas a um ponto de controle
+   * @param {number} pontoId - ID do ponto
+   * @param {number} latitude - Latitude atual
+   * @param {number} longitude - Longitude atual
+   * @returns {Promise} Resultado da validação
+   */
+  async validarProximidadePonto(pontoId, latitude, longitude) {
+    const response = await api.post(
+      `/rondas/pontos-controle/${pontoId}/validar-proximidade`,
+      { latitude, longitude },
+    );
     return response.data;
   },
 };

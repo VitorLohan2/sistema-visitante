@@ -4,13 +4,12 @@ const moment = require("moment-timezone");
 const { getIo } = require("../socket");
 const { getUsuarioId } = require("../utils/authHelper");
 const {
-  isAdmin: verificarAdmin,
+  getPermissoesUsuario,
   temPermissao,
 } = require("../middleware/permissaoMiddleware");
 
 module.exports = {
   async create(req, res) {
-    const io = getIo(); // ✅ OBTER INSTÂNCIA DO SOCKET
     const usuario_id = getUsuarioId(req);
     const {
       funcionario,
@@ -43,6 +42,17 @@ module.exports = {
     }
 
     try {
+      // ✅ OBTER INSTÂNCIA DO SOCKET DENTRO DO TRY-CATCH
+      let io;
+      try {
+        io = getIo();
+      } catch (socketError) {
+        console.warn(
+          "⚠️ Socket.IO não disponível para create:",
+          socketError.message,
+        );
+      }
+
       const data_criacao = moment()
         .tz("America/Sao_Paulo")
         .format("YYYY-MM-DD HH:mm:ss");
@@ -62,22 +72,23 @@ module.exports = {
         })
         .returning("id");
 
-      // 🔥 EMITIR EVENTO PARA SALA GLOBAL
-      io.to("global").emit("ticket:create", {
-        id: ticket.id,
-        usuario_id,
-        funcionario,
-        motivo,
-        descricao,
-        setor_responsavel: setorResponsavel,
-        nome_usuario: nomeUsuario,
-        setor_usuario: setorUsuario,
-        status: "Aberto",
-        visualizado: false, // Novos tickets não são visualizados
-        data_criacao,
-      });
-
-      console.log("📡 Evento ticket:create emitido para sala GLOBAL");
+      // 🔥 EMITIR EVENTO PARA SALA GLOBAL (se socket disponível)
+      if (io) {
+        io.to("global").emit("ticket:create", {
+          id: ticket.id,
+          usuario_id,
+          funcionario,
+          motivo,
+          descricao,
+          setor_responsavel: setorResponsavel,
+          nome_usuario: nomeUsuario,
+          setor_usuario: setorUsuario,
+          status: "Aberto",
+          visualizado: false, // Novos tickets não são visualizados
+          data_criacao,
+        });
+        console.log("📡 Evento ticket:create emitido para sala GLOBAL");
+      }
 
       return res.status(201).json({
         id: ticket.id,
@@ -122,7 +133,7 @@ module.exports = {
         .select(
           "tickets.*",
           "usuarios.nome as usuario_name",
-          "usuarios.setor_id as usuario_setor_id"
+          "usuarios.setor_id as usuario_setor_id",
         )
         .leftJoin("usuarios", "tickets.usuario_id", "usuarios.id")
         .orderBy("tickets.data_criacao", "desc");
@@ -139,7 +150,6 @@ module.exports = {
   },
 
   async update(req, res) {
-    const io = getIo(); // ✅ OBTER INSTÂNCIA DO SOCKET
     const usuario_id = getUsuarioId(req);
     const { id } = req.params;
     const { status } = req.body;
@@ -155,6 +165,17 @@ module.exports = {
     }
 
     try {
+      // ✅ OBTER INSTÂNCIA DO SOCKET DENTRO DO TRY-CATCH
+      let io;
+      try {
+        io = getIo();
+      } catch (socketError) {
+        console.warn(
+          "⚠️ Socket.IO não disponível, continuando sem emitir eventos:",
+          socketError.message,
+        );
+      }
+
       const usuario = await connection("usuarios")
         .where("id", usuario_id)
         .select("setor_id")
@@ -168,21 +189,15 @@ module.exports = {
       if (!ticket)
         return res.status(404).json({ error: "Ticket não encontrado" });
 
-      // Verificar se é ADMIN via papéis
-      const userIsAdmin = await verificarAdmin(usuario_id);
+      // ✅ Verificar permissão RBAC para editar tickets
+      const { permissoes, isAdmin: userIsAdmin } =
+        await getPermissoesUsuario(usuario_id);
+      const temPermissaoEditar = permissoes.includes("ticket_editar");
 
-      // Verificar se tem papel de SEGURANCA
-      const papeis = await connection("usuarios_papeis")
-        .join("papeis", "usuarios_papeis.papel_id", "papeis.id")
-        .where("usuarios_papeis.usuario_id", usuario_id)
-        .pluck("papeis.nome");
-
-      const isSeguranca = Array.isArray(papeis) && papeis.includes("SEGURANÇA");
-
-      if (!userIsAdmin && !isSeguranca) {
+      if (!userIsAdmin && !temPermissaoEditar) {
         return res.status(403).json({
-          error:
-            "Acesso permitido apenas para administradores ou setor de Segurança",
+          error: "Você não tem permissão para editar tickets",
+          permissao_necessaria: "ticket_editar",
         });
       }
 
@@ -204,16 +219,17 @@ module.exports = {
 
       await connection("tickets").where("id", id).update(updateData);
 
-      // 🔥 EMITIR EVENTO PARA SALA GLOBAL
-      io.to("global").emit("ticket:update", {
-        id,
-        status,
-        data_atualizacao,
-        visualizado: true,
-        timestamp: new Date(),
-      });
-
-      console.log("📡 Evento ticket:update emitido para sala GLOBAL");
+      // 🔥 EMITIR EVENTO PARA SALA GLOBAL (se socket disponível)
+      if (io) {
+        io.to("global").emit("ticket:update", {
+          id,
+          status,
+          data_atualizacao,
+          visualizado: true,
+          timestamp: new Date(),
+        });
+        console.log("📡 Evento ticket:update emitido para sala GLOBAL");
+      }
 
       return res.json({
         success: true,
@@ -232,17 +248,27 @@ module.exports = {
   },
 
   async show(req, res) {
-    const io = getIo(); // ✅ OBTER INSTÂNCIA DO SOCKET
     const usuario_id = getUsuarioId(req);
     const { id } = req.params;
 
     try {
+      // ✅ OBTER INSTÂNCIA DO SOCKET DENTRO DO TRY-CATCH
+      let io;
+      try {
+        io = getIo();
+      } catch (socketError) {
+        console.warn(
+          "⚠️ Socket.IO não disponível para show:",
+          socketError.message,
+        );
+      }
+
       const ticket = await connection("tickets")
         .where("tickets.id", id)
         .select(
           "tickets.*",
           "usuarios.nome as usuario_name",
-          "usuarios.setor_id as usuario_setor_id"
+          "usuarios.setor_id as usuario_setor_id",
         )
         .leftJoin("usuarios", "tickets.usuario_id", "usuarios.id")
         .first();
@@ -250,20 +276,20 @@ module.exports = {
       if (!ticket)
         return res.status(404).json({ error: "Ticket não encontrado" });
 
-      const usuario = await connection("usuarios")
-        .where("id", usuario_id)
-        .first();
+      // ✅ Verificar permissão RBAC para visualizar tickets
+      const { permissoes, isAdmin } = await getPermissoesUsuario(usuario_id);
+      const temPermissaoVisualizar = permissoes.includes("ticket_visualizar");
 
-      // Verificar se é admin via papéis
-      const papeis = await connection("usuarios_papeis")
-        .join("papeis", "usuarios_papeis.papel_id", "papeis.id")
-        .where("usuarios_papeis.usuario_id", usuario_id)
-        .pluck("papeis.nome");
-
-      const isAdmin = Array.isArray(papeis) && papeis.includes("ADMIN");
-
-      if (!isAdmin && ticket.usuario_id !== usuario_id) {
-        return res.status(403).json({ error: "Acesso negado ao ticket" });
+      // Pode ver se: é admin, tem permissão de visualizar, ou é o dono do ticket
+      if (
+        !isAdmin &&
+        !temPermissaoVisualizar &&
+        ticket.usuario_id !== usuario_id
+      ) {
+        return res.status(403).json({
+          error: "Acesso negado ao ticket",
+          permissao_necessaria: "ticket_visualizar",
+        });
       }
 
       if (!ticket.visualizado) {
@@ -277,14 +303,15 @@ module.exports = {
 
         ticket.visualizado = true;
 
-        // 🔥 EMITIR EVENTO QUANDO MARCAR COMO VISUALIZADO
-        io.to("global").emit("ticket:viewed", {
-          id,
-          visualizado: true,
-          timestamp: new Date(),
-        });
-
-        console.log("📡 Evento ticket:viewed emitido para sala GLOBAL");
+        // 🔥 EMITIR EVENTO QUANDO MARCAR COMO VISUALIZADO (se socket disponível)
+        if (io) {
+          io.to("global").emit("ticket:viewed", {
+            id,
+            visualizado: true,
+            timestamp: new Date(),
+          });
+          console.log("📡 Evento ticket:viewed emitido para sala GLOBAL");
+        }
       }
 
       return res.json(ticket);
@@ -324,21 +351,32 @@ module.exports = {
   },
 
   async markAllSeen(req, res) {
-    const io = getIo(); // ✅ OBTER INSTÂNCIA DO SOCKET
     const usuario_id = getUsuarioId(req);
 
     try {
+      // ✅ OBTER INSTÂNCIA DO SOCKET DENTRO DO TRY-CATCH
+      let io;
+      try {
+        io = getIo();
+      } catch (socketError) {
+        console.warn(
+          "⚠️ Socket.IO não disponível para markAllSeen:",
+          socketError.message,
+        );
+      }
+
       await connection("tickets")
         .where({ setor_responsavel: "Segurança", visualizado: false })
         .update({ visualizado: true });
 
-      // 🔥 EMITIR EVENTO QUANDO MARCAR TODOS COMO VISUALIZADOS
-      io.to("global").emit("ticket:all_viewed", {
-        timestamp: new Date(),
-        setor: "Segurança",
-      });
-
-      console.log("📡 Evento ticket:all_viewed emitido para sala GLOBAL");
+      // 🔥 EMITIR EVENTO QUANDO MARCAR TODOS COMO VISUALIZADOS (se socket disponível)
+      if (io) {
+        io.to("global").emit("ticket:all_viewed", {
+          timestamp: new Date(),
+          setor: "Segurança",
+        });
+        console.log("📡 Evento ticket:all_viewed emitido para sala GLOBAL");
+      }
 
       return res.json({ success: true });
     } catch (err) {

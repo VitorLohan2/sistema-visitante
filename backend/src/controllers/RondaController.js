@@ -134,13 +134,13 @@ module.exports = {
           ip_usuario: request.ip,
           user_agent: request.headers["user-agent"],
         },
-        trx
+        trx,
       );
 
       await trx.commit();
 
       console.log(
-        `✅ Ronda #${novaRonda.id} iniciada pelo usuário #${usuario_id}`
+        `✅ Ronda #${novaRonda.id} iniciada pelo usuário #${usuario_id}`,
       );
 
       return response.status(201).json({
@@ -177,7 +177,15 @@ module.exports = {
     try {
       const usuario_id = request.usuario.id;
       const { id } = request.params;
-      const { latitude, longitude, descricao, foto_url } = request.body;
+      const {
+        latitude,
+        longitude,
+        descricao,
+        foto_url,
+        ponto_controle_id,
+        distancia,
+        precisao,
+      } = request.body;
 
       // Buscar ronda com lock para evitar concorrência
       const ronda = await trx("rondas")
@@ -191,6 +199,56 @@ module.exports = {
           error: "Ronda não encontrada ou não está em andamento",
           code: "RONDA_NAO_ENCONTRADA",
         });
+      }
+
+      // Se for validação de ponto de controle, verifica proximidade
+      let pontoControle = null;
+      let distanciaValidacao = distancia;
+
+      if (ponto_controle_id) {
+        pontoControle = await trx("ronda_pontos_controle")
+          .where({ id: ponto_controle_id, ativo: true })
+          .first();
+
+        if (!pontoControle) {
+          await trx.rollback();
+          return response.status(404).json({
+            error: "Ponto de controle não encontrado ou inativo",
+            code: "PONTO_CONTROLE_NAO_ENCONTRADO",
+          });
+        }
+
+        // Calcula distância do ponto de controle
+        distanciaValidacao = calcularDistanciaHaversine(
+          latitude,
+          longitude,
+          parseFloat(pontoControle.latitude),
+          parseFloat(pontoControle.longitude),
+        );
+
+        // Valida se está dentro do raio
+        if (distanciaValidacao > pontoControle.raio) {
+          await trx.rollback();
+          return response.status(400).json({
+            error: `Você está a ${Math.round(distanciaValidacao)}m do ponto de controle. Aproxime-se para validar (raio: ${pontoControle.raio}m).`,
+            code: "FORA_DO_RAIO",
+            distancia: Math.round(distanciaValidacao),
+            raio: pontoControle.raio,
+          });
+        }
+
+        // Verifica se já foi visitado nesta ronda
+        const jaVisitado = await trx("ronda_checkpoints")
+          .where({ ronda_id: id, ponto_controle_id })
+          .first();
+
+        if (jaVisitado) {
+          await trx.rollback();
+          return response.status(400).json({
+            error: "Este ponto de controle já foi validado nesta ronda",
+            code: "PONTO_JA_VALIDADO",
+          });
+        }
       }
 
       // Buscar último checkpoint para calcular tempo e distância
@@ -207,25 +265,25 @@ module.exports = {
       if (ultimoCheckpoint) {
         numeroSequencial = ultimoCheckpoint.numero_sequencial + 1;
         tempoDesdeAnterior = Math.floor(
-          (agora - new Date(ultimoCheckpoint.data_hora)) / 1000
+          (agora - new Date(ultimoCheckpoint.data_hora)) / 1000,
         );
         distanciaDesdeAnterior = calcularDistanciaHaversine(
           ultimoCheckpoint.latitude,
           ultimoCheckpoint.longitude,
           latitude,
-          longitude
+          longitude,
         );
       } else {
         // Primeiro checkpoint - calcular desde o início da ronda
         if (ronda.latitude_inicio && ronda.longitude_inicio) {
           tempoDesdeAnterior = Math.floor(
-            (agora - new Date(ronda.data_inicio)) / 1000
+            (agora - new Date(ronda.data_inicio)) / 1000,
           );
           distanciaDesdeAnterior = calcularDistanciaHaversine(
             ronda.latitude_inicio,
             ronda.longitude_inicio,
             latitude,
-            longitude
+            longitude,
           );
         }
       }
@@ -237,10 +295,16 @@ module.exports = {
           numero_sequencial: numeroSequencial,
           latitude,
           longitude,
-          descricao,
+          descricao: descricao || (pontoControle ? pontoControle.nome : null),
           foto_url,
           tempo_desde_anterior_segundos: tempoDesdeAnterior,
           distancia_desde_anterior_metros: distanciaDesdeAnterior,
+          // Campos de ponto de controle
+          ponto_controle_id: ponto_controle_id || null,
+          distancia_validacao: distanciaValidacao
+            ? Math.round(distanciaValidacao * 100) / 100
+            : null,
+          precisao_gps: precisao || null,
         })
         .returning("*");
 
@@ -258,30 +322,41 @@ module.exports = {
           ronda_id: id,
           usuario_id,
           tipo_acao: "CHECKPOINT",
-          descricao: `Checkpoint #${numeroSequencial} registrado na ronda #${id}`,
+          descricao: ponto_controle_id
+            ? `Ponto de controle "${pontoControle.nome}" validado na ronda #${id}`
+            : `Checkpoint #${numeroSequencial} registrado na ronda #${id}`,
           dados_json: {
             checkpoint_id: novoCheckpoint.id,
             numero_sequencial: numeroSequencial,
             latitude,
             longitude,
             descricao,
+            ponto_controle_id,
+            ponto_controle_nome: pontoControle?.nome || null,
+            distancia_validacao: distanciaValidacao
+              ? Math.round(distanciaValidacao)
+              : null,
             tempo_desde_anterior: formatarDuracao(tempoDesdeAnterior),
             distancia_desde_anterior_metros: distanciaDesdeAnterior.toFixed(2),
           },
           ip_usuario: request.ip,
           user_agent: request.headers["user-agent"],
         },
-        trx
+        trx,
       );
 
       await trx.commit();
 
       console.log(
-        `✅ Checkpoint #${numeroSequencial} registrado na ronda #${id}`
+        ponto_controle_id
+          ? `✅ Ponto de controle "${pontoControle.nome}" validado na ronda #${id}`
+          : `✅ Checkpoint #${numeroSequencial} registrado na ronda #${id}`,
       );
 
       return response.status(201).json({
-        message: "Checkpoint registrado com sucesso",
+        message: ponto_controle_id
+          ? "Ponto de controle validado com sucesso"
+          : "Checkpoint registrado com sucesso",
         checkpoint: {
           id: novoCheckpoint.id,
           numero_sequencial: novoCheckpoint.numero_sequencial,
@@ -289,6 +364,9 @@ module.exports = {
           longitude: novoCheckpoint.longitude,
           descricao: novoCheckpoint.descricao,
           data_hora: novoCheckpoint.data_hora,
+          ponto_controle_id: novoCheckpoint.ponto_controle_id,
+          ponto_controle_nome: pontoControle?.nome || null,
+          distancia_validacao: novoCheckpoint.distancia_validacao,
           tempo_desde_anterior: formatarDuracao(tempoDesdeAnterior),
           tempo_desde_anterior_segundos: tempoDesdeAnterior,
           distancia_desde_anterior_metros: distanciaDesdeAnterior.toFixed(2),
@@ -397,7 +475,7 @@ module.exports = {
 
       const agora = new Date();
       const tempoTotalSegundos = Math.floor(
-        (agora - new Date(ronda.data_inicio)) / 1000
+        (agora - new Date(ronda.data_inicio)) / 1000,
       );
 
       // Calcular distância total do trajeto
@@ -411,7 +489,7 @@ module.exports = {
           pontosTrajeto[i - 1].latitude,
           pontosTrajeto[i - 1].longitude,
           pontosTrajeto[i].latitude,
-          pontosTrajeto[i].longitude
+          pontosTrajeto[i].longitude,
         );
       }
 
@@ -423,7 +501,7 @@ module.exports = {
             ultimoPonto.latitude,
             ultimoPonto.longitude,
             latitude,
-            longitude
+            longitude,
           );
         }
 
@@ -481,7 +559,7 @@ module.exports = {
           ip_usuario: request.ip,
           user_agent: request.headers["user-agent"],
         },
-        trx
+        trx,
       );
 
       await trx.commit();
@@ -502,7 +580,7 @@ module.exports = {
           checkpoints: checkpoints.map((cp) => ({
             ...cp,
             tempo_desde_anterior: formatarDuracao(
-              cp.tempo_desde_anterior_segundos
+              cp.tempo_desde_anterior_segundos,
             ),
           })),
         },
@@ -549,7 +627,7 @@ module.exports = {
 
       const agora = new Date();
       const tempoTotalSegundos = Math.floor(
-        (agora - new Date(ronda.data_inicio)) / 1000
+        (agora - new Date(ronda.data_inicio)) / 1000,
       );
 
       // Atualizar ronda
@@ -579,7 +657,7 @@ module.exports = {
           ip_usuario: request.ip,
           user_agent: request.headers["user-agent"],
         },
-        trx
+        trx,
       );
 
       await trx.commit();
@@ -627,7 +705,7 @@ module.exports = {
 
       // Calcular tempo decorrido
       const tempoDecorridoSegundos = Math.floor(
-        (new Date() - new Date(ronda.data_inicio)) / 1000
+        (new Date() - new Date(ronda.data_inicio)) / 1000,
       );
 
       return response.json({
@@ -638,7 +716,7 @@ module.exports = {
           checkpoints: checkpoints.map((cp) => ({
             ...cp,
             tempo_desde_anterior: formatarDuracao(
-              cp.tempo_desde_anterior_segundos
+              cp.tempo_desde_anterior_segundos,
             ),
           })),
         },
@@ -774,7 +852,7 @@ module.exports = {
           checkpoints: checkpoints.map((cp) => ({
             ...cp,
             tempo_desde_anterior: formatarDuracao(
-              cp.tempo_desde_anterior_segundos
+              cp.tempo_desde_anterior_segundos,
             ),
           })),
           trajeto: trajeto.map((p) => ({
@@ -813,39 +891,63 @@ module.exports = {
         empresa_id,
       } = request.query;
 
-      let query = connection("rondas as r")
+      // Verificar se a tabela rondas existe
+      const tabelaExiste = await connection.schema.hasTable("rondas");
+      if (!tabelaExiste) {
+        return response.json({
+          rondas: [],
+          paginacao: {
+            pagina: parseInt(pagina),
+            limite: parseInt(limite),
+            total: 0,
+            totalPaginas: 0,
+          },
+        });
+      }
+
+      // Construir query base (sem select ainda para poder reutilizar)
+      let baseQuery = connection("rondas as r")
         .leftJoin("usuarios as u", "r.usuario_id", "u.id")
-        .leftJoin("empresa_interno as e", "r.empresa_id", "e.id")
-        .select("r.*", "u.nome as usuario_nome", "e.nome as empresa_nome");
+        .leftJoin("empresa_interno as e", "r.empresa_id", "e.id");
 
       // Filtros
       if (usuario_id) {
-        query = query.where("r.usuario_id", usuario_id);
+        baseQuery = baseQuery.where("r.usuario_id", usuario_id);
       }
       if (status) {
-        query = query.where("r.status", status);
+        baseQuery = baseQuery.where("r.status", status);
       }
       if (empresa_id) {
-        query = query.where("r.empresa_id", empresa_id);
+        baseQuery = baseQuery.where("r.empresa_id", empresa_id);
       }
       if (data_inicio) {
-        query = query.where("r.data_inicio", ">=", data_inicio);
+        baseQuery = baseQuery.where("r.data_inicio", ">=", data_inicio);
       }
       if (data_fim) {
-        query = query.where("r.data_inicio", "<=", `${data_fim} 23:59:59`);
+        baseQuery = baseQuery.where(
+          "r.data_inicio",
+          "<=",
+          `${data_fim} 23:59:59`,
+        );
       }
 
-      // Contar total
-      const [{ total }] = await query.clone().count("r.id as total");
+      // Contar total (query separada sem select de colunas)
+      const countResult = await baseQuery
+        .clone()
+        .count("r.id as total")
+        .first();
+      const total = countResult?.total || 0;
 
-      // Buscar rondas paginadas
-      const rondas = await query
+      // Buscar rondas paginadas (agora adiciona o select)
+      const rondas = await baseQuery
+        .clone()
+        .select("r.*", "u.nome as usuario_nome", "e.nome as empresa_nome")
         .orderBy("r.data_inicio", "desc")
-        .limit(limite)
-        .offset((pagina - 1) * limite);
+        .limit(parseInt(limite))
+        .offset((parseInt(pagina) - 1) * parseInt(limite));
 
       // Formatar rondas
-      const rondasFormatadas = rondas.map((r) => ({
+      const rondasFormatadas = (rondas || []).map((r) => ({
         ...r,
         tempo_total: formatarDuracao(r.tempo_total_segundos),
         distancia_total: `${((r.distancia_total_metros || 0) / 1000).toFixed(2)} km`,
@@ -857,7 +959,7 @@ module.exports = {
           pagina: parseInt(pagina),
           limite: parseInt(limite),
           total: parseInt(total),
-          totalPaginas: Math.ceil(total / limite),
+          totalPaginas: Math.ceil(parseInt(total) / parseInt(limite)),
         },
       });
     } catch (err) {
@@ -881,6 +983,29 @@ module.exports = {
     try {
       const { data_inicio, data_fim, empresa_id } = request.query;
 
+      // Verificar se a tabela rondas existe
+      const tabelaExiste = await connection.schema.hasTable("rondas");
+      if (!tabelaExiste) {
+        return response.json({
+          estatisticas: {
+            total_rondas: 0,
+            rondas_finalizadas: 0,
+            rondas_em_andamento: 0,
+            rondas_canceladas: 0,
+            tempo_total_segundos: 0,
+            distancia_total_metros: 0,
+            total_checkpoints: 0,
+            tempo_medio_segundos: 0,
+            total_vigilantes: 0,
+            tempo_total: "0s",
+            tempo_medio: "0s",
+            distancia_total: "0.00 km",
+          },
+          topVigilantes: [],
+          rondasPorDia: [],
+        });
+      }
+
       // Estatísticas gerais
       let queryBase = connection("rondas");
 
@@ -894,7 +1019,7 @@ module.exports = {
         queryBase = queryBase.where(
           "data_inicio",
           "<=",
-          `${data_fim} 23:59:59`
+          `${data_fim} 23:59:59`,
         );
       }
 
@@ -903,27 +1028,27 @@ module.exports = {
         .select(
           connection.raw("COUNT(*) as total_rondas"),
           connection.raw(
-            "COUNT(CASE WHEN status = 'finalizada' THEN 1 END) as rondas_finalizadas"
+            "COUNT(CASE WHEN status = 'finalizada' THEN 1 END) as rondas_finalizadas",
           ),
           connection.raw(
-            "COUNT(CASE WHEN status = 'em_andamento' THEN 1 END) as rondas_em_andamento"
+            "COUNT(CASE WHEN status = 'em_andamento' THEN 1 END) as rondas_em_andamento",
           ),
           connection.raw(
-            "COUNT(CASE WHEN status = 'cancelada' THEN 1 END) as rondas_canceladas"
+            "COUNT(CASE WHEN status = 'cancelada' THEN 1 END) as rondas_canceladas",
           ),
           connection.raw(
-            "COALESCE(SUM(tempo_total_segundos), 0) as tempo_total_segundos"
+            "COALESCE(SUM(tempo_total_segundos), 0) as tempo_total_segundos",
           ),
           connection.raw(
-            "COALESCE(SUM(distancia_total_metros), 0) as distancia_total_metros"
+            "COALESCE(SUM(distancia_total_metros), 0) as distancia_total_metros",
           ),
           connection.raw(
-            "COALESCE(SUM(total_checkpoints), 0) as total_checkpoints"
+            "COALESCE(SUM(total_checkpoints), 0) as total_checkpoints",
           ),
           connection.raw(
-            "COALESCE(AVG(tempo_total_segundos), 0) as tempo_medio_segundos"
+            "COALESCE(AVG(tempo_total_segundos), 0) as tempo_medio_segundos",
           ),
-          connection.raw("COUNT(DISTINCT usuario_id) as total_vigilantes")
+          connection.raw("COUNT(DISTINCT usuario_id) as total_vigilantes"),
         )
         .first();
 
@@ -941,7 +1066,7 @@ module.exports = {
           "u.nome",
           connection.raw("COUNT(r.id) as total_rondas"),
           connection.raw("SUM(r.tempo_total_segundos) as tempo_total"),
-          connection.raw("SUM(r.distancia_total_metros) as distancia_total")
+          connection.raw("SUM(r.distancia_total_metros) as distancia_total"),
         )
         .groupBy("u.id", "u.nome")
         .orderBy("total_rondas", "desc")
@@ -955,28 +1080,30 @@ module.exports = {
         .where(
           "data_inicio",
           ">=",
-          connection.raw("CURRENT_DATE - INTERVAL '7 days'")
+          connection.raw("CURRENT_DATE - INTERVAL '7 days'"),
         )
         .select(
           connection.raw("DATE(data_inicio) as data"),
-          connection.raw("COUNT(*) as total")
+          connection.raw("COUNT(*) as total"),
         )
         .groupBy(connection.raw("DATE(data_inicio)"))
         .orderBy("data", "asc");
 
+      const stats = estatisticas || {};
+
       return response.json({
         estatisticas: {
-          ...estatisticas,
-          tempo_total: formatarDuracao(estatisticas.tempo_total_segundos),
-          tempo_medio: formatarDuracao(estatisticas.tempo_medio_segundos),
-          distancia_total: `${(estatisticas.distancia_total_metros / 1000).toFixed(2)} km`,
+          ...stats,
+          tempo_total: formatarDuracao(stats.tempo_total_segundos || 0),
+          tempo_medio: formatarDuracao(stats.tempo_medio_segundos || 0),
+          distancia_total: `${((stats.distancia_total_metros || 0) / 1000).toFixed(2)} km`,
         },
-        topVigilantes: topVigilantes.map((v) => ({
+        topVigilantes: (topVigilantes || []).map((v) => ({
           ...v,
           tempo_total: formatarDuracao(v.tempo_total),
           distancia_total: `${((v.distancia_total || 0) / 1000).toFixed(2)} km`,
         })),
-        rondasPorDia,
+        rondasPorDia: rondasPorDia || [],
       });
     } catch (err) {
       console.error("❌ Erro ao buscar estatísticas:", err);
@@ -1007,44 +1134,68 @@ module.exports = {
         data_fim,
       } = request.query;
 
-      let query = connection("ronda_auditoria as ra")
+      // Verificar se a tabela ronda_auditoria existe
+      const tabelaExiste = await connection.schema.hasTable("ronda_auditoria");
+      if (!tabelaExiste) {
+        return response.json({
+          registros: [],
+          paginacao: {
+            pagina: parseInt(pagina),
+            limite: parseInt(limite),
+            total: 0,
+            totalPaginas: 0,
+          },
+        });
+      }
+
+      // Construir query base (sem select ainda para poder reutilizar)
+      let baseQuery = connection("ronda_auditoria as ra")
         .leftJoin("usuarios as u", "ra.usuario_id", "u.id")
-        .leftJoin("rondas as r", "ra.ronda_id", "r.id")
-        .select("ra.*", "u.nome as usuario_nome", "r.status as ronda_status");
+        .leftJoin("rondas as r", "ra.ronda_id", "r.id");
 
       // Filtros
       if (ronda_id) {
-        query = query.where("ra.ronda_id", ronda_id);
+        baseQuery = baseQuery.where("ra.ronda_id", ronda_id);
       }
       if (usuario_id) {
-        query = query.where("ra.usuario_id", usuario_id);
+        baseQuery = baseQuery.where("ra.usuario_id", usuario_id);
       }
       if (tipo_acao) {
-        query = query.where("ra.tipo_acao", tipo_acao);
+        baseQuery = baseQuery.where("ra.tipo_acao", tipo_acao);
       }
       if (data_inicio) {
-        query = query.where("ra.data_hora", ">=", data_inicio);
+        baseQuery = baseQuery.where("ra.data_hora", ">=", data_inicio);
       }
       if (data_fim) {
-        query = query.where("ra.data_hora", "<=", `${data_fim} 23:59:59`);
+        baseQuery = baseQuery.where(
+          "ra.data_hora",
+          "<=",
+          `${data_fim} 23:59:59`,
+        );
       }
 
-      // Contar total
-      const [{ total }] = await query.clone().count("ra.id as total");
+      // Contar total (query separada sem select de colunas)
+      const countResult = await baseQuery
+        .clone()
+        .count("ra.id as total")
+        .first();
+      const total = countResult?.total || 0;
 
-      // Buscar registros paginados
-      const registros = await query
+      // Buscar registros paginados (agora adiciona o select)
+      const registros = await baseQuery
+        .clone()
+        .select("ra.*", "u.nome as usuario_nome", "r.status as ronda_status")
         .orderBy("ra.data_hora", "desc")
-        .limit(limite)
-        .offset((pagina - 1) * limite);
+        .limit(parseInt(limite))
+        .offset((parseInt(pagina) - 1) * parseInt(limite));
 
       return response.json({
-        registros,
+        registros: registros || [],
         paginacao: {
           pagina: parseInt(pagina),
           limite: parseInt(limite),
           total: parseInt(total),
-          totalPaginas: Math.ceil(total / limite),
+          totalPaginas: Math.ceil(parseInt(total) / parseInt(limite)) || 0,
         },
       });
     } catch (err) {
@@ -1066,25 +1217,47 @@ module.exports = {
    */
   async listarVigilantes(request, response) {
     try {
-      // Buscar usuários que já realizaram rondas ou têm papel de segurança
-      const vigilantes = await connection("usuarios as u")
+      // Verificar se as tabelas necessárias existem
+      const tabelaRondasExiste = await connection.schema.hasTable("rondas");
+
+      // Buscar usuários com papel SEGURANCA
+      const vigilantesPapel = await connection("usuarios as u")
         .leftJoin("empresa_interno as e", "u.empresa_id", "e.id")
-        .where((qb) => {
-          qb.whereIn(
-            "u.id",
-            connection("rondas").distinct("usuario_id")
-          ).orWhereIn(
-            "u.id",
-            connection("usuarios_papeis as up")
-              .join("papeis as p", "up.papel_id", "p.id")
-              .where("p.nome", "SEGURANCA")
-              .select("up.usuario_id")
-          );
-        })
+        .whereIn(
+          "u.id",
+          connection("usuarios_papeis as up")
+            .join("papeis as p", "up.papel_id", "p.id")
+            .where("p.nome", "SEGURANCA")
+            .select("up.usuario_id"),
+        )
         .select("u.id", "u.nome", "e.nome as empresa_nome")
         .orderBy("u.nome", "asc");
 
-      return response.json({ vigilantes });
+      // Se a tabela de rondas existir, também incluir usuários que já realizaram rondas
+      let vigilantesRondas = [];
+      if (tabelaRondasExiste) {
+        vigilantesRondas = await connection("usuarios as u")
+          .leftJoin("empresa_interno as e", "u.empresa_id", "e.id")
+          .whereIn("u.id", connection("rondas").distinct("usuario_id"))
+          .select("u.id", "u.nome", "e.nome as empresa_nome")
+          .orderBy("u.nome", "asc");
+      }
+
+      // Combinar e remover duplicados
+      const todosVigilantes = [...vigilantesPapel, ...vigilantesRondas];
+      const vigilantesUnicos = todosVigilantes.reduce((acc, v) => {
+        if (!acc.find((item) => item.id === v.id)) {
+          acc.push(v);
+        }
+        return acc;
+      }, []);
+
+      // Ordenar por nome
+      vigilantesUnicos.sort((a, b) =>
+        (a.nome || "").localeCompare(b.nome || ""),
+      );
+
+      return response.json({ vigilantes: vigilantesUnicos });
     } catch (err) {
       console.error("❌ Erro ao listar vigilantes:", err);
       return response.status(500).json({

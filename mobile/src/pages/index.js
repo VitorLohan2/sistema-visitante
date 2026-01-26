@@ -24,4 +24,7 @@ export { default as CriarTicket } from "./CriarTicket";
 export { default as BiparCracha } from "./BiparCracha";
 
 // Vigilante
+export { default as MenuVigilante } from "./MenuVigilante";
 export { default as Ronda } from "./Ronda";
+export { default as HistoricoRondas } from "./HistoricoRondas";
+export { default as DetalhesRonda } from "./DetalhesRonda";

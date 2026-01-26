@@ -36,8 +36,8 @@
  * ETAPA 8 (85%): Permissões e Papéis
  * - usuarios-papeis/me/permissoes: Permissões do usuário logado
  *
- * ETAPA 9 (95%): Comunicados
- * - comunicados: Comunicados do sistema
+ * ETAPA 9 (95%): Patch Notes
+ * - patch-notes: Atualizações do sistema
  *
  * ETAPA 10 (100%): Socket.IO
  * - Conexão e configuração de listeners
@@ -58,7 +58,7 @@
  *   agendamentos,      // array - Agendamentos
  *   tickets,           // array - Tickets
  *   funcionarios,      // array - Funcionários
- *   comunicados,       // array - Comunicados
+ *   patchNotes,        // array - Patch Notes
  *   userData,          // object - Dados do usuário logado
  *   loadAllData,       // function - Recarrega tudo (forceReload)
  *   reloadVisitantes,  // function - Recarrega só visitantes
@@ -102,38 +102,35 @@ export function useDataLoader(userId) {
   // ═══════════════════════════════════════════════════════════════
   const [loading, setLoading] = useState(!hasInitialCacheRef.current);
   const [progress, setProgress] = useState(
-    hasInitialCacheRef.current ? 100 : 0
+    hasInitialCacheRef.current ? 100 : 0,
   );
   const [progressMessage, setProgressMessage] = useState(
-    hasInitialCacheRef.current ? "Pronto!" : "Iniciando..."
+    hasInitialCacheRef.current ? "Pronto!" : "Iniciando...",
   );
   const [error, setError] = useState(null);
 
   // Dados carregados - inicializa com cache se existir
   const [visitantes, setVisitantes] = useState(
-    () => getCache("cadastroVisitantes") || []
+    () => getCache("cadastroVisitantes") || [],
   );
   const [empresas, setEmpresas] = useState(
-    () => getCache("empresasVisitantes") || []
+    () => getCache("empresasVisitantes") || [],
   );
   const [setores, setSetores] = useState(
-    () => getCache("setoresVisitantes") || []
+    () => getCache("setoresVisitantes") || [],
   );
   const [responsaveis, setResponsaveis] = useState(
-    () => getCache("responsaveis") || []
+    () => getCache("responsaveis") || [],
   );
   const [agendamentos, setAgendamentos] = useState(
-    () => getCache("agendamentos") || []
+    () => getCache("agendamentos") || [],
   );
   const [tickets, setTickets] = useState(() => getCache("tickets") || []);
   const [funcionarios, setFuncionarios] = useState(
-    () => getCache("funcionarios") || []
-  );
-  const [comunicados, setComunicados] = useState(
-    () => getCache("comunicados") || []
+    () => getCache("funcionarios") || [],
   );
   const [patchNotes, setPatchNotes] = useState(
-    () => getCache("patchNotes") || []
+    () => getCache("patchNotes") || [],
   );
   const [userData, setUserData] = useState(() => getCache("userData"));
 
@@ -157,12 +154,12 @@ export function useDataLoader(userId) {
           const novos = [...prev, visitante].sort((a, b) =>
             (a.nome || "")
               .toLowerCase()
-              .localeCompare((b.nome || "").toLowerCase(), "pt-BR")
+              .localeCompare((b.nome || "").toLowerCase(), "pt-BR"),
           );
           setCache("cadastroVisitantes", novos);
           return novos;
         });
-      }
+      },
     );
 
     const unsubVisitanteUpdated = socketService.on(
@@ -175,12 +172,12 @@ export function useDataLoader(userId) {
             .sort((a, b) =>
               (a.nome || "")
                 .toLowerCase()
-                .localeCompare((b.nome || "").toLowerCase(), "pt-BR")
+                .localeCompare((b.nome || "").toLowerCase(), "pt-BR"),
             );
           setCache("cadastroVisitantes", novos);
           return novos;
         });
-      }
+      },
     );
 
     const unsubVisitanteDeleted = socketService.on(
@@ -192,7 +189,7 @@ export function useDataLoader(userId) {
           setCache("cadastroVisitantes", novos);
           return novos;
         });
-      }
+      },
     );
 
     // ─────────────────────────────────────────────────────────────
@@ -205,19 +202,19 @@ export function useDataLoader(userId) {
         setEmpresas((prev) => {
           if (prev.find((e) => e.id === empresa.id)) return prev;
           const novos = [...prev, empresa].sort((a, b) =>
-            (a.nome || "").localeCompare(b.nome || "", "pt-BR")
+            (a.nome || "").localeCompare(b.nome || "", "pt-BR"),
           );
           setCache("empresasVisitantes", novos);
           return novos;
         });
-      }
+      },
     );
 
     const unsubEmpresaUpdated = socketService.on("empresa:updated", (dados) => {
       console.log("🏢 Socket: Empresa atualizada", dados.id);
       setEmpresas((prev) => {
         const novos = prev.map((e) =>
-          e.id === dados.id ? { ...e, ...dados } : e
+          e.id === dados.id ? { ...e, ...dados } : e,
         );
         setCache("empresasVisitantes", novos);
         return novos;
@@ -241,7 +238,7 @@ export function useDataLoader(userId) {
       setSetores((prev) => {
         if (prev.find((s) => s.id === setor.id)) return prev;
         const novos = [...prev, setor].sort((a, b) =>
-          (a.nome || "").localeCompare(b.nome || "", "pt-BR")
+          (a.nome || "").localeCompare(b.nome || "", "pt-BR"),
         );
         setCache("setoresVisitantes", novos);
         return novos;
@@ -252,7 +249,7 @@ export function useDataLoader(userId) {
       console.log("📁 Socket: Setor atualizado", dados.id);
       setSetores((prev) => {
         const novos = prev.map((s) =>
-          s.id === dados.id ? { ...s, ...dados } : s
+          s.id === dados.id ? { ...s, ...dados } : s,
         );
         setCache("setoresVisitantes", novos);
         return novos;
@@ -279,12 +276,12 @@ export function useDataLoader(userId) {
           if (prev.find((a) => a.id === agendamento.id)) return prev;
           const novos = [agendamento, ...prev].sort(
             (a, b) =>
-              new Date(b.horario_agendado) - new Date(a.horario_agendado)
+              new Date(b.horario_agendado) - new Date(a.horario_agendado),
           );
           setCache("agendamentos", novos);
           return novos;
         });
-      }
+      },
     );
 
     const unsubAgendamentoUpdate = socketService.on(
@@ -296,12 +293,12 @@ export function useDataLoader(userId) {
             .map((a) => (a.id === dados.id ? { ...a, ...dados } : a))
             .sort(
               (a, b) =>
-                new Date(b.horario_agendado) - new Date(a.horario_agendado)
+                new Date(b.horario_agendado) - new Date(a.horario_agendado),
             );
           setCache("agendamentos", novos);
           return novos;
         });
-      }
+      },
     );
 
     const unsubAgendamentoDelete = socketService.on(
@@ -313,7 +310,7 @@ export function useDataLoader(userId) {
           setCache("agendamentos", novos);
           return novos;
         });
-      }
+      },
     );
 
     // ─────────────────────────────────────────────────────────────
@@ -324,7 +321,7 @@ export function useDataLoader(userId) {
       setTickets((prev) => {
         if (prev.find((t) => t.id === ticket.id)) return prev;
         const novos = [ticket, ...prev].sort(
-          (a, b) => new Date(b.data_criacao) - new Date(a.data_criacao)
+          (a, b) => new Date(b.data_criacao) - new Date(a.data_criacao),
         );
         setCache("tickets", novos);
         return novos;
@@ -345,7 +342,7 @@ export function useDataLoader(userId) {
     const unsubTicketViewed = socketService.on("ticket:viewed", (dados) => {
       setTickets((prev) => {
         const novos = prev.map((t) =>
-          t.id === dados.id ? { ...t, visto: true } : t
+          t.id === dados.id ? { ...t, visto: true } : t,
         );
         setCache("tickets", novos);
         return novos;
@@ -372,12 +369,12 @@ export function useDataLoader(userId) {
           const novos = [...prev, funcionario].sort((a, b) =>
             (a.nome || "")
               .toLowerCase()
-              .localeCompare((b.nome || "").toLowerCase(), "pt-BR")
+              .localeCompare((b.nome || "").toLowerCase(), "pt-BR"),
           );
           setCache("funcionarios", novos);
           return novos;
         });
-      }
+      },
     );
 
     const unsubFuncionarioUpdated = socketService.on(
@@ -386,12 +383,12 @@ export function useDataLoader(userId) {
         console.log("👤 Socket: Funcionário atualizado", dados.cracha);
         setFuncionarios((prev) => {
           const novos = prev.map((f) =>
-            f.cracha === dados.cracha ? { ...f, ...dados } : f
+            f.cracha === dados.cracha ? { ...f, ...dados } : f,
           );
           setCache("funcionarios", novos);
           return novos;
         });
-      }
+      },
     );
 
     const unsubFuncionarioDeleted = socketService.on(
@@ -403,49 +400,7 @@ export function useDataLoader(userId) {
           setCache("funcionarios", novos);
           return novos;
         });
-      }
-    );
-
-    // ─────────────────────────────────────────────────────────────
-    // COMUNICADOS
-    // ─────────────────────────────────────────────────────────────
-    const unsubComunicadoCreated = socketService.on(
-      "comunicado:created",
-      (comunicado) => {
-        console.log("📢 Socket: Novo comunicado", comunicado.id);
-        setComunicados((prev) => {
-          if (prev.find((c) => c.id === comunicado.id)) return prev;
-          const novos = [comunicado, ...prev];
-          setCache("comunicados", novos);
-          return novos;
-        });
-      }
-    );
-
-    const unsubComunicadoUpdated = socketService.on(
-      "comunicado:updated",
-      (dados) => {
-        console.log("📢 Socket: Comunicado atualizado", dados.id);
-        setComunicados((prev) => {
-          const novos = prev.map((c) =>
-            c.id === dados.id ? { ...c, ...dados } : c
-          );
-          setCache("comunicados", novos);
-          return novos;
-        });
-      }
-    );
-
-    const unsubComunicadoDeleted = socketService.on(
-      "comunicado:deleted",
-      (dados) => {
-        console.log("📢 Socket: Comunicado removido", dados.id);
-        setComunicados((prev) => {
-          const novos = prev.filter((c) => c.id !== dados.id);
-          setCache("comunicados", novos);
-          return novos;
-        });
-      }
+      },
     );
 
     // ─────────────────────────────────────────────────────────────
@@ -461,7 +416,7 @@ export function useDataLoader(userId) {
           setCache("patchNotes", novos);
           return novos;
         });
-      }
+      },
     );
 
     const unsubPatchNoteUpdated = socketService.on(
@@ -470,12 +425,12 @@ export function useDataLoader(userId) {
         console.log("🔄 Socket: Patch note atualizado", dados.id);
         setPatchNotes((prev) => {
           const novos = prev.map((p) =>
-            p.id === dados.id ? { ...p, ...dados } : p
+            p.id === dados.id ? { ...p, ...dados } : p,
           );
           setCache("patchNotes", novos);
           return novos;
         });
-      }
+      },
     );
 
     const unsubPatchNoteDeleted = socketService.on(
@@ -487,7 +442,7 @@ export function useDataLoader(userId) {
           setCache("patchNotes", novos);
           return novos;
         });
-      }
+      },
     );
 
     // Guarda referências para cleanup
@@ -517,10 +472,6 @@ export function useDataLoader(userId) {
       unsubFuncionarioCreated,
       unsubFuncionarioUpdated,
       unsubFuncionarioDeleted,
-      // Comunicados
-      unsubComunicadoCreated,
-      unsubComunicadoUpdated,
-      unsubComunicadoDeleted,
       // Patch Notes
       unsubPatchNoteCreated,
       unsubPatchNoteUpdated,
@@ -528,7 +479,7 @@ export function useDataLoader(userId) {
     ];
 
     console.log(
-      "🔌 Socket listeners configurados para sincronização em tempo real"
+      "🔌 Socket listeners configurados para sincronização em tempo real",
     );
   }, []);
 
@@ -560,7 +511,6 @@ export function useDataLoader(userId) {
         setAgendamentos(getCache("agendamentos") || []);
         setTickets(getCache("tickets") || []);
         setFuncionarios(getCache("funcionarios") || []);
-        setComunicados(getCache("comunicados") || []);
         setPatchNotes(getCache("patchNotes") || []);
         setUserData(getCache("userData"));
 
@@ -658,7 +608,7 @@ export function useDataLoader(userId) {
           .sort((a, b) =>
             (a.nome || "")
               .toLowerCase()
-              .localeCompare((b.nome || "").toLowerCase(), "pt-BR")
+              .localeCompare((b.nome || "").toLowerCase(), "pt-BR"),
           );
 
         setVisitantes(visitantesProcessados);
@@ -736,24 +686,7 @@ export function useDataLoader(userId) {
         setProgress(85);
 
         // ═══════════════════════════════════════════════════════════
-        // ETAPA 9: Comunicados (95%)
-        // ═══════════════════════════════════════════════════════════
-        setProgressMessage("Carregando comunicados...");
-
-        try {
-          const comunicadosRes = await api.get("/comunicados");
-          const comunicadosData = comunicadosRes.data || [];
-          setComunicados(comunicadosData);
-          setCache("comunicados", comunicadosData);
-        } catch (err) {
-          console.log("⚠️ Comunicados não disponíveis:", err.message);
-          setCache("comunicados", []);
-        }
-
-        setProgress(95);
-
-        // ═══════════════════════════════════════════════════════════
-        // ETAPA 10: Patch Notes (97%)
+        // ETAPA 9: Patch Notes (95%)
         // ═══════════════════════════════════════════════════════════
         setProgressMessage("Carregando atualizações do sistema...");
 
@@ -767,10 +700,72 @@ export function useDataLoader(userId) {
           setCache("patchNotes", []);
         }
 
+        setProgress(96);
+
+        // ═══════════════════════════════════════════════════════════
+        // ETAPA 11: Dados de Gerenciamento de Permissões (97%)
+        // ═══════════════════════════════════════════════════════════
+        setProgressMessage("Carregando dados administrativos...");
+
+        try {
+          const [allUsuariosRes, allPapeisRes, allPermissoesRes] =
+            await Promise.all([
+              api.get("/usuarios-papeis"),
+              api.get("/papeis"),
+              api.get("/permissoes"),
+            ]);
+
+          setCache("allUsuarios", allUsuariosRes.data || []);
+          setCache("allPapeis", allPapeisRes.data || []);
+          setCache("allPermissoes", allPermissoesRes.data || []);
+        } catch (err) {
+          console.log("⚠️ Dados administrativos não disponíveis:", err.message);
+          setCache("allUsuarios", []);
+          setCache("allPapeis", []);
+          setCache("allPermissoes", []);
+        }
+
         setProgress(97);
 
         // ═══════════════════════════════════════════════════════════
-        // ETAPA 11: Conectar ao Socket.IO (100%)
+        // ETAPA 12: Dados de Rondas e Pontos de Controle (98%)
+        // ═══════════════════════════════════════════════════════════
+        setProgressMessage("Carregando dados de rondas...");
+
+        try {
+          const [pontosRes, vigilantesRes] = await Promise.all([
+            api.get("/rondas/pontos-controle"),
+            api.get("/rondas/vigilantes"),
+          ]);
+
+          setCache("pontosControle", pontosRes.data?.pontos || []);
+          setCache("vigilantes", vigilantesRes.data?.vigilantes || []);
+        } catch (err) {
+          console.log("⚠️ Dados de rondas não disponíveis:", err.message);
+          setCache("pontosControle", []);
+          setCache("vigilantes", []);
+        }
+
+        setProgress(98);
+
+        // ═══════════════════════════════════════════════════════════
+        // ETAPA 13: Histórico de Visitas (99%)
+        // ═══════════════════════════════════════════════════════════
+        setProgressMessage("Carregando histórico de visitas...");
+
+        try {
+          const historicoRes = await api.get("/visitantes/historico");
+          const historicoData = historicoRes.data || [];
+          setCache("history", historicoData);
+        } catch (err) {
+          console.log("⚠️ Histórico não disponível:", err.message);
+          setCache("history", []);
+        }
+
+        setProgress(99);
+
+        // ═══════════════════════════════════════════════════════════
+        // ETAPA 14: Conectar ao Socket.IO (100%)
         // ═══════════════════════════════════════════════════════════
         setProgressMessage("Conectando sincronização em tempo real...");
 
@@ -784,7 +779,7 @@ export function useDataLoader(userId) {
         setProgressMessage("Concluído!");
 
         console.log(
-          `✅ Dados carregados: ${visitantesProcessados.length} visitantes`
+          `✅ Dados carregados: ${visitantesProcessados.length} visitantes`,
         );
         isDataLoadedRef.current = true;
       } catch (err) {
@@ -800,7 +795,7 @@ export function useDataLoader(userId) {
         }, 300);
       }
     },
-    [userId] // Removida dependência setupSocketListeners
+    [userId], // Removida dependência setupSocketListeners
   );
 
   // ═══════════════════════════════════════════════════════════════
@@ -834,14 +829,14 @@ export function useDataLoader(userId) {
         .sort((a, b) =>
           (a.nome || "")
             .toLowerCase()
-            .localeCompare((b.nome || "").toLowerCase(), "pt-BR")
+            .localeCompare((b.nome || "").toLowerCase(), "pt-BR"),
         );
 
       setVisitantes(visitantesProcessados);
       setCache("cadastroVisitantes", visitantesProcessados);
 
       console.log(
-        `🔄 Visitantes recarregados: ${visitantesProcessados.length}`
+        `🔄 Visitantes recarregados: ${visitantesProcessados.length}`,
       );
       return visitantesProcessados;
     } catch (err) {
@@ -882,7 +877,7 @@ export function useDataLoader(userId) {
       const novos = [...prev, visitanteProcessado].sort((a, b) =>
         (a.nome || "")
           .toLowerCase()
-          .localeCompare((b.nome || "").toLowerCase(), "pt-BR")
+          .localeCompare((b.nome || "").toLowerCase(), "pt-BR"),
       );
       setCache("cadastroVisitantes", novos);
       return novos;
@@ -914,7 +909,7 @@ export function useDataLoader(userId) {
         .sort((a, b) =>
           (a.nome || "")
             .toLowerCase()
-            .localeCompare((b.nome || "").toLowerCase(), "pt-BR")
+            .localeCompare((b.nome || "").toLowerCase(), "pt-BR"),
         );
       setCache("cadastroVisitantes", novos);
       return novos;
@@ -943,7 +938,6 @@ export function useDataLoader(userId) {
     setAgendamentos([]);
     setTickets([]);
     setFuncionarios([]);
-    setComunicados([]);
     setUserData(null);
 
     isDataLoadedRef.current = false;
@@ -1042,7 +1036,6 @@ export function useDataLoader(userId) {
     agendamentos,
     tickets,
     funcionarios,
-    comunicados,
     patchNotes,
     userData,
 

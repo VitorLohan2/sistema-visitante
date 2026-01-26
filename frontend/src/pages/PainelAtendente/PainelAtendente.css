@@ -439,14 +439,14 @@
   padding: 16px;
 }
 
-.historico-header {
+.historico-atendente-header {
   display: flex;
   flex-direction: column;
   gap: 12px;
   margin-bottom: 16px;
 }
 
-.historico-header h3 {
+.historico-atendente-header h3 {
   margin: 0;
   font-size: 16px;
   color: #343a40;

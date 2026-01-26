@@ -1,8 +1,21 @@
-import React, { useEffect, useState } from "react";
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * VISUALIZAR VISITANTE - Página de Detalhes do Cadastro
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Dados: Carregados do cache (Home é responsável pelo carregamento inicial)
+ * Atualização: Via Socket.IO em tempo real
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+import React, { useEffect, useState, useRef } from "react";
 import { useParams, useHistory } from "react-router-dom";
 import { FiImage, FiX } from "react-icons/fi";
 import "./styles.css";
 import api from "../../services/api";
+import { getCache, setCache } from "../../services/cacheService";
+import * as socketService from "../../services/socketService";
 import Loading from "../../components/Loading";
 
 export default function VisualizarVisitante() {
@@ -10,10 +23,36 @@ export default function VisualizarVisitante() {
   const history = useHistory();
   const [visitor, setVisitor] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
+  const socketListenersRef = useRef([]);
 
+  // ═══════════════════════════════════════════════════════════════
+  // CARREGAMENTO INICIAL - Primeiro do cache, depois API se necessário
+  // ═══════════════════════════════════════════════════════════════
   useEffect(() => {
-    async function fetchVisitor() {
+    async function loadVisitor() {
       try {
+        // ✅ Primeiro verifica se já tem no cache
+        const cachedVisitantes = getCache("cadastroVisitantes") || [];
+        const cachedVisitor = cachedVisitantes.find(
+          (v) => v.id === parseInt(id),
+        );
+
+        if (cachedVisitor) {
+          console.log("📦 Usando visitante do cache");
+          // Extrai as fotos dos campos imagem1, imagem2, imagem3
+          const fotos = [];
+          if (cachedVisitor.imagem1) fotos.push(cachedVisitor.imagem1);
+          if (cachedVisitor.imagem2) fotos.push(cachedVisitor.imagem2);
+          if (cachedVisitor.imagem3) fotos.push(cachedVisitor.imagem3);
+
+          setVisitor({
+            ...cachedVisitor,
+            fotos,
+          });
+          return;
+        }
+
+        // Se não tem no cache, busca da API
         const response = await api.get(`/cadastro-visitantes/${id}`);
 
         // Extrai as fotos dos campos imagem1, imagem2, imagem3
@@ -24,7 +63,7 @@ export default function VisualizarVisitante() {
 
         setVisitor({
           ...response.data,
-          fotos, // Adiciona o array de fotos ao state
+          fotos,
         });
       } catch (err) {
         alert("Erro ao buscar o cadastro.");
@@ -32,7 +71,67 @@ export default function VisualizarVisitante() {
       }
     }
 
-    fetchVisitor();
+    loadVisitor();
+  }, [id, history]);
+
+  // ═══════════════════════════════════════════════════════════════
+  // SOCKET.IO - Sincronização em tempo real
+  // ═══════════════════════════════════════════════════════════════
+  useEffect(() => {
+    // Limpa listeners anteriores
+    socketListenersRef.current.forEach((unsub) => unsub && unsub());
+    socketListenersRef.current = [];
+
+    // Listener: Visitante atualizado
+    const unsubUpdate = socketService.on("visitante:updated", (dados) => {
+      if (dados.id === parseInt(id)) {
+        console.log("📝 Socket: Visitante atualizado em tempo real", dados.id);
+
+        // Atualiza o estado local
+        setVisitor((prev) => {
+          if (!prev) return prev;
+
+          // Extrai as fotos atualizadas
+          const fotos = [];
+          if (dados.imagem1 || prev.imagem1)
+            fotos.push(dados.imagem1 || prev.imagem1);
+          if (dados.imagem2 || prev.imagem2)
+            fotos.push(dados.imagem2 || prev.imagem2);
+          if (dados.imagem3 || prev.imagem3)
+            fotos.push(dados.imagem3 || prev.imagem3);
+
+          return {
+            ...prev,
+            ...dados,
+            fotos,
+          };
+        });
+
+        // Atualiza também no cache global
+        const cachedVisitantes = getCache("cadastroVisitantes") || [];
+        const novosVisitantes = cachedVisitantes.map((v) =>
+          v.id === dados.id ? { ...v, ...dados } : v,
+        );
+        setCache("cadastroVisitantes", novosVisitantes);
+      }
+    });
+
+    // Listener: Visitante deletado
+    const unsubDelete = socketService.on("visitante:deleted", (dados) => {
+      if (dados.id === parseInt(id)) {
+        console.log("🗑️ Socket: Visitante deletado", dados.id);
+        alert("Este visitante foi removido do sistema.");
+        history.push("/listagem-visitante");
+      }
+    });
+
+    socketListenersRef.current.push(unsubUpdate, unsubDelete);
+
+    // Cleanup ao desmontar
+    return () => {
+      socketListenersRef.current.forEach((unsub) => unsub && unsub());
+      socketListenersRef.current = [];
+    };
   }, [id, history]);
 
   const formatCPF = (cpf) =>

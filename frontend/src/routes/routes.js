@@ -55,6 +55,7 @@ import GerenciamentoPermissoes from "../pages/GerenciamentoPermissoes";
 import Ronda from "../pages/Ronda";
 import HistoricoRondas from "../pages/Ronda/HistoricoRondas";
 import PainelRondas from "../pages/PainelRondas";
+import PontosControle from "../pages/PontosControle";
 
 // Componente de rota protegida
 import ProtectedRoute from "./protectedRoutes";
@@ -244,6 +245,14 @@ export default function Routes() {
         {/* Painel Administrativo de Rondas */}
         <ProtectedRoute path="/painel-rondas" permissao="ronda_gerenciar">
           <PainelRondas />
+        </ProtectedRoute>
+
+        {/* Pontos de Controle de Rondas */}
+        <ProtectedRoute
+          path="/pontos-controle"
+          permissao="ronda_pontos_controle_visualizar"
+        >
+          <PontosControle />
         </ProtectedRoute>
       </Switch>
     </BrowserRouter>

@@ -58,7 +58,7 @@ function init(server) {
     } catch (error) {
       console.log(
         "❌ Socket rejeitado: Token inválido ou expirado",
-        error.message
+        error.message,
       );
       socket.disconnect(true);
       return;
@@ -72,7 +72,7 @@ function init(server) {
     socket.on("chat-suporte:entrar", (conversa_id) => {
       socket.join(`conversa:${conversa_id}`);
       console.log(
-        `💬 Socket ${socket.id} entrou na conversa de suporte ${conversa_id}`
+        `💬 Socket ${socket.id} entrou na conversa de suporte ${conversa_id}`,
       );
     });
 
@@ -80,7 +80,7 @@ function init(server) {
     socket.on("chat-suporte:sair", (conversa_id) => {
       socket.leave(`conversa:${conversa_id}`);
       console.log(
-        `💬 Socket ${socket.id} saiu da conversa de suporte ${conversa_id}`
+        `💬 Socket ${socket.id} saiu da conversa de suporte ${conversa_id}`,
       );
     });
 
@@ -88,7 +88,7 @@ function init(server) {
     socket.on("chat-suporte:atendente-online", async () => {
       socket.join("atendentes");
       console.log(
-        `👨‍💼 Atendente ${socket.userName} entrou na sala de atendentes`
+        `👨‍💼 Atendente ${socket.userName} entrou na sala de atendentes`,
       );
 
       // Emite atualização da fila para o novo atendente
@@ -133,6 +133,110 @@ function init(server) {
       socket.leave(`conversa:${conversa_id}`);
       console.log(`👤 Socket ${socket.id} saiu da conversa ${conversa_id}`);
     });
+
+    // ═══════════════════════════════════════════════════════════════
+    // EVENTOS DE RONDA VIGILANTE (TEMPO REAL)
+    // ═══════════════════════════════════════════════════════════════
+
+    // 👉 ENTRAR NA SALA DA RONDA (para acompanhar em tempo real)
+    socket.on("ronda:entrar", (rondaId) => {
+      socket.join(`ronda:${rondaId}`);
+      console.log(`🚶 Socket ${socket.id} entrou na sala da ronda ${rondaId}`);
+    });
+
+    // 👉 SAIR DA SALA DA RONDA
+    socket.on("ronda:sair", (rondaId) => {
+      socket.leave(`ronda:${rondaId}`);
+      console.log(`🚶 Socket ${socket.id} saiu da sala da ronda ${rondaId}`);
+    });
+
+    // 👉 ATUALIZAÇÃO DE POSIÇÃO GPS EM TEMPO REAL
+    socket.on("ronda:posicao", (dados) => {
+      // Broadcast para todos na sala da ronda (exceto quem enviou)
+      socket.to(`ronda:${dados.ronda_id}`).emit("ronda:posicao-atualizada", {
+        ronda_id: dados.ronda_id,
+        latitude: dados.latitude,
+        longitude: dados.longitude,
+        precisao: dados.precisao,
+        velocidade: dados.velocidade,
+        timestamp: dados.timestamp,
+        usuario_id: socket.userId,
+        usuario_nome: socket.userName,
+      });
+
+      // Também emite para sala global (painel de rondas)
+      io.to("global").emit("ronda:posicao-atualizada", {
+        ronda_id: dados.ronda_id,
+        latitude: dados.latitude,
+        longitude: dados.longitude,
+        precisao: dados.precisao,
+        velocidade: dados.velocidade,
+        timestamp: dados.timestamp,
+        usuario_id: socket.userId,
+        usuario_nome: socket.userName,
+      });
+    });
+
+    // 👉 CHECKPOINT REGISTRADO
+    socket.on("ronda:checkpoint", (dados) => {
+      // Notifica sala da ronda
+      socket.to(`ronda:${dados.ronda_id}`).emit("ronda:checkpoint-registrado", {
+        ronda_id: dados.ronda_id,
+        checkpoint: dados.checkpoint,
+        usuario_id: socket.userId,
+        usuario_nome: socket.userName,
+      });
+
+      // Notifica sala global
+      io.to("global").emit("ronda:checkpoint-registrado", {
+        ronda_id: dados.ronda_id,
+        checkpoint: dados.checkpoint,
+        usuario_id: socket.userId,
+        usuario_nome: socket.userName,
+      });
+
+      console.log(
+        `📍 Checkpoint registrado na ronda ${dados.ronda_id} por ${socket.userName}`,
+      );
+    });
+
+    // 👉 RONDA INICIADA
+    socket.on("ronda:iniciada", (ronda) => {
+      // Entra automaticamente na sala da ronda
+      socket.join(`ronda:${ronda.id}`);
+
+      // Notifica todos (painel de rondas)
+      io.to("global").emit("ronda:nova-iniciada", {
+        ...ronda,
+        usuario_id: socket.userId,
+        usuario_nome: socket.userName,
+      });
+
+      console.log(`🟢 Ronda ${ronda.id} iniciada por ${socket.userName}`);
+    });
+
+    // 👉 RONDA FINALIZADA
+    socket.on("ronda:finalizada", (ronda) => {
+      // Notifica sala da ronda
+      io.to(`ronda:${ronda.id}`).emit("ronda:encerrada", {
+        ...ronda,
+        usuario_id: socket.userId,
+        usuario_nome: socket.userName,
+      });
+
+      // Notifica sala global
+      io.to("global").emit("ronda:encerrada", {
+        ...ronda,
+        usuario_id: socket.userId,
+        usuario_nome: socket.userName,
+      });
+
+      console.log(`🔴 Ronda ${ronda.id} finalizada por ${socket.userName}`);
+    });
+
+    // ═══════════════════════════════════════════════════════════════
+    // EVENTOS DE DESCONEXÃO
+    // ═══════════════════════════════════════════════════════════════
 
     // 🆕 SOLICITAR LISTA DE EQUIPE ONLINE
     socket.on("disconnect", async () => {
@@ -231,7 +335,7 @@ async function enviarEquipeOnlineParaSocket(socket) {
     socket.emit("equipe:online", onlineUsers);
 
     console.log(
-      `👥 Lista de equipe online enviada para socket ${socket.id}: ${onlineUsers.length} membros ADMIN de TI online`
+      `👥 Lista de equipe online enviada para socket ${socket.id}: ${onlineUsers.length} membros ADMIN de TI online`,
     );
   } catch (error) {
     console.error("❌ Erro ao enviar equipe online:", error);
@@ -276,11 +380,11 @@ async function emitirEquipeOnlineAtualizada() {
     io.to("global").emit("equipe:online", onlineUsers);
 
     console.log(
-      `👥 Equipe online atualizada (broadcast): ${onlineUsers.length} membros ADM de TI online`
+      `👥 Equipe online atualizada (broadcast): ${onlineUsers.length} membros ADM de TI online`,
     );
     console.log(
       "📋 Membros online:",
-      onlineUsers.map((u) => u.nome).join(", ") || "Nenhum"
+      onlineUsers.map((u) => u.nome).join(", ") || "Nenhum",
     );
   } catch (error) {
     console.error("❌ Erro ao emitir equipe online:", error);

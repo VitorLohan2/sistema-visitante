@@ -1,8 +1,20 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * EDITAR CADASTRO VISITANTE - Página de Edição de Visitantes
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Dados: Carregados do cache (useDataLoader é responsável pelo carregamento inicial)
+ * Atualização: Via Socket.IO em tempo real
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
 // src/pages/EditarCadastroVisitante/index.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useHistory, useParams } from "react-router-dom";
 import api from "../../services/api";
 import { getCache, setCache } from "../../services/cacheService";
+import * as socketService from "../../services/socketService";
 import { usePermissoes } from "../../hooks/usePermissoes";
 import "./styles.css";
 
@@ -29,8 +41,18 @@ export default function EditarCadastroVisitante() {
 
   const history = useHistory();
   const { id } = useParams();
-  const [empresas, setEmpresas] = useState([]);
-  const [setores, setSetores] = useState([]);
+
+  // ═══════════════════════════════════════════════════════════════
+  // DADOS DO CACHE (carregados pelo useDataLoader)
+  // ═══════════════════════════════════════════════════════════════
+  const [empresas, setEmpresas] = useState(
+    () => getCache("empresasVisitantes") || [],
+  );
+  const [setores, setSetores] = useState(
+    () => getCache("setoresVisitantes") || [],
+  );
+  const socketListenersRef = useRef([]);
+
   const [fotos, setFotos] = useState([]);
   const [avatar, setAvatar] = useState("");
   const [errors, setErrors] = useState({
@@ -44,12 +66,15 @@ export default function EditarCadastroVisitante() {
   // Permissão para bloquear/desbloquear visitantes
   const podeBloquer = temPermissao("cadastro_bloquear");
 
+  // ═══════════════════════════════════════════════════════════════
+  // CARREGAMENTO DE DADOS - Primeiro do cache, depois API se necessário
+  // ═══════════════════════════════════════════════════════════════
   useEffect(() => {
     async function loadData() {
       try {
         // ✅ Primeiro verifica se já tem empresas e setores no cache
-        const cachedEmpresas = getCache("empresas");
-        const cachedSetores = getCache("setores");
+        const cachedEmpresas = getCache("empresasVisitantes");
+        const cachedSetores = getCache("setoresVisitantes");
 
         // Busca dados do visitante (sempre da API - dados específicos)
         const incidentRes = await api.get(`/cadastro-visitantes/${id}`);
@@ -85,8 +110,8 @@ export default function EditarCadastroVisitante() {
           const setoresData = setoresRes.data;
 
           // Salva no cache
-          setCache("empresas", empresasData);
-          setCache("setores", setoresData);
+          setCache("empresasVisitantes", empresasData);
+          setCache("setoresVisitantes", setoresData);
 
           setEmpresas(empresasData);
           setSetores(setoresData);
@@ -111,6 +136,103 @@ export default function EditarCadastroVisitante() {
 
     loadData();
   }, [id, history]);
+
+  // ═══════════════════════════════════════════════════════════════
+  // SOCKET LISTENERS - Sincronização em tempo real
+  // ═══════════════════════════════════════════════════════════════
+  useEffect(() => {
+    // Remove listeners anteriores
+    socketListenersRef.current.forEach((unsubscribe) => unsubscribe());
+    socketListenersRef.current = [];
+
+    // Listener para empresas criadas
+    const unsubEmpresaCreated = socketService.on(
+      "empresa:created",
+      (novaEmpresa) => {
+        console.log("🔵 Socket: Nova empresa criada", novaEmpresa);
+        setEmpresas((prev) => {
+          const updated = [...prev, novaEmpresa];
+          setCache("empresasVisitantes", updated);
+          return updated;
+        });
+      },
+    );
+    socketListenersRef.current.push(unsubEmpresaCreated);
+
+    // Listener para empresas atualizadas
+    const unsubEmpresaUpdated = socketService.on(
+      "empresa:updated",
+      (empresaAtualizada) => {
+        console.log("🔵 Socket: Empresa atualizada", empresaAtualizada);
+        setEmpresas((prev) => {
+          const updated = prev.map((e) =>
+            e.id === empresaAtualizada.id ? empresaAtualizada : e,
+          );
+          setCache("empresasVisitantes", updated);
+          return updated;
+        });
+      },
+    );
+    socketListenersRef.current.push(unsubEmpresaUpdated);
+
+    // Listener para empresas deletadas
+    const unsubEmpresaDeleted = socketService.on(
+      "empresa:deleted",
+      (empresaId) => {
+        console.log("🔵 Socket: Empresa deletada", empresaId);
+        setEmpresas((prev) => {
+          const updated = prev.filter((e) => e.id !== empresaId);
+          setCache("empresasVisitantes", updated);
+          return updated;
+        });
+      },
+    );
+    socketListenersRef.current.push(unsubEmpresaDeleted);
+
+    // Listener para setores criados
+    const unsubSetorCreated = socketService.on("setor:created", (novoSetor) => {
+      console.log("🔵 Socket: Novo setor criado", novoSetor);
+      setSetores((prev) => {
+        const updated = [...prev, novoSetor];
+        setCache("setoresVisitantes", updated);
+        return updated;
+      });
+    });
+    socketListenersRef.current.push(unsubSetorCreated);
+
+    // Listener para setores atualizados
+    const unsubSetorUpdated = socketService.on(
+      "setor:updated",
+      (setorAtualizado) => {
+        console.log("🔵 Socket: Setor atualizado", setorAtualizado);
+        setSetores((prev) => {
+          const updated = prev.map((s) =>
+            s.id === setorAtualizado.id ? setorAtualizado : s,
+          );
+          setCache("setoresVisitantes", updated);
+          return updated;
+        });
+      },
+    );
+    socketListenersRef.current.push(unsubSetorUpdated);
+
+    // Listener para setores deletados
+    const unsubSetorDeleted = socketService.on("setor:deleted", (setorId) => {
+      console.log("🔵 Socket: Setor deletado", setorId);
+      setSetores((prev) => {
+        const updated = prev.filter((s) => s.id !== setorId);
+        setCache("setoresVisitantes", updated);
+        return updated;
+      });
+    });
+    socketListenersRef.current.push(unsubSetorDeleted);
+
+    // Cleanup ao desmontar
+    return () => {
+      socketListenersRef.current.forEach((unsubscribe) => unsubscribe());
+      socketListenersRef.current = [];
+    };
+  }, []);
 
   // === Funções de formatação (iguais ao cadastro) ===
   const formatCPF = (value) => {

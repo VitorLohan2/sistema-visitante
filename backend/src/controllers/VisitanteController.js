@@ -204,7 +204,39 @@ module.exports = {
         return response.status(404).json({ error: "Visitante não encontrado" });
       }
 
-      await connection("historico_visitante").insert({
+      const dataSaida = new Date().toISOString();
+
+      // Insere no histórico e captura o novo ID
+      const [historicoRecord] = await connection("historico_visitante")
+        .insert({
+          nome: visitor.nome,
+          cpf: visitor.cpf,
+          empresa: visitor.empresa,
+          setor: visitor.setor,
+          placa_veiculo: visitor.placa_veiculo,
+          cor_veiculo: visitor.cor_veiculo,
+          tipo_veiculo: visitor.tipo_veiculo,
+          funcao: visitor.funcao,
+          responsavel: visitor.responsavel,
+          observacao: visitor.observacao,
+          data_de_entrada: visitor.data_de_entrada,
+          data_de_saida: dataSaida,
+          usuario_id: visitor.usuario_id,
+        })
+        .returning("*");
+
+      await connection("visitante").where("id", id).delete();
+
+      // Evento para remover da lista de visitantes ativos
+      const visitorDeleteData = {
+        id: parseInt(id),
+        timestamp: new Date(),
+        acao: "removido",
+      };
+
+      // Evento com dados completos do histórico (usa o novo ID do histórico)
+      const historicoData = {
+        id: historicoRecord.id, // ID do registro no histórico
         nome: visitor.nome,
         cpf: visitor.cpf,
         empresa: visitor.empresa,
@@ -216,34 +248,19 @@ module.exports = {
         responsavel: visitor.responsavel,
         observacao: visitor.observacao,
         data_de_entrada: visitor.data_de_entrada,
-        data_de_saida: new Date().toISOString(),
-        usuario_id: visitor.usuario_id,
-      });
-
-      await connection("visitante").where("id", id).delete();
-
-      const eventData = {
-        id: parseInt(id), // Garantir que é número
-        nome: visitor.nome,
-        cpf: visitor.cpf,
-        empresa: visitor.empresa,
-        setor: visitor.setor,
-        placa_veiculo: visitor.placa_veiculo,
-        cor_veiculo: visitor.cor_veiculo,
-        tipo_veiculo: visitor.tipo_veiculo,
-        funcao: visitor.funcao,
-        data_de_saida: new Date(),
+        data_de_saida: dataSaida,
         usuario_id: visitor.usuario_id,
         timestamp: new Date(),
         acao: "encerrado",
       };
 
-      io.to("global").emit("visitor:delete", eventData);
-      io.to("global").emit("visitor:end", eventData);
-      console.log(
-        "📡 Evento visitor:delete e visitor:end emitidos:",
-        eventData
-      );
+      // Emite eventos separados para cada propósito
+      io.to("global").emit("visitor:delete", visitorDeleteData);
+      io.to("global").emit("visitor:end", historicoData);
+      console.log("📡 Eventos emitidos - visitor:delete e visitor:end:", {
+        visitorId: id,
+        historicoId: historicoRecord.id,
+      });
 
       return response.status(204).send();
     } catch (err) {

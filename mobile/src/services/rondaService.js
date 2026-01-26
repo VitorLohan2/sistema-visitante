@@ -1,21 +1,55 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
  * SERVIÇO: Ronda de Vigilante
- * Gerencia operações de ronda com GPS em tempo real
+ * Gerencia operações de ronda baseada em Pontos de Controle
+ *
+ * ARQUITETURA:
+ * - Pontos de controle pré-cadastrados com coordenadas e raio
+ * - Validação de presença por proximidade GPS
+ * - Suporte offline com sincronização posterior
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
 import api from "./api";
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// PONTOS DE CONTROLE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Lista pontos de controle disponíveis para ronda
+ * @param {number} [empresaId] - ID da empresa (opcional)
+ * @returns {Promise} Lista de pontos de controle
+ */
+export async function listarPontosControle(empresaId) {
+  const params = empresaId ? { empresa_id: empresaId } : {};
+  const response = await api.get("/rondas/pontos-controle", { params });
+  return response.data;
+}
+
+/**
+ * Busca detalhes de um ponto de controle específico
+ * @param {number} pontoId - ID do ponto de controle
+ * @returns {Promise} Dados do ponto de controle
+ */
+export async function buscarPontoControle(pontoId) {
+  const response = await api.get(`/rondas/pontos-controle/${pontoId}`);
+  return response.data;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RONDA
+// ═══════════════════════════════════════════════════════════════════════════════
+
 /**
  * Inicia uma nova ronda
- * @param {object} posicaoInicial - Coordenadas iniciais {latitude, longitude, precisao}
+ * @param {object} posicaoInicial - Coordenadas iniciais {latitude, longitude}
  */
 export async function iniciarRonda(posicaoInicial) {
   const response = await api.post("/rondas/iniciar", {
-    latitude_inicio: posicaoInicial.latitude,
-    longitude_inicio: posicaoInicial.longitude,
-    precisao_gps: posicaoInicial.precisao,
+    latitude: posicaoInicial.latitude,
+    longitude: posicaoInicial.longitude,
+    observacoes: posicaoInicial.observacoes || null,
   });
   return response.data;
 }
@@ -29,47 +63,49 @@ export async function buscarRondaEmAndamento() {
 }
 
 /**
- * Registra checkpoint na ronda
+ * Registra checkpoint na ronda (validação de ponto de controle)
  * @param {number} rondaId - ID da ronda
  * @param {object} dados - Dados do checkpoint
+ * @param {number} dados.ponto_controle_id - ID do ponto de controle validado
+ * @param {number} dados.latitude - Latitude do vigilante no momento da validação
+ * @param {number} dados.longitude - Longitude do vigilante no momento da validação
+ * @param {number} dados.distancia - Distância do ponto de controle em metros
+ * @param {string} [dados.observacao] - Observação opcional
  */
 export async function registrarCheckpoint(rondaId, dados) {
-  const response = await api.post(`/rondas/${rondaId}/checkpoints`, {
+  const response = await api.post(`/rondas/${rondaId}/checkpoint`, {
+    ponto_controle_id: dados.ponto_controle_id || dados.checkpoint_id,
     latitude: dados.latitude,
     longitude: dados.longitude,
-    precisao_gps: dados.precisao,
-    descricao: dados.descricao,
+    distancia: dados.distancia,
+    precisao: dados.precisao || null,
+    descricao: dados.descricao || dados.observacao || null,
+    foto_url: dados.foto_url || null,
   });
   return response.data;
 }
 
 /**
- * Registra ponto do trajeto (posição GPS)
- * @param {number} rondaId - ID da ronda
- * @param {object} posicao - Coordenadas {latitude, longitude, precisao}
+ * @deprecated Não utilizar - trajeto contínuo foi substituído por pontos de controle
+ * Mantido para compatibilidade
  */
 export async function registrarTrajeto(rondaId, posicao) {
-  const response = await api.post(`/rondas/${rondaId}/trajeto`, {
-    latitude: posicao.latitude,
-    longitude: posicao.longitude,
-    precisao_gps: posicao.precisao,
-    altitude: posicao.altitude,
-    velocidade: posicao.velocidade,
-  });
-  return response.data;
+  console.warn(
+    "registrarTrajeto está deprecado. Use validação por pontos de controle.",
+  );
+  return { success: false, message: "Método deprecado" };
 }
 
 /**
  * Finaliza ronda
  * @param {number} rondaId - ID da ronda
- * @param {object} dados - Dados finais {latitude, longitude, observacao}
+ * @param {object} dados - Dados finais {latitude, longitude, observacoes}
  */
 export async function finalizarRonda(rondaId, dados) {
-  const response = await api.post(`/rondas/${rondaId}/finalizar`, {
-    latitude_fim: dados.latitude,
-    longitude_fim: dados.longitude,
-    precisao_gps: dados.precisao,
-    observacao: dados.observacao,
+  const response = await api.put(`/rondas/${rondaId}/finalizar`, {
+    latitude: dados.latitude || null,
+    longitude: dados.longitude || null,
+    observacoes: dados.observacoes || dados.observacao || null,
   });
   return response.data;
 }
@@ -80,8 +116,8 @@ export async function finalizarRonda(rondaId, dados) {
  * @param {string} motivo - Motivo do cancelamento
  */
 export async function cancelarRonda(rondaId, motivo) {
-  const response = await api.post(`/rondas/${rondaId}/cancelar`, {
-    motivo,
+  const response = await api.put(`/rondas/${rondaId}/cancelar`, {
+    motivo: motivo || null,
   });
   return response.data;
 }
@@ -105,10 +141,15 @@ export async function buscarRonda(rondaId) {
 }
 
 export default {
+  // Pontos de Controle
+  listarPontosControle,
+  buscarPontoControle,
+
+  // Ronda
   iniciarRonda,
   buscarRondaEmAndamento,
   registrarCheckpoint,
-  registrarTrajeto,
+  registrarTrajeto, // deprecado
   finalizarRonda,
   cancelarRonda,
   listarHistorico,

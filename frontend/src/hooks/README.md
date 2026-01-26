@@ -245,7 +245,6 @@ function MeuComponente() {
 | `agendamentos`      | `array`        | Agendamentos                    |
 | `tickets`           | `array`        | Tickets de suporte              |
 | `funcionarios`      | `array`        | Funcionários                    |
-| `comunicados`       | `array`        | Comunicados                     |
 | `userData`          | `object`       | Dados do usuário logado         |
 | **Ações**           |                |                                 |
 | `loadAllData`       | `function`     | Recarrega tudo                  |
@@ -290,8 +289,8 @@ function MeuComponente() {
 │  [████████████████████] 85% - Carregando permissões...         │
 │  Rota: /usuarios-papeis/me/permissoes                          │
 │                                                                 │
-│  [████████████████████] 95% - Carregando comunicados...        │
-│  Rota: /comunicados                                            │
+│  [████████████████████] 95% - Carregando patch notes...        │
+│  Rota: /patch-notes                                            │
 │                                                                 │
 │  [████████████████████] 100% - Conectando Socket.IO...         │
 │                                                                 │
@@ -353,7 +352,6 @@ function Dashboard() {
 | `agendamento:create/update/delete`    | Gerencia agendamentos           |
 | `ticket:create/update/viewed`         | Gerencia tickets                |
 | `funcionario:created/updated/deleted` | Gerencia funcionários           |
-| `comunicado:created/updated/deleted`  | Gerencia comunicados            |
 
 ---
 

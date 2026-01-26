@@ -35,7 +35,6 @@
  * - history: Histórico de visitas
  * - agendamentos: Agendamentos de visitantes
  * - tickets: Tickets de suporte
- * - comunicados: Comunicados do sistema
  *
  * DADOS DE DESCARGA:
  * - solicitacoesDescarga: Solicitações de descarga
@@ -75,12 +74,16 @@ const memoryCache = {
   usuariosPapeis: null,
   papeisPermissoes: null,
 
+  // Dados de gerenciamento de permissões
+  allUsuarios: null,
+  allPapeis: null,
+  allPermissoes: null,
+
   // Dados operacionais
   visitors: null,
   history: null,
   agendamentos: null,
   tickets: null,
-  comunicados: null,
   patchNotes: null,
 
   // Dados de descarga
@@ -95,6 +98,11 @@ const memoryCache = {
   registrosPonto: null,
   historicoPontoDiario: null,
   registrosFuncionarios: null,
+
+  // Dados de ronda
+  pontosControle: null,
+  rondas: null,
+  vigilantes: null,
 
   // Dados auxiliares
   userData: null,
@@ -128,12 +136,16 @@ const CACHE_KEYS = {
   USUARIOSPAPEIS: "cache_usuarios_papeis",
   PAPEISPERMISSOES: "cache_papeis_permissoes",
 
+  // Dados de gerenciamento de permissões
+  ALLUSUARIOS: "cache_all_usuarios",
+  ALLPAPEIS: "cache_all_papeis",
+  ALLPERMISSOES: "cache_all_permissoes",
+
   // Dados operacionais
   VISITORS: "cache_visitors",
   HISTORY: "cache_history",
   AGENDAMENTOS: "cache_agendamentos",
   TICKETS: "cache_tickets",
-  COMUNICADOS: "cache_comunicados",
   PATCHNOTES: "cache_patch_notes",
 
   // Dados de descarga
@@ -148,6 +160,11 @@ const CACHE_KEYS = {
   REGISTROSPONTO: "cache_registros_ponto",
   HISTORICOPONTODIARIO: "cache_historico_ponto_diario",
   REGISTROSFUNCIONARIOS: "cache_registros_funcionarios",
+
+  // Dados de ronda
+  PONTOSCONTROLE: "cache_pontos_controle",
+  RONDAS: "cache_rondas",
+  VIGILANTES: "cache_vigilantes",
 
   // Dados auxiliares
   USERDATA: "cache_user_data",
@@ -208,7 +225,7 @@ export function setCache(key, data) {
     sessionStorage.setItem(CACHE_KEYS.LASTUPDATE, now.toString());
 
     console.log(
-      `✅ Cache salvo: ${key} (${Array.isArray(data) ? data.length + " itens" : "dados"})`
+      `✅ Cache salvo: ${key} (${Array.isArray(data) ? data.length + " itens" : "dados"})`,
     );
   } catch (error) {
     console.error(`❌ Erro ao salvar cache ${key}:`, error);
@@ -319,7 +336,6 @@ export function getCacheStats() {
     "history",
     "agendamentos",
     "tickets",
-    "comunicados",
     "solicitacoesDescarga",
     "conversasSuporte",
   ];
@@ -353,7 +369,7 @@ export function addToCache(
   cacheKey,
   item,
   sortField = null,
-  sortOrder = "asc"
+  sortOrder = "asc",
 ) {
   const items = getCache(cacheKey) || [];
 
@@ -390,7 +406,7 @@ export function addToCache(
 export function updateInCache(cacheKey, id, updates, idField = "id") {
   const items = getCache(cacheKey) || [];
   const newItems = items.map((item) =>
-    item[idField] === id ? { ...item, ...updates } : item
+    item[idField] === id ? { ...item, ...updates } : item,
   );
   setCache(cacheKey, newItems);
   return newItems;
@@ -436,7 +452,7 @@ export function updateVisitanteInCache(id, dados) {
   const sorted = result.sort((a, b) =>
     (a.nome || "")
       .toLowerCase()
-      .localeCompare((b.nome || "").toLowerCase(), "pt-BR")
+      .localeCompare((b.nome || "").toLowerCase(), "pt-BR"),
   );
   setCache("cadastroVisitantes", sorted);
   return sorted;
@@ -540,7 +556,7 @@ export function updateEmpresaVisitanteInCache(id, dados) {
   const sorted = result.sort((a, b) =>
     (a.nome || "")
       .toLowerCase()
-      .localeCompare((b.nome || "").toLowerCase(), "pt-BR")
+      .localeCompare((b.nome || "").toLowerCase(), "pt-BR"),
   );
   setCache("empresasVisitantes", sorted);
   return sorted;
@@ -563,7 +579,7 @@ export function updateSetorVisitanteInCache(id, dados) {
   const sorted = result.sort((a, b) =>
     (a.nome || "")
       .toLowerCase()
-      .localeCompare((b.nome || "").toLowerCase(), "pt-BR")
+      .localeCompare((b.nome || "").toLowerCase(), "pt-BR"),
   );
   setCache("setoresVisitantes", sorted);
   return sorted;
@@ -594,25 +610,6 @@ export function clearPermissoesCache() {
   memoryCache.papeis = null;
   sessionStorage.removeItem(CACHE_KEYS.PERMISSOES);
   sessionStorage.removeItem(CACHE_KEYS.PAPEIS);
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// FUNÇÕES ESPECÍFICAS PARA COMUNICADOS
-// ═══════════════════════════════════════════════════════════════════════════
-
-export function addComunicadoToCache(comunicado) {
-  const comunicados = getCache("comunicados") || [];
-  const newComunicados = [comunicado, ...comunicados];
-  setCache("comunicados", newComunicados);
-  return newComunicados;
-}
-
-export function updateComunicadoInCache(id, dados) {
-  return updateInCache("comunicados", id, dados);
-}
-
-export function removeComunicadoFromCache(id) {
-  return removeFromCache("comunicados", id);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -742,11 +739,6 @@ export default {
   setPermissoesCache,
   getPermissoesCache,
   clearPermissoesCache,
-
-  // Comunicados
-  addComunicadoToCache,
-  updateComunicadoInCache,
-  removeComunicadoFromCache,
 
   // Solicitações de Descarga
   addSolicitacaoDescargaToCache,

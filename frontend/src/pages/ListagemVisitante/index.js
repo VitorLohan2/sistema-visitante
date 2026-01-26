@@ -41,7 +41,7 @@ export default function ListagemVisitante() {
   // DADOS DO CACHE (carregados pela Home)
   // ═══════════════════════════════════════════════════════════════
   const [visitantes, setVisitantes] = useState(
-    () => getCache("cadastroVisitantes") || []
+    () => getCache("cadastroVisitantes") || [],
   );
   const [responsaveis] = useState(() => getCache("responsaveis") || []);
   const socketListenersRef = useRef([]);
@@ -80,7 +80,7 @@ export default function ListagemVisitante() {
         const novos = [...prev, visitante].sort((a, b) =>
           (a.nome || "")
             .toLowerCase()
-            .localeCompare((b.nome || "").toLowerCase(), "pt-BR")
+            .localeCompare((b.nome || "").toLowerCase(), "pt-BR"),
         );
         setCache("cadastroVisitantes", novos);
         return novos;
@@ -91,7 +91,7 @@ export default function ListagemVisitante() {
     const unsubUpdate = socketService.on("visitante:updated", (dados) => {
       setVisitantes((prev) => {
         const novos = prev.map((v) =>
-          v.id === dados.id ? { ...v, ...dados } : v
+          v.id === dados.id ? { ...v, ...dados } : v,
         );
         setCache("cadastroVisitantes", novos);
         return novos;
@@ -202,7 +202,7 @@ export default function ListagemVisitante() {
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
   const currentRecords = sortedVisitantes.slice(
     indexOfFirstRecord,
-    indexOfLastRecord
+    indexOfLastRecord,
   );
 
   const nextPage = () => {
@@ -290,7 +290,7 @@ export default function ListagemVisitante() {
         if (editedData.cor_veiculo) {
           const coresRes = await api.get("/cores-veiculos-visitantes");
           const corFound = coresRes.data.find(
-            (c) => c.nome === editedData.cor_veiculo
+            (c) => c.nome === editedData.cor_veiculo,
           );
           corVeiculoId = corFound?.id || null;
         }
@@ -298,7 +298,7 @@ export default function ListagemVisitante() {
         if (editedData.tipo_veiculo) {
           const tiposRes = await api.get("/tipos-veiculos-visitantes");
           const tipoFound = tiposRes.data.find(
-            (t) => t.nome === editedData.tipo_veiculo
+            (t) => t.nome === editedData.tipo_veiculo,
           );
           tipoVeiculoId = tipoFound?.id || null;
         }
@@ -416,15 +416,24 @@ export default function ListagemVisitante() {
         </Link>
       </header>
 
-      <h1>
-        Visitantes Cadastrados ({sortedVisitantes.length})
-        {isSearching && searchTerm && (
-          <span className="search-results-info">
-            {" "}
-            - Buscando por "{searchTerm}" ({sortedVisitantes.length} resultados)
+      <div className="page-header-section">
+        <h1 className="page-title">Visitantes Cadastrados</h1>
+        <div className="page-subtitle">
+          <span className="total-counter">
+            <span className="counter-value">{visitantes.length}</span>
+            <span className="counter-label">cadastros registrados</span>
           </span>
-        )}
-      </h1>
+          {isSearching && searchTerm && (
+            <span className="search-results-badge">
+              <span className="badge-icon">🔍</span>
+              <span className="badge-text">
+                {sortedVisitantes.length} resultado
+                {sortedVisitantes.length !== 1 ? "s" : ""} para "{searchTerm}"
+              </span>
+            </span>
+          )}
+        </div>
+      </div>
 
       {/* CARDS CONTAINER */}
       <div className="visitors-list">
@@ -491,7 +500,7 @@ export default function ListagemVisitante() {
                   {pageNumber}
                 </button>
               ) : null;
-            }
+            },
           )}
 
           {2 + (pageGroup + 1) * pagesPerGroup < totalPages && (

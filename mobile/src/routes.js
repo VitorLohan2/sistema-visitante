@@ -32,7 +32,10 @@ import {
   CriarTicket,
   BiparCracha,
   // Vigilante
+  MenuVigilante,
   Ronda,
+  HistoricoRondas,
+  DetalhesRonda,
 } from "./pages";
 
 // Estilos
@@ -97,7 +100,10 @@ function AppStack() {
       <Stack.Screen name="BiparCracha" component={BiparCracha} />
 
       {/* Vigilante */}
+      <Stack.Screen name="MenuVigilante" component={MenuVigilante} />
       <Stack.Screen name="Ronda" component={Ronda} />
+      <Stack.Screen name="HistoricoRondas" component={HistoricoRondas} />
+      <Stack.Screen name="DetalhesRonda" component={DetalhesRonda} />
     </Stack.Navigator>
   );
 }

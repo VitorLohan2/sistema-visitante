@@ -1,3 +1,14 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * TICKET DASHBOARD - Gerenciamento de Tickets de Suporte
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Dados: Carregados do cache (useDataLoader é responsável pelo carregamento inicial)
+ * Atualização: Via TicketContext que gerencia Socket.IO em tempo real
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useHistory } from "react-router-dom";
 import {
@@ -17,6 +28,7 @@ import {
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import api from "../../services/api";
+import { getCache, setCache } from "../../services/cacheService";
 import { useAuth } from "../../hooks/useAuth";
 import { usePermissoes } from "../../hooks/usePermissoes";
 import { useTickets } from "../../contexts/TicketContext";
@@ -32,11 +44,21 @@ const TicketDashboard = () => {
     fetchTickets: fetchTicketsContext,
   } = useTickets();
   const [filteredTickets, setFilteredTickets] = useState([]);
-  const [userData, setUserData] = useState({
-    nome: "",
-    setor: "",
-    setor_id: null,
+
+  // ═══════════════════════════════════════════════════════════════
+  // DADOS DO CACHE (carregados pelo useDataLoader)
+  // ═══════════════════════════════════════════════════════════════
+  const [userData, setUserData] = useState(() => {
+    const cached = getCache("userData");
+    return cached
+      ? {
+          nome: cached.name || "",
+          setor: cached.setor || cached.setor_nome || "",
+          setor_id: cached.setor_id || null,
+        }
+      : { nome: "", setor: "", setor_id: null };
   });
+
   const [filterDate, setFilterDate] = useState("");
   const [filterStatus, setFilterStatus] = useState("todos");
   const [isLoading, setIsLoading] = useState(true);
@@ -103,7 +125,7 @@ const TicketDashboard = () => {
   };
 
   // ═══════════════════════════════════════════════════════════════
-  // CARREGAMENTO DE DADOS
+  // CARREGAMENTO DE DADOS - Primeiro do cache, depois API se necessário
   // ═══════════════════════════════════════════════════════════════
   const fetchTickets = useCallback(
     async (forceRefresh = false) => {
@@ -113,12 +135,26 @@ const TicketDashboard = () => {
       setIsLoading(true);
 
       try {
-        const userRes = await api.get(`/usuarios/${ongId}`);
-        setUserData({
-          nome: userRes.data.name,
-          setor: userRes.data.setor || userRes.data.setor_nome || "",
-          setor_id: userRes.data.setor_id,
-        });
+        // ✅ Primeiro verifica se já tem userData no cache
+        const cachedUserData = getCache("userData");
+        if (cachedUserData && !forceRefresh) {
+          console.log("📦 Usando userData do cache");
+          setUserData({
+            nome: cachedUserData.name || "",
+            setor: cachedUserData.setor || cachedUserData.setor_nome || "",
+            setor_id: cachedUserData.setor_id || null,
+          });
+        } else {
+          // Se não tem cache ou forceRefresh, busca da API
+          const userRes = await api.get(`/usuarios/${ongId}`);
+          setUserData({
+            nome: userRes.data.name,
+            setor: userRes.data.setor || userRes.data.setor_nome || "",
+            setor_id: userRes.data.setor_id,
+          });
+          // Atualiza o cache
+          setCache("userData", userRes.data);
+        }
 
         // Usar o fetch do contexto para manter sincronizado
         await fetchTicketsContext(forceRefresh);
@@ -129,7 +165,7 @@ const TicketDashboard = () => {
         setIsLoading(false);
       }
     },
-    [user, fetchTicketsContext]
+    [user, fetchTicketsContext],
   );
 
   // ═══════════════════════════════════════════════════════════════
@@ -224,7 +260,9 @@ const TicketDashboard = () => {
 
       if (response.status === 200) {
         setTickets((prev) =>
-          prev.map((t) => (t.id === ticketId ? { ...t, status: newStatus } : t))
+          prev.map((t) =>
+            t.id === ticketId ? { ...t, status: newStatus } : t,
+          ),
         );
       }
     } catch (err) {
@@ -296,7 +334,7 @@ const TicketDashboard = () => {
     const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
     saveAs(
       blob,
-      `tickets_${filterDate || "todos"}_${new Date().toLocaleDateString("pt-BR").replace(/\//g, "-")}.xlsx`
+      `tickets_${filterDate || "todos"}_${new Date().toLocaleDateString("pt-BR").replace(/\//g, "-")}.xlsx`,
     );
   };
 
@@ -472,7 +510,7 @@ const TicketDashboard = () => {
       <div className="kanban-board">
         {statusConfig.map((status) => {
           const columnTickets = filteredTickets.filter(
-            (t) => t.status === status.key
+            (t) => t.status === status.key,
           );
           const isDragOver = dragOverColumn === status.key;
 
@@ -582,7 +620,7 @@ const TicketDashboard = () => {
                         <span className="card-date">
                           <FiCalendar />
                           {new Date(ticket.data_criacao).toLocaleDateString(
-                            "pt-BR"
+                            "pt-BR",
                           )}
                         </span>
 
@@ -592,7 +630,7 @@ const TicketDashboard = () => {
                             title={ticket.nome_usuario}
                             style={{
                               backgroundColor: getAvatarColor(
-                                ticket.nome_usuario
+                                ticket.nome_usuario,
                               ),
                             }}
                           >

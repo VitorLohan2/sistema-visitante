@@ -190,6 +190,131 @@
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAGE HEADER SECTION - Título e Contador de Visitantes
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.page-header-section {
+  margin-top: 40px;
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.page-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 12px 0;
+  letter-spacing: -0.5px;
+}
+
+.page-subtitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Contador Total */
+.total-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #047857 0%, #059669 100%);
+  padding: 8px 16px;
+  border-radius: 50px;
+  box-shadow: 0 2px 8px rgba(4, 120, 87, 0.25);
+}
+
+.total-counter .counter-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1;
+}
+
+.total-counter .counter-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.3px;
+}
+
+/* Badge de Busca */
+.search-results-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  padding: 6px 14px;
+  border-radius: 50px;
+  animation: fadeSlideIn 0.3s ease;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.search-results-badge .badge-icon {
+  font-size: 14px;
+}
+
+.search-results-badge .badge-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: #92400e;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .page-header-section {
+    margin-top: 24px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+  }
+
+  .page-title {
+    font-size: 22px;
+    text-align: center;
+  }
+
+  .page-subtitle {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .total-counter {
+    padding: 6px 14px;
+  }
+
+  .total-counter .counter-value {
+    font-size: 18px;
+  }
+
+  .total-counter .counter-label {
+    font-size: 12px;
+  }
+
+  .search-results-badge {
+    padding: 5px 12px;
+  }
+
+  .search-results-badge .badge-text {
+    font-size: 12px;
+  }
+}
+
+/* Legacy h1 support */
 .profile-container h1 {
   margin-top: 40px;
   margin-bottom: 24px;

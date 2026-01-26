@@ -21,7 +21,6 @@ files=(
     "ProfileController.js"
     "CodigoController.js"
     "ResponsavelController.js"
-    "ComunicadoController.js"
 )
 
 echo "📝 Atualizando referências de tabela 'ongs' para 'usuarios'..."

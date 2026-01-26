@@ -38,7 +38,8 @@ ON CONFLICT (chave) DO NOTHING;
 
 -- Módulo: Permissões
 INSERT INTO permissoes (chave, descricao) VALUES 
-('permissao_visualizar', 'Visualizar permissões')
+('permissao_visualizar', 'Visualizar permissões'),
+('permissao_gerenciar', 'Gerenciar permissões e papéis de usuários')
 ON CONFLICT (chave) DO NOTHING;
 
 -- Módulo: Cadastro de Visitantes

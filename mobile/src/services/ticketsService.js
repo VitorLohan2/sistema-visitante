@@ -1,7 +1,7 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
  * SERVIÇO: Tickets
- * Gerencia tickets/comunicados de visitantes
+ * Gerencia tickets de suporte para visitantes
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 

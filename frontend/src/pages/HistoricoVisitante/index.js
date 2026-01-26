@@ -22,6 +22,7 @@ import { saveAs } from "file-saver";
 
 import api from "../../services/api";
 import * as socketService from "../../services/socketService";
+import { useSocket } from "../../hooks/useSocket";
 import {
   setCache,
   getCache,
@@ -37,9 +38,12 @@ export default function HistoricoVisitante() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDate, setFilterDate] = useState("");
 
+  // ✅ Garante conexão do socket
+  useSocket();
+
   // ✅ Inicializa com cache se existir
   const [historyData, setHistoryData] = useState(
-    () => getCache("historico") || []
+    () => getCache("historico") || [],
   );
 
   const [selectedObservation, setSelectedObservation] = useState(null);
@@ -68,18 +72,28 @@ export default function HistoricoVisitante() {
     const unsubVisitorEnd = socketService.on("visitor:end", (visitante) => {
       console.log(
         "📥 Socket Histórico: Visita encerrada recebida",
-        visitante.nome
+        visitante.id,
+        visitante.nome,
       );
       setHistoryData((prev) => {
-        // Evita duplicatas
-        if (prev.find((v) => v.id === visitante.id)) {
+        // Verifica duplicata pelo ID do histórico
+        const existente = prev.find((v) => v.id === visitante.id);
+        if (existente) {
+          console.log("⚠️ Registro já existe no histórico, atualizando...");
           return prev.map((v) =>
-            v.id === visitante.id ? { ...v, ...visitante } : v
+            v.id === visitante.id ? { ...v, ...visitante } : v,
           );
         }
+
+        // Adiciona novo registro ao histórico
+        console.log("✅ Adicionando novo registro ao histórico");
         const novosHistorico = [visitante, ...prev].sort((a, b) => {
-          const dateA = new Date(a.data_de_entrada || a.criado_em);
-          const dateB = new Date(b.data_de_entrada || b.criado_em);
+          const dateA = new Date(
+            a.data_de_saida || a.data_de_entrada || a.criado_em,
+          );
+          const dateB = new Date(
+            b.data_de_saida || b.data_de_entrada || b.criado_em,
+          );
           return dateB - dateA;
         });
         // Atualiza cache
@@ -94,12 +108,12 @@ export default function HistoricoVisitante() {
       (visitante) => {
         console.log(
           "📥 Socket Histórico: Visita encerrada (alt)",
-          visitante.nome
+          visitante.nome,
         );
         setHistoryData((prev) => {
           if (prev.find((v) => v.id === visitante.id)) {
             return prev.map((v) =>
-              v.id === visitante.id ? { ...v, ...visitante } : v
+              v.id === visitante.id ? { ...v, ...visitante } : v,
             );
           }
           const novosHistorico = [visitante, ...prev].sort((a, b) => {
@@ -110,7 +124,7 @@ export default function HistoricoVisitante() {
           setCache("historico", novosHistorico);
           return novosHistorico;
         });
-      }
+      },
     );
 
     // ✅ LISTENER: Visitante atualizado no histórico
@@ -129,7 +143,7 @@ export default function HistoricoVisitante() {
           setCache("historico", novosHistorico);
           return novosHistorico;
         });
-      }
+      },
     );
 
     // ✅ LISTENER: Visitante deletado do histórico
@@ -142,7 +156,7 @@ export default function HistoricoVisitante() {
           setCache("historico", novosHistorico);
           return novosHistorico;
         });
-      }
+      },
     );
 
     // ✅ LISTENER: Visitante atualizado (pode ter saído - data_de_saida)
@@ -153,7 +167,7 @@ export default function HistoricoVisitante() {
         if (dados.data_de_saida) {
           console.log(
             "📥 Socket Histórico: Visitante encerrou visita",
-            dados.id
+            dados.id,
           );
           setHistoryData((prev) => {
             const exists = prev.find((v) => v.id === dados.id);
@@ -180,7 +194,7 @@ export default function HistoricoVisitante() {
             }
           });
         }
-      }
+      },
     );
 
     socketListenersRef.current.push(
@@ -188,7 +202,7 @@ export default function HistoricoVisitante() {
       unsubVisitaEncerrada,
       unsubHistoricoUpdated,
       unsubHistoricoDeleted,
-      unsubVisitanteUpdated
+      unsubVisitanteUpdated,
     );
 
     console.log("🔌 Socket Histórico: Listeners configurados");
@@ -210,7 +224,7 @@ export default function HistoricoVisitante() {
           console.log(
             "📦 Histórico: Usando cache",
             cachedHistorico.length,
-            "registros"
+            "registros",
           );
           setHistoryData(cachedHistorico);
         }
@@ -233,7 +247,7 @@ export default function HistoricoVisitante() {
         console.log(
           "✅ Histórico: Carregado da API",
           sortedData.length,
-          "registros"
+          "registros",
         );
       } catch (error) {
         console.error("Erro ao carregar histórico:", error);
@@ -277,7 +291,7 @@ export default function HistoricoVisitante() {
       }
 
       const entryDateFormatted = formatDateToLocalYYYYMMDD(
-        visitor.data_de_entrada || visitor.criado_em
+        visitor.data_de_entrada || visitor.criado_em,
       );
 
       return matchesSearch && entryDateFormatted === filterDate;
@@ -354,7 +368,7 @@ export default function HistoricoVisitante() {
     }).length;
 
     const comObservacao = historyData.filter(
-      (v) => v.observacao && v.observacao.trim() !== ""
+      (v) => v.observacao && v.observacao.trim() !== "",
     ).length;
 
     return {
@@ -616,7 +630,7 @@ export default function HistoricoVisitante() {
                   Mostrando {(currentPage - 1) * recordsPerPage + 1} -{" "}
                   {Math.min(
                     currentPage * recordsPerPage,
-                    filteredHistoryData.length
+                    filteredHistoryData.length,
                   )}{" "}
                   de {filteredHistoryData.length} registros
                 </div>

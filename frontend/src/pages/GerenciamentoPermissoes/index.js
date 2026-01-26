@@ -1,5 +1,16 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * GERENCIAMENTO DE PERMISSÕES - Página de Administração de RBAC
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Dados: Carregados do cache (useDataLoader é responsável pelo carregamento inicial)
+ * Atualização: Via Socket.IO em tempo real
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
 // src/pages/GerenciamentoPermissoes/index.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
   FiArrowLeft,
@@ -13,6 +24,8 @@ import {
   FiUserPlus,
 } from "react-icons/fi";
 import api from "../../services/api";
+import { getCache, setCache } from "../../services/cacheService";
+import * as socketService from "../../services/socketService";
 import Loading from "../../components/Loading";
 import { useSocket } from "../../hooks/useSocket";
 import "./styles.css";
@@ -21,20 +34,30 @@ export default function GerenciamentoPermissoes() {
   // Manter conexão do socket ativa
   useSocket();
 
-  // Estados
-  const [usuarios, setUsuarios] = useState([]);
-  const [papeis, setPapeis] = useState([]);
-  const [permissoes, setPermissoes] = useState([]);
+  // ═══════════════════════════════════════════════════════════════
+  // DADOS DO CACHE (carregados pelo useDataLoader)
+  // ═══════════════════════════════════════════════════════════════
+  const [usuarios, setUsuarios] = useState(() => getCache("allUsuarios") || []);
+  const [papeis, setPapeis] = useState(() => getCache("allPapeis") || []);
+  const [permissoes, setPermissoes] = useState(
+    () => getCache("allPermissoes") || [],
+  );
+
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("usuarios"); // usuarios, papeis, permissoes, cadastro
   const [editandoUsuario, setEditandoUsuario] = useState(null);
   const [editandoPapel, setEditandoPapel] = useState(null);
   const [papeisSelecionados, setPapeisSelecionados] = useState([]);
   const [permissoesSelecionadas, setPermissoesSelecionadas] = useState([]);
+  const socketListenersRef = useRef([]);
 
   // Estados para cadastro de usuário interno
-  const [empresas, setEmpresas] = useState([]);
-  const [setores, setSetores] = useState([]);
+  const [empresas, setEmpresas] = useState(
+    () => getCache("empresasVisitantes") || [],
+  );
+  const [setores, setSetores] = useState(
+    () => getCache("setoresVisitantes") || [],
+  );
   const [cadastrando, setCadastrando] = useState(false);
   const [novoUsuario, setNovoUsuario] = useState({
     nome: "",
@@ -50,24 +73,51 @@ export default function GerenciamentoPermissoes() {
     senha: "",
   });
 
-  // Carregar dados iniciais
+  // ═══════════════════════════════════════════════════════════════
+  // CARREGAMENTO DE DADOS - Primeiro do cache, depois API se necessário
+  // ═══════════════════════════════════════════════════════════════
   useEffect(() => {
     carregarDados();
     carregarEmpresasSetores();
   }, []);
 
-  const carregarDados = async () => {
+  const carregarDados = async (forceRefresh = false) => {
     try {
       setLoading(true);
+
+      // ✅ Primeiro verifica se já tem dados no cache
+      const cachedUsuarios = getCache("allUsuarios");
+      const cachedPapeis = getCache("allPapeis");
+      const cachedPermissoes = getCache("allPermissoes");
+
+      if (cachedUsuarios && cachedPapeis && cachedPermissoes && !forceRefresh) {
+        console.log("📦 Usando dados de permissões do cache");
+        setUsuarios(cachedUsuarios);
+        setPapeis(cachedPapeis);
+        setPermissoes(cachedPermissoes);
+        setLoading(false);
+        return;
+      }
+
+      // Se não tem cache ou forceRefresh, busca da API
       const [usuariosRes, papeisRes, permissoesRes] = await Promise.all([
         api.get("/usuarios-papeis"),
         api.get("/papeis"),
         api.get("/permissoes"),
       ]);
 
-      setUsuarios(usuariosRes.data);
-      setPapeis(papeisRes.data);
-      setPermissoes(permissoesRes.data);
+      const usuariosData = usuariosRes.data;
+      const papeisData = papeisRes.data;
+      const permissoesData = permissoesRes.data;
+
+      setUsuarios(usuariosData);
+      setPapeis(papeisData);
+      setPermissoes(permissoesData);
+
+      // Salva no cache
+      setCache("allUsuarios", usuariosData);
+      setCache("allPapeis", papeisData);
+      setCache("allPermissoes", permissoesData);
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
       alert("Erro ao carregar dados de permissões");
@@ -78,7 +128,18 @@ export default function GerenciamentoPermissoes() {
 
   const carregarEmpresasSetores = async () => {
     try {
-      // busca da API
+      // ✅ Primeiro verifica se já tem no cache
+      const cachedEmpresas = getCache("empresasVisitantes");
+      const cachedSetores = getCache("setoresVisitantes");
+
+      if (cachedEmpresas && cachedSetores) {
+        console.log("📦 Usando empresas e setores do cache");
+        setEmpresas(cachedEmpresas);
+        setSetores(cachedSetores);
+        return;
+      }
+
+      // Se não tem cache, busca da API
       const [empresasRes, setoresRes] = await Promise.all([
         api.get("/empresas"),
         api.get("/setores"),
@@ -90,6 +151,53 @@ export default function GerenciamentoPermissoes() {
       console.error("Erro ao carregar empresas/setores:", error);
     }
   };
+
+  // ═══════════════════════════════════════════════════════════════
+  // SOCKET.IO - Sincronização em tempo real
+  // ═══════════════════════════════════════════════════════════════
+  useEffect(() => {
+    // Limpa listeners anteriores
+    socketListenersRef.current.forEach((unsub) => unsub && unsub());
+    socketListenersRef.current = [];
+
+    // Listener: Usuário atualizado (papéis alterados)
+    const unsubUsuarioUpdate = socketService.on(
+      "usuario:papeis-updated",
+      (dados) => {
+        console.log("📝 Socket: Papéis do usuário atualizados", dados.id);
+        setUsuarios((prev) => {
+          const novos = prev.map((u) =>
+            u.id === dados.id ? { ...u, ...dados } : u,
+          );
+          setCache("allUsuarios", novos);
+          return novos;
+        });
+      },
+    );
+
+    // Listener: Papel atualizado (permissões alteradas)
+    const unsubPapelUpdate = socketService.on(
+      "papel:permissoes-updated",
+      (dados) => {
+        console.log("📝 Socket: Permissões do papel atualizadas", dados.id);
+        setPapeis((prev) => {
+          const novos = prev.map((p) =>
+            p.id === dados.id ? { ...p, ...dados } : p,
+          );
+          setCache("allPapeis", novos);
+          return novos;
+        });
+      },
+    );
+
+    socketListenersRef.current.push(unsubUsuarioUpdate, unsubPapelUpdate);
+
+    // Cleanup ao desmontar
+    return () => {
+      socketListenersRef.current.forEach((unsub) => unsub && unsub());
+      socketListenersRef.current = [];
+    };
+  }, []);
 
   // ═══════════════════════════════════════════════════════════════
   // FUNÇÕES DE USUÁRIOS
@@ -109,7 +217,7 @@ export default function GerenciamentoPermissoes() {
     setPapeisSelecionados((prev) =>
       prev.includes(papelId)
         ? prev.filter((id) => id !== papelId)
-        : [...prev, papelId]
+        : [...prev, papelId],
     );
   };
 
@@ -152,7 +260,7 @@ export default function GerenciamentoPermissoes() {
     setPermissoesSelecionadas((prev) =>
       prev.includes(permissaoId)
         ? prev.filter((id) => id !== permissaoId)
-        : [...prev, permissaoId]
+        : [...prev, permissaoId],
     );
   };
 
@@ -540,7 +648,7 @@ export default function GerenciamentoPermissoes() {
                                 <input
                                   type="checkbox"
                                   checked={permissoesSelecionadas.includes(
-                                    perm.id
+                                    perm.id,
                                   )}
                                   onChange={() => togglePermissaoPapel(perm.id)}
                                 />
@@ -558,7 +666,7 @@ export default function GerenciamentoPermissoes() {
                             ))}
                           </div>
                         </div>
-                      )
+                      ),
                     )}
                   </div>
 
@@ -617,7 +725,7 @@ export default function GerenciamentoPermissoes() {
                       </tbody>
                     </table>
                   </div>
-                )
+                ),
               )}
             </div>
           </div>

@@ -12,6 +12,7 @@ import {
 import api from "../../services/api";
 import { getCache, setCache } from "../../services/cacheService";
 import * as socketService from "../../services/socketService";
+import { useSocket } from "../../hooks/useSocket";
 import "./styles.css";
 
 export default function Visitante() {
@@ -21,6 +22,9 @@ export default function Visitante() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const socketListenersRef = useRef([]);
+
+  // ✅ Garante conexão do socket
+  useSocket();
 
   const history = useHistory();
   const ongId = localStorage.getItem("ongId");
@@ -33,15 +37,28 @@ export default function Visitante() {
     socketListenersRef.current.forEach((unsub) => unsub && unsub());
     socketListenersRef.current = [];
 
-    // Novo visitante criado
+    // ✅ Nova visita registrada (visitor:create - emitido por VisitanteController)
+    const unsubVisitorCreate = socketService.on(
+      "visitor:create",
+      (visitante) => {
+        console.log(
+          "🟢 Nova visita registrada via socket (visitor:create):",
+          visitante.id,
+        );
+        setVisitors((prev) => {
+          if (prev.find((v) => v.id === visitante.id)) return prev;
+          const novosVisitantes = [visitante, ...prev];
+          setCache("visitors", novosVisitantes);
+          return novosVisitantes;
+        });
+      },
+    );
+
+    // Novo visitante cadastrado (visitante:created - emitido por CadastroVisitanteController)
     const unsubCreate = socketService.on("visitante:created", (visitante) => {
-      console.log("📥 Visitante criado via socket:", visitante.id);
-      setVisitors((prev) => {
-        if (prev.find((v) => v.id === visitante.id)) return prev;
-        const novosVisitantes = [visitante, ...prev];
-        setCache("visitors", novosVisitantes);
-        return novosVisitantes;
-      });
+      console.log("📥 Visitante cadastrado via socket:", visitante.id);
+      // Este evento é para cadastro, não para visita ativa
+      // Mantemos por compatibilidade, mas normalmente não afeta esta lista
     });
 
     // Visitante atualizado (ex: saiu)
@@ -57,7 +74,7 @@ export default function Visitante() {
       } else {
         setVisitors((prev) => {
           const novosVisitantes = prev.map((v) =>
-            v.id === dados.id ? { ...v, ...dados } : v
+            v.id === dados.id ? { ...v, ...dados } : v,
           );
           setCache("visitors", novosVisitantes);
           return novosVisitantes;
@@ -75,7 +92,34 @@ export default function Visitante() {
       });
     });
 
-    socketListenersRef.current.push(unsubCreate, unsubUpdate, unsubDelete);
+    // ✅ Visita encerrada (visitor:end - emitido pelo backend ao encerrar visita)
+    const unsubVisitorEnd = socketService.on("visitor:end", (dados) => {
+      console.log("🏁 Visita encerrada via socket (visitor:end):", dados.id);
+      setVisitors((prev) => {
+        const novosVisitantes = prev.filter((v) => v.id !== dados.id);
+        setCache("visitors", novosVisitantes);
+        return novosVisitantes;
+      });
+    });
+
+    // ✅ Visitante removido da lista ativa (visitor:delete)
+    const unsubVisitorDelete = socketService.on("visitor:delete", (dados) => {
+      console.log("🗑️ Visitante removido (visitor:delete):", dados.id);
+      setVisitors((prev) => {
+        const novosVisitantes = prev.filter((v) => v.id !== dados.id);
+        setCache("visitors", novosVisitantes);
+        return novosVisitantes;
+      });
+    });
+
+    socketListenersRef.current.push(
+      unsubVisitorCreate,
+      unsubCreate,
+      unsubUpdate,
+      unsubDelete,
+      unsubVisitorEnd,
+      unsubVisitorDelete,
+    );
   }, []);
 
   // ═══════════════════════════════════════════════════════════════

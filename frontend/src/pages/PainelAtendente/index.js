@@ -135,7 +135,7 @@ export default function PainelAtendente() {
   const carregarConversasAtivas = async () => {
     try {
       const response = await api.get(
-        "/chat-suporte/atendente/minhas-conversas"
+        "/chat-suporte/atendente/minhas-conversas",
       );
       setConversasAtivas(response.data.conversas || []);
     } catch (err) {
@@ -195,7 +195,7 @@ export default function PainelAtendente() {
       () => {
         console.log("📢 Fila atualizada - atualizando");
         carregarFila();
-      }
+      },
     );
 
     // Listener GLOBAL para novas mensagens em qualquer conversa do atendente
@@ -208,7 +208,7 @@ export default function PainelAtendente() {
         // Atualiza a lista de conversas ativas com a última mensagem
         setConversasAtivas((prev) => {
           const conversaIndex = prev.findIndex(
-            (c) => c.id === data.conversa_id
+            (c) => c.id === data.conversa_id,
           );
           if (conversaIndex === -1) return prev;
 
@@ -223,7 +223,7 @@ export default function PainelAtendente() {
 
         // Atualiza também o contexto global
         atualizarDadosContext();
-      }
+      },
     );
 
     return () => {
@@ -261,8 +261,8 @@ export default function PainelAtendente() {
                   ultima_mensagem: data.mensagem.mensagem,
                   atualizado_em: data.mensagem.criado_em,
                 }
-              : c
-          )
+              : c,
+          ),
         );
       }
     });
@@ -273,7 +273,7 @@ export default function PainelAtendente() {
         if (data.conversa_id === conversaSelecionada.id) {
           setDigitando(data.nome);
         }
-      }
+      },
     );
 
     const unsubParouDigitar = socketService.on(
@@ -282,7 +282,7 @@ export default function PainelAtendente() {
         if (data.conversa_id === conversaSelecionada.id) {
           setDigitando(null);
         }
-      }
+      },
     );
 
     const unsubFinalizada = socketService.on(
@@ -295,7 +295,7 @@ export default function PainelAtendente() {
           }));
           carregarConversasAtivas();
         }
-      }
+      },
     );
 
     return () => {
@@ -334,7 +334,7 @@ export default function PainelAtendente() {
 
     try {
       const response = await api.post(
-        `/chat-suporte/atendente/aceitar/${conversaId}`
+        `/chat-suporte/atendente/aceitar/${conversaId}`,
       );
 
       // Backend retorna a conversa diretamente, não dentro de { conversa: ... }
@@ -400,7 +400,7 @@ export default function PainelAtendente() {
       // Usa endpoint de atendente para enviar mensagem
       const response = await api.post(
         `/chat-suporte/atendente/mensagem/${conversaSelecionada.id}`,
-        { mensagem: mensagemTexto }
+        { mensagem: mensagemTexto },
       );
 
       // O endpoint de atendente retorna a mensagem diretamente
@@ -452,14 +452,14 @@ export default function PainelAtendente() {
 
     try {
       await api.post(
-        `/chat-suporte/conversas/${conversaSelecionada.id}/finalizar`
+        `/chat-suporte/conversas/${conversaSelecionada.id}/finalizar`,
       );
       setConversaSelecionada((prev) => ({
         ...prev,
         status: STATUS.FINALIZADA,
       }));
       setConversasAtivas((prev) =>
-        prev.filter((c) => c.id !== conversaSelecionada.id)
+        prev.filter((c) => c.id !== conversaSelecionada.id),
       );
     } catch (err) {
       console.error("Erro ao finalizar conversa:", err);
@@ -557,7 +557,7 @@ export default function PainelAtendente() {
           )}
           <span className="conversa-item-time">
             {new Date(
-              conversa.atualizado_em || conversa.criado_em
+              conversa.atualizado_em || conversa.criado_em,
             ).toLocaleTimeString("pt-BR", {
               hour: "2-digit",
               minute: "2-digit",
@@ -614,7 +614,7 @@ export default function PainelAtendente() {
   // Calcula total de mensagens não lidas nas conversas ativas
   const totalNaoLidas = Object.values(mensagensNaoLidas).reduce(
     (acc, count) => acc + count,
-    0
+    0,
   );
 
   return (
@@ -711,7 +711,7 @@ export default function PainelAtendente() {
           {/* Tab Histórico */}
           {tab === "historico" && (
             <div className="painel-atendente-historico">
-              <div className="historico-header">
+              <div className="historico-atendente-header">
                 <h3>Histórico</h3>
                 <div className="historico-search">
                   <FiSearch size={14} />

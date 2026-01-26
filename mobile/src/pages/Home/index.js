@@ -106,7 +106,7 @@ export default function Home() {
         navigation.navigate("SistemaVisitante");
         break;
       case "vigilante":
-        navigation.navigate("Ronda");
+        navigation.navigate("MenuVigilante");
         break;
       default:
         break;

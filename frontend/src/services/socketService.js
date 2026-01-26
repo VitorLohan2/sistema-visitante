@@ -24,6 +24,15 @@ const eventCallbacks = {
   "visitante:created": [],
   "visitante:updated": [],
   "visitante:deleted": [],
+  // Eventos de visita ativa (página Visitante) - emitidos por VisitanteController
+  "visitor:create": [],
+  "visitor:end": [],
+  "visitor:delete": [],
+  "visita:encerrada": [],
+  // Eventos de histórico
+  "historico:created": [],
+  "historico:updated": [],
+  "historico:deleted": [],
   "empresa:created": [],
   "empresa:updated": [],
   "empresa:deleted": [],
@@ -47,6 +56,11 @@ const eventCallbacks = {
   "chat-suporte:conversa-finalizada": [],
   "chat-suporte:fila-atualizada": [],
   "chat-suporte:nova-fila": [],
+  // Ronda Vigilante (Tempo Real)
+  "ronda:nova-iniciada": [],
+  "ronda:posicao-atualizada": [],
+  "ronda:checkpoint-registrado": [],
+  "ronda:encerrada": [],
   connected: [],
   disconnected: [],
   error: [],
@@ -179,6 +193,120 @@ export function connect(token) {
   });
 
   // ═══════════════════════════════════════════════════════════════
+  // EVENTOS DE VISITA ENCERRADA (para páginas Visitante e Histórico)
+  // ═══════════════════════════════════════════════════════════════
+
+  // ✅ Nova visita registrada (visitor:create - emitido por VisitanteController)
+  socket.on("visitor:create", (data) => {
+    console.log("🟢 Nova visita registrada via Socket (visitor:create):", data);
+
+    // Adiciona à lista de visitantes ativos
+    const visitors = getCache("visitors") || [];
+    if (!visitors.find((v) => v.id === data.id)) {
+      const novosVisitors = [data, ...visitors];
+      setCache("visitors", novosVisitors);
+    }
+
+    // Notifica callbacks
+    eventCallbacks["visitor:create"].forEach((cb) => cb(data));
+  });
+
+  socket.on("visitor:end", (data) => {
+    console.log(
+      "🏁 Visita encerrada via Socket (visitor:end):",
+      data.id,
+      data.nome,
+    );
+
+    // Remove da lista de visitantes ativos (pode não ter o mesmo ID)
+    const visitors = getCache("visitors") || [];
+    // Tenta remover por CPF ou por algum identificador único
+    const novosVisitors = visitors.filter((v) => {
+      // Se tiver o ID antigo do visitante no evento, usa ele
+      // Senão, tenta pelo CPF
+      return v.cpf !== data.cpf;
+    });
+    setCache("visitors", novosVisitors);
+
+    // Adiciona ao histórico com o novo ID do histórico
+    const historico = getCache("historico") || [];
+    if (!historico.find((h) => h.id === data.id)) {
+      const novoHistorico = [data, ...historico].sort((a, b) => {
+        const dateA = new Date(
+          a.data_de_saida || a.data_de_entrada || a.criado_em,
+        );
+        const dateB = new Date(
+          b.data_de_saida || b.data_de_entrada || b.criado_em,
+        );
+        return dateB - dateA;
+      });
+      setCache("historico", novoHistorico);
+    }
+
+    // Notifica callbacks
+    eventCallbacks["visitor:end"].forEach((cb) => cb(data));
+  });
+
+  socket.on("visitor:delete", (data) => {
+    console.log(
+      "🗑️ Visitante removido da lista ativa via Socket (visitor:delete):",
+      data,
+    );
+
+    // Remove da lista de visitantes ativos
+    const visitors = getCache("visitors") || [];
+    setCache(
+      "visitors",
+      visitors.filter((v) => v.id !== data.id),
+    );
+
+    // Notifica callbacks
+    eventCallbacks["visitor:delete"].forEach((cb) => cb(data));
+  });
+
+  socket.on("visita:encerrada", (data) => {
+    console.log("🏁 Visita encerrada via Socket (visita:encerrada):", data);
+    eventCallbacks["visita:encerrada"].forEach((cb) => cb(data));
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // EVENTOS DE HISTÓRICO
+  // ═══════════════════════════════════════════════════════════════
+  socket.on("historico:created", (data) => {
+    console.log("📜 Novo registro no histórico via Socket:", data);
+    const historico = getCache("historico") || [];
+    if (!historico.find((h) => h.id === data.id)) {
+      const novoHistorico = [data, ...historico].sort((a, b) => {
+        const dateA = new Date(a.data_de_entrada || a.criado_em);
+        const dateB = new Date(b.data_de_entrada || b.criado_em);
+        return dateB - dateA;
+      });
+      setCache("historico", novoHistorico);
+    }
+    eventCallbacks["historico:created"].forEach((cb) => cb(data));
+  });
+
+  socket.on("historico:updated", (data) => {
+    console.log("📝 Histórico atualizado via Socket:", data);
+    const historico = getCache("historico") || [];
+    const novoHistorico = historico.map((h) =>
+      h.id === data.id ? { ...h, ...data } : h,
+    );
+    setCache("historico", novoHistorico);
+    eventCallbacks["historico:updated"].forEach((cb) => cb(data));
+  });
+
+  socket.on("historico:deleted", (data) => {
+    console.log("🗑️ Histórico removido via Socket:", data);
+    const historico = getCache("historico") || [];
+    setCache(
+      "historico",
+      historico.filter((h) => h.id !== data.id),
+    );
+    eventCallbacks["historico:deleted"].forEach((cb) => cb(data));
+  });
+
+  // ═══════════════════════════════════════════════════════════════
   // EVENTOS DE EMPRESAS
   // ═══════════════════════════════════════════════════════════════
   socket.on("empresa:created", (data) => {
@@ -187,8 +315,8 @@ export function connect(token) {
     setCache(
       "empresas",
       [...empresas, data].sort((a, b) =>
-        (a.nome || "").localeCompare(b.nome || "", "pt-BR")
-      )
+        (a.nome || "").localeCompare(b.nome || "", "pt-BR"),
+      ),
     );
     eventCallbacks["empresa:created"].forEach((cb) => cb(data));
   });
@@ -197,7 +325,7 @@ export function connect(token) {
     console.log("🏢 Empresa atualizada via Socket:", data);
     const empresas = getCache("empresas") || [];
     const novasEmpresas = empresas.map((e) =>
-      e.id === data.id ? { ...e, ...data } : e
+      e.id === data.id ? { ...e, ...data } : e,
     );
     setCache("empresas", novasEmpresas);
     eventCallbacks["empresa:updated"].forEach((cb) => cb(data));
@@ -208,7 +336,7 @@ export function connect(token) {
     const empresas = getCache("empresas") || [];
     setCache(
       "empresas",
-      empresas.filter((e) => e.id !== data.id)
+      empresas.filter((e) => e.id !== data.id),
     );
     eventCallbacks["empresa:deleted"].forEach((cb) => cb(data));
   });
@@ -222,8 +350,8 @@ export function connect(token) {
     setCache(
       "setores",
       [...setores, data].sort((a, b) =>
-        (a.nome || "").localeCompare(b.nome || "", "pt-BR")
-      )
+        (a.nome || "").localeCompare(b.nome || "", "pt-BR"),
+      ),
     );
     eventCallbacks["setor:created"].forEach((cb) => cb(data));
   });
@@ -232,7 +360,7 @@ export function connect(token) {
     console.log("📁 Setor atualizado via Socket:", data);
     const setores = getCache("setores") || [];
     const novosSetores = setores.map((s) =>
-      s.id === data.id ? { ...s, ...data } : s
+      s.id === data.id ? { ...s, ...data } : s,
     );
     setCache("setores", novosSetores);
     eventCallbacks["setor:updated"].forEach((cb) => cb(data));
@@ -243,7 +371,7 @@ export function connect(token) {
     const setores = getCache("setores") || [];
     setCache(
       "setores",
-      setores.filter((s) => s.id !== data.id)
+      setores.filter((s) => s.id !== data.id),
     );
     eventCallbacks["setor:deleted"].forEach((cb) => cb(data));
   });
@@ -256,7 +384,7 @@ export function connect(token) {
     const tickets = getCache("tickets") || [];
     if (!tickets.find((t) => t.id === data.id)) {
       const novosTickets = [data, ...tickets].sort(
-        (a, b) => new Date(b.data_criacao) - new Date(a.data_criacao)
+        (a, b) => new Date(b.data_criacao) - new Date(a.data_criacao),
       );
       setCache("tickets", novosTickets);
     }
@@ -267,7 +395,7 @@ export function connect(token) {
     console.log("🎫 Ticket atualizado via Socket:", data);
     const tickets = getCache("tickets") || [];
     const novosTickets = tickets.map((t) =>
-      t.id === data.id ? { ...t, ...data } : t
+      t.id === data.id ? { ...t, ...data } : t,
     );
     setCache("tickets", novosTickets);
     eventCallbacks["ticket:update"].forEach((cb) => cb(data));
@@ -338,7 +466,7 @@ export function connect(token) {
   socket.on("chat-suporte:conversa-finalizada", (data) => {
     console.log("🔚 Conversa finalizada via Socket:", data);
     eventCallbacks["chat-suporte:conversa-finalizada"].forEach((cb) =>
-      cb(data)
+      cb(data),
     );
   });
 
@@ -350,6 +478,29 @@ export function connect(token) {
   socket.on("chat-suporte:nova-fila", (data) => {
     console.log("📢 Nova conversa na fila via Socket:", data);
     eventCallbacks["chat-suporte:nova-fila"].forEach((cb) => cb(data));
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // EVENTOS DE RONDA VIGILANTE (TEMPO REAL)
+  // ═══════════════════════════════════════════════════════════════
+  socket.on("ronda:nova-iniciada", (data) => {
+    console.log("🚶 Nova ronda iniciada via Socket:", data);
+    eventCallbacks["ronda:nova-iniciada"].forEach((cb) => cb(data));
+  });
+
+  socket.on("ronda:posicao-atualizada", (data) => {
+    // Posição GPS em tempo real - não loga para evitar spam
+    eventCallbacks["ronda:posicao-atualizada"].forEach((cb) => cb(data));
+  });
+
+  socket.on("ronda:checkpoint-registrado", (data) => {
+    console.log("📍 Checkpoint registrado via Socket:", data);
+    eventCallbacks["ronda:checkpoint-registrado"].forEach((cb) => cb(data));
+  });
+
+  socket.on("ronda:encerrada", (data) => {
+    console.log("🔴 Ronda encerrada via Socket:", data);
+    eventCallbacks["ronda:encerrada"].forEach((cb) => cb(data));
   });
 
   return socket;
@@ -398,7 +549,7 @@ export function on(event, callback) {
 export function off(event, callback) {
   if (eventCallbacks[event]) {
     eventCallbacks[event] = eventCallbacks[event].filter(
-      (cb) => cb !== callback
+      (cb) => cb !== callback,
     );
   }
 }
