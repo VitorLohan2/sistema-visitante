@@ -1,5 +1,6 @@
-import { useState, useEffect, useContext, createContext } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useState, useEffect, useContext, createContext } from "react";
+import { clearCache } from "../services/cacheService";
+import { disconnect as disconnectSocket } from "../services/socketService";
 
 const AuthContext = createContext({});
 
@@ -13,69 +14,140 @@ export function AuthProvider({ children }) {
   }, []);
 
   const checkAuthStatus = () => {
-    const ongId = localStorage.getItem('ongId');
-    const ongName = localStorage.getItem('ongName');
-    const ongType = localStorage.getItem('ongType');
-    const ongSetorId = localStorage.getItem('ongSetorId'); // 🔹 novo
-    
-    //console.log('Verificando autenticação:', { ongId, ongName, ongType, ongSetorId });
-    
-    if (ongId && ongName) {
+    // Suporta tanto o novo formato (token/usuario) quanto o legado (ongId/ongName/ongType)
+    const token = localStorage.getItem("token");
+    const usuarioStr = localStorage.getItem("usuario");
+
+    // Dados legados (para compatibilidade)
+    const ongId = localStorage.getItem("ongId");
+    const ongName = localStorage.getItem("ongName");
+
+    // Primeiro tenta o novo formato
+    if (token && usuarioStr) {
+      try {
+        const usuario = JSON.parse(usuarioStr);
+        setIsAuthenticated(true);
+        setUser({
+          id: usuario.id,
+          nome: usuario.nome,
+          name: usuario.nome, // Alias para compatibilidade
+          email: usuario.email,
+          isAdmin: usuario.isAdmin || false,
+          empresa_id: usuario.empresa_id,
+          setor_id: usuario.setor_id,
+          // Propriedades legadas para compatibilidade
+          ongId: usuario.id,
+          ongName: usuario.nome,
+        });
+        return setLoading(false);
+      } catch (error) {
+        console.error("Erro ao fazer parse do usuário:", error);
+        localStorage.removeItem("token");
+        localStorage.removeItem("usuario");
+      }
+    }
+
+    // Fallback para formato legado
+    if (ongId) {
       setIsAuthenticated(true);
       setUser({
         id: ongId,
-        name: ongName,
-        type: ongType,
-        setor_id: ongSetorId ? parseInt(ongSetorId, 10) : null, // 🔹 converter para número
+        nome: ongName || "",
+        name: ongName || "", // Alias
+        email: "",
+        isAdmin: false,
+        empresa_id: null,
+        setor_id: null,
+        // Propriedades legadas
+        ongId: ongId,
+        ongName: ongName || "",
       });
-    } else {
-      setIsAuthenticated(false);
-      setUser(null);
+      setLoading(false);
+      return;
     }
-    
+
+    setIsAuthenticated(false);
+    setUser(null);
     setLoading(false);
   };
 
-  const login = (userData) => {
-    console.log('Fazendo login com:', userData);
-    
-    localStorage.setItem('token', userData.id);
-    localStorage.setItem('ongId', userData.id);
-    localStorage.setItem('ongName', userData.name);
-    localStorage.setItem('ongType', userData.type);
-    localStorage.setItem('ongSetorId', userData.setor_id); // 🔹 novo
+  const login = (token, usuario) => {
+    console.log("Fazendo login com:", usuario.email || usuario.nome);
 
-    
+    localStorage.setItem("token", token);
+    localStorage.setItem(
+      "usuario",
+      JSON.stringify({
+        id: usuario.id,
+        nome: usuario.nome,
+        email: usuario.email,
+        isAdmin: usuario.isAdmin || false,
+        empresa_id: usuario.empresa_id,
+        setor_id: usuario.setor_id,
+      })
+    );
+
+    // Também salva no formato legado para compatibilidade
+    localStorage.setItem("ongId", usuario.id);
+    localStorage.setItem("ongName", usuario.nome);
+
     setIsAuthenticated(true);
-    setUser(userData);
+    setUser({
+      id: usuario.id,
+      nome: usuario.nome,
+      name: usuario.nome,
+      email: usuario.email,
+      isAdmin: usuario.isAdmin || false,
+      empresa_id: usuario.empresa_id,
+      setor_id: usuario.setor_id,
+      ongId: usuario.id,
+      ongName: usuario.nome,
+    });
   };
 
   const logout = () => {
-    console.log('Fazendo logout');
-    
-    localStorage.removeItem('token');
-    localStorage.removeItem('ongId');
-    localStorage.removeItem('ongName');
-    localStorage.removeItem('ongType');
-    localStorage.removeItem('ongSetorId'); // 🔹 limpar setor
+    console.log("Fazendo logout");
 
-    
+    // Desconecta o Socket.IO
+    disconnectSocket();
+
+    // Limpa o cache de dados
+    clearCache();
+
+    // Remove todos os dados (novo e legado)
+    localStorage.removeItem("token");
+    localStorage.removeItem("usuario");
+    localStorage.removeItem("ongId");
+    localStorage.removeItem("ongName");
+    localStorage.removeItem("ongType");
+
     setIsAuthenticated(false);
     setUser(null);
-    
+
     // Redireciona para a página inicial
-    window.location.href = '/';
+    window.location.href = "/";
+  };
+
+  /**
+   * Verifica se o usuário é administrador
+   * @returns {boolean}
+   */
+  const isAdmin = () => {
+    return user?.isAdmin === true;
   };
 
   return (
-    <AuthContext.Provider value={{
-      isAuthenticated,
-      loading,
-      user,
-      login,
-      logout,
-      checkAuthStatus
-    }}>
+    <AuthContext.Provider
+      value={{
+        isAuthenticated,
+        loading,
+        user,
+        login,
+        logout,
+        checkAuthStatus,
+        isAdmin,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -84,7 +156,7 @@ export function AuthProvider({ children }) {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth deve ser usado dentro de AuthProvider');
+    throw new Error("useAuth deve ser usado dentro de AuthProvider");
   }
   return context;
 };

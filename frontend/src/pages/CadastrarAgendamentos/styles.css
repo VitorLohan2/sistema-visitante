@@ -50,7 +50,6 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 32px;
 }
 
 .page-title h1 {
@@ -111,7 +110,9 @@
   border-radius: 4px;
   font-size: 16px;
   color: #41414d;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .form-group input:focus,
@@ -200,36 +201,35 @@
     padding: 0 16px;
     margin: 16px auto;
   }
-  
+
   .novo-agendamento-container header {
     flex-direction: column;
     gap: 16px;
     align-items: flex-start;
   }
-  
+
   .novo-agendamento-container header span {
     margin-left: 0;
     align-self: center;
   }
-  
-  
+
   .page-title h1 {
     font-size: 24px;
   }
-  
+
   .form-grid {
     grid-template-columns: 1fr;
     gap: 16px;
   }
-  
+
   .agendamento-form {
     padding: 24px 20px;
   }
-  
+
   .form-actions {
     flex-direction: column-reverse;
   }
-  
+
   .cancel-button,
   .save-button {
     width: 100%;
@@ -242,15 +242,15 @@
     padding: 0 12px;
     margin: 12px auto;
   }
-  
+
   .agendamento-form {
     padding: 20px 16px;
   }
-  
+
   .page-title h1 {
     font-size: 20px;
   }
-  
+
   .form-group input,
   .form-group select,
   .form-group textarea {

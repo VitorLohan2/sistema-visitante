@@ -1,17 +1,42 @@
-import 'react-native-gesture-handler';
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * APP - Aplicação Principal
+ * Sistema Visitante Mobile - Refatorado com RBAC
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
 
-import Routes from './routes';
-import NotificationListener from './components/NotificationListener';
+import "react-native-gesture-handler";
+import React from "react";
+import { StatusBar } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+
+// Rotas
+import Routes from "./routes";
+
+// Providers
+import { AuthProvider } from "./contexts";
+
+// Estilos
+import { cores } from "./styles/tema";
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// COMPONENTE PRINCIPAL
+// ═══════════════════════════════════════════════════════════════════════════════
 
 export default function App() {
   return (
-    <>
-      <NotificationListener />
-      <NavigationContainer>
-        <Routes />
-      </NavigationContainer>
-    </>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor={cores.primaria}
+          translucent={false}
+        />
+        <AuthProvider>
+          <Routes />
+        </AuthProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

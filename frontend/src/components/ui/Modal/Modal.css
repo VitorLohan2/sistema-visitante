@@ -1,0 +1,144 @@
+/* Estilos do componente Modal */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: modal-fade-in 0.2s ease;
+}
+
+@keyframes modal-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal-container {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  animation: modal-slide-in 0.3s ease;
+}
+
+@keyframes modal-slide-in {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Tamanhos */
+.modal-pequeno {
+  width: 100%;
+  max-width: 400px;
+}
+
+.modal-medio {
+  width: 100%;
+  max-width: 600px;
+}
+
+.modal-grande {
+  width: 100%;
+  max-width: 900px;
+}
+
+.modal-auto {
+  width: auto;
+  max-width: 90vw;
+}
+
+/* Header */
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #dcdce6;
+}
+
+.modal-titulo {
+  font-size: 18px;
+  font-weight: 600;
+  color: #41414d;
+  margin: 0;
+}
+
+.modal-btn-fechar {
+  background: none;
+  border: none;
+  color: #a8a8b3;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.modal-btn-fechar:hover {
+  background: #f0f0f5;
+  color: #41414d;
+}
+
+/* Body */
+.modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Footer */
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid #dcdce6;
+}
+
+/* Tema escuro */
+[data-theme="dark"] .modal-container {
+  background: #1a1a2e;
+}
+
+[data-theme="dark"] .modal-header {
+  border-bottom-color: #16213e;
+}
+
+[data-theme="dark"] .modal-titulo {
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] .modal-btn-fechar {
+  color: #a8a8b3;
+}
+
+[data-theme="dark"] .modal-btn-fechar:hover {
+  background: #16213e;
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] .modal-footer {
+  border-top-color: #16213e;
+}

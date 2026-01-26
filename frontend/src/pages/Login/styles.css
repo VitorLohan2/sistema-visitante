@@ -1,0 +1,219 @@
+/* ═══════════════════════════════════════════════════════════════
+   LOGIN PAGE - ESTILO MINIMALISTA COM WALLPAPER DE SEGURANÇA
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Container principal com wallpaper */
+.login-container {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    270deg,
+    rgba(1, 62, 131, 0.9) 50%,
+    rgb(5, 150, 105, 0.9) 0%
+  );
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  padding: 20px;
+}
+
+/* Área principal */
+.login-content {
+  width: 100%;
+  max-width: 400px;
+}
+
+/* Card de login - Glassmorphism */
+.login-card {
+  width: 100%;
+  padding: 40px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.login-logo {
+  width: 100%;
+  /* max-width: 200px; */
+  height: auto;
+  margin: 0 auto 24px;
+  display: block;
+}
+
+/* Formulário */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.login-form h1 {
+  font-size: 28px;
+  color: #1a1a2e;
+  margin: 0 0 8px 0;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Grupos de formulário */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+}
+
+/* Input com ícone */
+.login-container .input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.login-container .input-wrapper .input-icon {
+  position: absolute;
+  left: 14px;
+  color: #94a3b8;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.login-container .input-wrapper input {
+  width: 100%;
+  padding: 14px 16px 14px 44px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+  background: #f8fafc;
+  color: #1e293b;
+}
+
+.login-container .input-wrapper input:focus {
+  outline: none;
+  border-color: #10b981;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.login-container .input-wrapper input:focus ~ .input-icon {
+  color: #10b981;
+}
+
+.login-container .input-wrapper input::placeholder {
+  color: #94a3b8;
+}
+
+/* Link esqueci senha - simples */
+.forgot-password-link {
+  align-self: flex-end;
+  font-size: 13px;
+  color: #10b981;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+  margin-top: 2px;
+}
+
+.forgot-password-link:hover {
+  color: #059669;
+  text-decoration: underline;
+}
+
+/* Botão de login */
+.login-button {
+  padding: 14px 24px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 8px;
+}
+
+.login-button:hover {
+  /* transform: translateY(-2px); */
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.35);
+}
+
+.login-button:active {
+  transform: translateY(0);
+}
+
+/* Mensagem de erro */
+.error-message {
+  background: #fef2f2;
+  color: #dc2626;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  border-left: 4px solid #dc2626;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVIDADE
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 480px) {
+  .login-container {
+    padding: 16px;
+  }
+
+  .login-card {
+    padding: 32px 24px;
+  }
+
+  .login-logo {
+    max-width: 160px;
+    margin-bottom: 20px;
+  }
+
+  .login-form h1 {
+    font-size: 24px;
+  }
+
+  .input-wrapper input {
+    padding: 12px 12px 12px 40px;
+    font-size: 16px; /* Evita zoom automático no iOS */
+  }
+
+  .input-icon {
+    left: 12px;
+  }
+
+  .login-button {
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+
+  .forgot-password-link {
+    font-size: 12px;
+  }
+}

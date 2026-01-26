@@ -1,0 +1,136 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * ESTILOS: MapaRonda
+ * Estilos para o componente de mapa de trajeto de ronda
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+.mapa-ronda-container {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+}
+
+.mapa-ronda {
+  width: 100%;
+  border-radius: 8px 8px 0 0;
+}
+
+.mapa-ronda-vazio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px dashed #d1d5db;
+  color: #6b7280;
+}
+
+.mapa-ronda-vazio .icone {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.mapa-ronda-vazio p {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+/* Legenda */
+.mapa-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+}
+
+.legenda-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: #4b5563;
+}
+
+.legenda-cor {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.legenda-cor.inicio {
+  background: #22c55e;
+}
+
+.legenda-cor.fim {
+  background: #ef4444;
+}
+
+.legenda-cor.checkpoint {
+  background: #3b82f6;
+}
+
+.legenda-linha {
+  width: 20px;
+  height: 3px;
+  background: #2563eb;
+  border-radius: 2px;
+}
+
+/* Marcadores customizados */
+.marcador-pin {
+  width: 30px;
+  height: 30px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.marcador-pin span {
+  transform: rotate(45deg);
+  font-size: 12px;
+  font-weight: bold;
+  color: white;
+}
+
+.marcador-pin.inicio {
+  background: #22c55e;
+}
+
+.marcador-pin.fim {
+  background: #ef4444;
+}
+
+.marcador-pin.checkpoint {
+  background: #3b82f6;
+  width: 24px;
+  height: 24px;
+}
+
+.marcador-pin.checkpoint span {
+  font-size: 10px;
+}
+
+/* Ajustes para o Leaflet */
+.leaflet-popup-content-wrapper {
+  border-radius: 8px;
+}
+
+.leaflet-popup-content {
+  margin: 10px 14px;
+  line-height: 1.5;
+}
+
+.leaflet-popup-content strong {
+  color: #1f2937;
+}
+
+.leaflet-popup-content small {
+  color: #6b7280;
+}

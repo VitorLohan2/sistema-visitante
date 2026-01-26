@@ -1,13 +1,45 @@
-import React from 'react';
+import React from "react";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
-import './global.css'
-import Routes from './routes/routes';
-import { AuthProvider } from './hooks/useAuth';
+import "./styles/layout.css";
+import "./styles/toast.css";
+import Routes from "./routes/routes";
+import { AuthProvider } from "./hooks/useAuth";
+import { TicketProvider } from "./contexts/TicketContext";
+import { AgendamentoProvider } from "./contexts/AgendamentoContext";
+import { DescargaProvider } from "./contexts/DescargaContext";
+import { ChatSuporteProvider } from "./contexts/ChatSuporteContext";
+import ChatWidget from "./components/ChatWidget";
 
 function App() {
   return (
     <AuthProvider>
-      <Routes />
+      <TicketProvider>
+        <AgendamentoProvider>
+          <DescargaProvider>
+            <ChatSuporteProvider>
+              <Routes />
+              {/* Widget de Chat flutuante - disponível em todas as páginas */}
+              <ChatWidget />
+              {/* Container de notificações Toast - disponível globalmente */}
+              <ToastContainer
+                position="top-right"
+                autoClose={5000}
+                hideProgressBar={false}
+                newestOnTop
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="dark"
+                limit={5}
+              />
+            </ChatSuporteProvider>
+          </DescargaProvider>
+        </AgendamentoProvider>
+      </TicketProvider>
     </AuthProvider>
   );
 }

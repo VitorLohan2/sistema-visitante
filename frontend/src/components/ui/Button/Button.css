@@ -1,0 +1,131 @@
+/* Estilos do componente Button */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  font-family: inherit;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Tamanhos */
+.btn-pequeno {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.btn-medio {
+  padding: 10px 20px;
+  font-size: 14px;
+}
+
+.btn-grande {
+  padding: 14px 28px;
+  font-size: 16px;
+}
+
+/* Variantes */
+.btn-primario {
+  background: #e02041;
+  color: #fff;
+}
+
+.btn-primario:hover:not(:disabled) {
+  background: #c81b39;
+}
+
+.btn-secundario {
+  background: #41414d;
+  color: #fff;
+}
+
+.btn-secundario:hover:not(:disabled) {
+  background: #2d2d35;
+}
+
+.btn-perigo {
+  background: #dc3545;
+  color: #fff;
+}
+
+.btn-perigo:hover:not(:disabled) {
+  background: #c82333;
+}
+
+.btn-sucesso {
+  background: #28a745;
+  color: #fff;
+}
+
+.btn-sucesso:hover:not(:disabled) {
+  background: #218838;
+}
+
+.btn-outline {
+  background: transparent;
+  color: #e02041;
+  border: 2px solid #e02041;
+}
+
+.btn-outline:hover:not(:disabled) {
+  background: #e02041;
+  color: #fff;
+}
+
+/* Largura total */
+.btn-full {
+  width: 100%;
+}
+
+/* Loading spinner */
+.btn-loading {
+  position: relative;
+  color: transparent !important;
+}
+
+.btn-spinner {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: btn-spin 0.8s linear infinite;
+}
+
+@keyframes btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Ícone */
+.btn-icone {
+  display: flex;
+  align-items: center;
+}
+
+/* Tema escuro */
+[data-theme="dark"] .btn-secundario {
+  background: #2d2d35;
+}
+
+[data-theme="dark"] .btn-secundario:hover:not(:disabled) {
+  background: #41414d;
+}
+
+[data-theme="dark"] .btn-outline {
+  border-color: #e02041;
+  color: #e02041;
+}

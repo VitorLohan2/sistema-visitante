@@ -1,0 +1,737 @@
+/* ═══════════════════════════════════════════════════════════════
+   LISTA DE EMPRESAS DE VISITANTES - Layout Profissional e Responsivo
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════
+   VARIÁVEIS CSS
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+  --empresas-primary: #047857;
+  --empresas-primary-hover: #047857;
+  --empresas-secondary: #41414d;
+  --empresas-success: #28a745;
+  --empresas-bg: #f0f0f5;
+  --empresas-card-bg: #ffffff;
+  --empresas-text: #41414d;
+  --empresas-text-light: #737380;
+  --empresas-border: #e1e5eb;
+  --empresas-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --empresas-shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.12);
+  --empresas-radius: 12px;
+  --empresas-radius-sm: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CONTAINER PRINCIPAL
+   ═══════════════════════════════════════════════════════════════ */
+.empresas-visitantes-container {
+  min-height: 100vh;
+  padding: 24px;
+  background: var(--empresas-bg);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HEADER
+   ═══════════════════════════════════════════════════════════════ */
+.empresas-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--empresas-card-bg);
+  padding: 20px 32px;
+  border-radius: var(--empresas-radius);
+  box-shadow: var(--empresas-shadow);
+  margin-bottom: 24px;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.empresas-header .header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.empresas-header .header-left h1 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 28px;
+  font-weight: 700;
+  color: #000;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.empresas-header .header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SEARCH BAR - Design Elegante
+   ═══════════════════════════════════════════════════════════════ */
+.search-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--empresas-card-bg);
+  padding: 16px 24px;
+  border-radius: var(--empresas-radius);
+  box-shadow: var(--empresas-shadow);
+  margin-bottom: 24px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.search-bar .search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  max-width: 450px;
+  min-width: 280px;
+}
+
+.search-bar .search-wrapper {
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  border: 2px solid var(--empresas-border);
+  border-radius: 50px;
+  padding: 0;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.search-bar .search-wrapper:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.search-bar .search-wrapper:focus-within {
+  border-color: var(--empresas-primary);
+  background: #fff;
+  box-shadow: 0 0 0 4px rgb(229, 231, 235, 0.1);
+}
+
+.search-bar .search-wrapper svg {
+  position: absolute;
+  left: 18px;
+  color: var(--empresas-text-light);
+  pointer-events: none;
+  transition: color 0.3s ease;
+}
+
+.search-bar .search-wrapper:focus-within svg {
+  color: var(--empresas-primary);
+}
+
+.search-bar .search-wrapper input {
+  width: 100%;
+  padding: 14px 50px 14px 50px;
+  border: none;
+  border-radius: 50px;
+  font-size: 14px;
+  color: var(--empresas-text);
+  background: transparent;
+  outline: none;
+}
+
+.search-bar .search-wrapper input::placeholder {
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+.search-clear-btn-lev {
+  position: absolute;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(229, 231, 235, 0.1);
+  color: #191d24;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.search-clear-btn-lev:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.total-empresas {
+  color: var(--empresas-text-light);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TABELA DE EMPRESAS
+   ═══════════════════════════════════════════════════════════════ */
+.empresas-list {
+  background: var(--empresas-card-bg);
+  border-radius: var(--empresas-radius);
+  box-shadow: var(--empresas-shadow);
+  overflow: hidden;
+}
+
+.empresas-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.empresas-table thead {
+  background: linear-gradient(135deg, #5e5e5e 0%, #5e5e5e 100%);
+}
+
+.empresas-table thead th {
+  padding: 14px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #ffffff;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  border-bottom: 2px solid var(--empresas-border);
+}
+
+.empresas-table thead th.th-center {
+  text-align: center;
+}
+
+.empresas-table tbody tr {
+  transition: all 0.2s ease;
+  border-bottom: 1px solid var(--empresas-border);
+}
+
+.empresas-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.empresas-table tbody tr:hover {
+  background: rgba(5, 150, 105, 0.03);
+}
+
+.empresas-table tbody td {
+  padding: 14px 16px;
+  color: var(--empresas-text);
+  vertical-align: middle;
+}
+
+.empresa-nome {
+  font-weight: 600;
+  color: var(--empresas-text);
+}
+
+.empresa-cnpj {
+  font-family: "Roboto Mono", monospace;
+  font-size: 13px;
+}
+
+.empresa-endereco,
+.empresa-email,
+.empresa-telefone {
+  text-align: left;
+  font-weight: 500;
+}
+
+.empresa-endereco {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empresas-table .acoes {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.acoes .btn-editar,
+.acoes .btn-deletar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.acoes .btn-editar {
+  background: linear-gradient(
+    135deg,
+    rgba(79, 70, 229, 0.1) 0%,
+    rgba(79, 70, 229, 0.15) 100%
+  );
+  color: #4f46e5;
+}
+
+.acoes .btn-editar:hover {
+  background: #4f46e5;
+  color: white;
+  transform: scale(1.1);
+}
+
+.acoes .btn-deletar {
+  background: linear-gradient(
+    135deg,
+    rgba(220, 38, 38, 0.1) 0%,
+    rgba(220, 38, 38, 0.15) 100%
+  );
+  color: #dc2626;
+}
+
+.acoes .btn-deletar:hover {
+  background: #dc2626;
+  color: white;
+  transform: scale(1.1);
+}
+
+.td-center {
+  text-align: center;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MENSAGENS - ESTADO VAZIO
+   ═══════════════════════════════════════════════════════════════ */
+.no-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+  text-align: center;
+  background: var(--empresas-card-bg);
+  border-radius: var(--empresas-radius);
+  box-shadow: var(--empresas-shadow);
+}
+
+.no-results .empty-icon {
+  font-size: 64px;
+  color: var(--empresas-border);
+  margin-bottom: 16px;
+}
+
+.no-results h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--empresas-text);
+  margin: 0 0 8px 0;
+}
+
+.no-results p {
+  font-size: 13px;
+  color: var(--empresas-text-light);
+  margin: 0;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  font-size: 16px;
+  color: var(--empresas-text-light);
+  text-align: center;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MODAL
+   ═══════════════════════════════════════════════════════════════ */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal-content {
+  background: var(--empresas-card-bg);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px;
+  border-bottom: 1px solid var(--empresas-border);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--empresas-text);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-header h2 .icon {
+  color: var(--empresas-primary);
+}
+
+.btn-fechar {
+  background: transparent;
+  border: none;
+  color: var(--empresas-text-light);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  font-size: 20px;
+}
+
+.btn-fechar:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--empresas-text);
+}
+
+.modal-form {
+  padding: 24px;
+}
+
+.modal-form .form-group {
+  margin-bottom: 20px;
+}
+
+.modal-form .form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--empresas-text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.modal-form .form-group input,
+.modal-form .form-group textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 2px solid var(--empresas-border);
+  border-radius: var(--empresas-radius-sm);
+  font-size: 14px;
+  color: var(--empresas-text);
+  background: #f8f9fa;
+  transition: all 0.3s ease;
+}
+
+.modal-form .form-group input:focus,
+.modal-form .form-group textarea:focus {
+  outline: none;
+  border-color: var(--empresas-primary);
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.1);
+}
+
+.modal-form .form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.modal-form .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--empresas-border);
+}
+
+.btn-cancelar {
+  padding: 12px 24px;
+  background: #f3f4f6;
+  color: var(--empresas-text);
+  border: 1px solid var(--empresas-border);
+  border-radius: var(--empresas-radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-cancelar:hover {
+  background: #e5e7eb;
+  border-color: var(--empresas-text-light);
+}
+
+.btn-salvar {
+  padding: 12px 24px;
+  background: linear-gradient(
+    135deg,
+    var(--empresas-primary) 0%,
+    var(--empresas-primary-hover) 100%
+  );
+  color: white;
+  border: none;
+  border-radius: var(--empresas-radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
+}
+
+.btn-salvar:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.btn-salvar:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVO - Mobile First
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+  .empresas-visitantes-container {
+    padding: 20px 16px;
+  }
+
+  .empresas-header {
+    padding: 16px 20px;
+  }
+
+  .empresas-header .header-left h1 {
+    font-size: 24px;
+  }
+
+  .search-bar {
+    padding: 12px 16px;
+  }
+
+  .empresas-table {
+    font-size: 13px;
+  }
+
+  .empresas-table th,
+  .empresas-table td {
+    padding: 12px 12px;
+  }
+
+  .modal-content {
+    max-width: 480px;
+  }
+}
+
+@media (max-width: 768px) {
+  .empresas-visitantes-container {
+    padding: 16px 12px;
+  }
+
+  .empresas-header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .empresas-header .header-left {
+    width: 100%;
+    gap: 12px;
+  }
+
+  .empresas-header .header-left h1 {
+    font-size: 20px;
+  }
+
+  .empresas-header .header-right {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .search-bar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .search-bar .search-wrapper {
+    max-width: none;
+  }
+
+  .total-empresas {
+    text-align: center;
+  }
+
+  .empresas-table {
+    display: block;
+    overflow-x: auto;
+    font-size: 12px;
+  }
+
+  .empresas-table thead {
+    display: none;
+  }
+
+  .empresas-table tbody,
+  .empresas-table tr,
+  .empresas-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .empresas-table tbody tr {
+    margin-bottom: 16px;
+    border: 1px solid var(--empresas-border);
+    border-radius: var(--empresas-radius-sm);
+    background: white;
+    padding: 12px;
+  }
+
+  .empresas-table tbody td {
+    padding: 8px 0;
+    border: none;
+    text-align: right;
+    position: relative;
+    padding-left: 120px;
+    min-height: 32px;
+  }
+
+  .empresas-table tbody td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 12px;
+    font-weight: 600;
+    color: var(--empresas-primary);
+    font-size: 11px;
+    text-transform: uppercase;
+  }
+
+  .empresas-table .acoes {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 8px;
+  }
+
+  .modal-content {
+    max-width: 100%;
+    max-height: 95vh;
+    border-radius: 12px;
+  }
+
+  .modal-header {
+    padding: 16px;
+  }
+
+  .modal-header h2 {
+    font-size: 18px;
+  }
+
+  .modal-form {
+    padding: 16px;
+  }
+
+  .modal-form .form-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .modal-form .form-group input,
+  .modal-form .form-group textarea {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .btn-cancelar,
+  .btn-salvar {
+    width: 100%;
+    padding: 11px 16px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .empresas-visitantes-container {
+    padding: 12px 8px;
+  }
+
+  .empresas-header {
+    padding: 12px;
+  }
+
+  .empresas-header .header-left h1 {
+    font-size: 18px;
+  }
+
+  .search-bar {
+    padding: 10px;
+  }
+
+  .search-bar .search-wrapper input {
+    padding: 10px 40px 10px 40px;
+    font-size: 13px;
+  }
+
+  .modal-overlay {
+    padding: 12px;
+  }
+
+  .modal-content {
+    max-height: 98vh;
+  }
+}

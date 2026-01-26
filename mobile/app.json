@@ -13,7 +13,10 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "SUA_API_KEY_GOOGLE_MAPS_IOS"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,14 +24,22 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
+      "softwareKeyboardLayoutMode": "pan",
       "permissions": [
         "CAMERA",
         "RECORD_AUDIO",
         "READ_MEDIA_IMAGES",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
       ],
-      "package": "com.vitorlohanmatos.mobile"
+      "package": "com.vitorlohanmatos.mobile",
+      "config": {
+        "googleMaps": {
+          "apiKey": "SUA_API_KEY_GOOGLE_MAPS_ANDROID"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -39,9 +50,19 @@
         {
           "cameraPermission": "Precisamos acessar sua câmera para escanear códigos de barras"
         }
-      ]
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Permite acesso à localização para registrar o ponto de trabalho.",
+          "locationWhenInUsePermission": "Permite acesso à localização enquanto o app está em uso."
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      "expo-font"
     ],
     "extra": {
+      "API_URL": "http://192.168.10.165:3001",
       "eas": {
         "projectId": "66a0d360-212e-4be5-8297-c521d0a51cfb"
       }

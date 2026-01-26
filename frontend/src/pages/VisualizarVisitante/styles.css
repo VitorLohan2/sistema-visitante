@@ -1,0 +1,299 @@
+/* ===== VARIABLES ===== */
+:root {
+  --view-bg: #f8fafc;
+  --view-card-bg: #ffffff;
+  --view-border: #e2e8f0;
+  --view-text-primary: #1e293b;
+  --view-text-secondary: #64748b;
+  --view-text-muted: #94a3b8;
+  --view-accent: #3b82f6;
+  --view-danger: #ef4444;
+  --view-success: #10b981;
+  --view-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --view-shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.1);
+  --view-radius: 12px;
+  --view-radius-sm: 8px;
+}
+
+/* ===== CONTAINER PRINCIPAL ===== */
+.view-visitor-container {
+  min-height: 100vh;
+  background: var(--view-bg);
+  padding: 32px 24px;
+}
+
+.view-visitor-container .content {
+  max-width: 720px;
+  margin: 0 auto;
+  background: var(--view-card-bg);
+  border-radius: var(--view-radius);
+  box-shadow: var(--view-shadow-lg);
+  padding: 32px;
+}
+
+/* ===== HEADER ===== */
+.view-visitor-container .view-header {
+  margin-bottom: 32px;
+  border-bottom: 1px solid var(--view-border);
+  padding-bottom: 24px;
+}
+
+.view-visitor-container .view-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--view-text-primary);
+  margin: 0 0 8px 0;
+}
+
+.view-visitor-container .view-header p {
+  font-size: 14px;
+  color: var(--view-text-secondary);
+  margin: 0;
+}
+
+/* ===== FORM ===== */
+.view-visitor-container .readonly-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ===== FORM GROUP ===== */
+.view-visitor-container .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.view-visitor-container .form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--view-text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ===== FORM ROW (2 COLUMNS) ===== */
+.view-visitor-container .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* ===== INPUTS & TEXTAREA ===== */
+.view-visitor-container input,
+.view-visitor-container textarea {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 15px;
+  color: var(--view-text-primary);
+  background: #f8fafc;
+  border: 1px solid var(--view-border);
+  border-radius: var(--view-radius-sm);
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.view-visitor-container input:read-only,
+.view-visitor-container textarea:read-only {
+  background: #f8fafc;
+  cursor: default;
+}
+
+.view-visitor-container input:hover,
+.view-visitor-container textarea:hover {
+  border-color: #cbd5e1;
+}
+
+.view-visitor-container textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+/* ===== PHOTO GALLERY SECTION ===== */
+.view-visitor-container .photo-gallery-section {
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: var(--view-radius-sm);
+  border: 1px solid var(--view-border);
+}
+
+.view-visitor-container .photo-gallery-section > label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--view-text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+.view-visitor-container .photo-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.view-visitor-container .photo-thumbnail {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  border-radius: var(--view-radius-sm);
+  overflow: hidden;
+  cursor: pointer;
+  border: 3px solid transparent;
+  transition: all 0.2s ease;
+  background: #ffffff;
+}
+
+.view-visitor-container .photo-thumbnail:hover {
+  transform: scale(1.05);
+}
+
+.view-visitor-container .photo-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.view-visitor-container .photo-thumbnail .photo-label {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  font-size: 11px;
+  text-align: center;
+  padding: 4px;
+  font-weight: 500;
+}
+
+.view-visitor-container .no-photos {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px;
+  color: var(--view-text-muted);
+  font-size: 14px;
+  width: 100%;
+}
+
+/* ===== IMAGE MODAL ===== */
+.image-modal-visualizacao {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 24px;
+}
+
+.modal-content-visualizacao {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  background: var(--view-card-bg);
+  border-radius: var(--view-radius);
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal-content-visualizacao img {
+  max-width: 100%;
+  max-height: 85vh;
+  display: block;
+  object-fit: contain;
+}
+
+.modal-content-visualizacao .close-button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.modal-content-visualizacao .close-button:hover {
+  background: rgba(0, 0, 0, 0.8);
+  transform: scale(1.1);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .view-visitor-container {
+    padding: 16px;
+  }
+
+  .view-visitor-container .content {
+    padding: 24px 20px;
+  }
+
+  .view-visitor-container .view-header h1 {
+    font-size: 20px;
+  }
+
+  .view-visitor-container .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .view-visitor-container input,
+  .view-visitor-container textarea {
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+
+  .view-visitor-container .photo-thumbnail {
+    width: 80px;
+    height: 80px;
+  }
+}
+
+@media (max-width: 480px) {
+  .view-visitor-container {
+    padding: 12px;
+  }
+
+  .view-visitor-container .content {
+    padding: 20px 16px;
+    border-radius: var(--view-radius-sm);
+  }
+
+  .view-visitor-container .view-header {
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+  }
+
+  .view-visitor-container .view-header h1 {
+    font-size: 18px;
+  }
+
+  .view-visitor-container .form-group label {
+    font-size: 12px;
+  }
+
+  .view-visitor-container .photo-thumbnail {
+    width: 70px;
+    height: 70px;
+  }
+
+  .view-visitor-container .photo-gallery-section {
+    padding: 12px;
+  }
+}

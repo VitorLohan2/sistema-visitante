@@ -1,0 +1,357 @@
+/* ═══════════════════════════════════════════════════════════════
+   CRIAR SENHA - ESTILO PARA PRIMEIRO ACESSO
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Container principal com wallpaper */
+.criar-senha-container {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(30, 41, 59, 0.85) 0%,
+      rgba(51, 65, 85, 0.85) 100%
+    ),
+    url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><defs><linearGradient id="grad" x1="0%25" y1="0%25" x2="100%25" y2="100%25"><stop offset="0%25" style="stop-color:%231e293b;stop-opacity:1" /><stop offset="100%25" style="stop-color:%23334155;stop-opacity:1" /></linearGradient></defs><rect fill="url(%23grad)" width="400" height="400"/><g fill="none" stroke="rgba(16,185,129,0.1)" stroke-width="1"><path d="M200 50 L250 90 L250 150 L200 190 L150 150 L150 90 Z"/><path d="M200 70 L230 100 L230 140 L200 170 L170 140 L170 100 Z"/><circle cx="200" cy="120" r="20"/><path d="M190 115 L195 125 L210 110"/><path d="M50 200 L100 240 L100 300 L50 340 L0 300 L0 240 Z" opacity="0.5"/><path d="M350 200 L400 240 L400 300 L350 340 L300 300 L300 240 Z" opacity="0.5"/><path d="M200 280 L250 320 L250 380 L200 420 L150 380 L150 320 Z" opacity="0.3"/></g></svg>');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  padding: 20px;
+}
+
+.criar-senha-container .form {
+  width: 100%;
+  max-width: 420px;
+  padding: 40px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.criar-senha-container .form img {
+  display: block;
+  margin: 0 auto 24px;
+  max-width: 200px;
+}
+
+.criar-senha-container h1 {
+  margin: 0 0 8px 0;
+  text-align: center;
+  color: #1a1a2e;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.criar-senha-container .descricao {
+  text-align: center;
+  color: #64748b;
+  font-size: 14px;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+/* Input groups */
+.criar-senha-container .input-group {
+  margin-bottom: 20px;
+}
+
+.criar-senha-container .input-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 6px;
+}
+
+.criar-senha-container .input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.criar-senha-container .input-wrapper .input-icon {
+  position: absolute;
+  left: 14px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.criar-senha-container .input-wrapper input {
+  width: 100%;
+  padding: 14px 16px 14px 44px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+  background: #f8fafc;
+  color: #1e293b;
+}
+
+.criar-senha-container .input-senha {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.criar-senha-container .input-senha .input-icon {
+  position: absolute;
+  left: 14px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.criar-senha-container .input-senha input {
+  width: 100%;
+  padding: 14px 50px 14px 44px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+  background: #f8fafc;
+  color: #1e293b;
+}
+
+.criar-senha-container input:focus {
+  outline: none;
+  border-color: #10b981;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.criar-senha-container input:disabled {
+  background: #e2e8f0;
+  cursor: not-allowed;
+  color: #64748b;
+}
+
+/* Botão mostrar senha */
+.criar-senha-container .btn-mostrar {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.criar-senha-container .btn-mostrar:hover {
+  color: #10b981;
+}
+
+/* Hints e feedback */
+.criar-senha-container .input-hint {
+  display: block;
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.criar-senha-container .input-error {
+  display: block;
+  font-size: 12px;
+  color: #dc2626;
+  margin-top: 4px;
+}
+
+.criar-senha-container .input-success {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #10b981;
+  margin-top: 4px;
+}
+
+/* Força da senha */
+.criar-senha-container .forca-senha {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.criar-senha-container .barra-forca {
+  flex: 1;
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.criar-senha-container .barra-preenchida {
+  height: 100%;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+.criar-senha-container .forca-senha span {
+  font-size: 12px;
+  font-weight: 500;
+  min-width: 50px;
+}
+
+.criar-senha-container .forca-0 .barra-preenchida {
+  background: #dc2626;
+}
+.criar-senha-container .forca-0 span {
+  color: #dc2626;
+}
+
+.criar-senha-container .forca-1 .barra-preenchida {
+  background: #f59e0b;
+}
+.criar-senha-container .forca-1 span {
+  color: #f59e0b;
+}
+
+.criar-senha-container .forca-2 .barra-preenchida {
+  background: #3b82f6;
+}
+.criar-senha-container .forca-2 span {
+  color: #3b82f6;
+}
+
+.criar-senha-container .forca-3 .barra-preenchida {
+  background: #10b981;
+}
+.criar-senha-container .forca-3 span {
+  color: #10b981;
+}
+
+/* Mensagem de erro */
+.criar-senha-container .erro-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-left: 4px solid #dc2626;
+  border-radius: 8px;
+  color: #dc2626;
+  font-size: 14px;
+}
+
+/* Botão criar */
+.criar-senha-container .button-criar {
+  width: 100%;
+  height: 48px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  font-weight: 600;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-decoration: none;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.criar-senha-container .button-criar:hover:not(:disabled) {
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.35);
+  transform: translateY(-1px);
+}
+
+.criar-senha-container .button-criar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Link voltar */
+.criar-senha-container .back-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 24px;
+  color: #e02041;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.criar-senha-container .back-link:hover {
+  color: #e02041;
+  text-decoration: underline;
+}
+
+/* Tela de sucesso */
+.criar-senha-container .sucesso-container {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.criar-senha-container .icone-sucesso {
+  color: #10b981;
+  margin-bottom: 20px;
+}
+
+.criar-senha-container .sucesso-container h2 {
+  color: #10b981;
+  font-size: 24px;
+  margin-bottom: 16px;
+  font-weight: 700;
+}
+
+.criar-senha-container .mensagem-sucesso {
+  color: #475569;
+  font-size: 15px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.criar-senha-container .instrucoes {
+  color: #64748b;
+  font-size: 13px;
+  margin-bottom: 24px;
+}
+
+.criar-senha-container .button-voltar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.criar-senha-container .button-voltar:hover {
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.35);
+}
+
+/* Responsivo */
+@media (max-width: 480px) {
+  .criar-senha-container .form {
+    padding: 24px;
+    margin: 10px;
+  }
+
+  .criar-senha-container h1 {
+    font-size: 24px;
+  }
+}
