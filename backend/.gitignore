@@ -1,2 +1,42 @@
-node_modules
+# ═══════════════════════════════════════════════════════════════════════════════
+# GITIGNORE - Backend Sistema Visitante
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Dependências
+node_modules/
+
+# Variáveis de ambiente (NUNCA commitar!)
 .env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Diretórios de build
+dist/
+build/
+
+# Arquivos do sistema operacional
+.DS_Store
+Thumbs.db
+
+# Arquivos temporários
+*.tmp
+*.temp
+.cache/
+
+# IDEs e editores
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Coverage de testes
+coverage/
+
+# Arquivos de debug
+*.dump
+*.sql.bak
