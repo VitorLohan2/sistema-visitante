@@ -100,30 +100,85 @@ git commit -m "Resolve conflitos do merge"
 git push origin main
 ```
 
-> ⚠️ **ATENÇÃO:** O push para `main` dispara automaticamente o GitHub Actions que cria uma nova tag de versão (patch increment).
+> ⚠️ **ATENÇÃO:** O push para `main` dispara automaticamente o GitHub Actions que cria uma nova tag de versão baseada no prefixo do commit (Conventional Commits).
 
 ---
 
-## 3. Versionamento com Tags
+## 3. Versionamento com Tags (Conventional Commits)
 
-### 3.1 Criar tag manualmente (Major ou Minor)
+O projeto utiliza **Conventional Commits** para versionamento semântico automático. O GitHub Actions analisa os prefixos das mensagens de commit para determinar o tipo de versão.
 
-Para versões **Major** (X.0.0) ou **Minor** (0.X.0), crie a tag manualmente:
+### 3.1 Tabela de Prefixos de Commit
+
+| Prefixo do Commit                                                   | Tipo de Versão | Incremento | Exemplo                              |
+| ------------------------------------------------------------------- | -------------- | ---------- | ------------------------------------ |
+| `major:` ou `BREAKING CHANGE`                                       | **Major**      | X.0.0      | `major: nova arquitetura do sistema` |
+| `feat:`                                                             | **Minor**      | 0.X.0      | `feat: adicionado chat de suporte`   |
+| `fix:`, `docs:`, `style:`, `refactor:`, `chore:`, ou qualquer outro | **Patch**      | 0.0.X      | `fix: corrigido bug no cronômetro`   |
+
+### 3.2 Exemplos de Commits
 
 ```bash
-# Para Major version (ex: v2.0.0)
-git tag -a v2.0.0 -m "Major version 2.0.0 - Descrição das mudanças"
+# ══════════════════════════════════════════════════════════════════
+# PATCH (0.0.X) - Correções de bugs, ajustes menores
+# ══════════════════════════════════════════════════════════════════
+git commit -m "fix: corrigido bug no cronômetro"
+git commit -m "fix: ajustado layout do modal de confirmação"
+git commit -m "docs: atualizado README com instruções de instalação"
+git commit -m "style: formatação do código"
+git commit -m "refactor: reorganizado estrutura de pastas"
+git commit -m "chore: atualizado dependências"
 
-# Para Minor version (ex: v2.1.0)
-git tag -a v2.1.0 -m "Minor version 2.1.0 - Descrição das mudanças"
+# ══════════════════════════════════════════════════════════════════
+# MINOR (0.X.0) - Novas funcionalidades (sem quebrar compatibilidade)
+# ══════════════════════════════════════════════════════════════════
+git commit -m "feat: adicionado filtro de busca no histórico"
+git commit -m "feat: implementado sistema de notificações"
+git commit -m "feat: nova página de relatórios"
+
+# ══════════════════════════════════════════════════════════════════
+# MAJOR (X.0.0) - Mudanças que quebram compatibilidade
+# ══════════════════════════════════════════════════════════════════
+git commit -m "major: nova estrutura de banco de dados"
+git commit -m "major: API v2 com endpoints reestruturados"
+git commit -m "BREAKING CHANGE: removido suporte a autenticação legada"
+```
+
+### 3.3 Como funciona o versionamento automático
+
+Quando você faz `git push origin main`, o GitHub Actions:
+
+1. **Busca a última tag** existente (ex: `v2.0.1`)
+2. **Analisa os commits** desde a última tag
+3. **Determina o incremento** baseado nos prefixos encontrados:
+   - Se encontrar `major:` ou `BREAKING CHANGE` → incrementa Major
+   - Se encontrar `feat:` → incrementa Minor
+   - Caso contrário → incrementa Patch
+4. **Cria a nova tag** automaticamente (ex: `v2.0.2`)
+5. **Faz build e push** da imagem Docker com a nova tag
+6. **Deploya** na VM de produção
+
+### 3.4 Criar tag manualmente (se necessário)
+
+Em casos especiais, você pode criar tags manualmente:
+
+```bash
+# Criar tag manualmente
+git tag -a v2.0.0 -m "Major version 2.0.0 - Descrição das mudanças"
 
 # Enviar a tag para o remoto
 git push origin v2.0.0
 ```
 
-### 3.2 Tags automáticas (Patch)
+### 3.5 Verificar tags existentes
 
-O GitHub Actions cria automaticamente tags **patch** (0.0.X) quando há push para `main`.
+```bash
+# Listar todas as tags
+git tag -l
+
+# Ver a última tag
+git describe --tags --abbrev=0
+```
 
 ### 3.3 Verificar tags existentes
 
@@ -450,37 +505,61 @@ END $$;
 ## 📝 Resumo dos Comandos Principais
 
 ```bash
-# 1. MERGE
+# ═══════════════════════════════════════════════════════════════════════════
+# 1. MERGE COM CONVENTIONAL COMMITS
+# ═══════════════════════════════════════════════════════════════════════════
 git checkout main
-git merge aplicativo -m "Merge para versão X.X.X"
+git merge aplicativo
+
+# Escolha o prefixo conforme o tipo de mudança:
+git commit -m "fix: corrigido bug X"      # → Patch (0.0.X)
+git commit -m "feat: nova funcionalidade" # → Minor (0.X.0)
+git commit -m "major: mudança breaking"   # → Major (X.0.0)
+
 git push origin main
+# ✅ GitHub Actions cria tag automaticamente e faz deploy!
 
-# 2. TAG (se major/minor)
-git tag -a vX.X.X -m "Versão X.X.X"
-git push origin vX.X.X
+# ═══════════════════════════════════════════════════════════════════════════
+# 2. DEPLOY MANUAL (se necessário)
+# ═══════════════════════════════════════════════════════════════════════════
 
-# 3. BUILD DOCKER
+# BUILD DOCKER (local)
 cd backend
 docker build -t vitorlohan/liberae:vX.X.X .
 docker tag vitorlohan/liberae:vX.X.X vitorlohan/liberae:latest
 
-# 4. PUSH DOCKER
+# PUSH DOCKER (local)
 docker push vitorlohan/liberae:vX.X.X
 docker push vitorlohan/liberae:latest
 
-# 5. DEPLOY VM
+# DEPLOY VM (via SSH)
 ssh dev@34.225.38.222
 cd /home/dev/sistema/prod
 docker pull vitorlohan/liberae:vX.X.X
 docker compose down
 docker compose up -d
 
-# 6. MIGRAÇÃO SQL (se necessário)
+# ═══════════════════════════════════════════════════════════════════════════
+# 3. MIGRAÇÃO SQL (se necessário)
+# ═══════════════════════════════════════════════════════════════════════════
 $env:PGPASSWORD='SENHA'; psql -h 34.225.38.222 -p 5786 -U neondb_owner_prod -d neondb_prod -f script.sql
 
-# 7. VERCEL
-# Automático ou redeploy manual pelo dashboard
+# ═══════════════════════════════════════════════════════════════════════════
+# 4. VERCEL - Automático ou redeploy manual pelo dashboard
+# ═══════════════════════════════════════════════════════════════════════════
 ```
+
+### 📋 Referência Rápida de Conventional Commits
+
+| Prefixo     | Versão | Quando usar                              |
+| ----------- | ------ | ---------------------------------------- |
+| `fix:`      | Patch  | Correção de bugs                         |
+| `feat:`     | Minor  | Nova funcionalidade                      |
+| `major:`    | Major  | Mudança que quebra compatibilidade       |
+| `docs:`     | Patch  | Apenas documentação                      |
+| `style:`    | Patch  | Formatação, sem mudança de código        |
+| `refactor:` | Patch  | Refatoração sem mudança de comportamento |
+| `chore:`    | Patch  | Tarefas de manutenção                    |
 
 ---
 

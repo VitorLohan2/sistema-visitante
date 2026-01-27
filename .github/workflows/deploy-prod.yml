@@ -7,11 +7,11 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag para deploy (ex: v1.2.3). Se preenchido, fará deploy dessa tag.'
+        description: "Tag para deploy (ex: v1.2.3). Se preenchido, fará deploy dessa tag."
         required: false
 
 permissions:
-  contents: write  # 🔑 Permite criar e enviar tags (necessário para o git push)
+  contents: write # 🔑 Permite criar e enviar tags (necessário para o git push)
 
 jobs:
   auto-tag:
@@ -23,8 +23,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # necessário para ver tags
-          persist-credentials: true  # mantém o GITHUB_TOKEN para push
+          fetch-depth: 0 # necessário para ver tags
+          persist-credentials: true # mantém o GITHUB_TOKEN para push
 
       - name: Get latest tag
         id: get-latest
@@ -35,7 +35,7 @@ jobs:
       - name: Determine next version
         id: set-tag
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # garante autenticação
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # garante autenticação
         run: |
           LATEST=${{ steps.get-latest.outputs.LATEST_TAG }}
           MAJOR=$(echo $LATEST | cut -d. -f1 | sed 's/v//')
@@ -44,6 +44,13 @@ jobs:
 
           # Busca commits desde a última tag
           COMMITS=$(git log $LATEST..HEAD --pretty=%B)
+
+          # Se não houver commits novos, reutiliza a última tag
+          if [ -z "$COMMITS" ]; then
+            echo "⚠️ Nenhum commit novo desde $LATEST, reutilizando tag existente"
+            echo "tag=$LATEST" >> $GITHUB_OUTPUT
+            exit 0
+          fi
 
           # Incrementa version conforme tipo de commit
           if echo "$COMMITS" | grep -q -E "BREAKING CHANGE|major:"; then
@@ -58,6 +65,14 @@ jobs:
           fi
 
           NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+
+          # Verifica se a tag já existe
+          if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
+            echo "⚠️ Tag $NEW_TAG já existe, incrementando patch..."
+            PATCH=$((PATCH + 1))
+            NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+          fi
+
           echo "tag=$NEW_TAG" >> $GITHUB_OUTPUT
 
           # Configura Git e envia a tag
