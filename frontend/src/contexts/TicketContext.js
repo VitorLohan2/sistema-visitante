@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * TICKET CONTEXT - Gerenciamento Centralizado de Tickets de Suporte
@@ -62,7 +63,7 @@ export function TicketProvider({ children }) {
     if (audioRef.current) {
       audioRef.current.currentTime = 0;
       audioRef.current.play().catch((err) => {
-        console.log("Não foi possível tocar som de notificação:", err.message);
+        logger.log("Não foi possível tocar som de notificação:", err.message);
       });
     }
   }, []);
@@ -84,7 +85,7 @@ export function TicketProvider({ children }) {
 
     // Listener para novo ticket criado
     const unsubCreate = socketService.on("ticket:create", (ticket) => {
-      console.log(
+      logger.log(
         "🎫 TicketContext: Novo ticket recebido via socket",
         ticket.id
       );
@@ -107,7 +108,7 @@ export function TicketProvider({ children }) {
 
     // Listener para ticket atualizado
     const unsubUpdate = socketService.on("ticket:update", (dados) => {
-      console.log("🎫 TicketContext: Ticket atualizado via socket", dados.id);
+      logger.log("🎫 TicketContext: Ticket atualizado via socket", dados.id);
       setTickets((prev) => {
         const novosTickets = prev
           .map((t) => (t.id === dados.id ? { ...t, ...dados } : t))
@@ -120,7 +121,7 @@ export function TicketProvider({ children }) {
 
     // Listener para ticket visualizado
     const unsubViewed = socketService.on("ticket:viewed", (dados) => {
-      console.log("🎫 TicketContext: Ticket visualizado via socket", dados.id);
+      logger.log("🎫 TicketContext: Ticket visualizado via socket", dados.id);
       setTickets((prev) => {
         const novosTickets = prev.map((t) =>
           t.id === dados.id ? { ...t, visualizado: true } : t
@@ -133,7 +134,7 @@ export function TicketProvider({ children }) {
 
     // Listener para todos visualizados
     const unsubAllViewed = socketService.on("ticket:all_viewed", () => {
-      console.log("🎫 TicketContext: Todos tickets visualizados via socket");
+      logger.log("🎫 TicketContext: Todos tickets visualizados via socket");
       setTickets((prev) => {
         const novosTickets = prev.map((t) => ({ ...t, visualizado: true }));
         setCache("tickets", novosTickets);
@@ -154,7 +155,7 @@ export function TicketProvider({ children }) {
   const connectSocket = useCallback(() => {
     const token = localStorage.getItem("token");
     if (token && !socketService.isConnected()) {
-      console.log("🎫 TicketContext: Conectando socket...");
+      logger.log("🎫 TicketContext: Conectando socket...");
       socketService.connect(token);
     }
   }, []);
@@ -169,7 +170,7 @@ export function TicketProvider({ children }) {
         if (!forceRefresh) {
           const cachedTickets = getCache("tickets");
           if (cachedTickets && cachedTickets.length > 0) {
-            console.log(
+            logger.log(
               "🎫 TicketContext: Carregando do cache",
               cachedTickets.length,
               "tickets"
@@ -186,7 +187,7 @@ export function TicketProvider({ children }) {
           (a, b) => new Date(b.data_criacao) - new Date(a.data_criacao)
         );
 
-        console.log(
+        logger.log(
           "🎫 TicketContext: Carregado da API",
           sorted.length,
           "tickets"
@@ -197,7 +198,7 @@ export function TicketProvider({ children }) {
         isInitializedRef.current = true;
         isFirstLoadRef.current = false; // Marca que o primeiro load terminou
       } catch (error) {
-        console.error("Erro ao buscar tickets:", error);
+        logger.error("Erro ao buscar tickets:", error);
         // Usar cache em caso de erro
         const cachedTickets = getCache("tickets");
         if (cachedTickets) {
@@ -214,7 +215,7 @@ export function TicketProvider({ children }) {
   // Inicialização quando usuário loga
   useEffect(() => {
     if (isAuthenticated && !isInitializedRef.current) {
-      console.log("🎫 TicketContext: Inicializando...");
+      logger.log("🎫 TicketContext: Inicializando...");
 
       // Primeiro conecta o socket
       connectSocket();
@@ -272,3 +273,5 @@ export function useTickets() {
 }
 
 export default TicketContext;
+
+

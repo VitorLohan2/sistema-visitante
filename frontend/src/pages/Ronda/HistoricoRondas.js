@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
  * PÁGINA: Histórico de Rondas do Vigilante
@@ -84,7 +85,7 @@ export default function HistoricoRondas() {
         totalPaginas: pag.totalPaginas,
       }));
     } catch (err) {
-      console.error("Erro ao carregar histórico:", err);
+      logger.error("Erro ao carregar histórico:", err);
       setErro("Erro ao carregar histórico. Tente novamente.");
     } finally {
       setCarregando(false);
@@ -100,7 +101,7 @@ export default function HistoricoRondas() {
       const { ronda } = await rondaService.buscarDetalhes(rondaId);
       setRondaSelecionada(ronda);
     } catch (err) {
-      console.error("Erro ao carregar detalhes:", err);
+      logger.error("Erro ao carregar detalhes:", err);
       setErro("Erro ao carregar detalhes da ronda.");
     } finally {
       setCarregandoDetalhes(false);
@@ -460,3 +461,5 @@ export default function HistoricoRondas() {
     </div>
   );
 }
+
+

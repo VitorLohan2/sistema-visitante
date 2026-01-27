@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -50,7 +51,7 @@ export default function ListaEmpresasVisitantes() {
       if (!forceReload) {
         const cachedEmpresas = getCache("empresasVisitantes");
         if (cachedEmpresas) {
-          console.log("📦 Usando empresas visitantes do cache");
+          logger.log("📦 Usando empresas visitantes do cache");
           setEmpresas(cachedEmpresas);
           setLoading(false);
           return;
@@ -67,7 +68,7 @@ export default function ListaEmpresasVisitantes() {
       setCache("empresasVisitantes", empresasOrdenadas);
       setEmpresas(empresasOrdenadas);
     } catch (error) {
-      console.error("Erro ao carregar empresas:", error);
+      logger.error("Erro ao carregar empresas:", error);
       alert("Erro ao carregar empresas de visitantes");
     } finally {
       setLoading(false);
@@ -85,7 +86,7 @@ export default function ListaEmpresasVisitantes() {
 
     // Empresa criada
     socket.on("empresa:create", (novaEmpresa) => {
-      console.log("🔔 Socket: Nova empresa criada", novaEmpresa);
+      logger.log("🔔 Socket: Nova empresa criada", novaEmpresa);
       setEmpresas((prev) => {
         const existe = prev.find((e) => e.id === novaEmpresa.id);
         if (existe) return prev;
@@ -99,7 +100,7 @@ export default function ListaEmpresasVisitantes() {
 
     // Empresa atualizada
     socket.on("empresa:update", (empresaAtualizada) => {
-      console.log("🔔 Socket: Empresa atualizada", empresaAtualizada);
+      logger.log("🔔 Socket: Empresa atualizada", empresaAtualizada);
       setEmpresas((prev) => {
         const novaLista = prev
           .map((e) => (e.id === empresaAtualizada.id ? empresaAtualizada : e))
@@ -113,7 +114,7 @@ export default function ListaEmpresasVisitantes() {
 
     // Empresa deletada
     socket.on("empresa:delete", ({ id }) => {
-      console.log("🔔 Socket: Empresa deletada", id);
+      logger.log("🔔 Socket: Empresa deletada", id);
       setEmpresas((prev) => {
         const novaLista = prev.filter((e) => e.id !== id);
         removeEmpresaVisitanteFromCache(id);
@@ -210,7 +211,7 @@ export default function ListaEmpresasVisitantes() {
       handleFecharModal();
       carregarEmpresas(true);
     } catch (error) {
-      console.error("Erro ao salvar empresa:", error);
+      logger.error("Erro ao salvar empresa:", error);
       alert(error.response?.data?.error || "Erro ao salvar empresa");
     } finally {
       setSalvando(false);
@@ -232,7 +233,7 @@ export default function ListaEmpresasVisitantes() {
       alert("✅ Empresa excluída com sucesso!");
       carregarEmpresas(true);
     } catch (error) {
-      console.error("Erro ao deletar empresa:", error);
+      logger.error("Erro ao deletar empresa:", error);
       alert(error.response?.data?.error || "Erro ao excluir empresa");
     }
   };
@@ -476,3 +477,5 @@ export default function ListaEmpresasVisitantes() {
     </div>
   );
 }
+
+

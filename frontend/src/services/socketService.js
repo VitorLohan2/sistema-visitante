@@ -13,6 +13,7 @@ import {
   getCache,
   setCache,
 } from "./cacheService";
+import logger from "../utils/logger";
 
 // Instância única do socket
 let socket = null;
@@ -81,13 +82,22 @@ function getSocketUrl() {
  * Conecta ao servidor Socket.IO
  */
 export function connect(token) {
+  // Evita conexões duplicadas - verifica se já existe socket ativo
   if (socket?.connected) {
-    console.log("🔌 Socket já conectado");
+    logger.log("🔌 Socket já conectado, reutilizando conexão existente");
     return socket;
   }
 
+  // Se existe um socket mas está desconectado, limpa antes de criar novo
+  if (socket && !socket.connected) {
+    logger.log("🔌 Socket existente desconectado, limpando...");
+    socket.removeAllListeners();
+    socket.disconnect();
+    socket = null;
+  }
+
   const socketUrl = getSocketUrl();
-  console.log("🔌 Conectando ao Socket.IO:", socketUrl);
+  logger.log("🔌 Conectando ao Socket.IO:", socketUrl);
 
   socket = io(socketUrl, {
     auth: { token },
@@ -100,13 +110,16 @@ export function connect(token) {
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
     timeout: 20000,
+    // Evita múltiplas conexões do mesmo cliente
+    forceNew: false,
+    multiplex: true,
   });
 
   // ═══════════════════════════════════════════════════════════════
   // EVENTOS DE CONEXÃO
   // ═══════════════════════════════════════════════════════════════
   socket.on("connect", () => {
-    console.log("✅ Socket conectado:", socket.id);
+    logger.log("✅ Socket conectado:", socket.id);
     reconnectAttempts = 0;
 
     // Entra na sala global
@@ -117,16 +130,16 @@ export function connect(token) {
   });
 
   socket.on("disconnect", (reason) => {
-    console.log("🔴 Socket desconectado:", reason);
+    logger.log("🔴 Socket desconectado:", reason);
     eventCallbacks.disconnected.forEach((cb) => cb(reason));
   });
 
   socket.on("connect_error", (error) => {
-    console.error("❌ Erro de conexão Socket:", error.message);
+    logger.error("❌ Erro de conexão Socket:", error.message);
     reconnectAttempts++;
 
     if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-      console.log("⚠️ Máximo de tentativas de reconexão atingido");
+      logger.log("⚠️ Máximo de tentativas de reconexão atingido");
     }
 
     eventCallbacks.error.forEach((cb) => cb(error));
@@ -136,7 +149,7 @@ export function connect(token) {
   // EVENTOS DE VISITANTES
   // ═══════════════════════════════════════════════════════════════
   socket.on("visitante:created", (data) => {
-    console.log("📥 Novo visitante recebido via Socket:", data);
+    logger.log("📥 Novo visitante recebido via Socket:", data);
 
     // Busca empresas e setores do cache para mapear nomes
     const empresas = getCache("empresas") || [];
@@ -158,7 +171,7 @@ export function connect(token) {
   });
 
   socket.on("visitante:updated", (data) => {
-    console.log("📝 Visitante atualizado via Socket:", data);
+    logger.log("📝 Visitante atualizado via Socket:", data);
 
     const empresas = getCache("empresas") || [];
     const setores = getCache("setores") || [];
@@ -183,7 +196,7 @@ export function connect(token) {
   });
 
   socket.on("visitante:deleted", (data) => {
-    console.log("🗑️ Visitante deletado via Socket:", data);
+    logger.log("🗑️ Visitante deletado via Socket:", data);
 
     // Remove do cache
     removeVisitanteFromCache(data.id);
@@ -198,7 +211,7 @@ export function connect(token) {
 
   // ✅ Nova visita registrada (visitor:create - emitido por VisitanteController)
   socket.on("visitor:create", (data) => {
-    console.log("🟢 Nova visita registrada via Socket (visitor:create):", data);
+    logger.log("🟢 Nova visita registrada via Socket (visitor:create):", data);
 
     // Adiciona à lista de visitantes ativos
     const visitors = getCache("visitors") || [];
@@ -212,7 +225,7 @@ export function connect(token) {
   });
 
   socket.on("visitor:end", (data) => {
-    console.log(
+    logger.log(
       "🏁 Visita encerrada via Socket (visitor:end):",
       data.id,
       data.nome,
@@ -248,7 +261,7 @@ export function connect(token) {
   });
 
   socket.on("visitor:delete", (data) => {
-    console.log(
+    logger.log(
       "🗑️ Visitante removido da lista ativa via Socket (visitor:delete):",
       data,
     );
@@ -265,7 +278,7 @@ export function connect(token) {
   });
 
   socket.on("visita:encerrada", (data) => {
-    console.log("🏁 Visita encerrada via Socket (visita:encerrada):", data);
+    logger.log("🏁 Visita encerrada via Socket (visita:encerrada):", data);
     eventCallbacks["visita:encerrada"].forEach((cb) => cb(data));
   });
 
@@ -273,7 +286,7 @@ export function connect(token) {
   // EVENTOS DE HISTÓRICO
   // ═══════════════════════════════════════════════════════════════
   socket.on("historico:created", (data) => {
-    console.log("📜 Novo registro no histórico via Socket:", data);
+    logger.log("📜 Novo registro no histórico via Socket:", data);
     const historico = getCache("historico") || [];
     if (!historico.find((h) => h.id === data.id)) {
       const novoHistorico = [data, ...historico].sort((a, b) => {
@@ -287,7 +300,7 @@ export function connect(token) {
   });
 
   socket.on("historico:updated", (data) => {
-    console.log("📝 Histórico atualizado via Socket:", data);
+    logger.log("📝 Histórico atualizado via Socket:", data);
     const historico = getCache("historico") || [];
     const novoHistorico = historico.map((h) =>
       h.id === data.id ? { ...h, ...data } : h,
@@ -297,7 +310,7 @@ export function connect(token) {
   });
 
   socket.on("historico:deleted", (data) => {
-    console.log("🗑️ Histórico removido via Socket:", data);
+    logger.log("🗑️ Histórico removido via Socket:", data);
     const historico = getCache("historico") || [];
     setCache(
       "historico",
@@ -310,7 +323,7 @@ export function connect(token) {
   // EVENTOS DE EMPRESAS
   // ═══════════════════════════════════════════════════════════════
   socket.on("empresa:created", (data) => {
-    console.log("🏢 Nova empresa recebida via Socket:", data);
+    logger.log("🏢 Nova empresa recebida via Socket:", data);
     const empresas = getCache("empresas") || [];
     setCache(
       "empresas",
@@ -322,7 +335,7 @@ export function connect(token) {
   });
 
   socket.on("empresa:updated", (data) => {
-    console.log("🏢 Empresa atualizada via Socket:", data);
+    logger.log("🏢 Empresa atualizada via Socket:", data);
     const empresas = getCache("empresas") || [];
     const novasEmpresas = empresas.map((e) =>
       e.id === data.id ? { ...e, ...data } : e,
@@ -332,7 +345,7 @@ export function connect(token) {
   });
 
   socket.on("empresa:deleted", (data) => {
-    console.log("🏢 Empresa deletada via Socket:", data);
+    logger.log("🏢 Empresa deletada via Socket:", data);
     const empresas = getCache("empresas") || [];
     setCache(
       "empresas",
@@ -345,7 +358,7 @@ export function connect(token) {
   // EVENTOS DE SETORES
   // ═══════════════════════════════════════════════════════════════
   socket.on("setor:created", (data) => {
-    console.log("📁 Novo setor recebido via Socket:", data);
+    logger.log("📁 Novo setor recebido via Socket:", data);
     const setores = getCache("setores") || [];
     setCache(
       "setores",
@@ -357,7 +370,7 @@ export function connect(token) {
   });
 
   socket.on("setor:updated", (data) => {
-    console.log("📁 Setor atualizado via Socket:", data);
+    logger.log("📁 Setor atualizado via Socket:", data);
     const setores = getCache("setores") || [];
     const novosSetores = setores.map((s) =>
       s.id === data.id ? { ...s, ...data } : s,
@@ -367,7 +380,7 @@ export function connect(token) {
   });
 
   socket.on("setor:deleted", (data) => {
-    console.log("📁 Setor deletado via Socket:", data);
+    logger.log("📁 Setor deletado via Socket:", data);
     const setores = getCache("setores") || [];
     setCache(
       "setores",
@@ -380,7 +393,7 @@ export function connect(token) {
   // EVENTOS DE TICKETS
   // ═══════════════════════════════════════════════════════════════
   socket.on("ticket:create", (data) => {
-    console.log("🎫 Novo ticket recebido via Socket:", data);
+    logger.log("🎫 Novo ticket recebido via Socket:", data);
     const tickets = getCache("tickets") || [];
     if (!tickets.find((t) => t.id === data.id)) {
       const novosTickets = [data, ...tickets].sort(
@@ -392,7 +405,7 @@ export function connect(token) {
   });
 
   socket.on("ticket:update", (data) => {
-    console.log("🎫 Ticket atualizado via Socket:", data);
+    logger.log("🎫 Ticket atualizado via Socket:", data);
     const tickets = getCache("tickets") || [];
     const novosTickets = tickets.map((t) =>
       t.id === data.id ? { ...t, ...data } : t,
@@ -402,12 +415,12 @@ export function connect(token) {
   });
 
   socket.on("ticket:viewed", (data) => {
-    console.log("🎫 Ticket visualizado via Socket:", data);
+    logger.log("🎫 Ticket visualizado via Socket:", data);
     eventCallbacks["ticket:viewed"].forEach((cb) => cb(data));
   });
 
   socket.on("ticket:all_viewed", (data) => {
-    console.log("🎫 Todos tickets visualizados via Socket");
+    logger.log("🎫 Todos tickets visualizados via Socket");
     eventCallbacks["ticket:all_viewed"].forEach((cb) => cb(data));
   });
 
@@ -415,17 +428,17 @@ export function connect(token) {
   // EVENTOS DE AGENDAMENTOS
   // ═══════════════════════════════════════════════════════════════
   socket.on("agendamento:create", (data) => {
-    console.log("📅 Novo agendamento recebido via Socket:", data);
+    logger.log("📅 Novo agendamento recebido via Socket:", data);
     eventCallbacks["agendamento:create"].forEach((cb) => cb(data));
   });
 
   socket.on("agendamento:update", (data) => {
-    console.log("📅 Agendamento atualizado via Socket:", data);
+    logger.log("📅 Agendamento atualizado via Socket:", data);
     eventCallbacks["agendamento:update"].forEach((cb) => cb(data));
   });
 
   socket.on("agendamento:delete", (data) => {
-    console.log("📅 Agendamento removido via Socket:", data);
+    logger.log("📅 Agendamento removido via Socket:", data);
     eventCallbacks["agendamento:delete"].forEach((cb) => cb(data));
   });
 
@@ -433,12 +446,12 @@ export function connect(token) {
   // EVENTOS DE SOLICITAÇÕES DE DESCARGA
   // ═══════════════════════════════════════════════════════════════
   socket.on("descarga:nova", (data) => {
-    console.log("📦 Nova solicitação de descarga via Socket:", data);
+    logger.log("📦 Nova solicitação de descarga via Socket:", data);
     eventCallbacks["descarga:nova"].forEach((cb) => cb(data));
   });
 
   socket.on("descarga:atualizada", (data) => {
-    console.log("📦 Solicitação de descarga atualizada via Socket:", data);
+    logger.log("📦 Solicitação de descarga atualizada via Socket:", data);
     eventCallbacks["descarga:atualizada"].forEach((cb) => cb(data));
   });
 
@@ -446,7 +459,7 @@ export function connect(token) {
   // EVENTOS DE CHAT DE SUPORTE
   // ═══════════════════════════════════════════════════════════════
   socket.on("chat-suporte:mensagem", (data) => {
-    console.log("💬 Mensagem de chat recebida via Socket:", data);
+    logger.log("💬 Mensagem de chat recebida via Socket:", data);
     eventCallbacks["chat-suporte:mensagem"].forEach((cb) => cb(data));
   });
 
@@ -459,24 +472,24 @@ export function connect(token) {
   });
 
   socket.on("chat-suporte:atendente-entrou", (data) => {
-    console.log("👨‍💼 Atendente entrou via Socket:", data);
+    logger.log("👨‍💼 Atendente entrou via Socket:", data);
     eventCallbacks["chat-suporte:atendente-entrou"].forEach((cb) => cb(data));
   });
 
   socket.on("chat-suporte:conversa-finalizada", (data) => {
-    console.log("🔚 Conversa finalizada via Socket:", data);
+    logger.log("🔚 Conversa finalizada via Socket:", data);
     eventCallbacks["chat-suporte:conversa-finalizada"].forEach((cb) =>
       cb(data),
     );
   });
 
   socket.on("chat-suporte:fila-atualizada", (data) => {
-    console.log("📋 Fila atualizada via Socket:", data);
+    logger.log("📋 Fila atualizada via Socket:", data);
     eventCallbacks["chat-suporte:fila-atualizada"].forEach((cb) => cb(data));
   });
 
   socket.on("chat-suporte:nova-fila", (data) => {
-    console.log("📢 Nova conversa na fila via Socket:", data);
+    logger.log("📢 Nova conversa na fila via Socket:", data);
     eventCallbacks["chat-suporte:nova-fila"].forEach((cb) => cb(data));
   });
 
@@ -484,7 +497,7 @@ export function connect(token) {
   // EVENTOS DE RONDA VIGILANTE (TEMPO REAL)
   // ═══════════════════════════════════════════════════════════════
   socket.on("ronda:nova-iniciada", (data) => {
-    console.log("🚶 Nova ronda iniciada via Socket:", data);
+    logger.log("🚶 Nova ronda iniciada via Socket:", data);
     eventCallbacks["ronda:nova-iniciada"].forEach((cb) => cb(data));
   });
 
@@ -494,12 +507,12 @@ export function connect(token) {
   });
 
   socket.on("ronda:checkpoint-registrado", (data) => {
-    console.log("📍 Checkpoint registrado via Socket:", data);
+    logger.log("📍 Checkpoint registrado via Socket:", data);
     eventCallbacks["ronda:checkpoint-registrado"].forEach((cb) => cb(data));
   });
 
   socket.on("ronda:encerrada", (data) => {
-    console.log("🔴 Ronda encerrada via Socket:", data);
+    logger.log("🔴 Ronda encerrada via Socket:", data);
     eventCallbacks["ronda:encerrada"].forEach((cb) => cb(data));
   });
 
@@ -511,7 +524,7 @@ export function connect(token) {
  */
 export function disconnect() {
   if (socket) {
-    console.log("🔌 Desconectando Socket.IO...");
+    logger.log("🔌 Desconectando Socket.IO...");
     socket.disconnect();
     socket = null;
   }
@@ -561,7 +574,7 @@ export function emit(event, data) {
   if (socket?.connected) {
     socket.emit(event, data);
   } else {
-    console.warn("⚠️ Socket não conectado. Evento não enviado:", event);
+    logger.warn("⚠️ Socket não conectado. Evento não enviado:", event);
   }
 }
 
@@ -571,7 +584,7 @@ export function emit(event, data) {
 export function joinRoom(room) {
   if (socket?.connected) {
     socket.emit("join", room);
-    console.log(`🚪 Entrou na sala: ${room}`);
+    logger.log(`🚪 Entrou na sala: ${room}`);
   }
 }
 
@@ -581,7 +594,7 @@ export function joinRoom(room) {
 export function leaveRoom(room) {
   if (socket?.connected) {
     socket.emit("leave", room);
-    console.log(`🚪 Saiu da sala: ${room}`);
+    logger.log(`🚪 Saiu da sala: ${room}`);
   }
 }
 
@@ -590,6 +603,184 @@ export function leaveRoom(room) {
  */
 export function getSocket() {
   return socket;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SOCKET DE VISITANTES (CHAT - NÃO AUTENTICADO)
+// ═══════════════════════════════════════════════════════════════════════════
+
+let visitorSocket = null;
+const visitorEventCallbacks = {
+  "chat-suporte:mensagem": [],
+  "chat-suporte:digitando": [],
+  "chat-suporte:parou-digitar": [],
+  "chat-suporte:atendente-entrou": [],
+  "chat-suporte:conversa-finalizada": [],
+  "chat-suporte:fila-atualizada": [],
+  connected: [],
+  disconnected: [],
+  error: [],
+};
+
+/**
+ * Conecta ao namespace de visitantes (para chat sem autenticação)
+ * @param {string} chatToken - Token do chat do visitante
+ * @param {number} conversaId - ID da conversa
+ */
+export function connectVisitor(chatToken, conversaId) {
+  // Evita conexões duplicadas
+  if (visitorSocket?.connected) {
+    logger.log("🔌 Visitor socket já conectado, reutilizando");
+    return visitorSocket;
+  }
+
+  // Limpa socket anterior se existir
+  if (visitorSocket && !visitorSocket.connected) {
+    visitorSocket.removeAllListeners();
+    visitorSocket.disconnect();
+    visitorSocket = null;
+  }
+
+  const socketUrl = getSocketUrl();
+  logger.log("🔌 Conectando ao namespace /visitante:", socketUrl);
+
+  visitorSocket = io(`${socketUrl}/visitante`, {
+    auth: { chatToken, conversaId },
+    transports: ["websocket", "polling"],
+    reconnection: true,
+    reconnectionAttempts: MAX_RECONNECT_ATTEMPTS,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
+    timeout: 20000,
+    forceNew: false,
+  });
+
+  // Eventos de conexão
+  visitorSocket.on("connect", () => {
+    logger.log("✅ Visitor socket conectado:", visitorSocket.id);
+    visitorEventCallbacks.connected.forEach((cb) => cb(visitorSocket.id));
+  });
+
+  visitorSocket.on("disconnect", (reason) => {
+    logger.log("🔴 Visitor socket desconectado:", reason);
+    visitorEventCallbacks.disconnected.forEach((cb) => cb(reason));
+  });
+
+  visitorSocket.on("connect_error", (error) => {
+    logger.error("❌ Erro de conexão Visitor socket:", error.message);
+    visitorEventCallbacks.error.forEach((cb) => cb(error));
+  });
+
+  // Eventos de chat
+  visitorSocket.on("chat-suporte:mensagem", (data) => {
+    logger.log("📥 [Visitor] Nova mensagem:", data);
+    visitorEventCallbacks["chat-suporte:mensagem"].forEach((cb) => cb(data));
+  });
+
+  visitorSocket.on("chat-suporte:digitando", (data) => {
+    logger.log("✏️ [Visitor] Digitando:", data);
+    visitorEventCallbacks["chat-suporte:digitando"].forEach((cb) => cb(data));
+  });
+
+  visitorSocket.on("chat-suporte:parou-digitar", (data) => {
+    visitorEventCallbacks["chat-suporte:parou-digitar"].forEach((cb) =>
+      cb(data),
+    );
+  });
+
+  visitorSocket.on("chat-suporte:atendente-entrou", (data) => {
+    logger.log("🎉 [Visitor] Atendente entrou:", data);
+    visitorEventCallbacks["chat-suporte:atendente-entrou"].forEach((cb) =>
+      cb(data),
+    );
+  });
+
+  visitorSocket.on("chat-suporte:conversa-finalizada", (data) => {
+    logger.log("🏁 [Visitor] Conversa finalizada:", data);
+    visitorEventCallbacks["chat-suporte:conversa-finalizada"].forEach((cb) =>
+      cb(data),
+    );
+  });
+
+  visitorSocket.on("chat-suporte:fila-atualizada", (data) => {
+    logger.log("📊 [Visitor] Fila atualizada:", data);
+    visitorEventCallbacks["chat-suporte:fila-atualizada"].forEach((cb) =>
+      cb(data),
+    );
+  });
+
+  return visitorSocket;
+}
+
+/**
+ * Desconecta o socket de visitantes
+ */
+export function disconnectVisitor() {
+  if (visitorSocket) {
+    logger.log("🔌 Desconectando visitor socket");
+    visitorSocket.removeAllListeners();
+    visitorSocket.disconnect();
+    visitorSocket = null;
+
+    // Limpa callbacks
+    Object.keys(visitorEventCallbacks).forEach((key) => {
+      visitorEventCallbacks[key] = [];
+    });
+  }
+}
+
+/**
+ * Verifica se o socket de visitantes está conectado
+ */
+export function isVisitorConnected() {
+  return visitorSocket?.connected || false;
+}
+
+/**
+ * Registra callback para evento no socket de visitantes
+ */
+export function onVisitor(event, callback) {
+  if (visitorEventCallbacks[event]) {
+    visitorEventCallbacks[event].push(callback);
+    return () => {
+      visitorEventCallbacks[event] = visitorEventCallbacks[event].filter(
+        (cb) => cb !== callback,
+      );
+    };
+  }
+  return () => {};
+}
+
+/**
+ * Remove callback de evento no socket de visitantes
+ */
+export function offVisitor(event, callback) {
+  if (visitorEventCallbacks[event]) {
+    visitorEventCallbacks[event] = visitorEventCallbacks[event].filter(
+      (cb) => cb !== callback,
+    );
+  }
+}
+
+/**
+ * Emite evento pelo socket de visitantes
+ */
+export function emitVisitor(event, data) {
+  if (visitorSocket?.connected) {
+    visitorSocket.emit(event, data);
+    logger.log(`📤 [Visitor] Emitindo ${event}:`, data);
+  } else {
+    logger.warn(
+      `⚠️ [Visitor] Socket não conectado, não foi possível emitir ${event}`,
+    );
+  }
+}
+
+/**
+ * Obtém o socket de visitantes
+ */
+export function getVisitorSocket() {
+  return visitorSocket;
 }
 
 export default {
@@ -603,4 +794,12 @@ export default {
   joinRoom,
   leaveRoom,
   getSocket,
+  // Visitor socket
+  connectVisitor,
+  disconnectVisitor,
+  isVisitorConnected,
+  onVisitor,
+  offVisitor,
+  emitVisitor,
+  getVisitorSocket,
 };

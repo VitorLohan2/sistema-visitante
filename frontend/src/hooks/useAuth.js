@@ -1,6 +1,7 @@
 import { useState, useEffect, useContext, createContext } from "react";
 import { clearCache } from "../services/cacheService";
 import { disconnect as disconnectSocket } from "../services/socketService";
+import logger from "../utils/logger";
 
 const AuthContext = createContext({});
 
@@ -41,7 +42,7 @@ export function AuthProvider({ children }) {
         });
         return setLoading(false);
       } catch (error) {
-        console.error("Erro ao fazer parse do usuário:", error);
+        logger.error("Erro ao fazer parse do usuário:", error);
         localStorage.removeItem("token");
         localStorage.removeItem("usuario");
       }
@@ -72,7 +73,7 @@ export function AuthProvider({ children }) {
   };
 
   const login = (token, usuario) => {
-    console.log("Fazendo login com:", usuario.email || usuario.nome);
+    logger.log("Fazendo login com:", usuario.email || usuario.nome);
 
     localStorage.setItem("token", token);
     localStorage.setItem(
@@ -84,7 +85,7 @@ export function AuthProvider({ children }) {
         isAdmin: usuario.isAdmin || false,
         empresa_id: usuario.empresa_id,
         setor_id: usuario.setor_id,
-      })
+      }),
     );
 
     // Também salva no formato legado para compatibilidade
@@ -106,7 +107,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    console.log("Fazendo logout");
+    logger.log("Fazendo logout");
 
     // Desconecta o Socket.IO
     disconnectSocket();

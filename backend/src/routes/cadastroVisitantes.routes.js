@@ -12,7 +12,7 @@ const {
   authMiddleware,
   authOptional,
 } = require("../middleware/authMiddleware");
-const { adminMiddleware } = require("../middleware/adminMiddleware");
+const { requerPermissao } = require("../middleware/permissaoMiddleware");
 
 const router = express.Router();
 const upload = multer(multerConfig);
@@ -160,13 +160,13 @@ router.put(
 );
 
 // ═══════════════════════════════════════════════════════════════
-// BLOQUEAR/DESBLOQUEAR VISITANTE (Admin only)
+// BLOQUEAR/DESBLOQUEAR VISITANTE
 // PUT /cadastro-visitantes/:id/bloquear
 // ═══════════════════════════════════════════════════════════════
 router.put(
   "/:id/bloquear",
   authMiddleware,
-  adminMiddleware,
+  requerPermissao("cadastro_bloquear"),
   celebrate({
     [Segments.PARAMS]: Joi.object().keys({
       id: Joi.number().required(),
@@ -179,13 +179,13 @@ router.put(
 );
 
 // ═══════════════════════════════════════════════════════════════
-// DELETAR VISITANTE (Admin only)
+// DELETAR VISITANTE
 // DELETE /cadastro-visitantes/:id
 // ═══════════════════════════════════════════════════════════════
 router.delete(
   "/:id",
   authMiddleware,
-  adminMiddleware,
+  requerPermissao("cadastro_deletar"),
   celebrate({
     [Segments.PARAMS]: Joi.object().keys({
       id: Joi.number().required(),

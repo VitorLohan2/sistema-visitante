@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * CADASTRAR AGENDAMENTOS - Página de Criação de Novos Agendamentos
@@ -64,7 +65,7 @@ export default function NovoAgendamento() {
         const cachedSetores = getCache("setoresVisitantes");
 
         if (cachedSetores && cachedSetores.length > 0) {
-          console.log("📦 Usando setores do cache");
+          logger.log("📦 Usando setores do cache");
           setSetoresVisitantes(cachedSetores);
           return;
         }
@@ -77,7 +78,7 @@ export default function NovoAgendamento() {
         setCache("setoresVisitantes", setoresData);
         setSetoresVisitantes(setoresData);
       } catch (error) {
-        console.error("Erro ao carregar setores:", error);
+        logger.error("Erro ao carregar setores:", error);
       }
     }
 
@@ -94,7 +95,7 @@ export default function NovoAgendamento() {
 
     // Listener: Novo setor criado
     const unsubSetorCreate = socketService.on("setor:created", (setor) => {
-      console.log("📥 Socket: Novo setor recebido", setor.nome);
+      logger.log("📥 Socket: Novo setor recebido", setor.nome);
       setSetoresVisitantes((prev) => {
         if (prev.find((s) => s.id === setor.id)) return prev;
         const novos = [...prev, setor].sort((a, b) =>
@@ -107,7 +108,7 @@ export default function NovoAgendamento() {
 
     // Listener: Setor atualizado
     const unsubSetorUpdate = socketService.on("setor:updated", (dados) => {
-      console.log("📝 Socket: Setor atualizado", dados.id);
+      logger.log("📝 Socket: Setor atualizado", dados.id);
       setSetoresVisitantes((prev) => {
         const novos = prev.map((s) =>
           s.id === dados.id ? { ...s, ...dados } : s,
@@ -119,7 +120,7 @@ export default function NovoAgendamento() {
 
     // Listener: Setor deletado
     const unsubSetorDelete = socketService.on("setor:deleted", (dados) => {
-      console.log("🗑️ Socket: Setor removido", dados.id);
+      logger.log("🗑️ Socket: Setor removido", dados.id);
       setSetoresVisitantes((prev) => {
         const novos = prev.filter((s) => s.id !== dados.id);
         setCache("setoresVisitantes", novos);
@@ -229,7 +230,7 @@ export default function NovoAgendamento() {
         data.append("foto_colaborador", file); // 🔹 adiciona imagem
       }
 
-      console.log("Enviando FormData:", Object.fromEntries(data)); // DEBUG
+      logger.log("Enviando FormData:", Object.fromEntries(data)); // DEBUG
 
       await api.post("/agendamentos", data, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -238,7 +239,7 @@ export default function NovoAgendamento() {
       alert("Agendamento criado com sucesso!");
       history.push("/agendamentos");
     } catch (error) {
-      console.error("Erro ao criar agendamento:", error);
+      logger.error("Erro ao criar agendamento:", error);
 
       let errorMessage = "Erro ao criar agendamento";
       if (error.response) {
@@ -422,3 +423,5 @@ export default function NovoAgendamento() {
     </div>
   );
 }
+
+

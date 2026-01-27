@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * TICKET DASHBOARD - Gerenciamento de Tickets de Suporte
@@ -44,6 +45,14 @@ const TicketDashboard = () => {
     fetchTickets: fetchTicketsContext,
   } = useTickets();
   const [filteredTickets, setFilteredTickets] = useState([]);
+
+  // Paginação por coluna - 10 cards por vez
+  const CARDS_PER_PAGE = 10;
+  const [cardsVisiveis, setCardsVisiveis] = useState({
+    Aberto: CARDS_PER_PAGE,
+    "Em andamento": CARDS_PER_PAGE,
+    Resolvido: CARDS_PER_PAGE,
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // DADOS DO CACHE (carregados pelo useDataLoader)
@@ -138,7 +147,7 @@ const TicketDashboard = () => {
         // ✅ Primeiro verifica se já tem userData no cache
         const cachedUserData = getCache("userData");
         if (cachedUserData && !forceRefresh) {
-          console.log("📦 Usando userData do cache");
+          logger.log("📦 Usando userData do cache");
           setUserData({
             nome: cachedUserData.name || "",
             setor: cachedUserData.setor || cachedUserData.setor_nome || "",
@@ -160,7 +169,7 @@ const TicketDashboard = () => {
         await fetchTicketsContext(forceRefresh);
         isDataLoadedRef.current = true;
       } catch (error) {
-        console.error("Erro ao buscar tickets:", error);
+        logger.error("Erro ao buscar tickets:", error);
       } finally {
         setIsLoading(false);
       }
@@ -247,6 +256,14 @@ const TicketDashboard = () => {
     setDraggedTicket(null);
   };
 
+  // Função para carregar mais cards em uma coluna
+  const carregarMaisCards = (statusKey) => {
+    setCardsVisiveis((prev) => ({
+      ...prev,
+      [statusKey]: prev[statusKey] + CARDS_PER_PAGE,
+    }));
+  };
+
   // ═══════════════════════════════════════════════════════════════
   // HANDLERS
   // ═══════════════════════════════════════════════════════════════
@@ -266,7 +283,7 @@ const TicketDashboard = () => {
         );
       }
     } catch (err) {
-      console.error("Erro ao atualizar:", err);
+      logger.error("Erro ao atualizar:", err);
       const errorMsg = err.response?.data?.error || "Erro ao atualizar status";
       alert(errorMsg);
     }
@@ -304,7 +321,7 @@ const TicketDashboard = () => {
 
       alert(`✅ Ticket #${response.data.id} criado com sucesso!`);
     } catch (err) {
-      console.error("Erro ao criar ticket:", err);
+      logger.error("Erro ao criar ticket:", err);
       alert("❌ Erro ao criar ticket. Tente novamente.");
     } finally {
       setIsSubmitting(false);
@@ -512,6 +529,13 @@ const TicketDashboard = () => {
           const columnTickets = filteredTickets.filter(
             (t) => t.status === status.key,
           );
+          // Paginação: limita a quantidade de cards visíveis
+          const ticketsVisiveis = columnTickets.slice(
+            0,
+            cardsVisiveis[status.key],
+          );
+          const temMaisTickets =
+            columnTickets.length > cardsVisiveis[status.key];
           const isDragOver = dragOverColumn === status.key;
 
           return (
@@ -553,93 +577,108 @@ const TicketDashboard = () => {
                     )}
                   </div>
                 ) : (
-                  columnTickets.map((ticket) => (
-                    <div
-                      className={`ticket-card ${podeEditarTicket ? "draggable" : ""}`}
-                      key={ticket.id}
-                      draggable={podeEditarTicket}
-                      onDragStart={(e) => handleDragStart(e, ticket)}
-                      onDragEnd={handleDragEnd}
-                    >
-                      {/* Header do Card */}
-                      <div className="card-header">
-                        <h3 className="card-title">
-                          #{ticket.id} - {ticket.funcionario}
-                        </h3>
-                        {podeEditarTicket && (
-                          <button
-                            className="card-menu-btn"
-                            onClick={(e) => toggleMenu(e, ticket.id)}
-                          >
-                            <FiMoreVertical />
-                          </button>
-                        )}
-
-                        {/* Menu dropdown */}
-                        {activeMenu === ticket.id && podeEditarTicket && (
-                          <div className="card-menu">
-                            {statusConfig
-                              .filter((s) => s.key !== ticket.status)
-                              .map((s) => (
-                                <button
-                                  key={s.key}
-                                  onClick={() =>
-                                    handleChangeStatus(ticket.id, s.key)
-                                  }
-                                >
-                                  Mover para {s.label}
-                                </button>
-                              ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Descrição */}
-                      <p className="card-description">{ticket.descricao}</p>
-
-                      {/* Tags */}
-                      <div className="card-tags">
-                        <span
-                          className="tag"
-                          style={{
-                            backgroundColor:
-                              motivoColors[ticket.motivo]?.bg || "#F3F4F6",
-                            color:
-                              motivoColors[ticket.motivo]?.text || "#374151",
-                          }}
-                        >
-                          {motivoColors[ticket.motivo]?.label || ticket.motivo}
-                        </span>
-                        <span className="tag tag-setor">
-                          {ticket.setor_responsavel}
-                        </span>
-                      </div>
-
-                      {/* Footer */}
-                      <div className="card-footer">
-                        <span className="card-date">
-                          <FiCalendar />
-                          {new Date(ticket.data_criacao).toLocaleDateString(
-                            "pt-BR",
+                  <>
+                    {ticketsVisiveis.map((ticket) => (
+                      <div
+                        className={`ticket-card ${podeEditarTicket ? "draggable" : ""}`}
+                        key={ticket.id}
+                        draggable={podeEditarTicket}
+                        onDragStart={(e) => handleDragStart(e, ticket)}
+                        onDragEnd={handleDragEnd}
+                      >
+                        {/* Header do Card */}
+                        <div className="card-header">
+                          <h3 className="card-title">
+                            #{ticket.id} - {ticket.funcionario}
+                          </h3>
+                          {podeEditarTicket && (
+                            <button
+                              className="card-menu-btn"
+                              onClick={(e) => toggleMenu(e, ticket.id)}
+                            >
+                              <FiMoreVertical />
+                            </button>
                           )}
-                        </span>
 
-                        <div className="card-avatars">
-                          <div
-                            className="avatar"
-                            title={ticket.nome_usuario}
+                          {/* Menu dropdown */}
+                          {activeMenu === ticket.id && podeEditarTicket && (
+                            <div className="card-menu">
+                              {statusConfig
+                                .filter((s) => s.key !== ticket.status)
+                                .map((s) => (
+                                  <button
+                                    key={s.key}
+                                    onClick={() =>
+                                      handleChangeStatus(ticket.id, s.key)
+                                    }
+                                  >
+                                    Mover para {s.label}
+                                  </button>
+                                ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Descrição */}
+                        <p className="card-description">{ticket.descricao}</p>
+
+                        {/* Tags */}
+                        <div className="card-tags">
+                          <span
+                            className="tag"
                             style={{
-                              backgroundColor: getAvatarColor(
-                                ticket.nome_usuario,
-                              ),
+                              backgroundColor:
+                                motivoColors[ticket.motivo]?.bg || "#F3F4F6",
+                              color:
+                                motivoColors[ticket.motivo]?.text || "#374151",
                             }}
                           >
-                            {getInitials(ticket.nome_usuario)}
+                            {motivoColors[ticket.motivo]?.label ||
+                              ticket.motivo}
+                          </span>
+                          <span className="tag tag-setor">
+                            {ticket.setor_responsavel}
+                          </span>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="card-footer">
+                          <span className="card-date">
+                            <FiCalendar />
+                            {new Date(ticket.data_criacao).toLocaleDateString(
+                              "pt-BR",
+                            )}
+                          </span>
+
+                          <div className="card-avatars">
+                            <div
+                              className="avatar"
+                              title={ticket.nome_usuario}
+                              style={{
+                                backgroundColor: getAvatarColor(
+                                  ticket.nome_usuario,
+                                ),
+                              }}
+                            >
+                              {getInitials(ticket.nome_usuario)}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    ))}
+
+                    {/* Botão Carregar Mais */}
+                    {temMaisTickets && (
+                      <button
+                        className="btn-carregar-mais"
+                        onClick={() => carregarMaisCards(status.key)}
+                      >
+                        Carregar mais (
+                        {columnTickets.length - cardsVisiveis[status.key]}{" "}
+                        restantes)
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </div>

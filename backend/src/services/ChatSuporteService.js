@@ -55,7 +55,7 @@ async function criarConversa({
 
       if (conversaExistente) {
         console.log(
-          `ℹ️ Usuário ${usuario_id} já possui conversa ativa #${conversaExistente.id}`
+          `ℹ️ Usuário ${usuario_id} já possui conversa ativa #${conversaExistente.id}`,
         );
         return { ...conversaExistente, jaExistente: true };
       }
@@ -181,7 +181,7 @@ async function listarConversasAtendente({
       db.raw(`(
         SELECT COUNT(*) FROM chat_mensagens 
         WHERE conversa_id = c.id AND lida = false AND origem = 'USUARIO'
-      )::int as mensagens_nao_lidas`)
+      )::int as mensagens_nao_lidas`),
     )
     .orderBy("c.criado_em", "desc")
     .limit(limite)
@@ -316,7 +316,7 @@ async function marcarMensagensComoLidas(conversa_id, origem) {
 async function processarMensagemUsuario(
   conversa_id,
   mensagem,
-  { usuario_id, usuario_nome, visitante_nome, visitante_email }
+  { usuario_id, usuario_nome, visitante_nome, visitante_email },
 ) {
   const conversa = await buscarConversa(conversa_id);
 
@@ -349,6 +349,7 @@ async function processarMensagemUsuario(
     mensagemBot: null,
     solicitouHumano: false,
     posicaoFila: null,
+    statusConversa: conversa.status, // Status atual da conversa para o controller
   };
 
   // Se está em atendimento humano, não processa pelo bot
@@ -421,7 +422,7 @@ async function processarMensagemUsuario(
  */
 async function solicitarAtendimentoHumano(
   conversa_id,
-  { usuario_id, usuario_nome }
+  { usuario_id, usuario_nome },
 ) {
   const conversa = await buscarConversa(conversa_id);
 
@@ -466,7 +467,7 @@ async function solicitarAtendimentoHumano(
  */
 async function aceitarAtendimento(
   conversa_id,
-  { atendente_id, atendente_nome }
+  { atendente_id, atendente_nome },
 ) {
   let conversaAtualizada;
 
@@ -523,7 +524,7 @@ async function aceitarAtendimento(
   }
 
   console.log(
-    `✅ Conversa #${conversa_id} aceita pelo atendente ${atendente_nome}`
+    `✅ Conversa #${conversa_id} aceita pelo atendente ${atendente_nome}`,
   );
   return conversaAtualizada;
 }
@@ -538,7 +539,7 @@ async function aceitarAtendimento(
 async function enviarMensagemAtendente(
   conversa_id,
   mensagem,
-  { atendente_id, atendente_nome }
+  { atendente_id, atendente_nome },
 ) {
   const conversa = await buscarConversa(conversa_id);
 
@@ -573,7 +574,7 @@ async function enviarMensagemAtendente(
  */
 async function finalizarConversa(
   conversa_id,
-  { finalizado_por_id, finalizado_por_nome, motivo }
+  { finalizado_por_id, finalizado_por_nome, motivo },
 ) {
   const conversa = await buscarConversa(conversa_id);
 
@@ -687,8 +688,8 @@ async function obterEstatisticas({ dataInicio, dataFim } = {}) {
       .whereNotNull("finalizado_em")
       .avg(
         db.raw(
-          "EXTRACT(EPOCH FROM (finalizado_em - iniciado_em)) as tempo_medio"
-        )
+          "EXTRACT(EPOCH FROM (finalizado_em - iniciado_em)) as tempo_medio",
+        ),
       )
       .first(),
     db("chat_avaliacoes").avg("nota as media").count("* as total").first(),
@@ -704,7 +705,7 @@ async function obterEstatisticas({ dataInicio, dataFim } = {}) {
     totalConversas: parseInt(totalConversas?.total || 0),
     conversasPorStatus: statusMap,
     tempoMedioAtendimentoSegundos: Math.round(
-      tempoMedioAtendimento?.tempo_medio || 0
+      tempoMedioAtendimento?.tempo_medio || 0,
     ),
     avaliacao: {
       media: parseFloat(avaliacaoMedia?.media || 0).toFixed(1),

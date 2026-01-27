@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 // src/pages/SolicitacaoDescarga/index.js
 import React, { useState } from "react";
 import {
@@ -317,7 +318,7 @@ export default function SolicitacaoDescarga() {
         quantidade_volumes: parseInt(formData.quantidade_volumes),
       };
 
-      console.log("=== DADOS ENVIADOS ===", dadosEnvio);
+      logger.log("=== DADOS ENVIADOS ===", dadosEnvio);
 
       const response = await api.post("/solicitacoes-descarga", dadosEnvio);
 
@@ -326,7 +327,7 @@ export default function SolicitacaoDescarga() {
         protocolo: response.data.protocolo,
       });
     } catch (error) {
-      console.error("Erro ao enviar solicitação:", error);
+      logger.error("Erro ao enviar solicitação:", error);
       setErro(
         error.response?.data?.error ||
           "Erro ao enviar solicitação. Tente novamente."
@@ -949,3 +950,5 @@ export default function SolicitacaoDescarga() {
     </div>
   );
 }
+
+

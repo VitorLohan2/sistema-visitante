@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect } from "react";
 import { Link, useHistory } from "react-router-dom";
 import { FiLock, FiMail } from "react-icons/fi";
@@ -21,7 +22,7 @@ export default function Login() {
   // Se já está autenticado, redireciona para home
   useEffect(() => {
     if (isAuthenticated) {
-      console.log("Usuário já autenticado, redirecionando...");
+      logger.log("Usuário já autenticado, redirecionando...");
       history.push("/home");
     }
   }, [isAuthenticated, history]);
@@ -57,14 +58,14 @@ export default function Login() {
     }
 
     setLoading(true);
-    console.log("Tentando fazer login com email:", email);
+    logger.log("Tentando fazer login com email:", email);
 
     try {
       const response = await api.post("/auth/login", {
         email: email.toLowerCase(),
         senha,
       });
-      console.log("Resposta do login:", response.data);
+      logger.log("Resposta do login:", response.data);
 
       const { token, usuario } = response.data;
 
@@ -77,7 +78,7 @@ export default function Login() {
         history.push("/home");
       }, 300);
     } catch (err) {
-      console.error("Erro no login:", err);
+      logger.error("Erro no login:", err);
 
       if (err.response?.data?.code === "PASSWORD_NOT_SET") {
         // Primeiro acesso - redireciona para criar senha
@@ -154,3 +155,5 @@ export default function Login() {
     </div>
   );
 }
+
+

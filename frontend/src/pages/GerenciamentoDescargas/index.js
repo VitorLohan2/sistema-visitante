@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   FiTruck,
@@ -89,7 +90,7 @@ const GerenciamentoDescargas = () => {
         if (isFirstLoadRef.current && pagina === 1) {
           const cachedData = getCache("solicitacoesDescarga");
           if (cachedData && cachedData.data?.length > 0) {
-            console.log(
+            logger.log(
               "⚡ Descargas carregadas do cache:",
               cachedData.data.length
             );
@@ -154,7 +155,7 @@ const GerenciamentoDescargas = () => {
 
         isFirstLoadRef.current = false;
       } catch (error) {
-        console.error("Erro ao buscar solicitações:", error);
+        logger.error("Erro ao buscar solicitações:", error);
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -171,7 +172,7 @@ const GerenciamentoDescargas = () => {
   useEffect(() => {
     // Listener para nova solicitação
     const handleNovaDescarga = (data) => {
-      console.log("📦 Nova solicitação recebida via Socket:", data);
+      logger.log("📦 Nova solicitação recebida via Socket:", data);
       // Adiciona no início da lista
       setSolicitacoes((prev) => {
         if (prev.find((s) => s.id === data.id)) return prev;
@@ -191,7 +192,7 @@ const GerenciamentoDescargas = () => {
 
     // Listener para atualização de solicitação
     const handleDescargaAtualizada = (data) => {
-      console.log("📦 Solicitação atualizada via Socket:", data);
+      logger.log("📦 Solicitação atualizada via Socket:", data);
       // Atualiza a solicitação na lista local e no cache
       setSolicitacoes((prev) => {
         const novaLista = prev.map((s) =>
@@ -264,7 +265,7 @@ const GerenciamentoDescargas = () => {
         "Solicitação aprovada com sucesso! O solicitante foi notificado por e-mail."
       );
     } catch (error) {
-      console.error("Erro ao aprovar:", error);
+      logger.error("Erro ao aprovar:", error);
       alert("Erro ao aprovar solicitação. Tente novamente.");
     } finally {
       setProcessando(false);
@@ -293,7 +294,7 @@ const GerenciamentoDescargas = () => {
 
       alert("Solicitação rejeitada. O solicitante foi notificado por e-mail.");
     } catch (error) {
-      console.error("Erro ao rejeitar:", error);
+      logger.error("Erro ao rejeitar:", error);
       alert("Erro ao rejeitar solicitação. Tente novamente.");
     } finally {
       setProcessando(false);
@@ -330,7 +331,7 @@ const GerenciamentoDescargas = () => {
         "Horário ajustado com sucesso! O solicitante foi notificado por e-mail."
       );
     } catch (error) {
-      console.error("Erro ao ajustar horário:", error);
+      logger.error("Erro ao ajustar horário:", error);
       alert("Erro ao ajustar horário. Tente novamente.");
     } finally {
       setProcessando(false);
@@ -1106,3 +1107,5 @@ const GerenciamentoDescargas = () => {
 };
 
 export default GerenciamentoDescargas;
+
+

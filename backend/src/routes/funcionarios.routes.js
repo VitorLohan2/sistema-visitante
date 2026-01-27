@@ -8,7 +8,7 @@ const { celebrate, Segments, Joi } = require("celebrate");
 const FuncionarioController = require("../controllers/FuncionarioController");
 const RegistroFuncionarioController = require("../controllers/RegistroFuncionarioController");
 const { authMiddleware } = require("../middleware/authMiddleware");
-const { adminMiddleware } = require("../middleware/adminMiddleware");
+const { requerPermissao } = require("../middleware/permissaoMiddleware");
 
 const router = express.Router();
 
@@ -25,7 +25,7 @@ router.post(
       cracha: Joi.string().required().min(3).max(20),
     }),
   }),
-  RegistroFuncionarioController.registrarPonto
+  RegistroFuncionarioController.registrarPonto,
 );
 
 // Histórico de ponto
@@ -39,7 +39,7 @@ router.get(
       dataFim: Joi.date().iso(),
     }),
   }),
-  RegistroFuncionarioController.historico
+  RegistroFuncionarioController.historico,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -54,17 +54,17 @@ router.get(
       mostrarInativos: Joi.boolean().default(false),
     }),
   }),
-  FuncionarioController.index
+  FuncionarioController.index,
 );
 
 // ═══════════════════════════════════════════════════════════════
-// CRIAR FUNCIONÁRIO (Admin only)
+// CRIAR FUNCIONÁRIO
 // POST /funcionarios
 // ═══════════════════════════════════════════════════════════════
 router.post(
   "/",
   authMiddleware,
-  adminMiddleware,
+  requerPermissao("funcionario_criar"),
   celebrate({
     [Segments.BODY]: Joi.object()
       .keys({
@@ -78,17 +78,17 @@ router.post(
       })
       .unknown(),
   }),
-  FuncionarioController.criar
+  FuncionarioController.criar,
 );
 
 // ═══════════════════════════════════════════════════════════════
-// ATUALIZAR FUNCIONÁRIO (Admin only)
+// ATUALIZAR FUNCIONÁRIO
 // PUT /funcionarios/:cracha
 // ═══════════════════════════════════════════════════════════════
 router.put(
   "/:cracha",
   authMiddleware,
-  adminMiddleware,
+  requerPermissao("funcionario_editar"),
   celebrate({
     [Segments.PARAMS]: Joi.object().keys({
       cracha: Joi.string().required(),
@@ -104,7 +104,7 @@ router.put(
       })
       .unknown(),
   }),
-  FuncionarioController.atualizar
+  FuncionarioController.atualizar,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -119,7 +119,7 @@ router.get(
       cracha: Joi.string().required(),
     }),
   }),
-  FuncionarioController.buscarPorCracha
+  FuncionarioController.buscarPorCracha,
 );
 
 module.exports = router;

@@ -17,6 +17,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import logger from "../../utils/logger";
 import {
   FiMessageCircle,
   FiX,
@@ -71,6 +72,9 @@ export default function ChatWidget() {
   // Guarda os IDs das mensagens já vistas (mais confiável que usar length)
   const mensagensVistasRef = useRef(new Set());
 
+  // Estado para rastrear conexão do socket de visitante
+  const [visitorSocketConnected, setVisitorSocketConnected] = useState(false);
+
   // Estados de avaliação
   const [showAvaliacao, setShowAvaliacao] = useState(false);
   const [notaAvaliacao, setNotaAvaliacao] = useState(0);
@@ -85,7 +89,7 @@ export default function ChatWidget() {
 
   // Token para visitantes (armazenado no sessionStorage)
   const [tokenVisitante, setTokenVisitante] = useState(() =>
-    sessionStorage.getItem("chatSuporteToken")
+    sessionStorage.getItem("chatSuporteToken"),
   );
 
   // ID da conversa salva (para persistência)
@@ -128,16 +132,16 @@ export default function ChatWidget() {
           const conversaAtiva = conversas[0];
 
           if (conversaAtiva) {
-            console.log(
+            logger.log(
               "📂 Conversa ativa encontrada:",
               conversaAtiva.id,
-              conversaAtiva.status
+              conversaAtiva.status,
             );
             setConversa(conversaAtiva);
 
             // Carrega mensagens
             const msgResponse = await api.get(
-              `/chat-suporte/conversas/${conversaAtiva.id}`
+              `/chat-suporte/conversas/${conversaAtiva.id}`,
             );
             setMensagens(msgResponse.data.mensagens || []);
 
@@ -145,7 +149,7 @@ export default function ChatWidget() {
               setPosicaoFila(msgResponse.data.posicaoFila);
             }
           } else {
-            console.log("📂 Nenhuma conversa ativa para usuário logado");
+            logger.log("📂 Nenhuma conversa ativa para usuário logado");
           }
         }
         // Para visitante com token salvo
@@ -153,16 +157,16 @@ export default function ChatWidget() {
           try {
             const response = await api.get(
               `/chat-suporte/visitante/conversas/${conversaIdSalva}`,
-              { headers: { "x-chat-token": tokenVisitante } }
+              { headers: { "x-chat-token": tokenVisitante } },
             );
 
             const conversaData = response.data.conversa || response.data;
 
             if (conversaData && conversaData.status !== STATUS.FINALIZADA) {
-              console.log(
+              logger.log(
                 "📂 Conversa de visitante encontrada:",
                 conversaData.id,
-                conversaData.status
+                conversaData.status,
               );
               setConversa(conversaData);
               setMensagens(response.data.mensagens || []);
@@ -177,7 +181,7 @@ export default function ChatWidget() {
             }
           } catch (err) {
             // Conversa não encontrada ou expirada, limpa dados
-            console.log("⚠️ Conversa de visitante não encontrada ou expirada");
+            logger.log("⚠️ Conversa de visitante não encontrada ou expirada");
             sessionStorage.removeItem("chatSuporteToken");
             sessionStorage.removeItem("chatSuporteConversaId");
             setShowIdentification(true);
@@ -187,7 +191,7 @@ export default function ChatWidget() {
           setShowIdentification(true);
         }
       } catch (err) {
-        console.error("Erro ao carregar conversa ativa:", err);
+        logger.error("Erro ao carregar conversa ativa:", err);
       } finally {
         setConversaCarregada(true);
       }
@@ -218,14 +222,14 @@ export default function ChatWidget() {
 
     // Encontra mensagens que ainda não foram vistas
     const mensagensNovas = mensagens.filter(
-      (m) => m.id && !mensagensVistasRef.current.has(m.id)
+      (m) => m.id && !mensagensVistasRef.current.has(m.id),
     );
 
     if (mensagensNovas.length === 0) return;
 
     // Filtra apenas mensagens que não são do próprio usuário
     const mensagensDeOutros = mensagensNovas.filter(
-      (m) => m.origem !== "USUARIO" || m.remetente_id !== user?.id
+      (m) => m.origem !== "USUARIO" || m.remetente_id !== user?.id,
     );
 
     // Marca todas as novas mensagens como processadas (mesmo as do próprio usuário)
@@ -245,111 +249,245 @@ export default function ChatWidget() {
   }, [mensagens]);
 
   // Configura listeners do Socket.IO quando a conversa está ativa
-  // NOTA: Só funciona para usuários logados (socket requer autenticação)
+  // Suporta tanto usuários logados quanto visitantes
   useEffect(() => {
-    // Só configura socket se estiver autenticado e tiver conversa
-    if (!conversa?.id || !isAuthenticated || !socketService.isConnected())
-      return;
+    if (!conversa?.id) return;
 
-    // Entra na sala da conversa
-    socketService.emit("chat-suporte:entrar", conversa.id);
+    // USUÁRIO AUTENTICADO - usa socket principal
+    if (isAuthenticated && socketService.isConnected()) {
+      logger.log(
+        "🔌 [ChatWidget] Configurando socket para usuário autenticado",
+      );
 
-    // Listener para novas mensagens
-    const unsubMensagem = socketService.on("chat-suporte:mensagem", (data) => {
-      if (data.conversa_id === conversa.id) {
-        setMensagens((prev) => {
-          // Evita duplicatas
-          if (prev.find((m) => m.id === data.mensagem.id)) return prev;
-          return [...prev, data.mensagem];
-        });
-      }
-    });
+      // Entra na sala da conversa
+      socketService.emit("chat-suporte:entrar", conversa.id);
 
-    // Listener para digitando
-    const unsubDigitando = socketService.on(
-      "chat-suporte:digitando",
-      (data) => {
-        if (data.conversa_id === conversa.id) {
-          setDigitando(data.nome);
+      // Listener para novas mensagens
+      const unsubMensagem = socketService.on(
+        "chat-suporte:mensagem",
+        (data) => {
+          if (data.conversa_id === conversa.id) {
+            setMensagens((prev) => {
+              if (prev.find((m) => m.id === data.mensagem.id)) return prev;
+              return [...prev, data.mensagem];
+            });
+          }
+        },
+      );
+
+      // Listener para digitando (ignora se for o próprio usuário)
+      const unsubDigitando = socketService.on(
+        "chat-suporte:digitando",
+        (data) => {
+          if (data.conversa_id === conversa.id) {
+            // Ignora se o nome é o mesmo do usuário atual (evita mostrar "você está digitando")
+            const nomeUsuario = user?.nome || nome || "Visitante";
+            if (data.nome !== nomeUsuario) {
+              setDigitando(data.nome);
+            }
+          }
+        },
+      );
+
+      // Listener para parou de digitar
+      const unsubParouDigitar = socketService.on(
+        "chat-suporte:parou-digitar",
+        (data) => {
+          if (data.conversa_id === conversa.id) {
+            setDigitando(null);
+          }
+        },
+      );
+
+      // Listener para atendente entrou
+      const unsubAtendenteEntrou = socketService.on(
+        "chat-suporte:atendente-entrou",
+        (data) => {
+          if (data.conversa_id === conversa.id) {
+            logger.log("🎉 Atendente entrou na conversa:", data);
+            setConversa((prev) => ({
+              ...prev,
+              status: STATUS.EM_ATENDIMENTO,
+              atendente_nome: data.atendente_nome,
+            }));
+            setPosicaoFila(null);
+          }
+        },
+      );
+
+      // Listener para conversa finalizada
+      const unsubFinalizada = socketService.on(
+        "chat-suporte:conversa-finalizada",
+        (data) => {
+          if (data.conversa_id === conversa.id) {
+            setConversa((prev) => ({ ...prev, status: STATUS.FINALIZADA }));
+            setShowAvaliacao(true);
+          }
+        },
+      );
+
+      // Listener para atualização da fila
+      const unsubFilaAtualizada = socketService.on(
+        "chat-suporte:fila-atualizada",
+        (data) => {
+          if (data.posicao && data.conversa_id === conversa.id) {
+            setPosicaoFila(data.posicao);
+          }
+        },
+      );
+
+      return () => {
+        if (socketService.isConnected()) {
+          socketService.emit("chat-suporte:sair", conversa.id);
         }
-      }
-    );
+        unsubMensagem && unsubMensagem();
+        unsubDigitando && unsubDigitando();
+        unsubParouDigitar && unsubParouDigitar();
+        unsubAtendenteEntrou && unsubAtendenteEntrou();
+        unsubFinalizada && unsubFinalizada();
+        unsubFilaAtualizada && unsubFilaAtualizada();
+      };
+    }
 
-    // Listener para parou de digitar
-    const unsubParouDigitar = socketService.on(
-      "chat-suporte:parou-digitar",
-      (data) => {
-        if (data.conversa_id === conversa.id) {
-          setDigitando(null);
-        }
-      }
-    );
+    // VISITANTE - usa socket de visitantes (namespace /visitante)
+    if (!isAuthenticated && tokenVisitante) {
+      logger.log("🔌 [ChatWidget] Configurando socket de visitante");
 
-    // Listener para atendente entrou
-    const unsubAtendenteEntrou = socketService.on(
-      "chat-suporte:atendente-entrou",
-      (data) => {
-        if (data.conversa_id === conversa.id) {
-          console.log("🎉 Atendente entrou na conversa:", data);
-          setConversa((prev) => ({
-            ...prev,
-            status: STATUS.EM_ATENDIMENTO,
-            atendente_nome: data.atendente_nome,
-          }));
-          setPosicaoFila(null);
-        }
-      }
-    );
+      // Conecta ao namespace de visitantes
+      socketService.connectVisitor(tokenVisitante, conversa.id);
 
-    // Listener para conversa finalizada
-    const unsubFinalizada = socketService.on(
-      "chat-suporte:conversa-finalizada",
-      (data) => {
-        if (data.conversa_id === conversa.id) {
-          setConversa((prev) => ({ ...prev, status: STATUS.FINALIZADA }));
-          setShowAvaliacao(true);
-        }
-      }
-    );
+      // Listener para conexão estabelecida
+      const unsubConnected = socketService.onVisitor("connected", () => {
+        logger.log("✅ [ChatWidget] Socket de visitante conectado!");
+        setVisitorSocketConnected(true);
+      });
 
-    // Listener para atualização da fila
-    const unsubFilaAtualizada = socketService.on(
-      "chat-suporte:fila-atualizada",
-      (data) => {
-        if (data.posicao && data.conversa_id === conversa.id) {
-          setPosicaoFila(data.posicao);
-        }
-      }
-    );
+      // Listener para desconexão
+      const unsubDisconnected = socketService.onVisitor("disconnected", () => {
+        logger.log("🔴 [ChatWidget] Socket de visitante desconectado!");
+        setVisitorSocketConnected(false);
+      });
 
-    return () => {
-      if (socketService.isConnected()) {
-        socketService.emit("chat-suporte:sair", conversa.id);
+      // Verifica se já está conectado (pode ter conectado antes do listener ser registrado)
+      if (socketService.isVisitorConnected()) {
+        setVisitorSocketConnected(true);
       }
-      unsubMensagem && unsubMensagem();
-      unsubDigitando && unsubDigitando();
-      unsubParouDigitar && unsubParouDigitar();
-      unsubAtendenteEntrou && unsubAtendenteEntrou();
-      unsubFinalizada && unsubFinalizada();
-      unsubFilaAtualizada && unsubFilaAtualizada();
-    };
-  }, [conversa?.id, isAuthenticated]);
+
+      // Listener para novas mensagens
+      const unsubMensagem = socketService.onVisitor(
+        "chat-suporte:mensagem",
+        (data) => {
+          if (data.conversa_id === conversa.id) {
+            setMensagens((prev) => {
+              if (prev.find((m) => m.id === data.mensagem.id)) return prev;
+              return [...prev, data.mensagem];
+            });
+          }
+        },
+      );
+
+      // Listener para digitando (ignora se for o próprio visitante)
+      const unsubDigitando = socketService.onVisitor(
+        "chat-suporte:digitando",
+        (data) => {
+          if (data.conversa_id === conversa.id) {
+            // Ignora se o nome é o mesmo do visitante atual
+            const nomeVisitante = nome || "Visitante";
+            if (data.nome !== nomeVisitante) {
+              setDigitando(data.nome);
+            }
+          }
+        },
+      );
+
+      // Listener para parou de digitar
+      const unsubParouDigitar = socketService.onVisitor(
+        "chat-suporte:parou-digitar",
+        (data) => {
+          if (data.conversa_id === conversa.id) {
+            setDigitando(null);
+          }
+        },
+      );
+
+      // Listener para atendente entrou
+      const unsubAtendenteEntrou = socketService.onVisitor(
+        "chat-suporte:atendente-entrou",
+        (data) => {
+          if (data.conversa_id === conversa.id) {
+            logger.log("🎉 [Visitor] Atendente entrou na conversa:", data);
+            setConversa((prev) => ({
+              ...prev,
+              status: STATUS.EM_ATENDIMENTO,
+              atendente_nome: data.atendente_nome,
+            }));
+            setPosicaoFila(null);
+          }
+        },
+      );
+
+      // Listener para conversa finalizada
+      const unsubFinalizada = socketService.onVisitor(
+        "chat-suporte:conversa-finalizada",
+        (data) => {
+          if (data.conversa_id === conversa.id) {
+            setConversa((prev) => ({ ...prev, status: STATUS.FINALIZADA }));
+            setShowAvaliacao(true);
+          }
+        },
+      );
+
+      // Listener para atualização da fila
+      const unsubFilaAtualizada = socketService.onVisitor(
+        "chat-suporte:fila-atualizada",
+        (data) => {
+          if (data.posicao && data.conversa_id === conversa.id) {
+            setPosicaoFila(data.posicao);
+          }
+        },
+      );
+
+      return () => {
+        // Desconecta o socket de visitante
+        socketService.disconnectVisitor();
+        setVisitorSocketConnected(false);
+        unsubConnected && unsubConnected();
+        unsubDisconnected && unsubDisconnected();
+        unsubMensagem && unsubMensagem();
+        unsubDigitando && unsubDigitando();
+        unsubParouDigitar && unsubParouDigitar();
+        unsubAtendenteEntrou && unsubAtendenteEntrou();
+        unsubFinalizada && unsubFinalizada();
+        unsubFilaAtualizada && unsubFilaAtualizada();
+      };
+    }
+  }, [conversa?.id, isAuthenticated, tokenVisitante]);
 
   // Polling para verificar atualizações da conversa
-  // Funciona para visitantes não autenticados e também como fallback para usuários logados
+  // Usa polling apenas quando o socket NÃO está conectado (fallback)
   useEffect(() => {
     if (!conversa?.id) {
-      console.log("🔄 Polling: Sem conversa ativa");
+      logger.log("🔄 Polling: Sem conversa ativa");
       return;
     }
     if (conversa.status === STATUS.FINALIZADA) {
-      console.log("🔄 Polling: Conversa finalizada, polling não necessário");
+      logger.log("🔄 Polling: Conversa finalizada, polling não necessário");
+      return;
+    }
+
+    // Verifica se o socket está conectado - se sim, não precisa de polling
+    const socketConectado = isAuthenticated
+      ? socketService.isConnected()
+      : visitorSocketConnected;
+
+    if (socketConectado) {
+      logger.log("🔄 Polling: Socket conectado, polling desabilitado");
       return;
     }
 
     const conversaId = conversa.id;
-    console.log(
-      `🔄 Polling iniciado para conversa ${conversaId}, isAuth: ${isAuthenticated}, token: ${tokenVisitante ? "presente" : "ausente"}`
+    logger.log(
+      `🔄 Polling iniciado para conversa ${conversaId}, isAuth: ${isAuthenticated}, token: ${tokenVisitante ? "presente" : "ausente"}, socketConectado: ${socketConectado}`,
     );
 
     // Para visitantes: usa o token
@@ -359,25 +497,25 @@ export default function ChatWidget() {
         let response;
 
         if (!isAuthenticated && tokenVisitante) {
-          console.log(
-            `📡 Polling visitante: /chat-suporte/visitante/conversas/${conversaId}`
+          logger.log(
+            `📡 Polling visitante: /chat-suporte/visitante/conversas/${conversaId}`,
           );
           response = await api.get(
             `/chat-suporte/visitante/conversas/${conversaId}`,
-            { headers: { "x-chat-token": tokenVisitante } }
+            { headers: { "x-chat-token": tokenVisitante } },
           );
         } else if (isAuthenticated) {
           response = await api.get(`/chat-suporte/conversas/${conversaId}`);
         } else {
-          console.log("⚠️ Polling: Não autenticado e sem token visitante");
+          logger.log("⚠️ Polling: Não autenticado e sem token visitante");
           return;
         }
 
         const conversaAtualizada = response.data.conversa || response.data;
         const novasMensagens = response.data.mensagens || [];
 
-        console.log(
-          `📡 Polling resposta: status=${conversaAtualizada.status}, mensagens=${novasMensagens.length}`
+        logger.log(
+          `📡 Polling resposta: status=${conversaAtualizada.status}, mensagens=${novasMensagens.length}`,
         );
 
         // Atualiza conversa com dados novos
@@ -389,12 +527,12 @@ export default function ChatWidget() {
             conversaAtualizada.status &&
             conversaAtualizada.status !== prev.status
           ) {
-            console.log(
-              `🔄 Status mudou: ${prev.status} -> ${conversaAtualizada.status}`
+            logger.log(
+              `🔄 Status mudou: ${prev.status} -> ${conversaAtualizada.status}`,
             );
 
             if (conversaAtualizada.status === STATUS.EM_ATENDIMENTO) {
-              console.log("✅ Atendente aceitou a conversa!");
+              logger.log("✅ Atendente aceitou a conversa!");
               setPosicaoFila(null);
             }
 
@@ -420,7 +558,7 @@ export default function ChatWidget() {
           setMensagens(novasMensagens);
         }
       } catch (err) {
-        console.error("Erro no polling:", err);
+        logger.error("Erro no polling:", err);
       }
     };
 
@@ -435,7 +573,13 @@ export default function ChatWidget() {
         clearInterval(pollingRef.current);
       }
     };
-  }, [conversa?.id, isAuthenticated, tokenVisitante]);
+  }, [
+    conversa?.id,
+    conversa?.status,
+    isAuthenticated,
+    tokenVisitante,
+    visitorSocketConnected,
+  ]);
 
   // Foca no input quando abre
   useEffect(() => {
@@ -481,7 +625,7 @@ export default function ChatWidget() {
         if (response.data.tokenVisitante) {
           sessionStorage.setItem(
             "chatSuporteToken",
-            response.data.tokenVisitante
+            response.data.tokenVisitante,
           );
           setTokenVisitante(response.data.tokenVisitante);
         }
@@ -491,7 +635,7 @@ export default function ChatWidget() {
       setMensagens(response.data.mensagens || []);
       setShowIdentification(false);
     } catch (err) {
-      console.error("Erro ao iniciar conversa:", err);
+      logger.error("Erro ao iniciar conversa:", err);
       setError(err.response?.data?.error || "Erro ao iniciar conversa");
     } finally {
       setLoading(false);
@@ -522,13 +666,13 @@ export default function ChatWidget() {
         // Usuário logado - usa rota autenticada
         response = await api.post(
           `/chat-suporte/conversas/${conversa.id}/mensagens`,
-          { mensagem: mensagemTexto }
+          { mensagem: mensagemTexto },
         );
       } else {
         // Visitante - usa rota pública com token
         response = await api.post(
           `/chat-suporte/visitante/conversas/${conversa.id}/mensagens`,
-          { mensagem: mensagemTexto, token: tokenVisitante }
+          { mensagem: mensagemTexto, token: tokenVisitante },
         );
       }
 
@@ -559,7 +703,7 @@ export default function ChatWidget() {
         setPosicaoFila(response.data.posicaoFila);
       }
     } catch (err) {
-      console.error("Erro ao enviar mensagem:", err);
+      logger.error("Erro ao enviar mensagem:", err);
       setError(err.response?.data?.error || "Erro ao enviar mensagem");
     } finally {
       setEnviando(false);
@@ -567,14 +711,28 @@ export default function ChatWidget() {
     }
   };
 
-  // Emite evento de digitando (só se socket conectado)
+  // Emite evento de digitando (funciona para usuários autenticados e visitantes)
   const handleTyping = useCallback(() => {
-    if (!conversa?.id || !socketService.isConnected()) return;
+    if (!conversa?.id) return;
 
-    socketService.emit("chat-suporte:digitando", {
+    // Usa o nome do usuário logado ou o nome do visitante
+    const nomeDigitando = isAuthenticated
+      ? user?.nome || nome || "Usuário"
+      : nome || "Visitante";
+
+    const typingData = {
       conversa_id: conversa.id,
-      nome: nome || "Visitante",
-    });
+      nome: nomeDigitando,
+    };
+
+    // Emite via socket apropriado
+    if (isAuthenticated && socketService.isConnected()) {
+      socketService.emit("chat-suporte:digitando", typingData);
+    } else if (!isAuthenticated && socketService.isVisitorConnected()) {
+      socketService.emitVisitor("chat-suporte:digitando", typingData);
+    } else {
+      return; // Sem socket conectado
+    }
 
     // Limpa timeout anterior
     if (digitandoTimeoutRef.current) {
@@ -583,11 +741,15 @@ export default function ChatWidget() {
 
     // Emite parou de digitar após 2 segundos
     digitandoTimeoutRef.current = setTimeout(() => {
-      socketService.emit("chat-suporte:parou-digitar", {
-        conversa_id: conversa.id,
-      });
+      const stopTypingData = { conversa_id: conversa.id };
+
+      if (isAuthenticated && socketService.isConnected()) {
+        socketService.emit("chat-suporte:parou-digitar", stopTypingData);
+      } else if (!isAuthenticated && socketService.isVisitorConnected()) {
+        socketService.emitVisitor("chat-suporte:parou-digitar", stopTypingData);
+      }
     }, 2000);
-  }, [conversa?.id, nome]);
+  }, [conversa?.id, nome, isAuthenticated, user?.nome]);
 
   // Solicita atendimento humano
   const solicitarAtendente = async () => {
@@ -599,12 +761,12 @@ export default function ChatWidget() {
 
       if (isAuthenticated) {
         response = await api.post(
-          `/chat-suporte/conversas/${conversa.id}/solicitar-atendente`
+          `/chat-suporte/conversas/${conversa.id}/solicitar-atendente`,
         );
       } else {
         response = await api.post(
           `/chat-suporte/visitante/conversas/${conversa.id}/solicitar-atendente`,
-          { token: tokenVisitante }
+          { token: tokenVisitante },
         );
       }
 
@@ -615,7 +777,7 @@ export default function ChatWidget() {
         setError("Você já está na fila de atendimento");
       }
     } catch (err) {
-      console.error("Erro ao solicitar atendente:", err);
+      logger.error("Erro ao solicitar atendente:", err);
       setError(err.response?.data?.error || "Erro ao solicitar atendente");
     } finally {
       setLoading(false);
@@ -627,11 +789,26 @@ export default function ChatWidget() {
     if (!conversa?.id) return;
 
     try {
-      await api.post(`/chat-suporte/conversas/${conversa.id}/finalizar`);
+      // Visitantes usam endpoint específico com x-chat-token
+      // Usuários autenticados usam endpoint padrão
+      if (!isAuthenticated && tokenVisitante) {
+        await api.post(
+          `/chat-suporte/visitante/conversas/${conversa.id}/finalizar`,
+          {},
+          {
+            headers: {
+              "x-chat-token": tokenVisitante,
+            },
+          },
+        );
+      } else {
+        await api.post(`/chat-suporte/conversas/${conversa.id}/finalizar`);
+      }
       setConversa((prev) => ({ ...prev, status: STATUS.FINALIZADA }));
       setShowAvaliacao(true);
     } catch (err) {
-      console.error("Erro ao finalizar conversa:", err);
+      logger.error("Erro ao finalizar conversa:", err);
+      setError(err.response?.data?.error || "Erro ao finalizar conversa");
     }
   };
 
@@ -646,7 +823,7 @@ export default function ChatWidget() {
       });
       setAvaliacaoEnviada(true);
     } catch (err) {
-      console.error("Erro ao enviar avaliação:", err);
+      logger.error("Erro ao enviar avaliação:", err);
       setError("Erro ao enviar avaliação");
     }
   };
@@ -929,7 +1106,7 @@ export default function ChatWidget() {
                     // Ao maximizar, zera contador e marca todas como vistas
                     setMensagensNaoLidas(0);
                     mensagens.forEach((m) =>
-                      mensagensVistasRef.current.add(m.id)
+                      mensagensVistasRef.current.add(m.id),
                     );
                   }
                 }}

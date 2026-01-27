@@ -1,30 +1,5 @@
 const connection = require("../database/connection");
 const { getIo } = require("../socket");
-const { getUsuarioId } = require("../utils/authHelper");
-
-// ✅ Helper para verificar se usuário é ADM via papéis
-async function verificarAdmin(usuarioId) {
-  const usuario = await connection("usuarios").where("id", usuarioId).first();
-
-  if (!usuario) {
-    return { error: "usuario não encontrada", status: 404 };
-  }
-
-  // Verificar via papéis
-  const papeis = await connection("usuarios_papeis")
-    .join("papeis", "usuarios_papeis.papel_id", "papeis.id")
-    .where("usuarios_papeis.usuario_id", usuarioId)
-    .pluck("papeis.nome");
-
-  if (!Array.isArray(papeis) || !papeis.includes("ADMIN")) {
-    return {
-      error: "Somente administradores podem realizar esta ação!",
-      status: 403,
-    };
-  }
-
-  return { valid: true };
-}
 
 module.exports = {
   // ═══════════════════════════════════════════════════════════════
@@ -69,31 +44,13 @@ module.exports = {
   },
 
   // ═══════════════════════════════════════════════════════════════
-  // CADASTRAR EMPRESA (Somente ADMs)
+  // CADASTRAR EMPRESA
+  // Permissão: empresa_visitante_criar (verificada no middleware)
   // ═══════════════════════════════════════════════════════════════
   async create(request, response) {
     const { nome, cnpj, telefone, email, endereco } = request.body;
-    const criado_por = getUsuarioId(request);
 
     try {
-      console.log("=== DEBUG CADASTRAR EMPRESA VISITANTE ===");
-      console.log("Authorization header:", criado_por);
-
-      if (!criado_por) {
-        return response
-          .status(401)
-          .json({ error: "Authorization header é obrigatório" });
-      }
-
-      // Verificar se é administrador
-      const adminCheck = await verificarAdmin(criado_por);
-      if (!adminCheck.valid) {
-        return response.status(adminCheck.status).json({
-          error: adminCheck.error,
-          redirectTo: "/profile",
-        });
-      }
-
       // Validação básica
       if (!nome || nome.trim() === "") {
         return response
@@ -143,32 +100,14 @@ module.exports = {
   },
 
   // ═══════════════════════════════════════════════════════════════
-  // ATUALIZAR EMPRESA (Somente ADMs)
+  // ATUALIZAR EMPRESA
+  // Permissão: empresa_visitante_editar (verificada no middleware)
   // ═══════════════════════════════════════════════════════════════
   async update(request, response) {
     const { id } = request.params;
     const { nome, cnpj, telefone, email, endereco } = request.body;
-    const atualizado_por = getUsuarioId(request);
 
     try {
-      console.log("=== DEBUG ATUALIZAR EMPRESA ===");
-      console.log("ID da empresa:", id);
-      console.log("Authorization:", atualizado_por);
-
-      if (!atualizado_por) {
-        return response
-          .status(401)
-          .json({ error: "Authorization header é obrigatório" });
-      }
-
-      // Verificar se é administrador
-      const adminCheck = await verificarAdmin(atualizado_por);
-      if (!adminCheck.valid) {
-        return response.status(adminCheck.status).json({
-          error: adminCheck.error,
-        });
-      }
-
       // Verificar se a empresa existe
       const empresaExistente = await connection("empresa_visitante")
         .where("id", id)
@@ -234,31 +173,13 @@ module.exports = {
   },
 
   // ═══════════════════════════════════════════════════════════════
-  // DELETAR EMPRESA (Somente ADMs)
+  // DELETAR EMPRESA
+  // Permissão: empresa_visitante_deletar (verificada no middleware)
   // ═══════════════════════════════════════════════════════════════
   async delete(request, response) {
     const { id } = request.params;
-    const deletado_por = getUsuarioId(request);
 
     try {
-      console.log("=== DEBUG DELETAR EMPRESA ===");
-      console.log("ID da empresa:", id);
-      console.log("Authorization:", deletado_por);
-
-      if (!deletado_por) {
-        return response
-          .status(401)
-          .json({ error: "Authorization header é obrigatório" });
-      }
-
-      // Verificar se é administrador
-      const adminCheck = await verificarAdmin(deletado_por);
-      if (!adminCheck.valid) {
-        return response.status(adminCheck.status).json({
-          error: adminCheck.error,
-        });
-      }
-
       // Verificar se a empresa existe
       const empresa = await connection("empresa_visitante")
         .where("id", id)
@@ -268,22 +189,20 @@ module.exports = {
         return response.status(404).json({ error: "Empresa não encontrada." });
       }
 
-      // Verificar se há usuários vinculados a esta empresa
-      const usuariosVinculados = await connection("usuarios")
+      // Verificar se há visitantes vinculados a esta empresa
+      const visitantesVinculados = await connection("cadastro_visitante")
         .where("empresa_id", id)
         .count("id as count")
         .first();
 
-      if (usuariosVinculados.count > 0) {
+      if (visitantesVinculados.count > 0) {
         return response.status(400).json({
-          error: `Não é possível excluir esta empresa pois existem ${usuariosVinculados.count} usuário(s) vinculado(s) a ela.`,
+          error: `Não é possível excluir esta empresa pois existem ${visitantesVinculados.count} visitante(s) vinculado(s) a ela.`,
         });
       }
 
       // Deletar a empresa
       await connection("empresa_visitante").where("id", id).delete();
-
-      console.log("✅ Empresa deletada com sucesso:", empresa.nome);
 
       const io = getIo();
       io.to("global").emit("empresa:delete", {

@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
  * PÁGINA: Gestão de Pontos de Controle de Ronda
@@ -239,10 +240,10 @@ export default function PontosControle() {
     carregarLeaflet()
       .then(() => {
         setMapCarregado(true);
-        console.log("✅ Leaflet carregado com sucesso");
+        logger.log("✅ Leaflet carregado com sucesso");
       })
       .catch((err) => {
-        console.error("❌ Erro ao carregar Leaflet:", err);
+        logger.error("❌ Erro ao carregar Leaflet:", err);
       });
   }, []);
 
@@ -325,7 +326,7 @@ export default function PontosControle() {
       try {
         // ✅ Se já tem pontos do cache (estado inicial) e não é forceRefresh, só carrega setores
         if (pontos.length > 0 && !forceRefresh) {
-          console.log("📦 Usando pontos de controle do cache (estado inicial)");
+          logger.log("📦 Usando pontos de controle do cache (estado inicial)");
           // Carrega setores da API (não cacheia por enquanto)
           const setoresResp = await rondaService.listarSetoresPontosControle();
           setSetores(setoresResp.setores || []);
@@ -349,7 +350,7 @@ export default function PontosControle() {
         // Salva no cache
         setCache("pontosControle", pontosData);
       } catch (err) {
-        console.error("Erro ao carregar pontos:", err);
+        logger.error("Erro ao carregar pontos:", err);
         setErro("Erro ao carregar pontos de controle");
       } finally {
         setCarregando(false);
@@ -364,7 +365,7 @@ export default function PontosControle() {
       const resp = await rondaService.estatisticasPontosControle();
       setEstatisticas(resp.estatisticas);
     } catch (err) {
-      console.error("Erro ao carregar estatísticas:", err);
+      logger.error("Erro ao carregar estatísticas:", err);
     }
   }, [podeGerenciar]);
 
@@ -485,7 +486,7 @@ export default function PontosControle() {
       fecharModal();
       carregarDados();
     } catch (err) {
-      console.error("Erro ao salvar ponto:", err);
+      logger.error("Erro ao salvar ponto:", err);
       setFormErros({
         geral: err.response?.data?.error || "Erro ao salvar ponto de controle",
       });
@@ -511,7 +512,7 @@ export default function PontosControle() {
       setModalConfirmacao({ aberto: false, pontoId: null, nome: "" });
       carregarDados();
     } catch (err) {
-      console.error("Erro ao excluir ponto:", err);
+      logger.error("Erro ao excluir ponto:", err);
       alert(err.response?.data?.error || "Erro ao excluir ponto");
     }
   };
@@ -534,7 +535,7 @@ export default function PontosControle() {
         }));
       },
       (error) => {
-        console.error("Erro de geolocalização:", error);
+        logger.error("Erro de geolocalização:", error);
         alert("Não foi possível obter sua localização");
       },
       { enableHighAccuracy: true },
@@ -551,7 +552,7 @@ export default function PontosControle() {
       });
       carregarDados();
     } catch (err) {
-      console.error("Erro ao alterar status:", err);
+      logger.error("Erro ao alterar status:", err);
       alert("Erro ao alterar status do ponto");
     }
   };
@@ -1214,3 +1215,5 @@ export default function PontosControle() {
     </div>
   );
 }
+
+

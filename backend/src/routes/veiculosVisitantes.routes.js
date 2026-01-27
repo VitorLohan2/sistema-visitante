@@ -10,7 +10,7 @@ const CorVeiculoVisitanteController = require("../controllers/CorVeiculoVisitant
 const TipoVeiculoVisitanteController = require("../controllers/TipoVeiculoVisitanteController");
 const VeiculoVisitanteController = require("../controllers/VeiculoVisitanteController");
 const { authMiddleware } = require("../middleware/authMiddleware");
-const { adminMiddleware } = require("../middleware/adminMiddleware");
+const { requerPermissao } = require("../middleware/permissaoMiddleware");
 
 const router = express.Router();
 
@@ -29,27 +29,27 @@ router.get(
       id: Joi.number().required(),
     }),
   }),
-  FuncaoVisitanteController.show
+  FuncaoVisitanteController.show,
 );
 
-// POST /funcoes-visitantes - Criar nova função (admin)
+// POST /funcoes-visitantes - Criar nova função
 router.post(
   "/funcoes-visitantes",
   authMiddleware,
-  adminMiddleware,
+  requerPermissao("funcao_visitante_gerenciar"),
   celebrate({
     [Segments.BODY]: Joi.object().keys({
       nome: Joi.string().required(),
     }),
   }),
-  FuncaoVisitanteController.create
+  FuncaoVisitanteController.create,
 );
 
-// PUT /funcoes-visitantes/:id - Atualizar função (admin)
+// PUT /funcoes-visitantes/:id - Atualizar função
 router.put(
   "/funcoes-visitantes/:id",
   authMiddleware,
-  adminMiddleware,
+  requerPermissao("funcao_visitante_gerenciar"),
   celebrate({
     [Segments.PARAMS]: Joi.object().keys({
       id: Joi.number().required(),
@@ -58,20 +58,20 @@ router.put(
       nome: Joi.string().required(),
     }),
   }),
-  FuncaoVisitanteController.update
+  FuncaoVisitanteController.update,
 );
 
-// DELETE /funcoes-visitantes/:id - Deletar função (admin)
+// DELETE /funcoes-visitantes/:id - Deletar função
 router.delete(
   "/funcoes-visitantes/:id",
   authMiddleware,
-  adminMiddleware,
+  requerPermissao("funcao_visitante_gerenciar"),
   celebrate({
     [Segments.PARAMS]: Joi.object().keys({
       id: Joi.number().required(),
     }),
   }),
-  FuncaoVisitanteController.delete
+  FuncaoVisitanteController.delete,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -89,27 +89,27 @@ router.get(
       id: Joi.number().required(),
     }),
   }),
-  CorVeiculoVisitanteController.show
+  CorVeiculoVisitanteController.show,
 );
 
-// POST /cores-veiculos-visitantes - Criar nova cor (admin)
+// POST /cores-veiculos-visitantes - Criar nova cor
 router.post(
   "/cores-veiculos-visitantes",
   authMiddleware,
-  adminMiddleware,
+  requerPermissao("cor_veiculo_gerenciar"),
   celebrate({
     [Segments.BODY]: Joi.object().keys({
       nome: Joi.string().required(),
     }),
   }),
-  CorVeiculoVisitanteController.create
+  CorVeiculoVisitanteController.create,
 );
 
-// PUT /cores-veiculos-visitantes/:id - Atualizar cor (admin)
+// PUT /cores-veiculos-visitantes/:id - Atualizar cor
 router.put(
   "/cores-veiculos-visitantes/:id",
   authMiddleware,
-  adminMiddleware,
+  requerPermissao("cor_veiculo_gerenciar"),
   celebrate({
     [Segments.PARAMS]: Joi.object().keys({
       id: Joi.number().required(),
@@ -118,20 +118,20 @@ router.put(
       nome: Joi.string().required(),
     }),
   }),
-  CorVeiculoVisitanteController.update
+  CorVeiculoVisitanteController.update,
 );
 
-// DELETE /cores-veiculos-visitantes/:id - Deletar cor (admin)
+// DELETE /cores-veiculos-visitantes/:id - Deletar cor
 router.delete(
   "/cores-veiculos-visitantes/:id",
   authMiddleware,
-  adminMiddleware,
+  requerPermissao("cor_veiculo_gerenciar"),
   celebrate({
     [Segments.PARAMS]: Joi.object().keys({
       id: Joi.number().required(),
     }),
   }),
-  CorVeiculoVisitanteController.delete
+  CorVeiculoVisitanteController.delete,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -149,27 +149,27 @@ router.get(
       id: Joi.number().required(),
     }),
   }),
-  TipoVeiculoVisitanteController.show
+  TipoVeiculoVisitanteController.show,
 );
 
-// POST /tipos-veiculos-visitantes - Criar novo tipo (admin)
+// POST /tipos-veiculos-visitantes - Criar novo tipo
 router.post(
   "/tipos-veiculos-visitantes",
   authMiddleware,
-  adminMiddleware,
+  requerPermissao("tipo_veiculo_gerenciar"),
   celebrate({
     [Segments.BODY]: Joi.object().keys({
       nome: Joi.string().required(),
     }),
   }),
-  TipoVeiculoVisitanteController.create
+  TipoVeiculoVisitanteController.create,
 );
 
-// PUT /tipos-veiculos-visitantes/:id - Atualizar tipo (admin)
+// PUT /tipos-veiculos-visitantes/:id - Atualizar tipo
 router.put(
   "/tipos-veiculos-visitantes/:id",
   authMiddleware,
-  adminMiddleware,
+  requerPermissao("tipo_veiculo_gerenciar"),
   celebrate({
     [Segments.PARAMS]: Joi.object().keys({
       id: Joi.number().required(),
@@ -178,20 +178,20 @@ router.put(
       nome: Joi.string().required(),
     }),
   }),
-  TipoVeiculoVisitanteController.update
+  TipoVeiculoVisitanteController.update,
 );
 
-// DELETE /tipos-veiculos-visitantes/:id - Deletar tipo (admin)
+// DELETE /tipos-veiculos-visitantes/:id - Deletar tipo
 router.delete(
   "/tipos-veiculos-visitantes/:id",
   authMiddleware,
-  adminMiddleware,
+  requerPermissao("tipo_veiculo_gerenciar"),
   celebrate({
     [Segments.PARAMS]: Joi.object().keys({
       id: Joi.number().required(),
     }),
   }),
-  TipoVeiculoVisitanteController.delete
+  TipoVeiculoVisitanteController.delete,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -202,7 +202,7 @@ router.delete(
 router.get(
   "/veiculos-visitantes",
   authMiddleware,
-  VeiculoVisitanteController.index
+  VeiculoVisitanteController.index,
 );
 
 // GET /veiculos-visitantes/:id - Buscar veículo por ID
@@ -214,7 +214,7 @@ router.get(
       id: Joi.number().required(),
     }),
   }),
-  VeiculoVisitanteController.show
+  VeiculoVisitanteController.show,
 );
 
 // GET /veiculos-visitantes/visitante/:visitanteId - Buscar veículo por visitante
@@ -225,7 +225,7 @@ router.get(
       visitanteId: Joi.number().required(),
     }),
   }),
-  VeiculoVisitanteController.showByVisitante
+  VeiculoVisitanteController.showByVisitante,
 );
 
 // POST /veiculos-visitantes - Criar ou atualizar veículo
@@ -240,7 +240,7 @@ router.post(
       tipo_veiculo_visitante_id: Joi.number().allow(null).optional(),
     }),
   }),
-  VeiculoVisitanteController.createOrUpdate
+  VeiculoVisitanteController.createOrUpdate,
 );
 
 // DELETE /veiculos-visitantes/:id - Deletar veículo
@@ -252,7 +252,7 @@ router.delete(
       id: Joi.number().required(),
     }),
   }),
-  VeiculoVisitanteController.delete
+  VeiculoVisitanteController.delete,
 );
 
 // DELETE /veiculos-visitantes/visitante/:visitanteId - Deletar veículo por visitante
@@ -264,7 +264,7 @@ router.delete(
       visitanteId: Joi.number().required(),
     }),
   }),
-  VeiculoVisitanteController.deleteByVisitante
+  VeiculoVisitanteController.deleteByVisitante,
 );
 
 module.exports = router;

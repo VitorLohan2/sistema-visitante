@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * PAINEL DO ATENDENTE - Página de Atendimento ao Cliente
@@ -109,7 +110,7 @@ export default function PainelAtendente() {
     try {
       await Promise.all([carregarFila(), carregarConversasAtivas()]);
     } catch (err) {
-      console.error("Erro ao carregar dados:", err);
+      logger.error("Erro ao carregar dados:", err);
       setError("Erro ao carregar dados do painel");
     } finally {
       setLoading(false);
@@ -126,7 +127,7 @@ export default function PainelAtendente() {
       const response = await api.get("/chat-suporte/atendente/fila");
       setFila(response.data.fila || []);
     } catch (err) {
-      console.error("Erro ao carregar fila:", err);
+      logger.error("Erro ao carregar fila:", err);
     } finally {
       setFilaLoading(false);
     }
@@ -139,7 +140,7 @@ export default function PainelAtendente() {
       );
       setConversasAtivas(response.data.conversas || []);
     } catch (err) {
-      console.error("Erro ao carregar conversas ativas:", err);
+      logger.error("Erro ao carregar conversas ativas:", err);
     }
   };
 
@@ -153,7 +154,7 @@ export default function PainelAtendente() {
       });
       setHistorico(response.data.conversas || []);
     } catch (err) {
-      console.error("Erro ao carregar histórico:", err);
+      logger.error("Erro ao carregar histórico:", err);
     }
   };
 
@@ -170,10 +171,32 @@ export default function PainelAtendente() {
 
       return novasMensagens;
     } catch (err) {
-      console.error("Erro ao carregar mensagens:", err);
+      logger.error("Erro ao carregar mensagens:", err);
       return [];
     }
   };
+
+  // ═══════════════════════════════════════════════════════════════
+  // SOCKET.IO - Entrar em TODAS as salas de conversas ativas
+  // Isso garante que o atendente receba mensagens mesmo quando não está visualizando
+  // ═══════════════════════════════════════════════════════════════
+
+  useEffect(() => {
+    if (!conversasAtivas.length) return;
+
+    // Entra em todas as salas de conversas ativas
+    conversasAtivas.forEach((conversa) => {
+      socketService.emit("chat-suporte:entrar", conversa.id);
+      logger.log(`🚪 Atendente entrou na sala da conversa ${conversa.id}`);
+    });
+
+    return () => {
+      // Sai de todas as salas ao desmontar
+      conversasAtivas.forEach((conversa) => {
+        socketService.emit("chat-suporte:sair", conversa.id);
+      });
+    };
+  }, [conversasAtivas]);
 
   // ═══════════════════════════════════════════════════════════════
   // SOCKET.IO - Listeners locais da página (contexto global gerencia presença)
@@ -184,26 +207,61 @@ export default function PainelAtendente() {
     // Aqui apenas registramos listeners locais para atualizar a UI desta página
 
     // Listener para nova conversa na fila
-    const unsubNovaFila = socketService.on("chat-suporte:nova-fila", () => {
-      console.log("📢 Nova conversa na fila - atualizando");
-      carregarFila();
+    const unsubNovaFila = socketService.on("chat-suporte:nova-fila", (data) => {
+      logger.log("📢 Nova conversa na fila - dados recebidos:", data);
+      // Se recebeu a fila completa, usa diretamente
+      if (data?.fila && Array.isArray(data.fila)) {
+        setFila(data.fila);
+      } else {
+        // Se não recebeu dados completos, recarrega
+        carregarFila();
+      }
     });
 
-    // Listener para fila atualizada
+    // Listener para fila atualizada (geralmente quando uma conversa foi aceita)
     const unsubFilaAtualizada = socketService.on(
       "chat-suporte:fila-atualizada",
-      () => {
-        console.log("📢 Fila atualizada - atualizando");
-        carregarFila();
+      (data) => {
+        logger.log("📢 Fila atualizada - dados recebidos:", data);
+        // Se recebeu a fila completa, usa diretamente
+        if (data?.fila && Array.isArray(data.fila)) {
+          setFila(data.fila);
+        } else {
+          // Se não recebeu dados completos, recarrega
+          carregarFila();
+        }
       },
     );
 
     // Listener GLOBAL para novas mensagens em qualquer conversa do atendente
-    // Isso atualiza a lista de conversas ativas mesmo quando não está visualizando
+    // Isso atualiza a lista de conversas ativas E O CACHE mesmo quando não está visualizando
     const unsubMensagemGlobal = socketService.on(
       "chat-suporte:mensagem",
       (data) => {
-        console.log("📢 Nova mensagem recebida (global):", data.conversa_id);
+        logger.log("📢 Nova mensagem recebida (global):", data.conversa_id);
+
+        // IMPORTANTE: Atualiza o cache de mensagens para QUALQUER conversa ativa
+        // Isso garante que quando o atendente trocar de conversa, as mensagens estarão lá
+        if (data.mensagem && data.conversa_id) {
+          const cacheAtual = mensagensCache.current[data.conversa_id] || [];
+          // Evita duplicatas - se já existe, não faz nada
+          if (cacheAtual.find((m) => m.id === data.mensagem.id)) {
+            logger.log(
+              `📦 Mensagem ${data.mensagem.id} já existe no cache, ignorando duplicata`,
+            );
+            return; // SAI AQUI - não processa duplicatas
+          }
+
+          mensagensCache.current[data.conversa_id] = [
+            ...cacheAtual,
+            data.mensagem,
+          ];
+          logger.log(
+            `📦 Cache atualizado para conversa ${data.conversa_id}:`,
+            mensagensCache.current[data.conversa_id].length,
+            "mensagens",
+          );
+        }
 
         // Atualiza a lista de conversas ativas com a última mensagem
         setConversasAtivas((prev) => {
@@ -236,42 +294,35 @@ export default function PainelAtendente() {
     };
   }, [user?.id, atualizarDadosContext]);
 
-  // Listeners específicos da conversa selecionada
+  // Listeners específicos da conversa selecionada (digitando, parou-digitar, finalizada)
+  // NOTA: Mensagens são tratadas pelo listener GLOBAL acima para evitar duplicação
   useEffect(() => {
     if (!conversaSelecionada?.id) return;
 
-    socketService.emit("chat-suporte:entrar", conversaSelecionada.id);
-
-    const unsubMensagem = socketService.on("chat-suporte:mensagem", (data) => {
-      if (data.conversa_id === conversaSelecionada.id) {
+    // Atualiza o estado de mensagens quando o cache muda para a conversa selecionada
+    // Isso sincroniza as mensagens recebidas pelo listener global
+    const syncInterval = setInterval(() => {
+      const cacheAtual = mensagensCache.current[conversaSelecionada.id];
+      if (cacheAtual && cacheAtual.length > 0) {
         setMensagens((prev) => {
-          if (prev.find((m) => m.id === data.mensagem.id)) return prev;
-          const novasMensagens = [...prev, data.mensagem];
-          // Atualiza o cache também
-          mensagensCache.current[conversaSelecionada.id] = novasMensagens;
-          return novasMensagens;
+          // Se o cache tem mais mensagens que o estado, atualiza
+          if (cacheAtual.length > prev.length) {
+            return cacheAtual;
+          }
+          return prev;
         });
-
-        // Atualiza a última mensagem na lista de conversas ativas
-        setConversasAtivas((prev) =>
-          prev.map((c) =>
-            c.id === data.conversa_id
-              ? {
-                  ...c,
-                  ultima_mensagem: data.mensagem.mensagem,
-                  atualizado_em: data.mensagem.criado_em,
-                }
-              : c,
-          ),
-        );
       }
-    });
+    }, 500);
 
     const unsubDigitando = socketService.on(
       "chat-suporte:digitando",
       (data) => {
         if (data.conversa_id === conversaSelecionada.id) {
-          setDigitando(data.nome);
+          // Ignora se o nome é do próprio atendente
+          const nomeAtendente = user?.nome || "Atendente";
+          if (data.nome !== nomeAtendente) {
+            setDigitando(data.nome);
+          }
         }
       },
     );
@@ -299,13 +350,14 @@ export default function PainelAtendente() {
     );
 
     return () => {
-      socketService.emit("chat-suporte:sair", conversaSelecionada.id);
-      unsubMensagem && unsubMensagem();
+      // Limpa o intervalo de sincronização
+      clearInterval(syncInterval);
+      // Não precisa sair da sala aqui pois o useEffect de conversasAtivas gerencia isso
       unsubDigitando && unsubDigitando();
       unsubParouDigitar && unsubParouDigitar();
       unsubFinalizada && unsubFinalizada();
     };
-  }, [conversaSelecionada?.id]);
+  }, [conversaSelecionada?.id, user?.nome]);
 
   // Scroll para última mensagem
   useEffect(() => {
@@ -356,7 +408,7 @@ export default function PainelAtendente() {
         setError("Resposta inválida do servidor");
       }
     } catch (err) {
-      console.error("Erro ao aceitar conversa:", err);
+      logger.error("Erro ao aceitar conversa:", err);
       setError(err.response?.data?.error || "Erro ao aceitar conversa");
     }
   };
@@ -415,7 +467,7 @@ export default function PainelAtendente() {
         });
       }
     } catch (err) {
-      console.error("Erro ao enviar mensagem:", err);
+      logger.error("Erro ao enviar mensagem:", err);
       setError("Erro ao enviar mensagem");
     } finally {
       setEnviando(false);
@@ -451,8 +503,9 @@ export default function PainelAtendente() {
     }
 
     try {
+      // Usa o endpoint de atendente para finalizar
       await api.post(
-        `/chat-suporte/conversas/${conversaSelecionada.id}/finalizar`,
+        `/chat-suporte/atendente/finalizar/${conversaSelecionada.id}`,
       );
       setConversaSelecionada((prev) => ({
         ...prev,
@@ -462,7 +515,8 @@ export default function PainelAtendente() {
         prev.filter((c) => c.id !== conversaSelecionada.id),
       );
     } catch (err) {
-      console.error("Erro ao finalizar conversa:", err);
+      logger.error("Erro ao finalizar conversa:", err);
+      setError(err.response?.data?.error || "Erro ao finalizar conversa");
     }
   };
 

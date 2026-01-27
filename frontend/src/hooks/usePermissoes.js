@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import permissoesService from "../services/permissoesService";
 import { getPermissoesCache } from "../services/cacheService";
+import logger from "../utils/logger";
 
 /**
  * Hook para gerenciar permissões do usuário no React
@@ -55,7 +56,7 @@ export function usePermissoes() {
       // NÃO tenta carregar se não há token (usuário deslogado)
       const token = localStorage.getItem("token");
       if (!token) {
-        console.log("[usePermissoes] Sem token, não carregando permissões");
+        logger.log("[usePermissoes] Sem token, não carregando permissões");
         setLoading(false);
         return;
       }
@@ -68,7 +69,7 @@ export function usePermissoes() {
           isLoadedRef.current = true;
         }
       } catch (error) {
-        console.error("Erro ao carregar permissões:", error);
+        logger.error("Erro ao carregar permissões:", error);
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -91,7 +92,7 @@ export function usePermissoes() {
     (permissao) => {
       return permissoes.includes(permissao);
     },
-    [permissoes]
+    [permissoes],
   );
 
   /**
@@ -101,7 +102,7 @@ export function usePermissoes() {
     (permissoesRequeridas) => {
       return permissoesRequeridas.some((p) => permissoes.includes(p));
     },
-    [permissoes]
+    [permissoes],
   );
 
   /**
@@ -111,7 +112,7 @@ export function usePermissoes() {
     (permissoesRequeridas) => {
       return permissoesRequeridas.every((p) => permissoes.includes(p));
     },
-    [permissoes]
+    [permissoes],
   );
 
   /**
@@ -132,7 +133,7 @@ export function usePermissoes() {
       setPapeis(dados.papeis || []);
       isLoadedRef.current = true;
     } catch (error) {
-      console.error("Erro ao recarregar permissões:", error);
+      logger.error("Erro ao recarregar permissões:", error);
     } finally {
       setLoading(false);
     }

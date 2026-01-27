@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * EDITAR CADASTRO VISITANTE - Página de Edição de Visitantes
@@ -96,7 +97,7 @@ export default function EditarCadastroVisitante() {
 
         // Usa cache para empresas e setores se disponível
         if (cachedEmpresas && cachedSetores) {
-          console.log("📦 Usando empresas e setores do cache");
+          logger.log("📦 Usando empresas e setores do cache");
           setEmpresas(cachedEmpresas);
           setSetores(cachedSetores);
         } else {
@@ -149,7 +150,7 @@ export default function EditarCadastroVisitante() {
     const unsubEmpresaCreated = socketService.on(
       "empresa:created",
       (novaEmpresa) => {
-        console.log("🔵 Socket: Nova empresa criada", novaEmpresa);
+        logger.log("🔵 Socket: Nova empresa criada", novaEmpresa);
         setEmpresas((prev) => {
           const updated = [...prev, novaEmpresa];
           setCache("empresasVisitantes", updated);
@@ -163,7 +164,7 @@ export default function EditarCadastroVisitante() {
     const unsubEmpresaUpdated = socketService.on(
       "empresa:updated",
       (empresaAtualizada) => {
-        console.log("🔵 Socket: Empresa atualizada", empresaAtualizada);
+        logger.log("🔵 Socket: Empresa atualizada", empresaAtualizada);
         setEmpresas((prev) => {
           const updated = prev.map((e) =>
             e.id === empresaAtualizada.id ? empresaAtualizada : e,
@@ -179,7 +180,7 @@ export default function EditarCadastroVisitante() {
     const unsubEmpresaDeleted = socketService.on(
       "empresa:deleted",
       (empresaId) => {
-        console.log("🔵 Socket: Empresa deletada", empresaId);
+        logger.log("🔵 Socket: Empresa deletada", empresaId);
         setEmpresas((prev) => {
           const updated = prev.filter((e) => e.id !== empresaId);
           setCache("empresasVisitantes", updated);
@@ -191,7 +192,7 @@ export default function EditarCadastroVisitante() {
 
     // Listener para setores criados
     const unsubSetorCreated = socketService.on("setor:created", (novoSetor) => {
-      console.log("🔵 Socket: Novo setor criado", novoSetor);
+      logger.log("🔵 Socket: Novo setor criado", novoSetor);
       setSetores((prev) => {
         const updated = [...prev, novoSetor];
         setCache("setoresVisitantes", updated);
@@ -204,7 +205,7 @@ export default function EditarCadastroVisitante() {
     const unsubSetorUpdated = socketService.on(
       "setor:updated",
       (setorAtualizado) => {
-        console.log("🔵 Socket: Setor atualizado", setorAtualizado);
+        logger.log("🔵 Socket: Setor atualizado", setorAtualizado);
         setSetores((prev) => {
           const updated = prev.map((s) =>
             s.id === setorAtualizado.id ? setorAtualizado : s,
@@ -218,7 +219,7 @@ export default function EditarCadastroVisitante() {
 
     // Listener para setores deletados
     const unsubSetorDeleted = socketService.on("setor:deleted", (setorId) => {
-      console.log("🔵 Socket: Setor deletado", setorId);
+      logger.log("🔵 Socket: Setor deletado", setorId);
       setSetores((prev) => {
         const updated = prev.filter((s) => s.id !== setorId);
         setCache("setoresVisitantes", updated);
@@ -415,7 +416,7 @@ export default function EditarCadastroVisitante() {
       alert("Dados atualizados com sucesso!");
       history.push("/listagem-visitante");
     } catch (err) {
-      console.error("Erro na atualização:", err.response?.data || err);
+      logger.error("Erro na atualização:", err.response?.data || err);
       alert(err.response?.data?.error || "Erro ao atualizar incidente");
     }
   };
@@ -640,3 +641,5 @@ export default function EditarCadastroVisitante() {
     </div>
   );
 }
+
+

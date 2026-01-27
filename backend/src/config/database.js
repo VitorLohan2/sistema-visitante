@@ -15,7 +15,8 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-require("dotenv").config();
+// Carregar env PRIMEIRO (se ainda não foi carregado)
+require("./env");
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // VALIDAÇÃO DE VARIÁVEIS DE AMBIENTE OBRIGATÓRIAS
@@ -58,10 +59,10 @@ function validateEnvironment(env) {
 
 const configurations = {
   /**
-   * DESENVOLVIMENTO COM DOCKER
-   * Usado para desenvolvimento local com container PostgreSQL
+   * DESENVOLVIMENTO
+   * Usado para desenvolvimento local
    */
-  docker: {
+  desenvolvimento: {
     client: "pg",
     connection: {
       host: process.env.DB_HOST_DOCKER,
@@ -69,7 +70,8 @@ const configurations = {
       user: process.env.DB_USER_DOCKER,
       password: process.env.DB_PASSWORD_DOCKER,
       database: process.env.DB_NAME_DOCKER,
-      ssl: false, // SSL desabilitado para conexão local
+      ssl: false,
+      timezone: "America/Sao_Paulo", // Horário de Brasília
     },
     pool: {
       min: 2,
@@ -77,6 +79,12 @@ const configurations = {
       acquireTimeoutMillis: 30000,
       idleTimeoutMillis: 30000,
       reapIntervalMillis: 1000,
+      afterCreate: (conn, done) => {
+        // Define timezone para horário de Brasília em cada conexão
+        conn.query("SET timezone='America/Sao_Paulo';", (err) => {
+          done(err, conn);
+        });
+      },
     },
     migrations: {
       directory: "./src/database/migrations",
@@ -90,9 +98,114 @@ const configurations = {
   },
 
   /**
-   * PRODUÇÃO LOCAL
-   * Servidor PostgreSQL próprio (on-premise)
+   * TESTE / STAGING
+   * Simula produção mas usa banco de desenvolvimento (seguro para testes)
    */
+  teste: {
+    client: "pg",
+    connection: {
+      host: process.env.DB_HOST_DOCKER,
+      port: parseInt(process.env.DB_PORT_DOCKER, 10) || 5432,
+      user: process.env.DB_USER_DOCKER,
+      password: process.env.DB_PASSWORD_DOCKER,
+      database: process.env.DB_NAME_DOCKER,
+      ssl: false,
+      timezone: "America/Sao_Paulo", // Horário de Brasília
+    },
+    pool: {
+      min: 2,
+      max: 10,
+      acquireTimeoutMillis: 30000,
+      idleTimeoutMillis: 30000,
+      afterCreate: (conn, done) => {
+        // Define timezone para horário de Brasília em cada conexão
+        conn.query("SET timezone='America/Sao_Paulo';", (err) => {
+          done(err, conn);
+        });
+      },
+    },
+    migrations: {
+      directory: "./src/database/migrations",
+      tableName: "knex_migrations",
+    },
+    useNullAsDefault: true,
+    debug: false,
+  },
+
+  /**
+   * PRODUÇÃO
+   * Banco de dados real de produção
+   */
+  producao: {
+    client: "pg",
+    connection: {
+      host: process.env.DB_HOST,
+      port: parseInt(process.env.DB_PORT, 10) || 5432,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+      ssl: false,
+      timezone: "America/Sao_Paulo", // Horário de Brasília
+    },
+    pool: {
+      min: 2,
+      max: 20,
+      acquireTimeoutMillis: 30000,
+      idleTimeoutMillis: 30000,
+      afterCreate: (conn, done) => {
+        // Define timezone para horário de Brasília em cada conexão
+        conn.query("SET timezone='America/Sao_Paulo';", (err) => {
+          done(err, conn);
+        });
+      },
+    },
+    migrations: {
+      directory: "./src/database/migrations",
+      tableName: "knex_migrations",
+    },
+    useNullAsDefault: true,
+    debug: false,
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // COMPATIBILIDADE COM NOMES ANTIGOS (em inglês)
+  // ═══════════════════════════════════════════════════════════════
+
+  docker: {
+    client: "pg",
+    connection: {
+      host: process.env.DB_HOST_DOCKER,
+      port: parseInt(process.env.DB_PORT_DOCKER, 10) || 5432,
+      user: process.env.DB_USER_DOCKER,
+      password: process.env.DB_PASSWORD_DOCKER,
+      database: process.env.DB_NAME_DOCKER,
+      ssl: false,
+      timezone: "America/Sao_Paulo", // Horário de Brasília
+    },
+    pool: {
+      min: 2,
+      max: 10,
+      acquireTimeoutMillis: 30000,
+      idleTimeoutMillis: 30000,
+      reapIntervalMillis: 1000,
+      afterCreate: (conn, done) => {
+        // Define timezone para horário de Brasília em cada conexão
+        conn.query("SET timezone='America/Sao_Paulo';", (err) => {
+          done(err, conn);
+        });
+      },
+    },
+    migrations: {
+      directory: "./src/database/migrations",
+      tableName: "knex_migrations",
+    },
+    seeds: {
+      directory: "./src/database/seeds",
+    },
+    useNullAsDefault: true,
+    debug: process.env.DB_DEBUG === "true",
+  },
+
   production_local: {
     client: "pg",
     connection: {
@@ -172,7 +285,7 @@ const configurations = {
  * Obtém o ambiente atual
  */
 function getCurrentEnvironment() {
-  return process.env.NODE_ENV || "production_local";
+  return process.env.NODE_ENV || "docker";
 }
 
 /**

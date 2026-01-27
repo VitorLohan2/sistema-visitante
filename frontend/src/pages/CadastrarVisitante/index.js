@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * CADASTRAR VISITANTE - Página de Criação de Novos Visitantes
@@ -115,7 +116,7 @@ export default function CadastrarVisitante() {
           cachedSetores &&
           cachedSetores.length > 0
         ) {
-          console.log("📦 Usando empresas e setores do cache");
+          logger.log("📦 Usando empresas e setores do cache");
           setEmpresasVisitantes(cachedEmpresas);
           setSetoresVisitantes(cachedSetores);
         } else {
@@ -148,7 +149,7 @@ export default function CadastrarVisitante() {
         setTiposVeiculos(tiposResponse.data);
         setFuncoesVisitantes(funcoesResponse.data);
       } catch (err) {
-        console.error("Erro ao carregar dados:", err);
+        logger.error("Erro ao carregar dados:", err);
         alert("Erro ao carregar opções de empresa e setor");
       }
     }
@@ -168,7 +169,7 @@ export default function CadastrarVisitante() {
     const unsubEmpresaCreate = socketService.on(
       "empresa:created",
       (empresa) => {
-        console.log("📥 Socket: Nova empresa recebida", empresa.nome);
+        logger.log("📥 Socket: Nova empresa recebida", empresa.nome);
         setEmpresasVisitantes((prev) => {
           if (prev.find((e) => e.id === empresa.id)) return prev;
           const novos = [...prev, empresa].sort((a, b) =>
@@ -182,7 +183,7 @@ export default function CadastrarVisitante() {
 
     // Listener: Empresa atualizada
     const unsubEmpresaUpdate = socketService.on("empresa:updated", (dados) => {
-      console.log("📝 Socket: Empresa atualizada", dados.id);
+      logger.log("📝 Socket: Empresa atualizada", dados.id);
       setEmpresasVisitantes((prev) => {
         const novos = prev.map((e) =>
           e.id === dados.id ? { ...e, ...dados } : e,
@@ -194,7 +195,7 @@ export default function CadastrarVisitante() {
 
     // Listener: Empresa deletada
     const unsubEmpresaDelete = socketService.on("empresa:deleted", (dados) => {
-      console.log("🗑️ Socket: Empresa removida", dados.id);
+      logger.log("🗑️ Socket: Empresa removida", dados.id);
       setEmpresasVisitantes((prev) => {
         const novos = prev.filter((e) => e.id !== dados.id);
         setCache("empresasVisitantes", novos);
@@ -204,7 +205,7 @@ export default function CadastrarVisitante() {
 
     // Listener: Novo setor criado
     const unsubSetorCreate = socketService.on("setor:created", (setor) => {
-      console.log("📥 Socket: Novo setor recebido", setor.nome);
+      logger.log("📥 Socket: Novo setor recebido", setor.nome);
       setSetoresVisitantes((prev) => {
         if (prev.find((s) => s.id === setor.id)) return prev;
         const novos = [...prev, setor].sort((a, b) =>
@@ -217,7 +218,7 @@ export default function CadastrarVisitante() {
 
     // Listener: Setor atualizado
     const unsubSetorUpdate = socketService.on("setor:updated", (dados) => {
-      console.log("📝 Socket: Setor atualizado", dados.id);
+      logger.log("📝 Socket: Setor atualizado", dados.id);
       setSetoresVisitantes((prev) => {
         const novos = prev.map((s) =>
           s.id === dados.id ? { ...s, ...dados } : s,
@@ -229,7 +230,7 @@ export default function CadastrarVisitante() {
 
     // Listener: Setor deletado
     const unsubSetorDelete = socketService.on("setor:deleted", (dados) => {
-      console.log("🗑️ Socket: Setor removido", dados.id);
+      logger.log("🗑️ Socket: Setor removido", dados.id);
       setSetoresVisitantes((prev) => {
         const novos = prev.filter((s) => s.id !== dados.id);
         setCache("setoresVisitantes", novos);
@@ -374,7 +375,7 @@ export default function CadastrarVisitante() {
           };
         }
       } catch (err) {
-        console.error("Erro ao acessar a câmera:", err);
+        logger.error("Erro ao acessar a câmera:", err);
         alert("Não foi possível acessar a câmera.");
         setCameraAtiva(false);
         setShowModal(false);
@@ -622,15 +623,30 @@ export default function CadastrarVisitante() {
       dataToSend.append("setor", form.setor_id);
       dataToSend.append("telefone", telefoneClean);
       dataToSend.append("placa_veiculo", placaClean);
-      dataToSend.append(
-        "cor_veiculo_visitante_id",
-        form.cor_veiculo_visitante_id || "",
-      );
-      dataToSend.append(
-        "tipo_veiculo_visitante_id",
-        form.tipo_veiculo_visitante_id || "",
-      );
-      dataToSend.append("funcao_visitante_id", form.funcao_visitante_id || "");
+
+      // Só adiciona os IDs se tiverem valor válido (evita enviar string vazia)
+      if (
+        form.cor_veiculo_visitante_id &&
+        form.cor_veiculo_visitante_id !== ""
+      ) {
+        dataToSend.append(
+          "cor_veiculo_visitante_id",
+          form.cor_veiculo_visitante_id,
+        );
+      }
+      if (
+        form.tipo_veiculo_visitante_id &&
+        form.tipo_veiculo_visitante_id !== ""
+      ) {
+        dataToSend.append(
+          "tipo_veiculo_visitante_id",
+          form.tipo_veiculo_visitante_id,
+        );
+      }
+      if (form.funcao_visitante_id && form.funcao_visitante_id !== "") {
+        dataToSend.append("funcao_visitante_id", form.funcao_visitante_id);
+      }
+
       dataToSend.append("observacao", form.observacao);
 
       form.fotos.forEach((foto) => {
@@ -659,7 +675,7 @@ export default function CadastrarVisitante() {
         history.push("/listagem-visitante");
       }, 500);
     } catch (err) {
-      console.error("Erro detalhado:", err.response?.data);
+      logger.error("Erro detalhado:", err.response?.data);
       setIsSubmitting(false);
       alert(`Erro: ${err.response?.data?.error || "Falha no cadastro"}`);
     }

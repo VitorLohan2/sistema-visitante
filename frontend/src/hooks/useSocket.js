@@ -9,6 +9,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "./useAuth";
 import * as socketService from "../services/socketService";
+import logger from "../utils/logger";
 
 export function useSocket() {
   const { user, isAuthenticated } = useAuth();
@@ -22,7 +23,7 @@ export function useSocket() {
       const token = localStorage.getItem("token");
 
       if (token) {
-        console.log("🔌 useSocket: Iniciando conexão...");
+        logger.log("🔌 useSocket: Iniciando conexão...");
         socketService.connect(token);
 
         // Listener de conexão

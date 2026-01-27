@@ -24,7 +24,9 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "CI=false react-scripts build",
+    "start:teste": "set REACT_APP_ENV=teste&& react-scripts start",
+    "start:prod": "set REACT_APP_ENV=producao&& react-scripts start",
+    "build": "set CI=false&& react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },

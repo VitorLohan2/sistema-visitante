@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect, useCallback } from "react";
 import {
   FiEdit2,
@@ -94,7 +95,7 @@ export default function ListaFuncionarios() {
       if (!forceReload) {
         const cachedFuncionarios = getCache("funcionarios");
         if (cachedFuncionarios) {
-          console.log("📦 Usando funcionários do cache");
+          logger.log("📦 Usando funcionários do cache");
           setFuncionarios(cachedFuncionarios);
           setLoading(false);
           return;
@@ -113,7 +114,7 @@ export default function ListaFuncionarios() {
       setCache("funcionarios", funcionariosOrdenados);
       setFuncionarios(funcionariosOrdenados);
     } catch (error) {
-      console.error("Erro ao carregar funcionários:", error);
+      logger.error("Erro ao carregar funcionários:", error);
       alert("Erro ao carregar funcionários");
     } finally {
       setLoading(false);
@@ -143,7 +144,7 @@ export default function ListaFuncionarios() {
     if (!socket) return;
 
     socket.on("funcionario:create", (novoFuncionario) => {
-      console.log("🔔 Socket: Novo funcionário criado", novoFuncionario);
+      logger.log("🔔 Socket: Novo funcionário criado", novoFuncionario);
       setFuncionarios((prev) => {
         const existe = prev.find((f) => f.cracha === novoFuncionario.cracha);
         if (existe) return prev;
@@ -156,7 +157,7 @@ export default function ListaFuncionarios() {
     });
 
     socket.on("funcionario:update", (funcionarioAtualizado) => {
-      console.log("🔔 Socket: Funcionário atualizado", funcionarioAtualizado);
+      logger.log("🔔 Socket: Funcionário atualizado", funcionarioAtualizado);
       setFuncionarios((prev) => {
         const novaLista = prev
           .map((f) =>
@@ -301,12 +302,12 @@ export default function ListaFuncionarios() {
         alert("✅ Funcionário atualizado com sucesso!");
       } else {
         // Criar
-        console.log("📤 Enviando dados:", {
+        logger.log("📤 Enviando dados:", {
           ...payload,
           cracha: formData.cracha.trim(),
         });
         const token = localStorage.getItem("token");
-        console.log("🔐 Token presente:", !!token);
+        logger.log("🔐 Token presente:", !!token);
         await api.post("/funcionarios", {
           ...payload,
           cracha: formData.cracha.trim(),
@@ -317,8 +318,8 @@ export default function ListaFuncionarios() {
       handleFecharModalForm();
       carregarFuncionarios(true);
     } catch (error) {
-      console.error("Erro ao salvar funcionário:", error);
-      console.error("❌ Resposta do servidor:", error.response?.data);
+      logger.error("Erro ao salvar funcionário:", error);
+      logger.error("❌ Resposta do servidor:", error.response?.data);
       if (error.response?.status === 403) {
         alert("Sem permissão para esta ação");
       } else {
@@ -371,7 +372,7 @@ export default function ListaFuncionarios() {
       alert("✅ Funcionário inativado!");
       carregarFuncionarios(true);
     } catch (error) {
-      console.error("Erro ao inativar:", error);
+      logger.error("Erro ao inativar:", error);
       alert(error.response?.data?.error || "Erro ao inativar funcionário");
     }
   };
@@ -392,7 +393,7 @@ export default function ListaFuncionarios() {
       alert("✅ Funcionário reativado!");
       carregarFuncionarios(true);
     } catch (error) {
-      console.error("Erro ao reativar:", error);
+      logger.error("Erro ao reativar:", error);
       alert(error.response?.data?.error || "Erro ao reativar funcionário");
     }
   };
@@ -459,7 +460,7 @@ export default function ListaFuncionarios() {
       );
       setRegistrosPonto(response.data.registros || []);
     } catch (error) {
-      console.error("Erro ao carregar histórico:", error);
+      logger.error("Erro ao carregar histórico:", error);
       alert("Erro ao carregar histórico de ponto");
     } finally {
       setLoadingHistorico(false);
@@ -937,3 +938,5 @@ export default function ListaFuncionarios() {
     </div>
   );
 }
+
+

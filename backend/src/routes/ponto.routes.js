@@ -7,7 +7,7 @@ const express = require("express");
 const { celebrate, Segments, Joi } = require("celebrate");
 const PontoUsuarioController = require("../controllers/PontoUsuarioController");
 const { authMiddleware } = require("../middleware/authMiddleware");
-const { adminMiddleware } = require("../middleware/adminMiddleware");
+const { requerPermissao } = require("../middleware/permissaoMiddleware");
 
 const router = express.Router();
 
@@ -36,7 +36,7 @@ router.post(
       longitude: Joi.number().optional().allow(null),
     }),
   }),
-  PontoUsuarioController.registrar
+  PontoUsuarioController.registrar,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -53,17 +53,17 @@ router.get(
       dataFim: Joi.date().iso().optional(),
     }),
   }),
-  PontoUsuarioController.historicoUsuario
+  PontoUsuarioController.historicoUsuario,
 );
 
 // ═══════════════════════════════════════════════════════════════
-// BUSCAR HISTÓRICO POR CRACHÁ (Admin)
+// BUSCAR HISTÓRICO POR CRACHÁ
 // GET /ponto/historico
 // ═══════════════════════════════════════════════════════════════
 router.get(
   "/historico",
   authMiddleware,
-  adminMiddleware,
+  requerPermissao("ponto_visualizar"),
   celebrate({
     [Segments.QUERY]: Joi.object().keys({
       cracha: Joi.string().required(),
@@ -71,7 +71,7 @@ router.get(
       dataFim: Joi.date().iso().optional(),
     }),
   }),
-  PontoUsuarioController.historicoPorCracha
+  PontoUsuarioController.historicoPorCracha,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -87,17 +87,17 @@ router.get(
       data: Joi.date().iso().required(),
     }),
   }),
-  PontoUsuarioController.registrosDia
+  PontoUsuarioController.registrosDia,
 );
 
 // ═══════════════════════════════════════════════════════════════
-// RELATÓRIO DE PONTOS (Admin)
+// RELATÓRIO DE PONTOS
 // GET /ponto/relatorio
 // ═══════════════════════════════════════════════════════════════
 router.get(
   "/relatorio",
   authMiddleware,
-  adminMiddleware,
+  requerPermissao("ponto_visualizar"),
   celebrate({
     [Segments.QUERY]: Joi.object().keys({
       dataInicio: Joi.date().iso().optional(),
@@ -105,7 +105,7 @@ router.get(
       setor_id: Joi.number().integer().optional(),
     }),
   }),
-  PontoUsuarioController.relatorio
+  PontoUsuarioController.relatorio,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -119,7 +119,7 @@ router.post(
       cracha: Joi.string().required(),
     }),
   }),
-  PontoUsuarioController.biparCracha
+  PontoUsuarioController.biparCracha,
 );
 
 module.exports = router;

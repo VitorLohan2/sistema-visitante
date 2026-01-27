@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 // src/pages/Home/index.js
 import React, { useState, useEffect, useMemo } from "react";
 import {
@@ -113,7 +114,7 @@ export default function Home() {
       setFeedback("");
       setTimeout(() => setFeedbackSent(false), 3000);
     } catch (err) {
-      console.error("Erro ao enviar feedback:", err);
+      logger.error("Erro ao enviar feedback:", err);
       alert("Erro ao enviar feedback. Tente novamente.");
     } finally {
       setSendingFeedback(false);
@@ -197,7 +198,7 @@ export default function Home() {
       // Socket.IO vai sincronizar automaticamente via cache
       handleCloseModal();
     } catch (err) {
-      console.error("Erro ao salvar atualização:", err);
+      logger.error("Erro ao salvar atualização:", err);
       alert(err.response?.data?.error || "Erro ao salvar atualização.");
     } finally {
       setSavingPatchNote(false);
@@ -214,7 +215,7 @@ export default function Home() {
       await api.delete(`/patch-notes/${id}`);
       // Socket.IO vai sincronizar automaticamente via cache
     } catch (err) {
-      console.error("Erro ao excluir atualização:", err);
+      logger.error("Erro ao excluir atualização:", err);
       alert("Erro ao excluir atualização.");
     }
   };
@@ -529,3 +530,5 @@ export default function Home() {
     </div>
   );
 }
+
+

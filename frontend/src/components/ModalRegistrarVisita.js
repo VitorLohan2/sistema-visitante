@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { FiX, FiCheck, FiUser, FiTruck, FiBriefcase } from "react-icons/fi";
 import api from "../services/api";
+import logger from "../utils/logger";
 import "../styles/ModalRegistrarVisita.css";
 
 export default function ModalRegistrarVisita({
@@ -51,7 +52,7 @@ export default function ModalRegistrarVisita({
       setCoresVeiculos(coresRes.data);
       setTiposVeiculos(tiposRes.data);
     } catch (err) {
-      console.error("Erro ao carregar opções:", err);
+      logger.error("Erro ao carregar opções:", err);
     }
   };
 
@@ -82,7 +83,7 @@ export default function ModalRegistrarVisita({
           tipo_veiculo: tipoVeiculo,
         });
       } catch (err) {
-        console.error("Erro ao confirmar visita:", err);
+        logger.error("Erro ao confirmar visita:", err);
       } finally {
         setIsLoading(false);
       }

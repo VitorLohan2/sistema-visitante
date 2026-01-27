@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useHistory } from "react-router-dom";
 import {
@@ -41,7 +42,7 @@ export default function Visitante() {
     const unsubVisitorCreate = socketService.on(
       "visitor:create",
       (visitante) => {
-        console.log(
+        logger.log(
           "🟢 Nova visita registrada via socket (visitor:create):",
           visitante.id,
         );
@@ -56,14 +57,14 @@ export default function Visitante() {
 
     // Novo visitante cadastrado (visitante:created - emitido por CadastroVisitanteController)
     const unsubCreate = socketService.on("visitante:created", (visitante) => {
-      console.log("📥 Visitante cadastrado via socket:", visitante.id);
+      logger.log("📥 Visitante cadastrado via socket:", visitante.id);
       // Este evento é para cadastro, não para visita ativa
       // Mantemos por compatibilidade, mas normalmente não afeta esta lista
     });
 
     // Visitante atualizado (ex: saiu)
     const unsubUpdate = socketService.on("visitante:updated", (dados) => {
-      console.log("📝 Visitante atualizado via socket:", dados.id);
+      logger.log("📝 Visitante atualizado via socket:", dados.id);
       // Se data_de_saida foi definido, remove da lista de ativos
       if (dados.data_de_saida) {
         setVisitors((prev) => {
@@ -84,7 +85,7 @@ export default function Visitante() {
 
     // Visitante deletado
     const unsubDelete = socketService.on("visitante:deleted", (dados) => {
-      console.log("🗑️ Visitante removido via socket:", dados.id);
+      logger.log("🗑️ Visitante removido via socket:", dados.id);
       setVisitors((prev) => {
         const novosVisitantes = prev.filter((v) => v.id !== dados.id);
         setCache("visitors", novosVisitantes);
@@ -94,7 +95,7 @@ export default function Visitante() {
 
     // ✅ Visita encerrada (visitor:end - emitido pelo backend ao encerrar visita)
     const unsubVisitorEnd = socketService.on("visitor:end", (dados) => {
-      console.log("🏁 Visita encerrada via socket (visitor:end):", dados.id);
+      logger.log("🏁 Visita encerrada via socket (visitor:end):", dados.id);
       setVisitors((prev) => {
         const novosVisitantes = prev.filter((v) => v.id !== dados.id);
         setCache("visitors", novosVisitantes);
@@ -104,7 +105,7 @@ export default function Visitante() {
 
     // ✅ Visitante removido da lista ativa (visitor:delete)
     const unsubVisitorDelete = socketService.on("visitor:delete", (dados) => {
-      console.log("🗑️ Visitante removido (visitor:delete):", dados.id);
+      logger.log("🗑️ Visitante removido (visitor:delete):", dados.id);
       setVisitors((prev) => {
         const novosVisitantes = prev.filter((v) => v.id !== dados.id);
         setCache("visitors", novosVisitantes);
@@ -129,7 +130,7 @@ export default function Visitante() {
     // 1. Carrega do cache instantaneamente
     const cachedVisitors = getCache("visitors");
     if (cachedVisitors && cachedVisitors.length > 0) {
-      console.log("⚡ Visitantes carregados do cache:", cachedVisitors.length);
+      logger.log("⚡ Visitantes carregados do cache:", cachedVisitors.length);
       setVisitors(cachedVisitors);
       setIsLoading(false);
     }
@@ -141,12 +142,12 @@ export default function Visitante() {
     api
       .get("visitantes")
       .then((response) => {
-        console.log("🔄 Visitantes atualizados da API:", response.data.length);
+        logger.log("🔄 Visitantes atualizados da API:", response.data.length);
         setVisitors(response.data);
         setCache("visitors", response.data);
       })
       .catch((error) => {
-        console.error("Erro ao carregar visitantes:", error);
+        logger.error("Erro ao carregar visitantes:", error);
         // Se não tem cache, mostra erro
         if (!cachedVisitors || cachedVisitors.length === 0) {
           alert("Erro ao carregar visitantes. Verifique sua conexão.");
@@ -179,7 +180,7 @@ export default function Visitante() {
         return novosVisitantes;
       });
     } catch (err) {
-      console.error("Erro ao encerrar visita:", err);
+      logger.error("Erro ao encerrar visita:", err);
       alert("Erro ao encerrar visita, tente novamente.");
     }
   }
@@ -363,3 +364,5 @@ export default function Visitante() {
     </div>
   );
 }
+
+

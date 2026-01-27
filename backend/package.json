@@ -5,6 +5,10 @@
   "main": "index.js",
   "scripts": {
     "start": "nodemon src/server.js",
+    "dev": "cross-env NODE_ENV=desenvolvimento nodemon src/server.js",
+    "teste": "cross-env NODE_ENV=teste nodemon src/server.js",
+    "prod": "cross-env NODE_ENV=producao node src/server.js",
+    "prod:watch": "cross-env NODE_ENV=producao nodemon src/server.js",
     "test": "cross-env NODE_ENV=test jest"
   },
   "keywords": [],

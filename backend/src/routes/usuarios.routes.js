@@ -10,15 +10,20 @@ const {
   authMiddleware,
   authOptional,
 } = require("../middleware/authMiddleware");
-const { adminMiddleware } = require("../middleware/adminMiddleware");
+const { requerPermissao } = require("../middleware/permissaoMiddleware");
 
 const router = express.Router();
 
 // ═══════════════════════════════════════════════════════════════
-// LISTAR TODOS OS USUÁRIOS (Admin only)
+// LISTAR TODOS OS USUÁRIOS
 // GET /usuarios
 // ═══════════════════════════════════════════════════════════════
-router.get("/", authMiddleware, adminMiddleware, UsuarioController.index);
+router.get(
+  "/",
+  authMiddleware,
+  requerPermissao("usuario_visualizar"),
+  UsuarioController.index,
+);
 
 // ═══════════════════════════════════════════════════════════════
 // CRIAR NOVO USUÁRIO (Cadastro público - com código de acesso)
@@ -57,17 +62,17 @@ router.post(
       })
       .or("nome", "name"), // Pelo menos um dos dois
   }),
-  UsuarioController.create
+  UsuarioController.create,
 );
 
 // ═══════════════════════════════════════════════════════════════
-// CRIAR USUÁRIO INTERNO (Admin only - sem código de acesso)
+// CRIAR USUÁRIO INTERNO (sem código de acesso)
 // POST /usuarios/interno
 // ═══════════════════════════════════════════════════════════════
 router.post(
   "/interno",
   authMiddleware,
-  adminMiddleware,
+  requerPermissao("usuario_criar"),
   celebrate({
     [Segments.BODY]: Joi.object().keys({
       nome: Joi.string().required(),
@@ -85,7 +90,7 @@ router.post(
       senha: Joi.string().min(6).required(), // Senha obrigatória para usuário interno
     }),
   }),
-  UsuarioController.createInterno
+  UsuarioController.createInterno,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -106,7 +111,7 @@ router.get(
       id: Joi.string().required(),
     }),
   }),
-  UsuarioController.show
+  UsuarioController.show,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -136,23 +141,23 @@ router.put(
       })
       .min(1),
   }),
-  UsuarioController.update
+  UsuarioController.update,
 );
 
 // ═══════════════════════════════════════════════════════════════
-// DELETAR USUÁRIO (Admin only)
+// DELETAR USUÁRIO
 // DELETE /usuarios/:id
 // ═══════════════════════════════════════════════════════════════
 router.delete(
   "/:id",
   authMiddleware,
-  adminMiddleware,
+  requerPermissao("usuario_deletar"),
   celebrate({
     [Segments.PARAMS]: Joi.object().keys({
       id: Joi.string().required(),
     }),
   }),
-  UsuarioController.delete
+  UsuarioController.delete,
 );
 
 module.exports = router;

@@ -1,10 +1,11 @@
 import axios from "axios";
+import logger from "../utils/logger";
 
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || "http://localhost:3333",
+  baseURL: process.env.REACT_APP_API_URL || "http://localhost:3001",
 });
 
-console.log("API Base URL:", api.defaults.baseURL);
+logger.log("API Base URL:", api.defaults.baseURL);
 
 // Interceptor para adicionar o token JWT automaticamente
 api.interceptors.request.use((config) => {
@@ -23,7 +24,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Token expirado ou inválido
-      console.log("Token inválido ou expirado, redirecionando para login");
+      logger.log("Token inválido ou expirado, redirecionando para login");
       localStorage.removeItem("token");
       localStorage.removeItem("usuario");
 

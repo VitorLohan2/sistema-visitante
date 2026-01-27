@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
  * PÁGINA: Painel de Gerenciamento de Rondas
@@ -96,7 +97,7 @@ export default function PainelRondas() {
       try {
         // ✅ Se já tem vigilantes do cache (estado inicial), não precisa buscar
         if (vigilantes.length > 0 && !forceRefresh) {
-          console.log("📦 Usando vigilantes do cache (estado inicial)");
+          logger.log("📦 Usando vigilantes do cache (estado inicial)");
           return;
         }
 
@@ -108,7 +109,7 @@ export default function PainelRondas() {
         // Salva no cache
         setCache("vigilantes", vigilantesData);
       } catch (err) {
-        console.error("Erro ao carregar vigilantes:", err);
+        logger.error("Erro ao carregar vigilantes:", err);
       }
     },
     [vigilantes.length],
@@ -141,7 +142,7 @@ export default function PainelRondas() {
           totalPaginas: pag.totalPaginas,
         }));
       } catch (err) {
-        console.error("Erro ao carregar rondas:", err);
+        logger.error("Erro ao carregar rondas:", err);
         setErro("Erro ao carregar rondas. Tente novamente.");
       } finally {
         setCarregando(false);
@@ -159,7 +160,7 @@ export default function PainelRondas() {
       const dados = await rondaService.buscarEstatisticas(filtros);
       setEstatisticas(dados);
     } catch (err) {
-      console.error("Erro ao carregar estatísticas:", err);
+      logger.error("Erro ao carregar estatísticas:", err);
       setErro("Erro ao carregar estatísticas.");
     } finally {
       setCarregando(false);
@@ -185,7 +186,7 @@ export default function PainelRondas() {
         totalPaginas: pag.totalPaginas,
       }));
     } catch (err) {
-      console.error("Erro ao carregar auditoria:", err);
+      logger.error("Erro ao carregar auditoria:", err);
       setErro("Erro ao carregar auditoria.");
     } finally {
       setCarregando(false);
@@ -201,7 +202,7 @@ export default function PainelRondas() {
       const { ronda } = await rondaService.buscarDetalhes(rondaId);
       setRondaSelecionada(ronda);
     } catch (err) {
-      console.error("Erro ao carregar detalhes:", err);
+      logger.error("Erro ao carregar detalhes:", err);
       setErro("Erro ao carregar detalhes da ronda.");
     } finally {
       setCarregandoDetalhes(false);
@@ -264,7 +265,7 @@ export default function PainelRondas() {
     const unsubscribeNovaRonda = socketService.on(
       "ronda:nova-iniciada",
       (data) => {
-        console.log("🚶 Nova ronda iniciada (tempo real):", data);
+        logger.log("🚶 Nova ronda iniciada (tempo real):", data);
         // Recarrega lista se estiver na aba lista
         if (abaAtiva === "lista") {
           carregarRondas();
@@ -304,7 +305,7 @@ export default function PainelRondas() {
     const unsubscribeCheckpoint = socketService.on(
       "ronda:checkpoint-registrado",
       (data) => {
-        console.log("📍 Checkpoint registrado (tempo real):", data);
+        logger.log("📍 Checkpoint registrado (tempo real):", data);
         // Atualiza contador de checkpoints se a ronda está na lista
         setRondas((prev) =>
           prev.map((r) =>
@@ -317,7 +318,7 @@ export default function PainelRondas() {
     );
 
     const unsubscribeEncerrada = socketService.on("ronda:encerrada", (data) => {
-      console.log("🔴 Ronda encerrada (tempo real):", data);
+      logger.log("🔴 Ronda encerrada (tempo real):", data);
       // Remove do tracking em tempo real
       setRondasTempoReal((prev) => {
         const novo = { ...prev };
@@ -1030,3 +1031,5 @@ export default function PainelRondas() {
     </div>
   );
 }
+
+

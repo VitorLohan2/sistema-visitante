@@ -56,6 +56,8 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
+import logger from "../utils/logger";
+
 // ═══════════════════════════════════════════════════════════════════════════
 // CACHE EM MEMÓRIA (acesso instantâneo)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -224,11 +226,11 @@ export function setCache(key, data) {
     memoryCache.lastUpdate = now;
     sessionStorage.setItem(CACHE_KEYS.LASTUPDATE, now.toString());
 
-    console.log(
+    logger.log(
       `✅ Cache salvo: ${key} (${Array.isArray(data) ? data.length + " itens" : "dados"})`,
     );
   } catch (error) {
-    console.error(`❌ Erro ao salvar cache ${key}:`, error);
+    logger.error(`❌ Erro ao salvar cache ${key}:`, error);
   }
 }
 
@@ -257,7 +259,7 @@ export function getCache(key) {
       }
     }
   } catch (error) {
-    console.error(`❌ Erro ao ler cache ${key}:`, error);
+    logger.error(`❌ Erro ao ler cache ${key}:`, error);
   }
 
   return null;
@@ -312,7 +314,7 @@ export function clearCache() {
     sessionStorage.removeItem(key);
   });
 
-  console.log("🗑️ Cache limpo completamente");
+  logger.log("🗑️ Cache limpo completamente");
 }
 
 /**
@@ -375,7 +377,7 @@ export function addToCache(
 
   // Verifica duplicatas
   if (item.id && items.find((i) => i.id === item.id)) {
-    console.log(`⚠️ Item ${item.id} já existe no cache ${cacheKey}`);
+    logger.log(`⚠️ Item ${item.id} já existe no cache ${cacheKey}`);
     return items;
   }
 

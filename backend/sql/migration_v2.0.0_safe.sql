@@ -330,10 +330,14 @@ CREATE TABLE IF NOT EXISTS solicitacoes_descarga_historico (
     criado_em TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- FK para agendamentos
-ALTER TABLE agendamentos 
-ADD CONSTRAINT IF NOT EXISTS fk_agendamento_descarga 
-FOREIGN KEY (solicitacao_descarga_id) REFERENCES solicitacoes_descarga(id);
+-- FK para agendamentos (verifica se já existe antes de criar)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_agendamento_descarga') THEN
+        ALTER TABLE agendamentos ADD CONSTRAINT fk_agendamento_descarga 
+        FOREIGN KEY (solicitacao_descarga_id) REFERENCES solicitacoes_descarga(id);
+    END IF;
+END $$;
 
 -- ╔═══════════════════════════════════════════════════════════════════════════════╗
 -- ║ SEÇÃO 13: CRIAR NOVAS TABELAS - SISTEMA DE PONTO                              ║
@@ -500,14 +504,22 @@ CREATE TABLE IF NOT EXISTS patch_notes (
 -- ╚═══════════════════════════════════════════════════════════════════════════════╝
 
 -- FK para veiculo_visitante em cadastro_visitante
-ALTER TABLE cadastro_visitante 
-ADD CONSTRAINT IF NOT EXISTS cadastro_visitante_veiculo_fkey 
-FOREIGN KEY (veiculo_visitante_id) REFERENCES veiculo_visitante(id);
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'cadastro_visitante_veiculo_fkey') THEN
+        ALTER TABLE cadastro_visitante ADD CONSTRAINT cadastro_visitante_veiculo_fkey 
+        FOREIGN KEY (veiculo_visitante_id) REFERENCES veiculo_visitante(id);
+    END IF;
+END $$;
 
 -- FK para funcao_visitante em cadastro_visitante
-ALTER TABLE cadastro_visitante 
-ADD CONSTRAINT IF NOT EXISTS cadastro_visitante_funcao_fkey 
-FOREIGN KEY (funcao_visitante_id) REFERENCES funcao_visitante(id);
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'cadastro_visitante_funcao_fkey') THEN
+        ALTER TABLE cadastro_visitante ADD CONSTRAINT cadastro_visitante_funcao_fkey 
+        FOREIGN KEY (funcao_visitante_id) REFERENCES funcao_visitante(id);
+    END IF;
+END $$;
 
 -- ╔═══════════════════════════════════════════════════════════════════════════════╗
 -- ║ SEÇÃO 18: CRIAR ÍNDICES PARA PERFORMANCE                                      ║

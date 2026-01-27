@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * DESCARGA CONTEXT - Gerenciamento Centralizado de Descargas
@@ -61,7 +62,7 @@ export function DescargaProvider({ children }) {
     if (audioRef.current) {
       audioRef.current.currentTime = 0;
       audioRef.current.play().catch((err) => {
-        console.log("Não foi possível tocar som de notificação:", err.message);
+        logger.log("Não foi possível tocar som de notificação:", err.message);
       });
     }
   }, []);
@@ -79,12 +80,12 @@ export function DescargaProvider({ children }) {
       const response = await api.get("/solicitacoes-descarga/pendentes/count");
       const count = response.data.count || 0;
 
-      console.log("🚚 DescargaContext: Carregado da API", count, "pendentes");
+      logger.log("🚚 DescargaContext: Carregado da API", count, "pendentes");
       setSolicitacoesPendentes(count);
       setCache("descargasPendentes", count);
       isFirstLoadRef.current = false;
     } catch (error) {
-      console.error("Erro ao buscar solicitações pendentes:", error);
+      logger.error("Erro ao buscar solicitações pendentes:", error);
       // Usar cache em caso de erro
       const cached = getCache("descargasPendentes");
       if (cached !== null) {
@@ -103,7 +104,7 @@ export function DescargaProvider({ children }) {
 
     // Listener para nova solicitação de descarga
     const unsubNova = socketService.on("descarga:nova", (solicitacao) => {
-      console.log(
+      logger.log(
         "🚚 DescargaContext: Nova solicitação recebida via socket",
         solicitacao.protocolo
       );
@@ -123,7 +124,7 @@ export function DescargaProvider({ children }) {
 
     // Listener para solicitação atualizada (aprovada/rejeitada/ajustada)
     const unsubAtualizada = socketService.on("descarga:atualizada", (dados) => {
-      console.log(
+      logger.log(
         "🚚 DescargaContext: Solicitação atualizada via socket",
         dados.id
       );
@@ -197,3 +198,5 @@ export function useDescargas() {
 }
 
 export default DescargaContext;
+
+

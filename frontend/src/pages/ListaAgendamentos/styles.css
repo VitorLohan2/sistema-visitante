@@ -484,6 +484,27 @@
   border: 1px solid #e5e7eb;
 }
 
+/* Default Avatar - quando não tem foto */
+.agendamento-card .agendamento-card-photo.default-photo {
+  cursor: default;
+}
+
+.agendamento-card .agendamento-card-photo .default-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+  border: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+}
+
+.agendamento-card .agendamento-card-photo .default-avatar svg {
+  opacity: 0.7;
+}
+
 /* Card Content */
 .agendamento-card-content {
   flex: 1;

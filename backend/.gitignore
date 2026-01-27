@@ -9,6 +9,15 @@ node_modules/
 .env
 .env.local
 .env.*.local
+.env.desenvolvimento
+.env.teste
+.env.producao
+.env.development
+.env.production
+.env.staging
+
+# ✅ PERMITIDO versionar apenas:
+# .env.exemplo (template sem valores sensíveis)
 
 # Logs
 logs/

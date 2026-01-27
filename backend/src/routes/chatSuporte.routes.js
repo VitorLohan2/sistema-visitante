@@ -57,7 +57,7 @@ router.post(
       assunto: Joi.string().max(255),
     }),
   }),
-  ChatSuporteController.iniciarConversaVisitante
+  ChatSuporteController.iniciarConversaVisitante,
 );
 
 /**
@@ -75,7 +75,7 @@ router.post(
       token: Joi.string().required(),
     }),
   }),
-  ChatSuporteController.enviarMensagemVisitante
+  ChatSuporteController.enviarMensagemVisitante,
 );
 
 /**
@@ -89,7 +89,7 @@ router.get(
       id: Joi.number().integer().required(),
     }),
   }),
-  ChatSuporteController.buscarConversaVisitante
+  ChatSuporteController.buscarConversaVisitante,
 );
 
 /**
@@ -106,7 +106,21 @@ router.post(
       token: Joi.string().required(),
     }),
   }),
-  ChatSuporteController.solicitarAtendenteVisitante
+  ChatSuporteController.solicitarAtendenteVisitante,
+);
+
+/**
+ * POST /chat-suporte/visitante/conversas/:id/finalizar
+ * Visitante finaliza sua própria conversa
+ */
+router.post(
+  "/visitante/conversas/:id/finalizar",
+  celebrate({
+    [Segments.PARAMS]: Joi.object().keys({
+      id: Joi.number().integer().required(),
+    }),
+  }),
+  ChatSuporteController.finalizarConversaVisitante,
 );
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -126,7 +140,7 @@ router.get(
       limite: Joi.number().integer().min(1).max(100),
     }),
   }),
-  ChatSuporteController.listarConversas
+  ChatSuporteController.listarConversas,
 );
 
 /**
@@ -141,7 +155,7 @@ router.post(
       assunto: Joi.string().max(255),
     }),
   }),
-  ChatSuporteController.criarConversa
+  ChatSuporteController.criarConversa,
 );
 
 /**
@@ -156,7 +170,7 @@ router.get(
       id: Joi.number().integer().required(),
     }),
   }),
-  ChatSuporteController.buscarConversa
+  ChatSuporteController.buscarConversa,
 );
 
 /**
@@ -175,7 +189,7 @@ router.get(
       offset: Joi.number().integer().min(0),
     }),
   }),
-  ChatSuporteController.buscarMensagens
+  ChatSuporteController.buscarMensagens,
 );
 
 /**
@@ -193,7 +207,7 @@ router.post(
       mensagem: Joi.string().required().min(1).max(2000),
     }),
   }),
-  ChatSuporteController.enviarMensagem
+  ChatSuporteController.enviarMensagem,
 );
 
 /**
@@ -208,7 +222,7 @@ router.post(
       id: Joi.number().integer().required(),
     }),
   }),
-  ChatSuporteController.solicitarAtendente
+  ChatSuporteController.solicitarAtendente,
 );
 
 /**
@@ -226,7 +240,7 @@ router.post(
       motivo: Joi.string().max(255),
     }),
   }),
-  ChatSuporteController.finalizarConversa
+  ChatSuporteController.finalizarConversa,
 );
 
 /**
@@ -245,7 +259,7 @@ router.post(
       comentario: Joi.string().max(1000),
     }),
   }),
-  ChatSuporteController.avaliarAtendimento
+  ChatSuporteController.avaliarAtendimento,
 );
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -260,7 +274,7 @@ router.get(
   "/atendente/fila",
   authMiddleware,
   requerPermissao("chat_atendente_acessar_painel"),
-  ChatSuporteController.listarFila
+  ChatSuporteController.listarFila,
 );
 
 /**
@@ -277,7 +291,7 @@ router.get(
       limite: Joi.number().integer().min(1).max(100),
     }),
   }),
-  ChatSuporteController.listarConversasAtendente
+  ChatSuporteController.listarConversasAtendente,
 );
 
 /**
@@ -288,7 +302,7 @@ router.get(
   "/atendente/minhas-conversas",
   authMiddleware,
   requerPermissao("chat_atendente_acessar_painel"),
-  ChatSuporteController.listarConversasAtendente
+  ChatSuporteController.listarConversasAtendente,
 );
 
 /**
@@ -306,7 +320,7 @@ router.get(
       limite: Joi.number().integer().min(1).max(100),
     }),
   }),
-  ChatSuporteController.listarHistoricoAtendente
+  ChatSuporteController.listarHistoricoAtendente,
 );
 
 /**
@@ -322,7 +336,7 @@ router.post(
       id: Joi.number().integer().required(),
     }),
   }),
-  ChatSuporteController.aceitarConversa
+  ChatSuporteController.aceitarConversa,
 );
 
 /**
@@ -341,7 +355,7 @@ router.post(
       mensagem: Joi.string().required().min(1).max(2000),
     }),
   }),
-  ChatSuporteController.enviarMensagemAtendente
+  ChatSuporteController.enviarMensagemAtendente,
 );
 
 /**
@@ -360,7 +374,7 @@ router.post(
       motivo: Joi.string().max(255),
     }),
   }),
-  ChatSuporteController.finalizarAtendimento
+  ChatSuporteController.finalizarAtendimento,
 );
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -381,7 +395,7 @@ router.get(
       dataFim: Joi.date().iso(),
     }),
   }),
-  ChatSuporteController.obterEstatisticas
+  ChatSuporteController.obterEstatisticas,
 );
 
 /**
@@ -402,7 +416,7 @@ router.get(
       offset: Joi.number().integer().min(0),
     }),
   }),
-  ChatSuporteController.listarAuditoria
+  ChatSuporteController.listarAuditoria,
 );
 
 /**
@@ -419,7 +433,7 @@ router.get(
       limite: Joi.number().integer().min(1).max(500),
     }),
   }),
-  ChatSuporteController.listarTodasConversas
+  ChatSuporteController.listarTodasConversas,
 );
 
 /**
@@ -436,7 +450,7 @@ router.get(
       apenasAtivos: Joi.boolean(),
     }),
   }),
-  ChatSuporteController.listarFAQs
+  ChatSuporteController.listarFAQs,
 );
 
 /**
@@ -457,7 +471,7 @@ router.post(
       ativo: Joi.boolean(),
     }),
   }),
-  ChatSuporteController.salvarFAQ
+  ChatSuporteController.salvarFAQ,
 );
 
 /**
@@ -473,7 +487,7 @@ router.delete(
       id: Joi.number().integer().required(),
     }),
   }),
-  ChatSuporteController.removerFAQ
+  ChatSuporteController.removerFAQ,
 );
 
 module.exports = router;

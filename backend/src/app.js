@@ -5,6 +5,13 @@ const path = require("path");
 // Importar rotas da nova estrutura
 const routes = require("./routes/index");
 
+// Monitor de requisições
+const {
+  requestMonitor,
+  getStats,
+  startPeriodicLogging,
+} = require("./middleware/requestMonitor");
+
 const app = express();
 
 // ═══════════════════════════════════════════════════════════════
@@ -17,6 +24,7 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
       "http://localhost:3002", // Frontend local (porta alternativa)
       "http://localhost:3707", // Docker
       "https://sistema-visitante.vercel.app", // Produção
+      "https://visitante.dimeexperience.com.br", // Produção
     ];
 
 // CORS - Permite todas as origens em desenvolvimento
@@ -26,8 +34,13 @@ app.use(
       // Permite requisições sem origin (como mobile apps ou curl)
       if (!origin) return callback(null, true);
 
-      // Em desenvolvimento, permite qualquer origem
-      if (process.env.NODE_ENV !== "production") {
+      // Em desenvolvimento e teste, permite qualquer origem
+      if (
+        process.env.NODE_ENV === "desenvolvimento" ||
+        process.env.NODE_ENV === "development" ||
+        process.env.NODE_ENV === "docker" ||
+        process.env.NODE_ENV === "teste"
+      ) {
         return callback(null, true);
       }
 
@@ -39,9 +52,14 @@ app.use(
       return callback(new Error("Bloqueado pelo CORS"), false);
     },
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "x-chat-token",
+    ],
     credentials: true,
-  })
+  }),
 );
 
 // Preflight OPTIONS para todas as rotas
@@ -53,6 +71,29 @@ app.options("*", cors());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.resolve(__dirname, "..", "uploads")));
+
+// Monitor de requisições (ativa se COUNT_REQUESTS=true no .env)
+if (process.env.COUNT_REQUESTS === "true") {
+  app.use(requestMonitor);
+  // Log de estatísticas a cada 1 hora
+  startPeriodicLogging(60);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ROTA DE ESTATÍSTICAS (protegida, apenas para admins)
+// ═══════════════════════════════════════════════════════════════
+app.get("/api/stats", (req, res) => {
+  // Verifica se tem token de admin (simples, pode melhorar)
+  const adminKey = req.headers["x-admin-key"];
+  if (
+    adminKey !== process.env.ADMIN_STATS_KEY &&
+    process.env.NODE_ENV !== "development"
+  ) {
+    return res.status(403).json({ error: "Acesso negado" });
+  }
+
+  res.json(getStats());
+});
 
 // ═══════════════════════════════════════════════════════════════
 // ROTAS DA API

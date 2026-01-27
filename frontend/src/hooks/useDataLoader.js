@@ -77,6 +77,7 @@ import {
   isCacheLoaded,
   clearCache,
 } from "../services/cacheService";
+import logger from "../utils/logger";
 
 export function useDataLoader(userId) {
   // ═══════════════════════════════════════════════════════════════
@@ -148,7 +149,7 @@ export function useDataLoader(userId) {
     const unsubVisitanteCreated = socketService.on(
       "visitante:created",
       (visitante) => {
-        console.log("📥 Socket: Novo visitante recebido", visitante.nome);
+        logger.log("📥 Socket: Novo visitante recebido", visitante.nome);
         setVisitantes((prev) => {
           if (prev.find((v) => v.id === visitante.id)) return prev;
           const novos = [...prev, visitante].sort((a, b) =>
@@ -165,7 +166,7 @@ export function useDataLoader(userId) {
     const unsubVisitanteUpdated = socketService.on(
       "visitante:updated",
       (dados) => {
-        console.log("📝 Socket: Visitante atualizado", dados.id);
+        logger.log("📝 Socket: Visitante atualizado", dados.id);
         setVisitantes((prev) => {
           const novos = prev
             .map((v) => (v.id === dados.id ? { ...v, ...dados } : v))
@@ -183,7 +184,7 @@ export function useDataLoader(userId) {
     const unsubVisitanteDeleted = socketService.on(
       "visitante:deleted",
       (dados) => {
-        console.log("🗑️ Socket: Visitante deletado", dados.id);
+        logger.log("🗑️ Socket: Visitante deletado", dados.id);
         setVisitantes((prev) => {
           const novos = prev.filter((v) => v.id !== dados.id);
           setCache("cadastroVisitantes", novos);
@@ -198,7 +199,7 @@ export function useDataLoader(userId) {
     const unsubEmpresaCreated = socketService.on(
       "empresa:created",
       (empresa) => {
-        console.log("🏢 Socket: Nova empresa", empresa.nome);
+        logger.log("🏢 Socket: Nova empresa", empresa.nome);
         setEmpresas((prev) => {
           if (prev.find((e) => e.id === empresa.id)) return prev;
           const novos = [...prev, empresa].sort((a, b) =>
@@ -211,7 +212,7 @@ export function useDataLoader(userId) {
     );
 
     const unsubEmpresaUpdated = socketService.on("empresa:updated", (dados) => {
-      console.log("🏢 Socket: Empresa atualizada", dados.id);
+      logger.log("🏢 Socket: Empresa atualizada", dados.id);
       setEmpresas((prev) => {
         const novos = prev.map((e) =>
           e.id === dados.id ? { ...e, ...dados } : e,
@@ -222,7 +223,7 @@ export function useDataLoader(userId) {
     });
 
     const unsubEmpresaDeleted = socketService.on("empresa:deleted", (dados) => {
-      console.log("🏢 Socket: Empresa deletada", dados.id);
+      logger.log("🏢 Socket: Empresa deletada", dados.id);
       setEmpresas((prev) => {
         const novos = prev.filter((e) => e.id !== dados.id);
         setCache("empresasVisitantes", novos);
@@ -234,7 +235,7 @@ export function useDataLoader(userId) {
     // SETORES DE VISITANTES
     // ─────────────────────────────────────────────────────────────
     const unsubSetorCreated = socketService.on("setor:created", (setor) => {
-      console.log("📁 Socket: Novo setor", setor.nome);
+      logger.log("📁 Socket: Novo setor", setor.nome);
       setSetores((prev) => {
         if (prev.find((s) => s.id === setor.id)) return prev;
         const novos = [...prev, setor].sort((a, b) =>
@@ -246,7 +247,7 @@ export function useDataLoader(userId) {
     });
 
     const unsubSetorUpdated = socketService.on("setor:updated", (dados) => {
-      console.log("📁 Socket: Setor atualizado", dados.id);
+      logger.log("📁 Socket: Setor atualizado", dados.id);
       setSetores((prev) => {
         const novos = prev.map((s) =>
           s.id === dados.id ? { ...s, ...dados } : s,
@@ -257,7 +258,7 @@ export function useDataLoader(userId) {
     });
 
     const unsubSetorDeleted = socketService.on("setor:deleted", (dados) => {
-      console.log("📁 Socket: Setor deletado", dados.id);
+      logger.log("📁 Socket: Setor deletado", dados.id);
       setSetores((prev) => {
         const novos = prev.filter((s) => s.id !== dados.id);
         setCache("setoresVisitantes", novos);
@@ -271,7 +272,7 @@ export function useDataLoader(userId) {
     const unsubAgendamentoCreate = socketService.on(
       "agendamento:create",
       (agendamento) => {
-        console.log("📅 Socket: Novo agendamento", agendamento.id);
+        logger.log("📅 Socket: Novo agendamento", agendamento.id);
         setAgendamentos((prev) => {
           if (prev.find((a) => a.id === agendamento.id)) return prev;
           const novos = [agendamento, ...prev].sort(
@@ -287,7 +288,7 @@ export function useDataLoader(userId) {
     const unsubAgendamentoUpdate = socketService.on(
       "agendamento:update",
       (dados) => {
-        console.log("📅 Socket: Agendamento atualizado", dados.id);
+        logger.log("📅 Socket: Agendamento atualizado", dados.id);
         setAgendamentos((prev) => {
           const novos = prev
             .map((a) => (a.id === dados.id ? { ...a, ...dados } : a))
@@ -304,7 +305,7 @@ export function useDataLoader(userId) {
     const unsubAgendamentoDelete = socketService.on(
       "agendamento:delete",
       (dados) => {
-        console.log("📅 Socket: Agendamento removido", dados.id);
+        logger.log("📅 Socket: Agendamento removido", dados.id);
         setAgendamentos((prev) => {
           const novos = prev.filter((a) => a.id !== dados.id);
           setCache("agendamentos", novos);
@@ -317,7 +318,7 @@ export function useDataLoader(userId) {
     // TICKETS
     // ─────────────────────────────────────────────────────────────
     const unsubTicketCreate = socketService.on("ticket:create", (ticket) => {
-      console.log("🎫 Socket: Novo ticket", ticket.id);
+      logger.log("🎫 Socket: Novo ticket", ticket.id);
       setTickets((prev) => {
         if (prev.find((t) => t.id === ticket.id)) return prev;
         const novos = [ticket, ...prev].sort(
@@ -329,7 +330,7 @@ export function useDataLoader(userId) {
     });
 
     const unsubTicketUpdate = socketService.on("ticket:update", (dados) => {
-      console.log("🎫 Socket: Ticket atualizado", dados.id);
+      logger.log("🎫 Socket: Ticket atualizado", dados.id);
       setTickets((prev) => {
         const novos = prev
           .map((t) => (t.id === dados.id ? { ...t, ...dados } : t))
@@ -363,7 +364,7 @@ export function useDataLoader(userId) {
     const unsubFuncionarioCreated = socketService.on(
       "funcionario:created",
       (funcionario) => {
-        console.log("👤 Socket: Novo funcionário", funcionario.nome);
+        logger.log("👤 Socket: Novo funcionário", funcionario.nome);
         setFuncionarios((prev) => {
           if (prev.find((f) => f.cracha === funcionario.cracha)) return prev;
           const novos = [...prev, funcionario].sort((a, b) =>
@@ -380,7 +381,7 @@ export function useDataLoader(userId) {
     const unsubFuncionarioUpdated = socketService.on(
       "funcionario:updated",
       (dados) => {
-        console.log("👤 Socket: Funcionário atualizado", dados.cracha);
+        logger.log("👤 Socket: Funcionário atualizado", dados.cracha);
         setFuncionarios((prev) => {
           const novos = prev.map((f) =>
             f.cracha === dados.cracha ? { ...f, ...dados } : f,
@@ -394,7 +395,7 @@ export function useDataLoader(userId) {
     const unsubFuncionarioDeleted = socketService.on(
       "funcionario:deleted",
       (dados) => {
-        console.log("👤 Socket: Funcionário removido", dados.cracha);
+        logger.log("👤 Socket: Funcionário removido", dados.cracha);
         setFuncionarios((prev) => {
           const novos = prev.filter((f) => f.cracha !== dados.cracha);
           setCache("funcionarios", novos);
@@ -409,7 +410,7 @@ export function useDataLoader(userId) {
     const unsubPatchNoteCreated = socketService.on(
       "patch-note:created",
       (patchNote) => {
-        console.log("🔄 Socket: Novo patch note", patchNote.id);
+        logger.log("🔄 Socket: Novo patch note", patchNote.id);
         setPatchNotes((prev) => {
           if (prev.find((p) => p.id === patchNote.id)) return prev;
           const novos = [patchNote, ...prev];
@@ -422,7 +423,7 @@ export function useDataLoader(userId) {
     const unsubPatchNoteUpdated = socketService.on(
       "patch-note:updated",
       (dados) => {
-        console.log("🔄 Socket: Patch note atualizado", dados.id);
+        logger.log("🔄 Socket: Patch note atualizado", dados.id);
         setPatchNotes((prev) => {
           const novos = prev.map((p) =>
             p.id === dados.id ? { ...p, ...dados } : p,
@@ -436,7 +437,7 @@ export function useDataLoader(userId) {
     const unsubPatchNoteDeleted = socketService.on(
       "patch-note:deleted",
       (dados) => {
-        console.log("🔄 Socket: Patch note removido", dados.id);
+        logger.log("🔄 Socket: Patch note removido", dados.id);
         setPatchNotes((prev) => {
           const novos = prev.filter((p) => p.id !== dados.id);
           setCache("patchNotes", novos);
@@ -478,7 +479,7 @@ export function useDataLoader(userId) {
       unsubPatchNoteDeleted,
     ];
 
-    console.log(
+    logger.log(
       "🔌 Socket listeners configurados para sincronização em tempo real",
     );
   }, []);
@@ -495,13 +496,13 @@ export function useDataLoader(userId) {
 
       // Evita carregamentos duplicados
       if (isLoadingRef.current) {
-        console.log("⏳ Carregamento já em andamento...");
+        logger.log("⏳ Carregamento já em andamento...");
         return;
       }
 
       // Verifica se já tem cache válido e não é reload forçado
       if (!forceReload && isCacheLoaded()) {
-        console.log("📦 Usando dados do cache");
+        logger.log("📦 Usando dados do cache");
 
         // Restaura do cache
         setVisitantes(getCache("cadastroVisitantes") || []);
@@ -627,7 +628,7 @@ export function useDataLoader(userId) {
           setAgendamentos(agendamentosData);
           setCache("agendamentos", agendamentosData);
         } catch (err) {
-          console.log("⚠️ Agendamentos não disponíveis:", err.message);
+          logger.log("⚠️ Agendamentos não disponíveis:", err.message);
           setCache("agendamentos", []);
         }
 
@@ -644,7 +645,7 @@ export function useDataLoader(userId) {
           setTickets(ticketsData);
           setCache("tickets", ticketsData);
         } catch (err) {
-          console.log("⚠️ Tickets não disponíveis:", err.message);
+          logger.log("⚠️ Tickets não disponíveis:", err.message);
           setCache("tickets", []);
         }
 
@@ -661,7 +662,7 @@ export function useDataLoader(userId) {
           setFuncionarios(funcionariosData);
           setCache("funcionarios", funcionariosData);
         } catch (err) {
-          console.log("⚠️ Funcionários não disponíveis:", err.message);
+          logger.log("⚠️ Funcionários não disponíveis:", err.message);
           setCache("funcionarios", []);
         }
 
@@ -678,7 +679,7 @@ export function useDataLoader(userId) {
           setCache("permissoes", permissoes);
           setCache("papeis", papeis);
         } catch (err) {
-          console.log("⚠️ Permissões não disponíveis:", err.message);
+          logger.log("⚠️ Permissões não disponíveis:", err.message);
           setCache("permissoes", []);
           setCache("papeis", []);
         }
@@ -696,7 +697,7 @@ export function useDataLoader(userId) {
           setPatchNotes(patchNotesData);
           setCache("patchNotes", patchNotesData);
         } catch (err) {
-          console.log("⚠️ Patch Notes não disponíveis:", err.message);
+          logger.log("⚠️ Patch Notes não disponíveis:", err.message);
           setCache("patchNotes", []);
         }
 
@@ -719,7 +720,7 @@ export function useDataLoader(userId) {
           setCache("allPapeis", allPapeisRes.data || []);
           setCache("allPermissoes", allPermissoesRes.data || []);
         } catch (err) {
-          console.log("⚠️ Dados administrativos não disponíveis:", err.message);
+          logger.log("⚠️ Dados administrativos não disponíveis:", err.message);
           setCache("allUsuarios", []);
           setCache("allPapeis", []);
           setCache("allPermissoes", []);
@@ -729,19 +730,24 @@ export function useDataLoader(userId) {
 
         // ═══════════════════════════════════════════════════════════
         // ETAPA 12: Dados de Rondas e Pontos de Controle (98%)
+        // Só carrega se o usuário tiver permissão (ignora erros silenciosamente)
         // ═══════════════════════════════════════════════════════════
         setProgressMessage("Carregando dados de rondas...");
 
         try {
           const [pontosRes, vigilantesRes] = await Promise.all([
-            api.get("/rondas/pontos-controle"),
-            api.get("/rondas/vigilantes"),
+            api
+              .get("/rondas/pontos-controle")
+              .catch(() => ({ data: { pontos: [] } })),
+            api
+              .get("/rondas/gestao/vigilantes")
+              .catch(() => ({ data: { vigilantes: [] } })),
           ]);
 
           setCache("pontosControle", pontosRes.data?.pontos || []);
           setCache("vigilantes", vigilantesRes.data?.vigilantes || []);
-        } catch (err) {
-          console.log("⚠️ Dados de rondas não disponíveis:", err.message);
+        } catch {
+          // Silenciosamente ignora - usuário não tem permissão
           setCache("pontosControle", []);
           setCache("vigilantes", []);
         }
@@ -758,7 +764,7 @@ export function useDataLoader(userId) {
           const historicoData = historicoRes.data || [];
           setCache("history", historicoData);
         } catch (err) {
-          console.log("⚠️ Histórico não disponível:", err.message);
+          logger.log("⚠️ Histórico não disponível:", err.message);
           setCache("history", []);
         }
 
@@ -778,12 +784,12 @@ export function useDataLoader(userId) {
         setProgress(100);
         setProgressMessage("Concluído!");
 
-        console.log(
+        logger.log(
           `✅ Dados carregados: ${visitantesProcessados.length} visitantes`,
         );
         isDataLoadedRef.current = true;
       } catch (err) {
-        console.error("❌ Erro ao carregar dados:", err);
+        logger.error("❌ Erro ao carregar dados:", err);
         setError(err.response?.data?.error || err.message);
         setProgress(0);
       } finally {
@@ -835,12 +841,10 @@ export function useDataLoader(userId) {
       setVisitantes(visitantesProcessados);
       setCache("cadastroVisitantes", visitantesProcessados);
 
-      console.log(
-        `🔄 Visitantes recarregados: ${visitantesProcessados.length}`,
-      );
+      logger.log(`🔄 Visitantes recarregados: ${visitantesProcessados.length}`);
       return visitantesProcessados;
     } catch (err) {
-      console.error("❌ Erro ao recarregar visitantes:", err);
+      logger.error("❌ Erro ao recarregar visitantes:", err);
       throw err;
     }
   }, [userId]);
@@ -970,7 +974,7 @@ export function useDataLoader(userId) {
 
     // Se não tem cache, carrega tudo da API
     if (!isCacheLoaded()) {
-      console.log("🔄 Carregando dados...");
+      logger.log("🔄 Carregando dados...");
       // Chama loadAllData diretamente sem dependências
       loadAllData();
     } else {
@@ -992,7 +996,7 @@ export function useDataLoader(userId) {
   // Reconecta socket se já tem cache mas socket não está conectado
   useEffect(() => {
     if (userId && hasInitialCacheRef.current && !socketService.isConnected()) {
-      console.log("🔌 Reconectando socket após navegação com cache...");
+      logger.log("🔌 Reconectando socket após navegação com cache...");
 
       // Pequeno delay para evitar reconexões desnecessárias durante navegação rápida
       const reconnectTimer = setTimeout(() => {

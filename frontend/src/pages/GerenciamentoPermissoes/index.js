@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * GERENCIAMENTO DE PERMISSÕES - Página de Administração de RBAC
@@ -91,7 +92,7 @@ export default function GerenciamentoPermissoes() {
       const cachedPermissoes = getCache("allPermissoes");
 
       if (cachedUsuarios && cachedPapeis && cachedPermissoes && !forceRefresh) {
-        console.log("📦 Usando dados de permissões do cache");
+        logger.log("📦 Usando dados de permissões do cache");
         setUsuarios(cachedUsuarios);
         setPapeis(cachedPapeis);
         setPermissoes(cachedPermissoes);
@@ -119,7 +120,7 @@ export default function GerenciamentoPermissoes() {
       setCache("allPapeis", papeisData);
       setCache("allPermissoes", permissoesData);
     } catch (error) {
-      console.error("Erro ao carregar dados:", error);
+      logger.error("Erro ao carregar dados:", error);
       alert("Erro ao carregar dados de permissões");
     } finally {
       setLoading(false);
@@ -133,7 +134,7 @@ export default function GerenciamentoPermissoes() {
       const cachedSetores = getCache("setoresVisitantes");
 
       if (cachedEmpresas && cachedSetores) {
-        console.log("📦 Usando empresas e setores do cache");
+        logger.log("📦 Usando empresas e setores do cache");
         setEmpresas(cachedEmpresas);
         setSetores(cachedSetores);
         return;
@@ -148,7 +149,7 @@ export default function GerenciamentoPermissoes() {
       setEmpresas(empresasRes.data);
       setSetores(setoresRes.data);
     } catch (error) {
-      console.error("Erro ao carregar empresas/setores:", error);
+      logger.error("Erro ao carregar empresas/setores:", error);
     }
   };
 
@@ -164,7 +165,7 @@ export default function GerenciamentoPermissoes() {
     const unsubUsuarioUpdate = socketService.on(
       "usuario:papeis-updated",
       (dados) => {
-        console.log("📝 Socket: Papéis do usuário atualizados", dados.id);
+        logger.log("📝 Socket: Papéis do usuário atualizados", dados.id);
         setUsuarios((prev) => {
           const novos = prev.map((u) =>
             u.id === dados.id ? { ...u, ...dados } : u,
@@ -179,7 +180,7 @@ export default function GerenciamentoPermissoes() {
     const unsubPapelUpdate = socketService.on(
       "papel:permissoes-updated",
       (dados) => {
-        console.log("📝 Socket: Permissões do papel atualizadas", dados.id);
+        logger.log("📝 Socket: Permissões do papel atualizadas", dados.id);
         setPapeis((prev) => {
           const novos = prev.map((p) =>
             p.id === dados.id ? { ...p, ...dados } : p,
@@ -232,7 +233,7 @@ export default function GerenciamentoPermissoes() {
       setPapeisSelecionados([]);
       carregarDados();
     } catch (error) {
-      console.error("Erro ao salvar papéis:", error);
+      logger.error("Erro ao salvar papéis:", error);
       alert(error.response?.data?.error || "Erro ao salvar papéis");
     }
   };
@@ -247,7 +248,7 @@ export default function GerenciamentoPermissoes() {
       setEditandoPapel(response.data);
       setPermissoesSelecionadas(response.data.permissoes.map((p) => p.id));
     } catch (error) {
-      console.error("Erro ao carregar permissões do papel:", error);
+      logger.error("Erro ao carregar permissões do papel:", error);
     }
   };
 
@@ -277,7 +278,7 @@ export default function GerenciamentoPermissoes() {
       setPermissoesSelecionadas([]);
       carregarDados();
     } catch (error) {
-      console.error("Erro ao salvar permissões:", error);
+      logger.error("Erro ao salvar permissões:", error);
       alert(error.response?.data?.error || "Erro ao salvar permissões");
     }
   };
@@ -439,8 +440,8 @@ export default function GerenciamentoPermissoes() {
       carregarDados(); // Recarrega lista de usuários
       setActiveTab("usuarios"); // Volta para aba de usuários
     } catch (error) {
-      console.error("Erro ao cadastrar usuário:", error);
-      console.error("Resposta do servidor:", error.response?.data);
+      logger.error("Erro ao cadastrar usuário:", error);
+      logger.error("Resposta do servidor:", error.response?.data);
       alert(error.response?.data?.error || "Erro ao cadastrar usuário");
     } finally {
       setCadastrando(false);
@@ -949,3 +950,5 @@ export default function GerenciamentoPermissoes() {
     </div>
   );
 }
+
+

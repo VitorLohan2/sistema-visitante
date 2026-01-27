@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 // src/pages/ListaAgendamentos/index.js
 import React, { useState, useEffect, useMemo } from "react";
 import {
@@ -98,7 +99,7 @@ export default function ListaAgendamentos() {
         setCache("setores", response.data);
         setSetoresVisitantes(response.data);
       } catch (error) {
-        console.error("Erro ao carregar setores:", error);
+        logger.error("Erro ao carregar setores:", error);
       }
     }
     loadSetores();
@@ -115,7 +116,7 @@ export default function ListaAgendamentos() {
         (ag) =>
           ag.nome?.toLowerCase().includes(term) ||
           ag.cpf?.includes(term) ||
-          ag.setor?.toLowerCase().includes(term)
+          ag.setor?.toLowerCase().includes(term),
       );
     }
 
@@ -152,7 +153,7 @@ export default function ListaAgendamentos() {
         .length,
       presentes: agendamentos.filter((ag) => ag.presente).length,
     }),
-    [agendamentos]
+    [agendamentos],
   );
 
   // Handlers
@@ -171,6 +172,15 @@ export default function ListaAgendamentos() {
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+    });
+  };
+
+  const formatarDataCriacao = (data) => {
+    if (!data) return "Data não informada";
+    return new Date(data).toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
     });
   };
 
@@ -215,7 +225,7 @@ export default function ListaAgendamentos() {
     const numbers = value.replace(/\D/g, "");
     const formatted = numbers.replace(
       /(\d{3})(\d{3})(\d{3})(\d{2})/,
-      "$1.$2.$3-$4"
+      "$1.$2.$3-$4",
     );
     setFormData((prev) => ({ ...prev, cpf: formatted }));
   };
@@ -298,7 +308,7 @@ export default function ListaAgendamentos() {
 
     try {
       const setorSelecionado = setoresVisitantes.find(
-        (s) => s.id === parseInt(formData.setor_id)
+        (s) => s.id === parseInt(formData.setor_id),
       );
 
       const data = new FormData();
@@ -327,7 +337,7 @@ export default function ListaAgendamentos() {
       handleCloseModal();
       alert("✅ Agendamento criado com sucesso!");
     } catch (error) {
-      console.error("Erro ao criar agendamento:", error);
+      logger.error("Erro ao criar agendamento:", error);
       alert(error.response?.data?.error || "Erro ao criar agendamento");
     } finally {
       setIsSubmitting(false);
@@ -344,7 +354,7 @@ export default function ListaAgendamentos() {
       // Não atualiza localmente - deixa o Socket fazer via listener
       alert("✅ Agendamento confirmado!");
     } catch (error) {
-      console.error("Erro ao confirmar:", error);
+      logger.error("Erro ao confirmar:", error);
       alert(error.response?.data?.error || "Erro ao confirmar agendamento");
     }
   };
@@ -358,7 +368,7 @@ export default function ListaAgendamentos() {
       // Não atualiza localmente - deixa o Socket fazer via listener
       alert("✅ Presença registrada!");
     } catch (error) {
-      console.error("Erro ao registrar presença:", error);
+      logger.error("Erro ao registrar presença:", error);
       alert(error.response?.data?.error || "Erro ao registrar presença");
     }
   };
@@ -373,7 +383,7 @@ export default function ListaAgendamentos() {
       // Não remove localmente - deixa o Socket fazer via listener
       alert("✅ Agendamento excluído!");
     } catch (error) {
-      console.error("Erro ao excluir:", error);
+      logger.error("Erro ao excluir:", error);
       alert(error.response?.data?.error || "Erro ao excluir agendamento");
     }
   };
@@ -399,7 +409,7 @@ export default function ListaAgendamentos() {
     const buffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
     saveAs(
       new Blob([buffer], { type: "application/octet-stream" }),
-      `agendamentos_${new Date().toISOString().split("T")[0]}.xlsx`
+      `agendamentos_${new Date().toISOString().split("T")[0]}.xlsx`,
     );
   };
 
@@ -603,24 +613,33 @@ export default function ListaAgendamentos() {
               key={agendamento.id}
               className={`agendamento-card ${agendamento.presente ? "presente" : agendamento.confirmado ? "confirmado" : "aberto"}`}
             >
-              {/* Foto do visitante */}
-              {agendamento.foto_colaborador && (
-                <div
-                  className="agendamento-card-photo clickable"
-                  onClick={() =>
-                    handleOpenImageModal(
-                      agendamento.foto_colaborador,
-                      agendamento.nome
-                    )
-                  }
-                  title="Clique para ampliar a imagem"
-                >
+              {/* Foto do visitante - sempre exibe (com default se não houver) */}
+              <div
+                className={`agendamento-card-photo ${agendamento.foto_colaborador ? "clickable" : "default-photo"}`}
+                onClick={() =>
+                  agendamento.foto_colaborador &&
+                  handleOpenImageModal(
+                    agendamento.foto_colaborador,
+                    agendamento.nome,
+                  )
+                }
+                title={
+                  agendamento.foto_colaborador
+                    ? "Clique para ampliar a imagem"
+                    : "Sem foto"
+                }
+              >
+                {agendamento.foto_colaborador ? (
                   <img
                     src={agendamento.foto_colaborador}
                     alt={agendamento.nome}
                   />
-                </div>
-              )}
+                ) : (
+                  <div className="default-avatar">
+                    <FiUser size={32} />
+                  </div>
+                )}
+              </div>
 
               {/* Conteúdo principal */}
               <div className="agendamento-card-content">
@@ -660,6 +679,16 @@ export default function ListaAgendamentos() {
                       <span className="info-label">Data/Hora</span>
                       <span className="info-value">
                         {formatarData(agendamento.horario_agendado)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="info-item">
+                    <FiCalendar className="info-icon" />
+                    <div>
+                      <span className="info-label">Criado em</span>
+                      <span className="info-value">
+                        {formatarDataCriacao(agendamento.criado_em)}
                       </span>
                     </div>
                   </div>

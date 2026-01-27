@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect, useCallback } from "react";
 import {
   FiUsers,
@@ -105,7 +106,7 @@ export default function Dashboard() {
         setCadastrosPorHora(data.cadastrosPorHora);
       }
     } catch (err) {
-      console.error("Erro ao carregar estatísticas:", err);
+      logger.error("Erro ao carregar estatísticas:", err);
       setError("Erro ao carregar dados do dashboard");
     } finally {
       setLoading(false);
@@ -407,3 +408,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
+

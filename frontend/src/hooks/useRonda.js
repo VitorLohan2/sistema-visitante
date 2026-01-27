@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import rondaService from "../services/rondaService";
+import logger from "../utils/logger";
 
 /**
  * Hook para gerenciar a ronda de vigilante
@@ -94,7 +95,7 @@ export function useRonda() {
           enableHighAccuracy: true,
           timeout: 15000,
           maximumAge: 0,
-        }
+        },
       );
     });
   }, []);
@@ -128,7 +129,7 @@ export function useRonda() {
         setErroGps(null);
       },
       (error) => {
-        console.error("Erro no monitoramento GPS:", error);
+        logger.error("Erro no monitoramento GPS:", error);
         setGpsAtivo(false);
         let mensagem = "Erro no GPS";
         switch (error.code) {
@@ -150,7 +151,7 @@ export function useRonda() {
         enableHighAccuracy: true,
         timeout: 30000,
         maximumAge: 5000,
-      }
+      },
     );
   }, []);
 
@@ -185,7 +186,7 @@ export function useRonda() {
         iniciarContadorTempo(new Date(ronda.data_inicio));
       }
     } catch (err) {
-      console.error("Erro ao verificar ronda em andamento:", err);
+      logger.error("Erro ao verificar ronda em andamento:", err);
       // Não define erro aqui pois pode não ter ronda (é esperado)
     } finally {
       setCarregando(false);
@@ -247,12 +248,12 @@ export function useRonda() {
               velocidade: posicaoAtual.velocidade,
             });
           } catch (err) {
-            console.warn("Falha ao enviar ponto do trajeto:", err);
+            logger.warn("Falha ao enviar ponto do trajeto:", err);
           }
         }
       }, 30000); // 30 segundos
     },
-    [posicaoAtual]
+    [posicaoAtual],
   );
 
   /**
@@ -297,7 +298,7 @@ export function useRonda() {
 
         return resultado;
       } catch (err) {
-        console.error("Erro ao iniciar ronda:", err);
+        logger.error("Erro ao iniciar ronda:", err);
         const mensagem =
           err.response?.data?.error ||
           "Erro ao iniciar ronda. Tente novamente.";
@@ -312,7 +313,7 @@ export function useRonda() {
       iniciarMonitoramentoGps,
       iniciarContadorTempo,
       iniciarEnvioTrajeto,
-    ]
+    ],
   );
 
   /**
@@ -338,7 +339,7 @@ export function useRonda() {
             longitude: posicao.longitude,
             descricao,
             foto_url: fotoUrl,
-          }
+          },
         );
 
         // Atualiza ronda com novo checkpoint
@@ -350,7 +351,7 @@ export function useRonda() {
 
         return resultado;
       } catch (err) {
-        console.error("Erro ao registrar checkpoint:", err);
+        logger.error("Erro ao registrar checkpoint:", err);
         const mensagem =
           err.response?.data?.error ||
           "Erro ao registrar checkpoint. Tente novamente.";
@@ -360,7 +361,7 @@ export function useRonda() {
         setCarregando(false);
       }
     },
-    [rondaAtual, obterPosicaoAtual]
+    [rondaAtual, obterPosicaoAtual],
   );
 
   /**
@@ -381,8 +382,8 @@ export function useRonda() {
         try {
           posicaoFinal = await obterPosicaoAtual();
         } catch (e) {
-          console.warn(
-            "Não foi possível obter posição final, usando última conhecida"
+          logger.warn(
+            "Não foi possível obter posição final, usando última conhecida",
           );
         }
 
@@ -403,7 +404,7 @@ export function useRonda() {
 
         return resultado;
       } catch (err) {
-        console.error("Erro ao finalizar ronda:", err);
+        logger.error("Erro ao finalizar ronda:", err);
         const mensagem =
           err.response?.data?.error ||
           "Erro ao finalizar ronda. Tente novamente.";
@@ -420,7 +421,7 @@ export function useRonda() {
       pararMonitoramentoGps,
       pararContadorTempo,
       pararEnvioTrajeto,
-    ]
+    ],
   );
 
   /**
@@ -451,7 +452,7 @@ export function useRonda() {
 
         return resultado;
       } catch (err) {
-        console.error("Erro ao cancelar ronda:", err);
+        logger.error("Erro ao cancelar ronda:", err);
         const mensagem =
           err.response?.data?.error ||
           "Erro ao cancelar ronda. Tente novamente.";
@@ -461,7 +462,7 @@ export function useRonda() {
         setCarregando(false);
       }
     },
-    [rondaAtual, pararMonitoramentoGps, pararContadorTempo, pararEnvioTrajeto]
+    [rondaAtual, pararMonitoramentoGps, pararContadorTempo, pararEnvioTrajeto],
   );
 
   /**

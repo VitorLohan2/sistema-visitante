@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * CRIAR SENHA - Página para primeiro acesso
@@ -117,7 +118,7 @@ export default function CriarSenha() {
         }, 2000);
       }
     } catch (err) {
-      console.error("Erro ao criar senha:", err);
+      logger.error("Erro ao criar senha:", err);
       setErro(
         err.response?.data?.error || "Erro ao criar senha. Tente novamente."
       );
@@ -271,3 +272,5 @@ export default function CriarSenha() {
     </div>
   );
 }
+
+

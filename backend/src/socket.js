@@ -12,6 +12,9 @@ function init(server) {
     },
   });
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NAMESPACE PRINCIPAL (/) - USUÁRIOS AUTENTICADOS
+  // ═══════════════════════════════════════════════════════════════════════════
   io.on("connection", (socket) => {
     console.log("🟢 Novo socket conectado:", socket.id);
 
@@ -25,8 +28,6 @@ function init(server) {
 
     if (!token) {
       console.log("❌ Socket rejeitado: Sem token JWT");
-      console.log("   - Auth:", socket.handshake.auth);
-      console.log("   - Headers:", socket.handshake.headers.authorization);
       socket.disconnect(true);
       return;
     }
@@ -84,17 +85,55 @@ function init(server) {
       );
     });
 
-    // 👉 ATENDENTE ENTRA NA SALA DE ATENDENTES
+    // 👉 USUÁRIO COM PERMISSÃO DE CHAT ENTRA NA SALA DE NOTIFICAÇÕES
+    socket.on("chat-suporte:usuario-online", async () => {
+      // Verifica se já está na sala para evitar operações desnecessárias
+      const jaEstaNaSala = socket.rooms.has("chat-suporte-notificacoes");
+
+      if (!jaEstaNaSala) {
+        socket.join("chat-suporte-notificacoes");
+        console.log(
+          `👥 Usuário ${socket.userName} entrou na sala de notificações de chat`,
+        );
+
+        // Emite o tamanho atual da fila para o novo usuário
+        const FilaService = require("./services/ChatFilaService");
+        const fila = await FilaService.listar();
+        socket.emit("chat-suporte:fila-atualizada", {
+          fila,
+          filaCount: fila.length,
+        });
+      }
+    });
+
+    // 👉 ATENDENTE ENTRA NA SALA DE ATENDENTES (pode aceitar conversas)
     socket.on("chat-suporte:atendente-online", async () => {
-      socket.join("atendentes");
-      console.log(
-        `👨‍💼 Atendente ${socket.userName} entrou na sala de atendentes`,
+      // Verifica se já está na sala para evitar operações desnecessárias
+      const jaEstaNaSalaAtendentes = socket.rooms.has("atendentes");
+      const jaEstaNaSalaNotificacoes = socket.rooms.has(
+        "chat-suporte-notificacoes",
       );
 
-      // Emite atualização da fila para o novo atendente
-      const FilaService = require("./services/ChatFilaService");
-      const fila = await FilaService.listar();
-      socket.emit("chat-suporte:fila-atualizada", { fila });
+      // Atendentes também entram na sala de notificações
+      if (!jaEstaNaSalaNotificacoes) {
+        socket.join("chat-suporte-notificacoes");
+      }
+
+      if (!jaEstaNaSalaAtendentes) {
+        socket.join("atendentes");
+        console.log(
+          `👨‍💼 Atendente ${socket.userName} entrou na sala de atendentes`,
+        );
+
+        // Emite atualização da fila APENAS na primeira entrada
+        const FilaService = require("./services/ChatFilaService");
+        const fila = await FilaService.listar();
+        socket.emit("chat-suporte:fila-atualizada", {
+          fila,
+          filaCount: fila.length,
+        });
+      }
+      // Heartbeat silencioso - não loga se já está na sala
     });
 
     // 👉 ATENDENTE SAI DA SALA DE ATENDENTES
@@ -105,7 +144,15 @@ function init(server) {
 
     // 👉 DIGITANDO (usuário ou atendente)
     socket.on("chat-suporte:digitando", ({ conversa_id, nome }) => {
+      // Emite para outros na mesma sala do namespace principal (exclui o remetente)
       socket.to(`conversa:${conversa_id}`).emit("chat-suporte:digitando", {
+        conversa_id,
+        nome,
+      });
+
+      // TAMBÉM emite para o namespace de visitantes (caso seja conversa com visitante)
+      const visitanteNs = io.of("/visitante");
+      visitanteNs.to(`conversa:${conversa_id}`).emit("chat-suporte:digitando", {
         conversa_id,
         nome,
       });
@@ -116,6 +163,14 @@ function init(server) {
       socket.to(`conversa:${conversa_id}`).emit("chat-suporte:parou-digitar", {
         conversa_id,
       });
+
+      // TAMBÉM emite para o namespace de visitantes
+      const visitanteNs = io.of("/visitante");
+      visitanteNs
+        .to(`conversa:${conversa_id}`)
+        .emit("chat-suporte:parou-digitar", {
+          conversa_id,
+        });
     });
 
     // ═══════════════════════════════════════════════════════════════
@@ -403,4 +458,103 @@ function emitirEquipeOnline() {
   return emitirEquipeOnlineAtualizada();
 }
 
-module.exports = { init, getIo, emitirEquipeOnline };
+// ═══════════════════════════════════════════════════════════════════════════
+// NAMESPACE /visitante - CHAT PARA VISITANTES NÃO AUTENTICADOS
+// ═══════════════════════════════════════════════════════════════════════════
+function initVisitorNamespace() {
+  if (!io) return;
+
+  const visitanteNs = io.of("/visitante");
+
+  visitanteNs.on("connection", (socket) => {
+    console.log("🟢 [Visitante] Novo socket conectado:", socket.id);
+
+    // Visitantes podem se identificar com token de conversa
+    const chatToken = socket.handshake.auth?.chatToken;
+    const conversaId = socket.handshake.auth?.conversaId;
+
+    if (chatToken && conversaId) {
+      socket.chatToken = chatToken;
+      socket.conversaId = conversaId;
+      socket.isVisitante = true;
+
+      // Entra na sala da conversa
+      socket.join(`conversa:${conversaId}`);
+      console.log(`👤 [Visitante] Entrou na conversa ${conversaId}`);
+    }
+
+    // 👉 VISITANTE ENTRA NA CONVERSA
+    socket.on("chat-suporte:entrar", ({ conversa_id, token }) => {
+      if (token) {
+        socket.chatToken = token;
+        socket.conversaId = conversa_id;
+        socket.join(`conversa:${conversa_id}`);
+        console.log(`👤 [Visitante] Entrou na conversa ${conversa_id}`);
+      }
+    });
+
+    // 👉 VISITANTE SAI DA CONVERSA
+    socket.on("chat-suporte:sair", (conversa_id) => {
+      socket.leave(`conversa:${conversa_id}`);
+      console.log(`👤 [Visitante] Saiu da conversa ${conversa_id}`);
+    });
+
+    // 👉 VISITANTE DIGITANDO
+    socket.on("chat-suporte:digitando", ({ conversa_id, nome }) => {
+      // Emite para namespace principal (onde os atendentes estão) - usa io.to() pois atendentes precisam receber
+      io.to(`conversa:${conversa_id}`).emit("chat-suporte:digitando", {
+        conversa_id,
+        nome,
+      });
+      // Para outros visitantes na mesma conversa (exclui o remetente com socket.to)
+      socket.to(`conversa:${conversa_id}`).emit("chat-suporte:digitando", {
+        conversa_id,
+        nome,
+      });
+    });
+
+    // 👉 VISITANTE PAROU DE DIGITAR
+    socket.on("chat-suporte:parou-digitar", ({ conversa_id }) => {
+      io.to(`conversa:${conversa_id}`).emit("chat-suporte:parou-digitar", {
+        conversa_id,
+      });
+      socket.to(`conversa:${conversa_id}`).emit("chat-suporte:parou-digitar", {
+        conversa_id,
+      });
+    });
+
+    socket.on("disconnect", () => {
+      console.log(`🔴 [Visitante] Socket desconectado: ${socket.id}`);
+    });
+  });
+
+  console.log("✅ Namespace /visitante inicializado");
+}
+
+// Função para emitir eventos SOMENTE para visitantes (namespace /visitante)
+// O namespace principal já é tratado pelo emitirEvento no ChatSuporteController
+function emitirParaVisitante(conversaId, evento, dados) {
+  if (!io) return;
+
+  const visitanteNs = io.of("/visitante");
+  const sala = `conversa:${conversaId}`;
+
+  // Verifica quantos sockets estão na sala do namespace visitante
+  const room = visitanteNs.adapter.rooms.get(sala);
+  const socketsNaSala = room ? room.size : 0;
+
+  if (socketsNaSala > 0) {
+    console.log(
+      `📡 [Visitante] Emitindo ${evento} para sala "${sala}" (${socketsNaSala} sockets)`,
+    );
+    visitanteNs.to(sala).emit(evento, dados);
+  }
+}
+
+module.exports = {
+  init,
+  getIo,
+  emitirEquipeOnline,
+  initVisitorNamespace,
+  emitirParaVisitante,
+};

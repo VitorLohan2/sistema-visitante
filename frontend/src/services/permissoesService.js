@@ -6,6 +6,7 @@ import {
   getPermissoesCache,
   clearPermissoesCache,
 } from "./cacheService";
+import logger from "../utils/logger";
 
 /**
  * Busca as permissões do usuário logado
@@ -15,7 +16,7 @@ export async function buscarMinhasPermissoes() {
   // Primeiro verifica se há token (usuário logado)
   const token = localStorage.getItem("token");
   if (!token) {
-    console.log("[permissoesService] Sem token, retornando vazio");
+    logger.log("[permissoesService] Sem token, retornando vazio");
     return { permissoes: [], papeis: [] };
   }
 
@@ -34,7 +35,7 @@ export async function buscarMinhasPermissoes() {
 
     return { permissoes, papeis };
   } catch (error) {
-    console.error("Erro ao buscar permissões:", error);
+    logger.error("Erro ao buscar permissões:", error);
     return { permissoes: [], papeis: [] };
   }
 }

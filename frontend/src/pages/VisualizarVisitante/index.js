@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * VISUALIZAR VISITANTE - Página de Detalhes do Cadastro
@@ -38,7 +39,7 @@ export default function VisualizarVisitante() {
         );
 
         if (cachedVisitor) {
-          console.log("📦 Usando visitante do cache");
+          logger.log("📦 Usando visitante do cache");
           // Extrai as fotos dos campos imagem1, imagem2, imagem3
           const fotos = [];
           if (cachedVisitor.imagem1) fotos.push(cachedVisitor.imagem1);
@@ -85,7 +86,7 @@ export default function VisualizarVisitante() {
     // Listener: Visitante atualizado
     const unsubUpdate = socketService.on("visitante:updated", (dados) => {
       if (dados.id === parseInt(id)) {
-        console.log("📝 Socket: Visitante atualizado em tempo real", dados.id);
+        logger.log("📝 Socket: Visitante atualizado em tempo real", dados.id);
 
         // Atualiza o estado local
         setVisitor((prev) => {
@@ -119,7 +120,7 @@ export default function VisualizarVisitante() {
     // Listener: Visitante deletado
     const unsubDelete = socketService.on("visitante:deleted", (dados) => {
       if (dados.id === parseInt(id)) {
-        console.log("🗑️ Socket: Visitante deletado", dados.id);
+        logger.log("🗑️ Socket: Visitante deletado", dados.id);
         alert("Este visitante foi removido do sistema.");
         history.push("/listagem-visitante");
       }
@@ -279,3 +280,5 @@ export default function VisualizarVisitante() {
     </div>
   );
 }
+
+

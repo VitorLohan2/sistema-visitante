@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, {
   useState,
   useEffect,
@@ -70,7 +71,7 @@ export default function HistoricoVisitante() {
 
     // ✅ LISTENER: Visita encerrada (visitor:end do backend)
     const unsubVisitorEnd = socketService.on("visitor:end", (visitante) => {
-      console.log(
+      logger.log(
         "📥 Socket Histórico: Visita encerrada recebida",
         visitante.id,
         visitante.nome,
@@ -79,14 +80,14 @@ export default function HistoricoVisitante() {
         // Verifica duplicata pelo ID do histórico
         const existente = prev.find((v) => v.id === visitante.id);
         if (existente) {
-          console.log("⚠️ Registro já existe no histórico, atualizando...");
+          logger.log("⚠️ Registro já existe no histórico, atualizando...");
           return prev.map((v) =>
             v.id === visitante.id ? { ...v, ...visitante } : v,
           );
         }
 
         // Adiciona novo registro ao histórico
-        console.log("✅ Adicionando novo registro ao histórico");
+        logger.log("✅ Adicionando novo registro ao histórico");
         const novosHistorico = [visitante, ...prev].sort((a, b) => {
           const dateA = new Date(
             a.data_de_saida || a.data_de_entrada || a.criado_em,
@@ -106,7 +107,7 @@ export default function HistoricoVisitante() {
     const unsubVisitaEncerrada = socketService.on(
       "visita:encerrada",
       (visitante) => {
-        console.log(
+        logger.log(
           "📥 Socket Histórico: Visita encerrada (alt)",
           visitante.nome,
         );
@@ -131,7 +132,7 @@ export default function HistoricoVisitante() {
     const unsubHistoricoUpdated = socketService.on(
       "historico:updated",
       (dados) => {
-        console.log("📝 Socket Histórico: Atualizado", dados.id);
+        logger.log("📝 Socket Histórico: Atualizado", dados.id);
         setHistoryData((prev) => {
           const novosHistorico = prev
             .map((v) => (v.id === dados.id ? { ...v, ...dados } : v))
@@ -150,7 +151,7 @@ export default function HistoricoVisitante() {
     const unsubHistoricoDeleted = socketService.on(
       "historico:deleted",
       (dados) => {
-        console.log("🗑️ Socket Histórico: Deletado", dados.id);
+        logger.log("🗑️ Socket Histórico: Deletado", dados.id);
         setHistoryData((prev) => {
           const novosHistorico = prev.filter((v) => v.id !== dados.id);
           setCache("historico", novosHistorico);
@@ -165,7 +166,7 @@ export default function HistoricoVisitante() {
       (dados) => {
         // Se o visitante agora tem data_de_saida, ele deve aparecer no histórico
         if (dados.data_de_saida) {
-          console.log(
+          logger.log(
             "📥 Socket Histórico: Visitante encerrou visita",
             dados.id,
           );
@@ -205,7 +206,7 @@ export default function HistoricoVisitante() {
       unsubVisitanteUpdated,
     );
 
-    console.log("🔌 Socket Histórico: Listeners configurados");
+    logger.log("🔌 Socket Histórico: Listeners configurados");
   }, []);
 
   // ═══════════════════════════════════════════════════════════════
@@ -221,7 +222,7 @@ export default function HistoricoVisitante() {
           cachedHistorico.length > 0 &&
           !isDataLoadedRef.current
         ) {
-          console.log(
+          logger.log(
             "📦 Histórico: Usando cache",
             cachedHistorico.length,
             "registros",
@@ -244,13 +245,13 @@ export default function HistoricoVisitante() {
         setCache("historico", sortedData);
         isDataLoadedRef.current = true;
 
-        console.log(
+        logger.log(
           "✅ Histórico: Carregado da API",
           sortedData.length,
           "registros",
         );
       } catch (error) {
-        console.error("Erro ao carregar histórico:", error);
+        logger.error("Erro ao carregar histórico:", error);
         // Se falhou mas tem cache, mantém o cache
         if (!getCache("historico")) {
           alert("Erro ao carregar histórico. Verifique sua conexão.");
@@ -709,3 +710,5 @@ export default function HistoricoVisitante() {
     </div>
   );
 }
+
+

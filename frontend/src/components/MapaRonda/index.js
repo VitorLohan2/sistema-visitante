@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
  * COMPONENTE: MapaRonda
@@ -179,7 +180,7 @@ export default function MapaRonda({
           mapa.setView(bounds[0], 16);
         }
       } catch (error) {
-        console.error("Erro ao carregar mapa:", error);
+        logger.error("Erro ao carregar mapa:", error);
       }
     };
 
@@ -237,3 +238,5 @@ export default function MapaRonda({
     </div>
   );
 }
+
+

@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * AGENDAMENTO CONTEXT - Gerenciamento Centralizado de Agendamentos
@@ -59,7 +60,7 @@ export function AgendamentoProvider({ children }) {
     if (audioRef.current) {
       audioRef.current.currentTime = 0;
       audioRef.current.play().catch((err) => {
-        console.log("Não foi possível tocar som de notificação:", err.message);
+        logger.log("Não foi possível tocar som de notificação:", err.message);
       });
     }
   }, []);
@@ -81,7 +82,7 @@ export function AgendamentoProvider({ children }) {
     const unsubCreate = socketService.on(
       "agendamento:create",
       (agendamento) => {
-        console.log(
+        logger.log(
           "📅 AgendamentoContext: Novo agendamento recebido via socket",
           agendamento.id
         );
@@ -90,7 +91,7 @@ export function AgendamentoProvider({ children }) {
           // Verificação mais robusta contra duplicação
           const jaExiste = prev.some((a) => a.id === agendamento.id);
           if (jaExiste) {
-            console.log(
+            logger.log(
               "⚠️ Agendamento já existe, ignorando duplicação:",
               agendamento.id
             );
@@ -115,7 +116,7 @@ export function AgendamentoProvider({ children }) {
 
     // Listener para agendamento atualizado
     const unsubUpdate = socketService.on("agendamento:update", (dados) => {
-      console.log(
+      logger.log(
         "📅 AgendamentoContext: Agendamento atualizado via socket",
         dados.id
       );
@@ -134,7 +135,7 @@ export function AgendamentoProvider({ children }) {
 
     // Listener para agendamento deletado
     const unsubDelete = socketService.on("agendamento:delete", (dados) => {
-      console.log(
+      logger.log(
         "📅 AgendamentoContext: Agendamento removido via socket",
         dados.id
       );
@@ -153,7 +154,7 @@ export function AgendamentoProvider({ children }) {
   const connectSocket = useCallback(() => {
     const token = localStorage.getItem("token");
     if (token && !socketService.isConnected()) {
-      console.log("📅 AgendamentoContext: Conectando socket...");
+      logger.log("📅 AgendamentoContext: Conectando socket...");
       socketService.connect(token);
     }
   }, []);
@@ -168,7 +169,7 @@ export function AgendamentoProvider({ children }) {
         if (!forceRefresh) {
           const cachedAgendamentos = getCache("agendamentos");
           if (cachedAgendamentos && cachedAgendamentos.length > 0) {
-            console.log(
+            logger.log(
               "📅 AgendamentoContext: Carregando do cache",
               cachedAgendamentos.length,
               "agendamentos"
@@ -185,7 +186,7 @@ export function AgendamentoProvider({ children }) {
           (a, b) => new Date(b.horario_agendado) - new Date(a.horario_agendado)
         );
 
-        console.log(
+        logger.log(
           "📅 AgendamentoContext: Carregado da API",
           sorted.length,
           "agendamentos"
@@ -196,7 +197,7 @@ export function AgendamentoProvider({ children }) {
         isInitializedRef.current = true;
         isFirstLoadRef.current = false;
       } catch (error) {
-        console.error("Erro ao buscar agendamentos:", error);
+        logger.error("Erro ao buscar agendamentos:", error);
         // Usar cache em caso de erro
         const cachedAgendamentos = getCache("agendamentos");
         if (cachedAgendamentos) {
@@ -213,7 +214,7 @@ export function AgendamentoProvider({ children }) {
   // Inicialização quando usuário loga
   useEffect(() => {
     if (isAuthenticated && !isInitializedRef.current) {
-      console.log("📅 AgendamentoContext: Inicializando...");
+      logger.log("📅 AgendamentoContext: Inicializando...");
 
       // Primeiro conecta o socket
       connectSocket();
@@ -306,3 +307,5 @@ export function useAgendamentos() {
 }
 
 export default AgendamentoContext;
+
+

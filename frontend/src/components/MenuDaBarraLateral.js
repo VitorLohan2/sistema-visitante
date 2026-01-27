@@ -68,6 +68,19 @@ export default function MenuDaBarraLateral() {
   const isSeguranca =
     papeis.includes("SEGURANÇA") || papeis.includes("SEGURANCA");
 
+  // Verifica se tem QUALQUER permissão de chat (para mostrar notificação)
+  const temPermissaoChat =
+    temPermissao("chat_visualizar") ||
+    temPermissao("chat_enviar") ||
+    temPermissao("chat_atendente_acessar_painel") ||
+    temPermissao("chat_atendente_aceitar") ||
+    temPermissao("chat_atendente_transferir") ||
+    temPermissao("chat_atendente_finalizar") ||
+    temPermissao("chat_gerenciar_faq") ||
+    temPermissao("chat_visualizar_auditoria") ||
+    temPermissao("chat_visualizar_relatorios") ||
+    temPermissao("chat_gerenciar_configuracoes");
+
   // Notificação de chat = APENAS fila de espera (conversas aguardando atendente)
   const chatNotificationCount = filaCount;
 
@@ -269,15 +282,21 @@ export default function MenuDaBarraLateral() {
           {/* MÓDULO: CHAT SUPORTE */}
           {/* ═══════════════════════════════════════════════════════════════ */}
 
-          {/* Painel de Atendimento - chat_atendente_acessar_painel */}
-          {temPermissao("chat_atendente_acessar_painel") && (
+          {/* Chat de Suporte - qualquer permissão de chat */}
+          {temPermissaoChat && (
             <button
-              className={`nav-item ${isActive("/chat-suporte/atendente") ? "active" : ""}`}
-              onClick={() => handleNavigation("/chat-suporte/atendente")}
+              className={`nav-item ${isActive("/chat-suporte") ? "active" : ""}`}
+              onClick={() =>
+                handleNavigation(
+                  temPermissao("chat_atendente_acessar_painel")
+                    ? "/chat-suporte/atendente"
+                    : "/chat-suporte",
+                )
+              }
             >
               <FiHeadphones size={20} />
               <span>Chat de Suporte</span>
-              {/* Badge de notificação: fila + mensagens não lidas */}
+              {/* Badge de notificação: fila de espera */}
               {chatNotificationCount > 0 && (
                 <span className="notification-badge">
                   {chatNotificationCount > 9 ? "9+" : chatNotificationCount}

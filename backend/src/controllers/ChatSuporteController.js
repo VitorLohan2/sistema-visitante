@@ -38,10 +38,10 @@
  */
 
 const ChatSuporteService = require("../services/ChatSuporteService");
-const FilaService = require("../services/ChatFilaService");
+const ChatFilaService = require("../services/ChatFilaService");
 const IAService = require("../services/ChatIAService");
 const AuditoriaService = require("../services/ChatAuditoriaService");
-const { getIo } = require("../socket");
+const { getIo, emitirParaVisitante } = require("../socket");
 const crypto = require("crypto");
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -62,16 +62,87 @@ function gerarTokenVisitante(conversa_id, email) {
 
 /**
  * Emite evento via Socket.IO
+ * Para salas de conversa (conversa:ID), também emite para o namespace de visitantes
  */
 function emitirEvento(evento, dados, sala = null) {
   const io = getIo();
   if (io) {
     if (sala) {
+      // Log para debug - verifica quantos sockets estão na sala
+      const room = io.sockets.adapter.rooms.get(sala);
+      const socketsNaSala = room ? room.size : 0;
+      console.log(
+        `📡 Emitindo ${evento} para sala "${sala}" (${socketsNaSala} sockets)`,
+      );
+
       io.to(sala).emit(evento, dados);
+
+      // Se for uma sala de conversa, também emite para o namespace de visitantes
+      if (sala.startsWith("conversa:")) {
+        const conversaId = sala.replace("conversa:", "");
+        emitirParaVisitante(conversaId, evento, dados);
+      }
     } else {
       io.emit(evento, dados);
     }
   }
+}
+
+/**
+ * Emite evento de nova entrada na fila para TODOS com permissão de chat
+ * Notifica tanto atendentes quanto usuários com permissão de chat
+ */
+async function emitirNovaFila(conversaInfo) {
+  const io = getIo();
+  if (!io) return;
+
+  // Busca a fila atualizada COMPLETA
+  const fila = await ChatFilaService.listar();
+  const filaCount = fila.length;
+
+  // Log de debug
+  const roomNotificacoes = io.sockets.adapter.rooms.get(
+    "chat-suporte-notificacoes",
+  );
+  const socketsNotificacoes = roomNotificacoes ? roomNotificacoes.size : 0;
+  console.log(
+    `📡 Emitindo chat-suporte:nova-fila para sala "chat-suporte-notificacoes" (${socketsNotificacoes} sockets)`,
+  );
+
+  // Emite para TODOS com permissão de chat (sala chat-suporte-notificacoes)
+  // Envia tanto os dados da nova conversa quanto a fila completa
+  io.to("chat-suporte-notificacoes").emit("chat-suporte:nova-fila", {
+    ...conversaInfo,
+    fila, // Fila completa para atualizar a página de atendente
+    filaCount,
+  });
+}
+
+/**
+ * Emite atualização da fila para TODOS com permissão de chat
+ */
+async function emitirFilaAtualizada() {
+  const io = getIo();
+  if (!io) return;
+
+  // Busca a fila atualizada
+  const fila = await ChatFilaService.listar();
+  const filaCount = fila.length;
+
+  // Log de debug
+  const roomNotificacoes = io.sockets.adapter.rooms.get(
+    "chat-suporte-notificacoes",
+  );
+  const socketsNotificacoes = roomNotificacoes ? roomNotificacoes.size : 0;
+  console.log(
+    `📡 Emitindo chat-suporte:fila-atualizada para sala "chat-suporte-notificacoes" (${socketsNotificacoes} sockets) - filaCount: ${filaCount}`,
+  );
+
+  // Emite para TODOS com permissão de chat
+  io.to("chat-suporte-notificacoes").emit("chat-suporte:fila-atualizada", {
+    fila,
+    filaCount,
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -114,8 +185,8 @@ const iniciarConversaVisitante = async (req, res) => {
     // Busca mensagens iniciais (boas-vindas do bot)
     const mensagens = await ChatSuporteService.buscarMensagens(conversa.id);
 
-    // Emite evento para atendentes (nova conversa)
-    emitirEvento("chat-suporte:nova-conversa", conversa, "atendentes");
+    // NOTA: Não emitimos para atendentes aqui porque a conversa começa no modo BOT
+    // Atendentes só serão notificados quando o visitante solicitar atendimento humano
 
     res.status(201).json({
       conversa,
@@ -178,8 +249,8 @@ const criarConversa = async (req, res) => {
       return res.status(200).json({ conversa, mensagens, jaExistente: true });
     }
 
-    // Emite evento para atendentes (só para novas conversas)
-    emitirEvento("chat-suporte:nova-conversa", conversa, "atendentes");
+    // NOTA: Não emitimos para atendentes aqui porque a conversa começa no modo BOT
+    // Atendentes só serão notificados quando o usuário solicitar atendimento humano
 
     res.status(201).json({ conversa, mensagens });
   } catch (error) {
@@ -219,7 +290,7 @@ const buscarConversa = async (req, res) => {
     // Busca posição na fila se estiver aguardando
     let posicaoFila = null;
     if (conversa.status === "AGUARDANDO_ATENDENTE") {
-      posicaoFila = await FilaService.obterPosicao(conversa.id);
+      posicaoFila = await ChatFilaService.obterPosicao(conversa.id);
     }
 
     res.json({ conversa, mensagens, posicaoFila });
@@ -270,7 +341,7 @@ const enviarMensagem = async (req, res) => {
       {
         usuario_id: req.usuario?.id,
         usuario_nome: req.usuario?.nome,
-      }
+      },
     );
 
     // Emite eventos via Socket.IO
@@ -281,18 +352,23 @@ const enviarMensagem = async (req, res) => {
         conversa_id,
         mensagem: resultado.mensagemUsuario,
       },
-      `conversa:${conversa_id}`
+      `conversa:${conversa_id}`,
     );
 
-    // TAMBÉM emite para a sala de atendentes (para badges globais e notificações)
-    emitirEvento(
-      "chat-suporte:mensagem",
-      {
-        conversa_id,
-        mensagem: resultado.mensagemUsuario,
-      },
-      "atendentes"
-    );
+    // APENAS emite para atendentes se a conversa NÃO está no modo BOT
+    // Atendentes só devem receber notificações quando:
+    // - Conversa está AGUARDANDO_ATENDENTE (na fila)
+    // - Conversa está EM_ATENDIMENTO (já aceita por um atendente)
+    if (resultado.statusConversa !== "BOT") {
+      emitirEvento(
+        "chat-suporte:mensagem",
+        {
+          conversa_id,
+          mensagem: resultado.mensagemUsuario,
+        },
+        "atendentes",
+      );
+    }
 
     if (resultado.mensagemBot) {
       emitirEvento(
@@ -301,20 +377,13 @@ const enviarMensagem = async (req, res) => {
           conversa_id,
           mensagem: resultado.mensagemBot,
         },
-        `conversa:${conversa_id}`
+        `conversa:${conversa_id}`,
       );
     }
 
-    // Se solicitou humano, notifica atendentes
+    // Se solicitou humano, notifica TODOS com permissão de chat
     if (resultado.solicitouHumano) {
-      emitirEvento(
-        "chat-suporte:fila-atualizada",
-        {
-          posicao: resultado.posicaoFila,
-          conversa_id,
-        },
-        "atendentes"
-      );
+      await emitirFilaAtualizada();
     }
 
     res.json(resultado);
@@ -337,11 +406,15 @@ const solicitarAtendente = async (req, res) => {
       {
         usuario_id: req.usuario?.id,
         usuario_nome: req.usuario?.nome,
-      }
+      },
     );
 
-    // Notifica atendentes
-    emitirEvento("chat-suporte:fila-atualizada", null, "atendentes");
+    // Notifica TODOS com permissão de chat - emite nova-fila para notificar atendentes
+    await emitirNovaFila({
+      conversa_id: parseInt(id),
+      posicao: resultado.posicao,
+      nome: req.usuario?.nome || "Usuário",
+    });
 
     res.json(resultado);
   } catch (error) {
@@ -373,7 +446,7 @@ const finalizarConversa = async (req, res) => {
       {
         conversa_id: parseInt(id),
       },
-      `conversa:${id}`
+      `conversa:${id}`,
     );
 
     res.json(conversa);
@@ -401,7 +474,7 @@ const avaliarAtendimento = async (req, res) => {
     const avaliacao = await ChatSuporteService.avaliarAtendimento(
       parseInt(id),
       nota,
-      comentario
+      comentario,
     );
 
     res.json(avaliacao);
@@ -423,8 +496,8 @@ const avaliarAtendimento = async (req, res) => {
  */
 const listarFila = async (req, res) => {
   try {
-    const fila = await FilaService.listar();
-    const estatisticas = await FilaService.obterEstatisticas();
+    const fila = await ChatFilaService.listar();
+    const estatisticas = await ChatFilaService.obterEstatisticas();
 
     res.json({ fila, estatisticas });
   } catch (error) {
@@ -514,7 +587,7 @@ const aceitarConversa = async (req, res) => {
         conversa_id: parseInt(id),
         atendente_nome,
       },
-      `conversa:${id}`
+      `conversa:${id}`,
     );
 
     // Emite também como broadcast geral para visitantes não autenticados
@@ -527,12 +600,8 @@ const aceitarConversa = async (req, res) => {
       });
     }
 
-    // Notifica atendentes que a fila mudou
-    emitirEvento(
-      "chat-suporte:fila-atualizada",
-      { conversa_id: parseInt(id) },
-      "atendentes"
-    );
+    // Notifica TODOS com permissão de chat que a fila mudou
+    await emitirFilaAtualizada();
 
     res.json(conversa);
   } catch (error) {
@@ -563,7 +632,7 @@ const enviarMensagemAtendente = async (req, res) => {
       {
         atendente_id: req.usuario?.id,
         atendente_nome: req.usuario?.nome,
-      }
+      },
     );
 
     // Emite evento
@@ -573,7 +642,7 @@ const enviarMensagemAtendente = async (req, res) => {
         conversa_id,
         mensagem: msg,
       },
-      `conversa:${conversa_id}`
+      `conversa:${conversa_id}`,
     );
 
     res.json(msg);
@@ -604,7 +673,7 @@ const finalizarAtendimento = async (req, res) => {
       {
         conversa_id: parseInt(id),
       },
-      `conversa:${id}`
+      `conversa:${id}`,
     );
 
     res.json(conversa);
@@ -805,7 +874,7 @@ const enviarMensagemVisitante = async (req, res) => {
       {
         visitante_nome: conversa.nome_visitante,
         visitante_email: conversa.email_visitante,
-      }
+      },
     );
 
     // Emite eventos via Socket.IO
@@ -816,18 +885,23 @@ const enviarMensagemVisitante = async (req, res) => {
         conversa_id,
         mensagem: resultado.mensagemUsuario,
       },
-      `conversa:${conversa_id}`
+      `conversa:${conversa_id}`,
     );
 
-    // TAMBÉM emite para a sala de atendentes (para badges globais e notificações)
-    emitirEvento(
-      "chat-suporte:mensagem",
-      {
-        conversa_id,
-        mensagem: resultado.mensagemUsuario,
-      },
-      "atendentes"
-    );
+    // APENAS emite para atendentes se a conversa NÃO está no modo BOT
+    // Atendentes só devem receber notificações quando:
+    // - Conversa está AGUARDANDO_ATENDENTE (na fila)
+    // - Conversa está EM_ATENDIMENTO (já aceita por um atendente)
+    if (resultado.statusConversa !== "BOT") {
+      emitirEvento(
+        "chat-suporte:mensagem",
+        {
+          conversa_id,
+          mensagem: resultado.mensagemUsuario,
+        },
+        "atendentes",
+      );
+    }
 
     if (resultado.mensagemBot) {
       emitirEvento(
@@ -836,32 +910,18 @@ const enviarMensagemVisitante = async (req, res) => {
           conversa_id,
           mensagem: resultado.mensagemBot,
         },
-        `conversa:${conversa_id}`
+        `conversa:${conversa_id}`,
       );
     }
 
-    // Se solicitou humano, notifica atendentes
+    // Se solicitou humano, notifica TODOS com permissão de chat
     if (resultado.solicitouHumano) {
-      // Evento específico para nova conversa na fila
-      emitirEvento(
-        "chat-suporte:nova-fila",
-        {
-          conversa_id,
-          posicao: resultado.posicaoFila,
-          nome: conversa.nome_visitante, // Adiciona nome para notificação
-        },
-        "atendentes"
-      );
-
-      // Evento genérico de fila atualizada
-      emitirEvento(
-        "chat-suporte:fila-atualizada",
-        {
-          posicao: resultado.posicaoFila,
-          conversa_id,
-        },
-        "atendentes"
-      );
+      // Busca conversa para obter nome
+      await emitirNovaFila({
+        conversa_id,
+        posicao: resultado.posicaoFila,
+        nome: conversa.nome_visitante,
+      });
     }
 
     res.json(resultado);
@@ -881,7 +941,7 @@ const buscarConversaVisitante = async (req, res) => {
     const token = req.headers["x-chat-token"];
 
     console.log(
-      `📡 [Visitante] Busca conversa ${id}, token: ${token ? "presente" : "ausente"}`
+      `📡 [Visitante] Busca conversa ${id}, token: ${token ? "presente" : "ausente"}`,
     );
 
     if (!token) {
@@ -896,13 +956,13 @@ const buscarConversaVisitante = async (req, res) => {
     }
 
     console.log(
-      `📡 [Visitante] Conversa ${id} encontrada, status: ${conversa.status}, usuario_id: ${conversa.usuario_id}`
+      `📡 [Visitante] Conversa ${id} encontrada, status: ${conversa.status}, usuario_id: ${conversa.usuario_id}`,
     );
 
     // Verifica se é de visitante
     if (conversa.usuario_id) {
       console.log(
-        `❌ [Visitante] Conversa ${id} pertence a usuário logado, acesso negado`
+        `❌ [Visitante] Conversa ${id} pertence a usuário logado, acesso negado`,
       );
       return res.status(403).json({ error: "Acesso negado" });
     }
@@ -913,11 +973,11 @@ const buscarConversaVisitante = async (req, res) => {
     // Busca posição na fila se estiver aguardando
     let posicaoFila = null;
     if (conversa.status === "AGUARDANDO_ATENDENTE") {
-      posicaoFila = await FilaService.obterPosicao(conversa.id);
+      posicaoFila = await ChatFilaService.obterPosicao(conversa.id);
     }
 
     console.log(
-      `✅ [Visitante] Retornando conversa ${id}: status=${conversa.status}, mensagens=${mensagens.length}`
+      `✅ [Visitante] Retornando conversa ${id}: status=${conversa.status}, mensagens=${mensagens.length}`,
     );
     res.json({ conversa, mensagens, posicaoFila });
   } catch (error) {
@@ -949,11 +1009,15 @@ const solicitarAtendenteVisitante = async (req, res) => {
       parseInt(id),
       {
         visitante_nome: conversa.nome_visitante,
-      }
+      },
     );
 
-    // Notifica atendentes
-    emitirEvento("chat-suporte:fila-atualizada", null, "atendentes");
+    // Notifica TODOS com permissão de chat - emite nova-fila para notificar atendentes
+    await emitirNovaFila({
+      conversa_id: parseInt(id),
+      posicao: resultado.posicao,
+      nome: conversa.nome_visitante,
+    });
 
     res.json(resultado);
   } catch (error) {
@@ -964,12 +1028,71 @@ const solicitarAtendenteVisitante = async (req, res) => {
   }
 };
 
+/**
+ * Finaliza conversa (visitante)
+ * POST /chat-suporte/visitante/conversas/:id/finalizar
+ */
+const finalizarConversaVisitante = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const conversa_id = parseInt(id);
+
+    // Busca token do header
+    const token = req.headers["x-chat-token"];
+
+    if (!token) {
+      return res
+        .status(401)
+        .json({ error: "Token de visitante não fornecido" });
+    }
+
+    // Busca a conversa
+    const conversa = await ChatSuporteService.buscarConversa(conversa_id);
+    if (!conversa) {
+      return res.status(404).json({ error: "Conversa não encontrada" });
+    }
+
+    // Valida que a conversa é de um visitante (sem usuario_id)
+    if (conversa.usuario_id) {
+      return res
+        .status(403)
+        .json({ error: "Esta conversa pertence a um usuário logado" });
+    }
+
+    // Finaliza a conversa
+    const conversaFinalizada = await ChatSuporteService.finalizarConversa(
+      conversa_id,
+      {
+        finalizado_por_nome: conversa.nome_visitante || "Visitante",
+        motivo: "Finalizado pelo visitante",
+      },
+    );
+
+    // Emite evento para a sala da conversa
+    emitirEvento(
+      "chat-suporte:conversa-finalizada",
+      {
+        conversa_id,
+      },
+      `conversa:${conversa_id}`,
+    );
+
+    res.json(conversaFinalizada);
+  } catch (error) {
+    console.error("Erro ao finalizar conversa (visitante):", error);
+    res
+      .status(500)
+      .json({ error: error.message || "Erro ao finalizar conversa" });
+  }
+};
+
 module.exports = {
   // Públicas (Visitantes)
   iniciarConversaVisitante,
   enviarMensagemVisitante,
   buscarConversaVisitante,
   solicitarAtendenteVisitante,
+  finalizarConversaVisitante,
 
   // Usuário autenticado
   listarConversas,

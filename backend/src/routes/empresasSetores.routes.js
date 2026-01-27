@@ -10,7 +10,7 @@ const SetoresController = require("../controllers/SetoresController");
 const EmpresasVisitantesController = require("../controllers/EmpresasVisitantesController");
 const SetoresVisitantesController = require("../controllers/SetoresVisitantesController");
 const { authMiddleware } = require("../middleware/authMiddleware");
-const { adminMiddleware } = require("../middleware/adminMiddleware");
+const { requerPermissao } = require("../middleware/permissaoMiddleware");
 
 const router = express.Router();
 
@@ -34,7 +34,7 @@ router.get("/empresas-visitantes/:id", EmpresasVisitantesController.show);
 router.post(
   "/empresas-visitantes",
   authMiddleware,
-  adminMiddleware,
+  requerPermissao("empresa_criar"),
   celebrate({
     [Segments.BODY]: Joi.object().keys({
       nome: Joi.string().required().max(100),
@@ -44,13 +44,13 @@ router.post(
       endereco: Joi.string().max(255).allow(null, ""),
     }),
   }),
-  EmpresasVisitantesController.create
+  EmpresasVisitantesController.create,
 );
 
 router.put(
   "/empresas-visitantes/:id",
   authMiddleware,
-  adminMiddleware,
+  requerPermissao("empresa_editar"),
   celebrate({
     [Segments.PARAMS]: Joi.object().keys({
       id: Joi.number().required(),
@@ -63,19 +63,19 @@ router.put(
       endereco: Joi.string().max(255).allow(null, ""),
     }),
   }),
-  EmpresasVisitantesController.update
+  EmpresasVisitantesController.update,
 );
 
 router.delete(
   "/empresas-visitantes/:id",
   authMiddleware,
-  adminMiddleware,
+  requerPermissao("empresa_deletar"),
   celebrate({
     [Segments.PARAMS]: Joi.object().keys({
       id: Joi.number().required(),
     }),
   }),
-  EmpresasVisitantesController.delete
+  EmpresasVisitantesController.delete,
 );
 
 // ═══════════════════════════════════════════════════════════════
