@@ -54,10 +54,10 @@ export default function GerenciamentoPermissoes() {
 
   // Estados para cadastro de usuário interno
   const [empresas, setEmpresas] = useState(
-    () => getCache("empresasVisitantes") || [],
+    () => getCache("empresasInternas") || [],
   );
   const [setores, setSetores] = useState(
-    () => getCache("setoresVisitantes") || [],
+    () => getCache("setoresUsuarios") || [],
   );
   const [cadastrando, setCadastrando] = useState(false);
   const [novoUsuario, setNovoUsuario] = useState({
@@ -130,11 +130,13 @@ export default function GerenciamentoPermissoes() {
   const carregarEmpresasSetores = async () => {
     try {
       // ✅ Primeiro verifica se já tem no cache
-      const cachedEmpresas = getCache("empresasVisitantes");
-      const cachedSetores = getCache("setoresVisitantes");
+      const cachedEmpresas = getCache("empresasInternas");
+      const cachedSetores = getCache("setoresUsuarios");
 
       if (cachedEmpresas && cachedSetores) {
-        logger.log("📦 Usando empresas e setores do cache");
+        logger.log(
+          "📦 Usando empresas internas e setores de usuários do cache",
+        );
         setEmpresas(cachedEmpresas);
         setSetores(cachedSetores);
         return;
@@ -146,8 +148,15 @@ export default function GerenciamentoPermissoes() {
         api.get("/setores"),
       ]);
 
-      setEmpresas(empresasRes.data);
-      setSetores(setoresRes.data);
+      const empresasData = empresasRes.data;
+      const setoresData = setoresRes.data;
+
+      setEmpresas(empresasData);
+      setSetores(setoresData);
+
+      // Salva no cache com as chaves corretas
+      setCache("empresasInternas", empresasData);
+      setCache("setoresUsuarios", setoresData);
     } catch (error) {
       logger.error("Erro ao carregar empresas/setores:", error);
     }
@@ -950,5 +959,3 @@ export default function GerenciamentoPermissoes() {
     </div>
   );
 }
-
-

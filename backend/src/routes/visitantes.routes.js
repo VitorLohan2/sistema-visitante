@@ -30,6 +30,7 @@ router.post(
       nome: Joi.string().required(),
       cpf: Joi.string().required(),
       empresa: Joi.string().required(),
+      empresa_atribuida_id: Joi.number().integer().required(),
       setor: Joi.string().required(),
       placa_veiculo: Joi.string().allow("", null).optional(),
       cor_veiculo: Joi.string().allow("", null).optional(),
@@ -39,7 +40,7 @@ router.post(
       observacao: Joi.string().allow("", null).optional(),
     }),
   }),
-  VisitanteController.create
+  VisitanteController.create,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -54,7 +55,7 @@ router.put(
       id: Joi.string().required(),
     }),
   }),
-  VisitanteController.endVisit
+  VisitanteController.endVisit,
 );
 
 // ═══════════════════════════════════════════════════════════════

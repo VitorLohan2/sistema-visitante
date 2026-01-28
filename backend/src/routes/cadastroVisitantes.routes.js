@@ -63,9 +63,20 @@ router.get(
 // ═══════════════════════════════════════════════════════════════
 // VERIFICAR SE CPF EXISTE - PÚBLICO
 // GET /cadastro-visitantes/cpf/:cpf
+// GET /cadastro-visitantes/verificar-cpf/:cpf (alias)
 // ═══════════════════════════════════════════════════════════════
 router.get(
   "/cpf/:cpf",
+  celebrate({
+    [Segments.PARAMS]: Joi.object().keys({
+      cpf: Joi.string().required(),
+    }),
+  }),
+  CadastroVisitanteController.verificarCpf,
+);
+
+router.get(
+  "/verificar-cpf/:cpf",
   celebrate({
     [Segments.PARAMS]: Joi.object().keys({
       cpf: Joi.string().required(),

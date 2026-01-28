@@ -189,17 +189,11 @@ module.exports = {
         return response.status(404).json({ error: "Empresa não encontrada." });
       }
 
-      // Verificar se há visitantes vinculados a esta empresa
-      const visitantesVinculados = await connection("cadastro_visitante")
+      // Antes de deletar, remover o vínculo dos visitantes com esta empresa
+      // Define empresa_id como NULL para todos os visitantes vinculados
+      await connection("cadastro_visitante")
         .where("empresa_id", id)
-        .count("id as count")
-        .first();
-
-      if (visitantesVinculados.count > 0) {
-        return response.status(400).json({
-          error: `Não é possível excluir esta empresa pois existem ${visitantesVinculados.count} visitante(s) vinculado(s) a ela.`,
-        });
-      }
+        .update({ empresa_id: null });
 
       // Deletar a empresa
       await connection("empresa_visitante").where("id", id).delete();

@@ -9,8 +9,17 @@ const routes = require("./routes/index");
 const {
   requestMonitor,
   getStats,
+  getDetailedStats,
   startPeriodicLogging,
 } = require("./middleware/requestMonitor");
+
+// Autenticação do Dashboard
+const {
+  verifyDashboardPassword,
+  generateDashboardToken,
+  requireDashboardAuth,
+  generatePasswordAndHash,
+} = require("./middleware/dashboardAuth");
 
 const app = express();
 
@@ -57,6 +66,7 @@ app.use(
       "Authorization",
       "X-Requested-With",
       "x-chat-token",
+      "x-admin-key",
     ],
     credentials: true,
   }),
@@ -85,14 +95,99 @@ if (process.env.COUNT_REQUESTS === "true") {
 app.get("/api/stats", (req, res) => {
   // Verifica se tem token de admin (simples, pode melhorar)
   const adminKey = req.headers["x-admin-key"];
-  if (
-    adminKey !== process.env.ADMIN_STATS_KEY &&
-    process.env.NODE_ENV !== "development"
-  ) {
+
+  // Em desenvolvimento/docker, aceita qualquer chave ou sem chave
+  const isDevelopment =
+    process.env.NODE_ENV === "development" ||
+    process.env.NODE_ENV === "desenvolvimento" ||
+    process.env.NODE_ENV === "docker" ||
+    process.env.NODE_ENV === "teste";
+
+  if (!isDevelopment && adminKey !== process.env.ADMIN_STATS_KEY) {
     return res.status(403).json({ error: "Acesso negado" });
   }
 
-  res.json(getStats());
+  // Se pedir detalhes, retorna dados completos
+  const includeDetails = req.query.details === "true";
+  res.json(includeDetails ? getDetailedStats() : getStats());
+});
+
+// ═══════════════════════════════════════════════════════════════
+// AUTENTICAÇÃO DO DASHBOARD (senha extra de segurança)
+// ═══════════════════════════════════════════════════════════════
+
+// Rota para autenticar no Dashboard
+app.post("/api/dashboard/auth", async (req, res) => {
+  const { password } = req.body;
+
+  if (!password) {
+    return res.status(400).json({
+      error: "Senha não informada",
+      code: "PASSWORD_REQUIRED",
+    });
+  }
+
+  try {
+    const isValid = await verifyDashboardPassword(password);
+
+    if (!isValid) {
+      // Log de tentativa falha
+      console.warn(
+        `⚠️ Tentativa de acesso ao Dashboard falhou - IP: ${req.ip}`,
+      );
+      return res.status(401).json({
+        error: "Senha incorreta",
+        code: "INVALID_PASSWORD",
+      });
+    }
+
+    // Gera token de sessão
+    const token = generateDashboardToken(req.ip, req.headers["user-agent"]);
+
+    console.log(`✅ Acesso ao Dashboard autorizado - IP: ${req.ip}`);
+
+    res.json({
+      success: true,
+      token,
+      expiresIn: "8h",
+    });
+  } catch (error) {
+    console.error("Erro na autenticação do Dashboard:", error);
+    res.status(500).json({
+      error: "Erro interno",
+      code: "AUTH_ERROR",
+    });
+  }
+});
+
+// Rota para verificar se token do Dashboard é válido
+app.get("/api/dashboard/verify", requireDashboardAuth, (req, res) => {
+  res.json({
+    valid: true,
+    expiresAt: req.dashboardAuth?.exp
+      ? new Date(req.dashboardAuth.exp * 1000)
+      : null,
+  });
+});
+
+// Rota para gerar senha (apenas em desenvolvimento)
+app.get("/api/dashboard/generate-password", (req, res) => {
+  const isDevelopment =
+    process.env.NODE_ENV === "development" ||
+    process.env.NODE_ENV === "desenvolvimento" ||
+    process.env.NODE_ENV === "docker";
+
+  if (!isDevelopment) {
+    return res.status(403).json({ error: "Não disponível em produção" });
+  }
+
+  const { password, hash } = generatePasswordAndHash();
+  res.json({
+    password,
+    hash,
+    instructions:
+      "Adicione DASHBOARD_PASSWORD_HASH ao seu .env com o valor do hash",
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════

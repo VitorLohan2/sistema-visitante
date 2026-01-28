@@ -1,6 +1,6 @@
 /**
  * Rotas de Veículos e Dados de Apoio para Visitantes
- * /veiculos-visitantes, /funcoes-visitantes, /cores-veiculos-visitantes, /tipos-veiculos-visitantes
+ * /veiculos-visitantes, /funcoes-visitantes, /cores-veiculos-visitantes, /tipos-veiculos-visitantes, /empresas-atribuidas
  */
 
 const express = require("express");
@@ -9,6 +9,7 @@ const FuncaoVisitanteController = require("../controllers/FuncaoVisitanteControl
 const CorVeiculoVisitanteController = require("../controllers/CorVeiculoVisitanteController");
 const TipoVeiculoVisitanteController = require("../controllers/TipoVeiculoVisitanteController");
 const VeiculoVisitanteController = require("../controllers/VeiculoVisitanteController");
+const EmpresaAtribuidaController = require("../controllers/EmpresaAtribuidaController");
 const { authMiddleware } = require("../middleware/authMiddleware");
 const { requerPermissao } = require("../middleware/permissaoMiddleware");
 
@@ -265,6 +266,66 @@ router.delete(
     }),
   }),
   VeiculoVisitanteController.deleteByVisitante,
+);
+
+// ═══════════════════════════════════════════════════════════════
+// EMPRESAS ATRIBUÍDAS (para qual empresa o visitante está indo)
+// ═══════════════════════════════════════════════════════════════
+
+// GET /empresas-atribuidas - Listar todas as empresas atribuídas
+router.get("/empresas-atribuidas", EmpresaAtribuidaController.index);
+
+// GET /empresas-atribuidas/:id - Buscar empresa atribuída por ID
+router.get(
+  "/empresas-atribuidas/:id",
+  celebrate({
+    [Segments.PARAMS]: Joi.object().keys({
+      id: Joi.number().required(),
+    }),
+  }),
+  EmpresaAtribuidaController.show,
+);
+
+// POST /empresas-atribuidas - Criar nova empresa atribuída
+router.post(
+  "/empresas-atribuidas",
+  authMiddleware,
+  requerPermissao("empresa_atribuida_gerenciar"),
+  celebrate({
+    [Segments.BODY]: Joi.object().keys({
+      nome: Joi.string().required(),
+    }),
+  }),
+  EmpresaAtribuidaController.create,
+);
+
+// PUT /empresas-atribuidas/:id - Atualizar empresa atribuída
+router.put(
+  "/empresas-atribuidas/:id",
+  authMiddleware,
+  requerPermissao("empresa_atribuida_gerenciar"),
+  celebrate({
+    [Segments.PARAMS]: Joi.object().keys({
+      id: Joi.number().required(),
+    }),
+    [Segments.BODY]: Joi.object().keys({
+      nome: Joi.string().required(),
+    }),
+  }),
+  EmpresaAtribuidaController.update,
+);
+
+// DELETE /empresas-atribuidas/:id - Deletar empresa atribuída
+router.delete(
+  "/empresas-atribuidas/:id",
+  authMiddleware,
+  requerPermissao("empresa_atribuida_gerenciar"),
+  celebrate({
+    [Segments.PARAMS]: Joi.object().keys({
+      id: Joi.number().required(),
+    }),
+  }),
+  EmpresaAtribuidaController.delete,
 );
 
 module.exports = router;

@@ -75,6 +75,12 @@ export default function ListagemVisitante() {
 
     // Listener: Novo visitante criado
     const unsubCreate = socketService.on("visitante:created", (visitante) => {
+      console.log("🔵 Socket recebido - visitante:created:", {
+        id: visitante.id,
+        nome: visitante.nome,
+        empresa: visitante.empresa,
+        setor: visitante.setor,
+      });
       setVisitantes((prev) => {
         if (prev.find((v) => v.id === visitante.id)) return prev;
         const novos = [...prev, visitante].sort((a, b) =>
@@ -83,6 +89,10 @@ export default function ListagemVisitante() {
             .localeCompare((b.nome || "").toLowerCase(), "pt-BR"),
         );
         setCache("cadastroVisitantes", novos);
+        console.log(
+          "💾 Visitante adicionado ao estado:",
+          novos.find((v) => v.id === visitante.id),
+        );
         return novos;
       });
     });
@@ -326,16 +336,14 @@ export default function ListagemVisitante() {
       await api.post("/visitantes", {
         nome: selectedVisitante.nome,
         cpf: selectedVisitante.cpf,
-        empresa:
-          editedData.empresa ||
-          selectedVisitante.empresa ||
-          selectedVisitante.empresa_nome,
-        setor: selectedVisitante.setor || selectedVisitante.setor_nome,
+        empresa: editedData.empresa || selectedVisitante.empresa,
+        empresa_atribuida_id: editedData.empresa_atribuida_id || null,
+        setor: selectedVisitante.setor,
         placa_veiculo:
           editedData.placa_veiculo || selectedVisitante.placa_veiculo,
         cor_veiculo: editedData.cor_veiculo || selectedVisitante.cor_veiculo,
         tipo_veiculo: editedData.tipo_veiculo || selectedVisitante.tipo_veiculo,
-        funcao: selectedVisitante.funcao || selectedVisitante.funcao_nome,
+        funcao: selectedVisitante.funcao,
         responsavel,
         observacao,
       });

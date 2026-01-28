@@ -31,53 +31,53 @@ module.exports = {
           "empresa_visitante",
           "empresa_visitante.id",
           "=",
-          `${TABELA_VISITANTES}.empresa_id`
+          `${TABELA_VISITANTES}.empresa_id`,
         )
         .leftJoin(
           "setor_visitante",
           "setor_visitante.id",
           "=",
-          `${TABELA_VISITANTES}.setor_id`
+          `${TABELA_VISITANTES}.setor_id`,
         )
         .leftJoin(
           "usuarios",
           "usuarios.id",
           "=",
-          `${TABELA_VISITANTES}.usuario_id`
+          `${TABELA_VISITANTES}.usuario_id`,
         )
         .leftJoin(
           "funcao_visitante",
           "funcao_visitante.id",
           "=",
-          `${TABELA_VISITANTES}.funcao_visitante_id`
+          `${TABELA_VISITANTES}.funcao_visitante_id`,
         )
         .leftJoin(
           "veiculo_visitante",
           "veiculo_visitante.id",
           "=",
-          `${TABELA_VISITANTES}.veiculo_visitante_id`
+          `${TABELA_VISITANTES}.veiculo_visitante_id`,
         )
         .leftJoin(
           "cor_veiculo_visitante",
           "cor_veiculo_visitante.id",
           "=",
-          "veiculo_visitante.cor_veiculo_visitante_id"
+          "veiculo_visitante.cor_veiculo_visitante_id",
         )
         .leftJoin(
           "tipo_veiculo_visitante",
           "tipo_veiculo_visitante.id",
           "=",
-          "veiculo_visitante.tipo_veiculo_visitante_id"
+          "veiculo_visitante.tipo_veiculo_visitante_id",
         )
         .limit(limit)
         .offset((page - 1) * limit)
         .orderByRaw(`LOWER(${TABELA_VISITANTES}.nome) ASC`)
         .select([
           `${TABELA_VISITANTES}.*`,
-          "empresa_visitante.nome as empresa_nome",
-          "setor_visitante.nome as setor_nome",
+          "empresa_visitante.nome as empresa",
+          "setor_visitante.nome as setor",
           "usuarios.nome as cadastrado_por",
-          "funcao_visitante.nome as funcao_nome",
+          "funcao_visitante.nome as funcao",
           "veiculo_visitante.placa_veiculo",
           "cor_veiculo_visitante.nome as cor_veiculo",
           "tipo_veiculo_visitante.nome as tipo_veiculo",
@@ -154,10 +154,10 @@ module.exports = {
                 (error, result) => {
                   if (error) reject(error);
                   else resolve(result.secure_url);
-                }
+                },
               )
               .end(file.buffer);
-          })
+          }),
       );
 
       const imageUrls = await Promise.all(uploadPromises);
@@ -180,7 +180,7 @@ module.exports = {
       }
 
       // Inserir no banco
-      const [visitante] = await connection(TABELA_VISITANTES)
+      const [insertResult] = await connection(TABELA_VISITANTES)
         .insert({
           nome,
           nascimento,
@@ -200,14 +200,27 @@ module.exports = {
         })
         .returning("id");
 
+      // PostgreSQL retorna um objeto { id: X }
+      const visitanteId = insertResult.id || insertResult;
+
+      console.log(
+        "✅ Visitante cadastrado - ID:",
+        visitanteId,
+        "| Tipo:",
+        typeof visitanteId,
+      );
+
       // Atualizar o veículo com o visitante_id
-      if (veiculoVisitanteId) {
+      if (veiculoVisitanteId && visitanteId) {
         await connection("veiculo_visitante")
           .where("id", veiculoVisitanteId)
-          .update({ visitante_id: visitante.id });
+          .update({ visitante_id: visitanteId });
       }
 
-      console.log("✅ Visitante cadastrado:", visitante.id);
+      // Validação: Se o ID não foi retornado, houve erro no insert
+      if (!visitanteId) {
+        throw new Error("Falha ao obter ID do visitante cadastrado");
+      }
 
       // Busca o visitante completo com JOINs para emitir via Socket
       const visitanteCompleto = await connection(TABELA_VISITANTES)
@@ -215,60 +228,63 @@ module.exports = {
           "empresa_visitante",
           "empresa_visitante.id",
           "=",
-          `${TABELA_VISITANTES}.empresa_id`
+          `${TABELA_VISITANTES}.empresa_id`,
         )
         .leftJoin(
           "setor_visitante",
           "setor_visitante.id",
           "=",
-          `${TABELA_VISITANTES}.setor_id`
+          `${TABELA_VISITANTES}.setor_id`,
         )
         .leftJoin(
           "funcao_visitante",
           "funcao_visitante.id",
           "=",
-          `${TABELA_VISITANTES}.funcao_visitante_id`
+          `${TABELA_VISITANTES}.funcao_visitante_id`,
         )
         .leftJoin(
           "veiculo_visitante",
           "veiculo_visitante.id",
           "=",
-          `${TABELA_VISITANTES}.veiculo_visitante_id`
+          `${TABELA_VISITANTES}.veiculo_visitante_id`,
         )
         .leftJoin(
           "cor_veiculo_visitante",
           "cor_veiculo_visitante.id",
           "=",
-          "veiculo_visitante.cor_veiculo_visitante_id"
+          "veiculo_visitante.cor_veiculo_visitante_id",
         )
         .leftJoin(
           "tipo_veiculo_visitante",
           "tipo_veiculo_visitante.id",
           "=",
-          "veiculo_visitante.tipo_veiculo_visitante_id"
+          "veiculo_visitante.tipo_veiculo_visitante_id",
         )
-        .where(`${TABELA_VISITANTES}.id`, visitante.id)
+        .where(`${TABELA_VISITANTES}.id`, visitanteId)
         .select([
           `${TABELA_VISITANTES}.*`,
-          "empresa_visitante.nome as empresa_nome",
-          "setor_visitante.nome as setor_nome",
-          "funcao_visitante.nome as funcao_nome",
+          "empresa_visitante.nome as empresa",
+          "setor_visitante.nome as setor",
+          "funcao_visitante.nome as funcao",
           "veiculo_visitante.placa_veiculo",
           "cor_veiculo_visitante.nome as cor_veiculo",
           "tipo_veiculo_visitante.nome as tipo_veiculo",
         ])
         .first();
 
-      // Emite evento Socket.IO com dados completos incluindo nomes
-      io.to("global").emit("visitante:created", {
-        ...visitanteCompleto,
-        empresa: visitanteCompleto.empresa_nome,
-        setor: visitanteCompleto.setor_nome,
-        funcao: visitanteCompleto.funcao_nome,
+      // Log para debug
+      console.log("📤 Emitindo via Socket.IO:", {
+        id: visitanteCompleto.id,
+        nome: visitanteCompleto.nome,
+        empresa: visitanteCompleto.empresa,
+        setor: visitanteCompleto.setor,
       });
 
+      // Emite evento Socket.IO com dados completos
+      io.to("global").emit("visitante:created", visitanteCompleto);
+
       return response.status(201).json({
-        id: visitante.id,
+        id: visitanteId,
         message: "Visitante cadastrado com sucesso",
       });
     } catch (error) {
@@ -295,37 +311,37 @@ module.exports = {
           "empresa_visitante",
           "empresa_visitante.id",
           "=",
-          `${TABELA_VISITANTES}.empresa_id`
+          `${TABELA_VISITANTES}.empresa_id`,
         )
         .leftJoin(
           "setor_visitante",
           "setor_visitante.id",
           "=",
-          `${TABELA_VISITANTES}.setor_id`
+          `${TABELA_VISITANTES}.setor_id`,
         )
         .leftJoin(
           "funcao_visitante",
           "funcao_visitante.id",
           "=",
-          `${TABELA_VISITANTES}.funcao_visitante_id`
+          `${TABELA_VISITANTES}.funcao_visitante_id`,
         )
         .leftJoin(
           "veiculo_visitante",
           "veiculo_visitante.id",
           "=",
-          `${TABELA_VISITANTES}.veiculo_visitante_id`
+          `${TABELA_VISITANTES}.veiculo_visitante_id`,
         )
         .leftJoin(
           "cor_veiculo_visitante",
           "cor_veiculo_visitante.id",
           "=",
-          "veiculo_visitante.cor_veiculo_visitante_id"
+          "veiculo_visitante.cor_veiculo_visitante_id",
         )
         .leftJoin(
           "tipo_veiculo_visitante",
           "tipo_veiculo_visitante.id",
           "=",
-          "veiculo_visitante.tipo_veiculo_visitante_id"
+          "veiculo_visitante.tipo_veiculo_visitante_id",
         )
         .where(`${TABELA_VISITANTES}.id`, id)
         .select(
@@ -339,7 +355,7 @@ module.exports = {
           "veiculo_visitante.cor_veiculo_visitante_id",
           "veiculo_visitante.tipo_veiculo_visitante_id",
           "cor_veiculo_visitante.nome as cor_veiculo",
-          "tipo_veiculo_visitante.nome as tipo_veiculo"
+          "tipo_veiculo_visitante.nome as tipo_veiculo",
         )
         .first();
 
@@ -375,6 +391,39 @@ module.exports = {
         code: "SHOW_ERROR",
         details:
           process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // VERIFICAR SE CPF JÁ EXISTE
+  // GET /cadastro-visitantes/verificar-cpf/:cpf
+  // ═══════════════════════════════════════════════════════════════
+  async verificarCpf(request, response) {
+    const { cpf } = request.params;
+
+    try {
+      const visitante = await connection(TABELA_VISITANTES)
+        .where("cpf", cpf)
+        .select("id", "nome", "cpf")
+        .first();
+
+      if (visitante) {
+        return response.json({
+          existe: true,
+          nome: visitante.nome,
+          id: visitante.id,
+        });
+      }
+
+      return response.status(404).json({
+        existe: false,
+      });
+    } catch (error) {
+      console.error("❌ Erro ao verificar CPF:", error);
+      return response.status(500).json({
+        error: "Erro ao verificar CPF.",
+        code: "VERIFY_CPF_ERROR",
       });
     }
   },
@@ -438,7 +487,7 @@ module.exports = {
           "imagem2",
           "imagem3",
           "usuario_id",
-          "veiculo_visitante_id"
+          "veiculo_visitante_id",
         )
         .first();
 
@@ -531,57 +580,52 @@ module.exports = {
           "empresa_visitante",
           "empresa_visitante.id",
           "=",
-          `${TABELA_VISITANTES}.empresa_id`
+          `${TABELA_VISITANTES}.empresa_id`,
         )
         .leftJoin(
           "setor_visitante",
           "setor_visitante.id",
           "=",
-          `${TABELA_VISITANTES}.setor_id`
+          `${TABELA_VISITANTES}.setor_id`,
         )
         .leftJoin(
           "funcao_visitante",
           "funcao_visitante.id",
           "=",
-          `${TABELA_VISITANTES}.funcao_visitante_id`
+          `${TABELA_VISITANTES}.funcao_visitante_id`,
         )
         .leftJoin(
           "veiculo_visitante",
           "veiculo_visitante.id",
           "=",
-          `${TABELA_VISITANTES}.veiculo_visitante_id`
+          `${TABELA_VISITANTES}.veiculo_visitante_id`,
         )
         .leftJoin(
           "cor_veiculo_visitante",
           "cor_veiculo_visitante.id",
           "=",
-          "veiculo_visitante.cor_veiculo_visitante_id"
+          "veiculo_visitante.cor_veiculo_visitante_id",
         )
         .leftJoin(
           "tipo_veiculo_visitante",
           "tipo_veiculo_visitante.id",
           "=",
-          "veiculo_visitante.tipo_veiculo_visitante_id"
+          "veiculo_visitante.tipo_veiculo_visitante_id",
         )
         .where(`${TABELA_VISITANTES}.id`, id)
         .select([
           `${TABELA_VISITANTES}.*`,
-          "empresa_visitante.nome as empresa_nome",
-          "setor_visitante.nome as setor_nome",
-          "funcao_visitante.nome as funcao_nome",
+          "empresa_visitante.nome as empresa",
+          "setor_visitante.nome as setor",
+          "funcao_visitante.nome as funcao",
           "veiculo_visitante.placa_veiculo",
           "cor_veiculo_visitante.nome as cor_veiculo",
           "tipo_veiculo_visitante.nome as tipo_veiculo",
         ])
         .first();
 
-      // Emite evento Socket.IO com dados completos incluindo nomes
-      io.to("global").emit("visitante:updated", {
-        ...visitanteAtualizado,
-        empresa: visitanteAtualizado.empresa_nome,
-        setor: visitanteAtualizado.setor_nome,
-        funcao: visitanteAtualizado.funcao_nome,
-      });
+      // Emite evento Socket.IO com dados completos
+      io.to("global").emit("visitante:updated", visitanteAtualizado);
 
       return response.json({
         message: "Cadastro atualizado com sucesso.",
@@ -633,7 +677,7 @@ module.exports = {
 
       console.log(
         `✅ Visitante ${bloqueado ? "bloqueado" : "desbloqueado"}:`,
-        id
+        id,
       );
 
       // Busca visitante atualizado
@@ -738,37 +782,37 @@ module.exports = {
           "empresa_visitante",
           "empresa_visitante.id",
           "=",
-          `${TABELA_VISITANTES}.empresa_id`
+          `${TABELA_VISITANTES}.empresa_id`,
         )
         .leftJoin(
           "setor_visitante",
           "setor_visitante.id",
           "=",
-          `${TABELA_VISITANTES}.setor_id`
+          `${TABELA_VISITANTES}.setor_id`,
         )
         .leftJoin(
           "funcao_visitante",
           "funcao_visitante.id",
           "=",
-          `${TABELA_VISITANTES}.funcao_visitante_id`
+          `${TABELA_VISITANTES}.funcao_visitante_id`,
         )
         .leftJoin(
           "veiculo_visitante",
           "veiculo_visitante.id",
           "=",
-          `${TABELA_VISITANTES}.veiculo_visitante_id`
+          `${TABELA_VISITANTES}.veiculo_visitante_id`,
         )
         .leftJoin(
           "cor_veiculo_visitante",
           "cor_veiculo_visitante.id",
           "=",
-          "veiculo_visitante.cor_veiculo_visitante_id"
+          "veiculo_visitante.cor_veiculo_visitante_id",
         )
         .leftJoin(
           "tipo_veiculo_visitante",
           "tipo_veiculo_visitante.id",
           "=",
-          "veiculo_visitante.tipo_veiculo_visitante_id"
+          "veiculo_visitante.tipo_veiculo_visitante_id",
         )
         .where(`${TABELA_VISITANTES}.id`, id)
         .select(
@@ -782,7 +826,7 @@ module.exports = {
           "funcao_visitante.nome as funcao",
           "empresa_visitante.nome as empresa",
           "setor_visitante.nome as setor",
-          `${TABELA_VISITANTES}.avatar_imagem`
+          `${TABELA_VISITANTES}.avatar_imagem`,
         )
         .first();
 
@@ -846,31 +890,31 @@ module.exports = {
           "veiculo_visitante",
           "veiculo_visitante.id",
           "=",
-          `${TABELA_VISITANTES}.veiculo_visitante_id`
+          `${TABELA_VISITANTES}.veiculo_visitante_id`,
         )
         .leftJoin(
           "cor_veiculo_visitante",
           "cor_veiculo_visitante.id",
           "=",
-          "veiculo_visitante.cor_veiculo_visitante_id"
+          "veiculo_visitante.cor_veiculo_visitante_id",
         )
         .leftJoin(
           "tipo_veiculo_visitante",
           "tipo_veiculo_visitante.id",
           "=",
-          "veiculo_visitante.tipo_veiculo_visitante_id"
+          "veiculo_visitante.tipo_veiculo_visitante_id",
         )
         .leftJoin(
           "funcao_visitante",
           "funcao_visitante.id",
           "=",
-          `${TABELA_VISITANTES}.funcao_visitante_id`
+          `${TABELA_VISITANTES}.funcao_visitante_id`,
         )
         .where(function () {
           this.where("nome", "ILIKE", `%${query}%`).orWhere(
             "cpf",
             "ILIKE",
-            `%${query}%`
+            `%${query}%`,
           );
         })
         .select([
@@ -926,7 +970,7 @@ module.exports = {
 
       if (!podeFazer) {
         console.log(
-          `❌ Tentativa de bloqueio não autorizada por: ${usuario_id}`
+          `❌ Tentativa de bloqueio não autorizada por: ${usuario_id}`,
         );
         return response.status(403).json({
           error: "Você não tem permissão para bloquear cadastros.",
@@ -964,7 +1008,7 @@ module.exports = {
       }
 
       console.log(
-        `✅ Cadastro ${bloqueado ? "bloqueado" : "desbloqueado"} com sucesso`
+        `✅ Cadastro ${bloqueado ? "bloqueado" : "desbloqueado"} com sucesso`,
       );
 
       return response.json({
@@ -993,37 +1037,37 @@ module.exports = {
           "empresa_visitante",
           "empresa_visitante.id",
           "=",
-          `${TABELA_VISITANTES}.empresa_id`
+          `${TABELA_VISITANTES}.empresa_id`,
         )
         .leftJoin(
           "setor_visitante",
           "setor_visitante.id",
           "=",
-          `${TABELA_VISITANTES}.setor_id`
+          `${TABELA_VISITANTES}.setor_id`,
         )
         .leftJoin(
           "funcao_visitante",
           "funcao_visitante.id",
           "=",
-          `${TABELA_VISITANTES}.funcao_visitante_id`
+          `${TABELA_VISITANTES}.funcao_visitante_id`,
         )
         .leftJoin(
           "veiculo_visitante",
           "veiculo_visitante.id",
           "=",
-          `${TABELA_VISITANTES}.veiculo_visitante_id`
+          `${TABELA_VISITANTES}.veiculo_visitante_id`,
         )
         .leftJoin(
           "cor_veiculo_visitante",
           "cor_veiculo_visitante.id",
           "=",
-          "veiculo_visitante.cor_veiculo_visitante_id"
+          "veiculo_visitante.cor_veiculo_visitante_id",
         )
         .leftJoin(
           "tipo_veiculo_visitante",
           "tipo_veiculo_visitante.id",
           "=",
-          "veiculo_visitante.tipo_veiculo_visitante_id"
+          "veiculo_visitante.tipo_veiculo_visitante_id",
         )
         .where(`${TABELA_VISITANTES}.id`, id)
         .select(
@@ -1037,7 +1081,7 @@ module.exports = {
           "funcao_visitante.nome as funcao",
           "empresa_visitante.nome as empresa",
           "setor_visitante.nome as setor",
-          `${TABELA_VISITANTES}.avatar_imagem`
+          `${TABELA_VISITANTES}.avatar_imagem`,
         )
         .first();
 

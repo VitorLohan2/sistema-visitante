@@ -31,7 +31,7 @@ import CadastrarVisitante from "../pages/CadastrarVisitante";
 import Visitante from "../pages/Visitante";
 import HistoricoVisitante from "../pages/HistoricoVisitante";
 import EditarCadastroVisitante from "../pages/EditarCadastroVisitante";
-import VisualizarVisitante from "../pages/VisualizarVisitante";
+import VisualizarCadastroVisitante from "../pages/VisualizarCadastroVisitante";
 
 // Páginas protegidas - Tickets e Suporte
 import TicketDashboard from "../pages/TicketDashboard";
@@ -137,7 +137,7 @@ export default function Routes() {
           path="/cadastro-visitantes/view/:id"
           permissao="cadastro_visualizar"
         >
-          <VisualizarVisitante />
+          <VisualizarCadastroVisitante />
         </ProtectedRoute>
 
         {/* ════════════════════════════════════════════════════════════ */}

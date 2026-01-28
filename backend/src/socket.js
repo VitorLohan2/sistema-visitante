@@ -1,9 +1,13 @@
 // backend/src/socket.js
 let io;
 
+// Mapa de usuários online (conectados via socket)
+const usuariosOnline = new Map();
+
 function init(server) {
   const { Server } = require("socket.io");
   const { verificarToken } = require("./utils/jwt");
+  const { setSocketIO } = require("./middleware/requestMonitor");
 
   io = new Server(server, {
     cors: {
@@ -11,6 +15,9 @@ function init(server) {
       methods: ["GET", "POST", "PUT", "DELETE"],
     },
   });
+
+  // Passa a instância do io para o requestMonitor
+  setSocketIO(io);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // NAMESPACE PRINCIPAL (/) - USUÁRIOS AUTENTICADOS
@@ -44,6 +51,23 @@ function init(server) {
       socket.empresaId = usuario.empresa_id;
 
       console.log(`✅ Socket autenticado: ${usuario.nome} (${usuario.email})`);
+
+      // ✅ REGISTRAR USUÁRIO ONLINE
+      const clientIP =
+        socket.handshake.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
+        socket.handshake.headers["x-real-ip"] ||
+        socket.handshake.address ||
+        "unknown";
+
+      usuariosOnline.set(socket.id, {
+        socketId: socket.id,
+        userId: usuario.id,
+        userName: usuario.nome,
+        userEmail: usuario.email,
+        ip: clientIP,
+        connectedAt: new Date(),
+        isAdmin: usuario.isAdmin,
+      });
 
       // Entra na sala GLOBAL compartilhada
       socket.join("global");
@@ -296,6 +320,9 @@ function init(server) {
     // 🆕 SOLICITAR LISTA DE EQUIPE ONLINE
     socket.on("disconnect", async () => {
       console.log("🔴 Socket desconectado:", socket.id);
+
+      // ✅ REMOVER USUÁRIO DO MAPA DE ONLINE
+      usuariosOnline.delete(socket.id);
 
       // ✅ SE FOR ADMIN DE TI, ATUALIZAR EQUIPE ONLINE
       if (socket.isAdmin && socket.setorId === 7) {
@@ -551,10 +578,79 @@ function emitirParaVisitante(conversaId, evento, dados) {
   }
 }
 
+/**
+ * Retorna lista de usuários online (conectados via socket)
+ * Agrupa por userId para evitar duplicatas (mesmo usuário em múltiplas abas)
+ */
+function getUsuariosOnline() {
+  const usuariosPorId = new Map();
+
+  for (const [socketId, userData] of usuariosOnline) {
+    const existente = usuariosPorId.get(userData.userId);
+
+    if (!existente) {
+      usuariosPorId.set(userData.userId, {
+        userId: userData.userId,
+        userName: userData.userName,
+        userEmail: userData.userEmail,
+        ip: userData.ip,
+        connectedAt: userData.connectedAt,
+        isAdmin: userData.isAdmin,
+        socketCount: 1, // Número de abas/conexões
+      });
+    } else {
+      // Usuário já existe, incrementa contador de conexões
+      existente.socketCount++;
+      // Mantém a conexão mais recente
+      if (userData.connectedAt > existente.connectedAt) {
+        existente.connectedAt = userData.connectedAt;
+        existente.ip = userData.ip;
+      }
+    }
+  }
+
+  return Array.from(usuariosPorId.values());
+}
+
+/**
+ * Retorna IPs únicos de usuários logados
+ */
+function getIPsDeUsuariosLogados() {
+  const ipsPorUsuario = new Map();
+
+  for (const [socketId, userData] of usuariosOnline) {
+    if (!ipsPorUsuario.has(userData.ip)) {
+      ipsPorUsuario.set(userData.ip, {
+        ip: userData.ip,
+        users: new Set(),
+        lastActivity: userData.connectedAt,
+      });
+    }
+
+    const ipData = ipsPorUsuario.get(userData.ip);
+    ipData.users.add(
+      userData.userName || userData.userEmail || userData.userId,
+    );
+
+    if (userData.connectedAt > ipData.lastActivity) {
+      ipData.lastActivity = userData.connectedAt;
+    }
+  }
+
+  return Array.from(ipsPorUsuario.values()).map((item) => ({
+    ip: item.ip,
+    usersCount: item.users.size,
+    users: Array.from(item.users),
+    lastActivity: item.lastActivity,
+  }));
+}
+
 module.exports = {
   init,
   getIo,
   emitirEquipeOnline,
   initVisitorNamespace,
   emitirParaVisitante,
+  getUsuariosOnline,
+  getIPsDeUsuariosLogados,
 };

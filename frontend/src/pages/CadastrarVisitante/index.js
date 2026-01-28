@@ -261,6 +261,39 @@ export default function CadastrarVisitante() {
     return match ? `${match[1]}.${match[2]}.${match[3]}-${match[4]}` : cleaned;
   };
 
+  // Validação de CPF (verifica dígitos verificadores)
+  const validarCPF = (cpf) => {
+    const cpfLimpo = cpf.replace(/\D/g, "");
+
+    // Verifica se tem 11 dígitos
+    if (cpfLimpo.length !== 11) return false;
+
+    // Verifica se não é uma sequência de números iguais
+    if (/^(\d)\1{10}$/.test(cpfLimpo)) return false;
+
+    // Valida primeiro dígito verificador
+    let soma = 0;
+    for (let i = 0; i < 9; i++) {
+      soma += parseInt(cpfLimpo.charAt(i)) * (10 - i);
+    }
+    let resto = soma % 11;
+    let digitoVerificador1 = resto < 2 ? 0 : 11 - resto;
+
+    if (digitoVerificador1 !== parseInt(cpfLimpo.charAt(9))) return false;
+
+    // Valida segundo dígito verificador
+    soma = 0;
+    for (let i = 0; i < 10; i++) {
+      soma += parseInt(cpfLimpo.charAt(i)) * (11 - i);
+    }
+    resto = soma % 11;
+    let digitoVerificador2 = resto < 2 ? 0 : 11 - resto;
+
+    if (digitoVerificador2 !== parseInt(cpfLimpo.charAt(10))) return false;
+
+    return true;
+  };
+
   const formatTelefone = (value) => {
     const cleaned = value.replace(/\D/g, "").slice(0, 11);
     if (cleaned.length === 11) {
@@ -317,9 +350,50 @@ export default function CadastrarVisitante() {
     setForm((prev) => ({ ...prev, [name]: newValue }));
   };
 
-  const handleCpfChange = (e) => {
+  const [cpfError, setCpfError] = useState("");
+  const [checkingCpf, setCheckingCpf] = useState(false);
+
+  const handleCpfChange = async (e) => {
     const formatted = formatCPF(e.target.value);
     setForm((prev) => ({ ...prev, cpf: formatted }));
+
+    // Verifica se o CPF está completo (14 caracteres com formatação)
+    if (formatted.length === 14) {
+      // Primeiro valida se o CPF é válido (não fake)
+      if (!validarCPF(formatted)) {
+        setCpfError("CPF inválido!");
+        setCheckingCpf(false);
+        return;
+      }
+
+      setCheckingCpf(true);
+      setCpfError("");
+
+      try {
+        // Remove a formatação para enviar ao backend
+        const cpfNumeros = formatted.replace(/\D/g, "");
+
+        // Verifica se o CPF já existe no banco
+        const response = await api.get(
+          `/cadastro-visitantes/verificar-cpf/${cpfNumeros}`,
+        );
+
+        if (response.data.existe) {
+          setCpfError(`CPF já cadastrado para: ${response.data.nome}`);
+        }
+      } catch (err) {
+        // Se retornar 404, significa que o CPF não existe (OK)
+        if (err.response?.status === 404) {
+          setCpfError("");
+        } else {
+          logger.error("Erro ao verificar CPF:", err);
+        }
+      } finally {
+        setCheckingCpf(false);
+      }
+    } else {
+      setCpfError("");
+    }
   };
 
   const handleTelefoneChange = (e) => {
@@ -488,6 +562,10 @@ export default function CadastrarVisitante() {
         }
         if (cpfClean.length !== 11) {
           alert("CPF inválido. Deve conter 11 dígitos.");
+          return false;
+        }
+        if (cpfError) {
+          alert("CPF já cadastrado no sistema!");
           return false;
         }
         if (!form.empresa_id || !form.setor_id) {
@@ -792,15 +870,34 @@ export default function CadastrarVisitante() {
 
                   <div className="form-group">
                     <label className="form-label required">CPF</label>
-                    <input
-                      type="text"
-                      name="cpf"
-                      className="form-input"
-                      placeholder="000.000.000-00"
-                      value={form.cpf}
-                      onChange={handleCpfChange}
-                      maxLength={14}
-                    />
+                    <div style={{ position: "relative" }}>
+                      <input
+                        type="text"
+                        name="cpf"
+                        className={`form-input ${cpfError ? "error" : ""}`}
+                        placeholder="000.000.000-00"
+                        value={form.cpf}
+                        onChange={handleCpfChange}
+                        maxLength={14}
+                        style={{ paddingRight: checkingCpf ? "40px" : "12px" }}
+                      />
+                      {checkingCpf && (
+                        <span
+                          style={{
+                            position: "absolute",
+                            right: "12px",
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            color: "#999",
+                          }}
+                        >
+                          Verificando...
+                        </span>
+                      )}
+                    </div>
+                    {cpfError && (
+                      <span className="error-message">{cpfError}</span>
+                    )}
                   </div>
                 </div>
 

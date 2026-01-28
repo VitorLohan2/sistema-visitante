@@ -260,6 +260,7 @@ export default function Visitante() {
                   <th>Nome</th>
                   <th>CPF</th>
                   <th>Empresa</th>
+                  <th>Destino</th>
                   <th>Setor</th>
                   <th>Função</th>
                   <th className="th-center">Placa</th>
@@ -278,6 +279,20 @@ export default function Visitante() {
                     <td data-label="CPF">{visitor.cpf || "Não informado"}</td>
                     <td data-label="Empresa">
                       {visitor.empresa || "Não informado"}
+                    </td>
+                    <td
+                      data-label="Destino"
+                      style={{
+                        fontWeight: "bold",
+                        color:
+                          visitor.empresa_destino === "DIME"
+                            ? "green"
+                            : visitor.empresa_destino === "GUEPAR"
+                              ? "blue"
+                              : "inherit",
+                      }}
+                    >
+                      {visitor.empresa_destino || "-"}
                     </td>
                     <td data-label="Setor">
                       {visitor.setor || "Não informado"}
@@ -364,5 +379,3 @@ export default function Visitante() {
     </div>
   );
 }
-
-

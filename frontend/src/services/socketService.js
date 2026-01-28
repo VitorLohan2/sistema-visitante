@@ -62,6 +62,10 @@ const eventCallbacks = {
   "ronda:posicao-atualizada": [],
   "ronda:checkpoint-registrado": [],
   "ronda:encerrada": [],
+  // Patch Notes (Atualizações do Sistema)
+  "patch-note:created": [],
+  "patch-note:updated": [],
+  "patch-note:deleted": [],
   connected: [],
   disconnected: [],
   error: [],
@@ -151,16 +155,12 @@ export function connect(token) {
   socket.on("visitante:created", (data) => {
     logger.log("📥 Novo visitante recebido via Socket:", data);
 
-    // Busca empresas e setores do cache para mapear nomes
-    const empresas = getCache("empresas") || [];
-    const setores = getCache("setores") || [];
-
+    // O backend já envia empresa e setor preenchidos, não precisa buscar do cache
     const visitanteCompleto = {
       ...data,
-      empresa:
-        empresas.find((e) => e.id === data.empresa_id)?.nome || "Não informado",
-      setor:
-        setores.find((s) => s.id === data.setor_id)?.nome || "Não informado",
+      // Usa o valor que vem do backend, se não existir aí sim busca no cache
+      empresa: data.empresa || "Não informado",
+      setor: data.setor || "Não informado",
     };
 
     // Atualiza o cache
@@ -173,19 +173,11 @@ export function connect(token) {
   socket.on("visitante:updated", (data) => {
     logger.log("📝 Visitante atualizado via Socket:", data);
 
-    const empresas = getCache("empresas") || [];
-    const setores = getCache("setores") || [];
-
+    // O backend já envia empresa e setor preenchidos, não precisa buscar do cache
     const dadosAtualizados = {
       ...data,
-      empresa:
-        empresas.find((e) => e.id === data.empresa_id)?.nome ||
-        data.empresa ||
-        "Não informado",
-      setor:
-        setores.find((s) => s.id === data.setor_id)?.nome ||
-        data.setor ||
-        "Não informado",
+      empresa: data.empresa || "Não informado",
+      setor: data.setor || "Não informado",
     };
 
     // Atualiza o cache
@@ -514,6 +506,39 @@ export function connect(token) {
   socket.on("ronda:encerrada", (data) => {
     logger.log("🔴 Ronda encerrada via Socket:", data);
     eventCallbacks["ronda:encerrada"].forEach((cb) => cb(data));
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // EVENTOS DE PATCH NOTES (ATUALIZAÇÕES DO SISTEMA)
+  // ═══════════════════════════════════════════════════════════════
+  socket.on("patch-note:created", (data) => {
+    logger.log("📢 Novo patch note via Socket:", data);
+    const patchNotes = getCache("patchNotes") || [];
+    if (!patchNotes.find((p) => p.id === data.id)) {
+      const novosPatchNotes = [data, ...patchNotes].sort(
+        (a, b) => new Date(b.data_lancamento) - new Date(a.data_lancamento),
+      );
+      setCache("patchNotes", novosPatchNotes);
+    }
+    eventCallbacks["patch-note:created"].forEach((cb) => cb(data));
+  });
+
+  socket.on("patch-note:updated", (data) => {
+    logger.log("📝 Patch note atualizado via Socket:", data);
+    const patchNotes = getCache("patchNotes") || [];
+    const novosPatchNotes = patchNotes.map((p) =>
+      p.id === data.id ? { ...p, ...data } : p,
+    );
+    setCache("patchNotes", novosPatchNotes);
+    eventCallbacks["patch-note:updated"].forEach((cb) => cb(data));
+  });
+
+  socket.on("patch-note:deleted", (data) => {
+    logger.log("🗑️ Patch note removido via Socket:", data);
+    const patchNotes = getCache("patchNotes") || [];
+    const novosPatchNotes = patchNotes.filter((p) => p.id !== data.id);
+    setCache("patchNotes", novosPatchNotes);
+    eventCallbacks["patch-note:deleted"].forEach((cb) => cb(data));
   });
 
   return socket;

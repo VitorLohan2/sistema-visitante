@@ -20,6 +20,7 @@ import { useDataLoader } from "../../hooks/useDataLoader";
 import MenuDaBarraLateral from "../../components/MenuDaBarraLateral";
 import Loading from "../../components/Loading";
 import api from "../../services/api";
+import * as socketService from "../../services/socketService";
 import "./styles.css";
 
 export default function Home() {
@@ -55,12 +56,52 @@ export default function Home() {
     data_lancamento: new Date().toISOString().split("T")[0],
   });
 
-  // Status do sistema (pode ser obtido de uma API no futuro)
-  const [systemStatus] = useState({
+  // Status do sistema - dados reais
+  const [systemStatus, setSystemStatus] = useState({
     status: "ONLINE",
-    uptime: "99.9%",
-    lastUpdate: "15/01/2026",
+    uptime: "0%",
+    lastUpdate: "Carregando...",
   });
+
+  // Versão do sistema
+  const [systemVersion, setSystemVersion] = useState("0.0.0");
+
+  // Carrega informações do sistema (versão, último commit)
+  useEffect(() => {
+    async function loadSystemInfo() {
+      try {
+        // Busca informações do sistema (versão e último commit)
+        const infoRes = await api.get("/system/info");
+        if (infoRes.data) {
+          setSystemVersion(infoRes.data.version || "0.0.0");
+
+          // Formata a data do último commit
+          if (infoRes.data.lastCommitDate) {
+            const commitDate = new Date(infoRes.data.lastCommitDate);
+            setSystemStatus((prev) => ({
+              ...prev,
+              lastUpdate: commitDate.toLocaleDateString("pt-BR"),
+            }));
+          }
+        }
+
+        // Busca estatísticas de permissões do usuário
+        const statsRes = await api.get("/system/permissions-stats");
+        if (statsRes.data) {
+          setSystemStatus((prev) => ({
+            ...prev,
+            uptime: `${statsRes.data.porcentagem}%`,
+          }));
+        }
+      } catch (err) {
+        logger.error("Erro ao carregar informações do sistema:", err);
+      }
+    }
+
+    if (user?.id) {
+      loadSystemInfo();
+    }
+  }, [user?.id]);
 
   // Sincroniza patchNotes do cache quando carregados
   useEffect(() => {
@@ -68,6 +109,45 @@ export default function Home() {
       setPatchNotes(cachedPatchNotes);
     }
   }, [cachedPatchNotes]);
+
+  // ═══════════════════════════════════════════════════════════════
+  // SOCKET.IO - Atualização em tempo real dos Patch Notes
+  // ═══════════════════════════════════════════════════════════════
+  useEffect(() => {
+    // Listener: Novo patch note criado
+    const unsubCreated = socketService.on("patch-note:created", (patchNote) => {
+      logger.log("🟢 Socket: Novo patch note recebido", patchNote.id);
+      setPatchNotes((prev) => {
+        // Evita duplicatas
+        if (prev.find((p) => p.id === patchNote.id)) return prev;
+        // Adiciona no início e ordena por data
+        return [patchNote, ...prev].sort(
+          (a, b) => new Date(b.data_lancamento) - new Date(a.data_lancamento),
+        );
+      });
+    });
+
+    // Listener: Patch note atualizado
+    const unsubUpdated = socketService.on("patch-note:updated", (patchNote) => {
+      logger.log("🔵 Socket: Patch note atualizado", patchNote.id);
+      setPatchNotes((prev) =>
+        prev.map((p) => (p.id === patchNote.id ? patchNote : p)),
+      );
+    });
+
+    // Listener: Patch note deletado
+    const unsubDeleted = socketService.on("patch-note:deleted", (data) => {
+      logger.log("🔴 Socket: Patch note deletado", data.id);
+      setPatchNotes((prev) => prev.filter((p) => p.id !== data.id));
+    });
+
+    // Cleanup ao desmontar
+    return () => {
+      unsubCreated && unsubCreated();
+      unsubUpdated && unsubUpdated();
+      unsubDeleted && unsubDeleted();
+    };
+  }, []);
 
   // Atualiza o relógio a cada segundo
   useEffect(() => {
@@ -192,10 +272,11 @@ export default function Home() {
     try {
       if (editingPatchNote) {
         await api.put(`/patch-notes/${editingPatchNote.id}`, patchNoteForm);
+        // Socket.IO vai sincronizar automaticamente
       } else {
         await api.post("/patch-notes", patchNoteForm);
+        // Socket.IO vai sincronizar automaticamente
       }
-      // Socket.IO vai sincronizar automaticamente via cache
       handleCloseModal();
     } catch (err) {
       logger.error("Erro ao salvar atualização:", err);
@@ -213,10 +294,12 @@ export default function Home() {
 
     try {
       await api.delete(`/patch-notes/${id}`);
-      // Socket.IO vai sincronizar automaticamente via cache
+      // Socket.IO vai sincronizar automaticamente
     } catch (err) {
       logger.error("Erro ao excluir atualização:", err);
-      alert("Erro ao excluir atualização.");
+      const mensagem =
+        err.response?.data?.error || "Erro ao excluir atualização.";
+      alert(mensagem);
     }
   };
 
@@ -284,7 +367,7 @@ export default function Home() {
               </div>
               <div className="status-details">
                 <div className="status-item">
-                  <span className="label">Disponibilidade</span>
+                  <span className="label">Nível de Acesso</span>
                   <span className="value">{systemStatus.uptime}</span>
                 </div>
                 <div className="status-item">
@@ -322,7 +405,7 @@ export default function Home() {
                         <span className="update-version">v{note.versao}</span>
                         <span className="update-date">
                           {new Date(note.data_lancamento).toLocaleDateString(
-                            "pt-BR"
+                            "pt-BR",
                           )}
                         </span>
                         {podeGerenciarPatchNotes && (
@@ -401,7 +484,7 @@ export default function Home() {
         {/* Footer com versão */}
         <footer className="home-footer">
           <p>
-            Sistema de Gestão de Visitantes • Versão 2.5.0 •{" "}
+            Sistema de Gestão de Visitantes • Versão {systemVersion} •{" "}
             {new Date().getFullYear()}
           </p>
         </footer>
@@ -530,5 +613,3 @@ export default function Home() {
     </div>
   );
 }
-
-

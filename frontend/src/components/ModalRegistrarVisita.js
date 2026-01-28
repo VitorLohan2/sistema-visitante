@@ -1,6 +1,13 @@
 // src/components/ModalRegistrarVisita.js
 import React, { useState, useEffect } from "react";
-import { FiX, FiCheck, FiUser, FiTruck, FiBriefcase } from "react-icons/fi";
+import {
+  FiX,
+  FiCheck,
+  FiUser,
+  FiTruck,
+  FiBriefcase,
+  FiTarget,
+} from "react-icons/fi";
 import api from "../services/api";
 import logger from "../utils/logger";
 import "../styles/ModalRegistrarVisita.css";
@@ -18,12 +25,14 @@ export default function ModalRegistrarVisita({
 
   // Campos de edição rápida
   const [empresa, setEmpresa] = useState("");
+  const [empresaAtribuida, setEmpresaAtribuida] = useState("");
   const [placaVeiculo, setPlacaVeiculo] = useState("");
   const [corVeiculo, setCorVeiculo] = useState("");
   const [tipoVeiculo, setTipoVeiculo] = useState("");
 
   // Listas de opções
   const [empresas, setEmpresas] = useState([]);
+  const [empresasAtribuidas, setEmpresasAtribuidas] = useState([]);
   const [coresVeiculos, setCoresVeiculos] = useState([]);
   const [tiposVeiculos, setTiposVeiculos] = useState([]);
 
@@ -34,6 +43,7 @@ export default function ModalRegistrarVisita({
       // Preenche com dados do visitante se existir
       if (visitante) {
         setEmpresa(visitante.empresa || "");
+        setEmpresaAtribuida(visitante.empresa_atribuida_id || "");
         setPlacaVeiculo(visitante.placa_veiculo || "");
         setCorVeiculo(visitante.cor_veiculo || "");
         setTipoVeiculo(visitante.tipo_veiculo || "");
@@ -43,12 +53,15 @@ export default function ModalRegistrarVisita({
 
   const loadOptions = async () => {
     try {
-      const [empresasRes, coresRes, tiposRes] = await Promise.all([
-        api.get("/empresas-visitantes"),
-        api.get("/cores-veiculos-visitantes"),
-        api.get("/tipos-veiculos-visitantes"),
-      ]);
+      const [empresasRes, empresasAtribRes, coresRes, tiposRes] =
+        await Promise.all([
+          api.get("/empresas-visitantes"),
+          api.get("/empresas-atribuidas"),
+          api.get("/cores-veiculos-visitantes"),
+          api.get("/tipos-veiculos-visitantes"),
+        ]);
       setEmpresas(empresasRes.data);
+      setEmpresasAtribuidas(empresasAtribRes.data);
       setCoresVeiculos(coresRes.data);
       setTiposVeiculos(tiposRes.data);
     } catch (err) {
@@ -72,18 +85,33 @@ export default function ModalRegistrarVisita({
   if (!visible) return null;
 
   const handleConfirm = async () => {
-    if (selected && !isLoading) {
+    if (!selected) {
+      alert("Por favor, selecione um responsável.");
+      return;
+    }
+
+    if (!empresaAtribuida) {
+      alert("Por favor, selecione a empresa destino.");
+      return;
+    }
+
+    if (!isLoading) {
       setIsLoading(true);
       try {
         // Envia dados adicionais junto com responsável e observação
         await onConfirm(selected, observacao, {
           empresa,
+          empresa_atribuida_id: parseInt(empresaAtribuida),
           placa_veiculo: placaVeiculo,
           cor_veiculo: corVeiculo,
           tipo_veiculo: tipoVeiculo,
         });
       } catch (err) {
         logger.error("Erro ao confirmar visita:", err);
+        alert(
+          "Erro ao confirmar visita: " +
+            (err.response?.data?.error || err.message),
+        );
       } finally {
         setIsLoading(false);
       }
@@ -95,6 +123,7 @@ export default function ModalRegistrarVisita({
     setSelected("");
     setObservacao("");
     setEmpresa("");
+    setEmpresaAtribuida("");
     setPlacaVeiculo("");
     setCorVeiculo("");
     setTipoVeiculo("");
@@ -125,7 +154,9 @@ export default function ModalRegistrarVisita({
               <span>Autorização</span>
             </div>
             <div className="modal-form-group">
-              <label>Quem liberou a visita?</label>
+              <label>
+                Quem liberou a visita? <span style={{ color: "red" }}>*</span>
+              </label>
               <select
                 value={selected}
                 onChange={(e) => setSelected(e.target.value)}
@@ -140,14 +171,14 @@ export default function ModalRegistrarVisita({
             </div>
           </div>
 
-          {/* Seção Empresa */}
+          {/* Seção Empresa do Visitante (de onde vem) */}
           <div className="modal-section">
             <div className="modal-section-title">
               <FiBriefcase size={16} />
-              <span>Empresa</span>
+              <span>Empresa do Visitante</span>
             </div>
             <div className="modal-form-group">
-              <label>Empresa</label>
+              <label>De onde vem?</label>
               <select
                 value={empresa}
                 onChange={(e) => setEmpresa(e.target.value)}
@@ -155,6 +186,32 @@ export default function ModalRegistrarVisita({
                 <option value="">Selecione a empresa</option>
                 {empresas.map((emp) => (
                   <option key={emp.id} value={emp.nome}>
+                    {emp.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Seção Empresa Atribuída (para onde vai) */}
+          <div className="modal-section">
+            <div className="modal-section-title">
+              <FiTarget size={16} />
+              <span>Empresa Destino</span>
+            </div>
+            <div className="modal-form-group">
+              <label>
+                Para qual empresa está indo?{" "}
+                <span style={{ color: "red" }}>*</span>
+              </label>
+              <select
+                value={empresaAtribuida}
+                onChange={(e) => setEmpresaAtribuida(e.target.value)}
+                required
+              >
+                <option value="">Selecione a empresa destino</option>
+                {empresasAtribuidas.map((emp) => (
+                  <option key={emp.id} value={emp.id}>
                     {emp.nome}
                   </option>
                 ))}
@@ -227,7 +284,7 @@ export default function ModalRegistrarVisita({
           <button
             className="btn-primary"
             onClick={handleConfirm}
-            disabled={!selected || isLoading}
+            disabled={!selected || !empresaAtribuida || isLoading}
           >
             {isLoading ? (
               <>

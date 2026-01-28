@@ -387,6 +387,7 @@ export default function HistoricoVisitante() {
       Nome: visitor.nome || "Não informado",
       CPF: visitor.cpf || "Não informado",
       Empresa: visitor.empresa || "Não informado",
+      Destino: visitor.empresa_destino || "Não informado",
       Setor: visitor.setor || "Não informado",
       Função: visitor.funcao || "Não informado",
       Placa: visitor.placa_veiculo || "Não informado",
@@ -554,6 +555,7 @@ export default function HistoricoVisitante() {
                   <th>Nome</th>
                   <th>CPF</th>
                   <th>Empresa</th>
+                  <th>Destino</th>
                   <th>Setor</th>
                   <th>Função</th>
                   <th className="th-center">Placa</th>
@@ -580,6 +582,9 @@ export default function HistoricoVisitante() {
                       <td data-label="CPF">{visitor.cpf || "Não informado"}</td>
                       <td data-label="Empresa">
                         {visitor.empresa || "Não informado"}
+                      </td>
+                      <td data-label="Destino">
+                        {visitor.empresa_destino || "-"}
                       </td>
                       <td data-label="Setor">
                         {visitor.setor || "Não informado"}
@@ -710,5 +715,3 @@ export default function HistoricoVisitante() {
     </div>
   );
 }
-
-

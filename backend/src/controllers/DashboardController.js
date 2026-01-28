@@ -1,9 +1,17 @@
 const connection = require("../database/connection");
 
+// Timezone de Brasília
+const TIMEZONE_BRASILIA = "America/Sao_Paulo";
+
 module.exports = {
   // GET /dashboard/estatisticas-hoje
   async estatisticasHoje(request, response) {
     try {
+      // Primeiro, vamos verificar qual é o timezone do banco de dados
+      // para debug
+      const timezoneCheck = await connection.raw("SHOW timezone");
+      console.log("🕐 Timezone do PostgreSQL:", timezoneCheck.rows[0].TimeZone);
+
       // Total de visitantes cadastrados
       const totalVisitantesResult = await connection("cadastro_visitante")
         .count("id as total")
@@ -11,16 +19,17 @@ module.exports = {
       const totalVisitantes = parseInt(totalVisitantesResult?.total || 0);
 
       // Visitantes que entraram hoje (baseado em historico_visitante)
-      // A coluna correta é data_de_entrada
+      // Se a coluna for TIMESTAMP WITHOUT TIME ZONE, os dados já estão no horário local
+      // Usamos CURRENT_DATE que também usa o timezone da sessão
       const visitantesHojeResult = await connection("historico_visitante")
-        .whereRaw("DATE(data_de_entrada) = CURRENT_DATE")
+        .whereRaw(`DATE(data_de_entrada) = CURRENT_DATE`)
         .count("id as total")
         .first();
       const visitantesHoje = parseInt(visitantesHojeResult?.total || 0);
 
       // Cadastros feitos hoje (baseado em cadastro_visitante.criado_em)
       const cadastrosHojeResult = await connection("cadastro_visitante")
-        .whereRaw("DATE(criado_em) = CURRENT_DATE")
+        .whereRaw(`DATE(criado_em) = CURRENT_DATE`)
         .count("id as total")
         .first();
       const cadastrosHoje = parseInt(cadastrosHojeResult?.total || 0);
@@ -40,20 +49,25 @@ module.exports = {
       const tickets = parseInt(ticketsResult?.total || 0);
 
       // Visitantes por hora (entradas de hoje) - usando data_de_entrada
+      // Extrair a hora diretamente (sem conversão de timezone)
       const visitantesPorHoraRaw = await connection("historico_visitante")
-        .select(connection.raw("EXTRACT(HOUR FROM data_de_entrada) as hora"))
+        .select(connection.raw(`EXTRACT(HOUR FROM data_de_entrada) as hora`))
         .count("id as quantidade")
-        .whereRaw("DATE(data_de_entrada) = CURRENT_DATE")
-        .groupByRaw("EXTRACT(HOUR FROM data_de_entrada)")
+        .whereRaw(`DATE(data_de_entrada) = CURRENT_DATE`)
+        .groupByRaw(`EXTRACT(HOUR FROM data_de_entrada)`)
         .orderByRaw("hora");
 
       // Cadastros por hora - usando cadastro_visitante.criado_em
       const cadastrosPorHoraRaw = await connection("cadastro_visitante")
-        .select(connection.raw("EXTRACT(HOUR FROM criado_em) as hora"))
+        .select(connection.raw(`EXTRACT(HOUR FROM criado_em) as hora`))
         .count("id as quantidade")
-        .whereRaw("DATE(criado_em) = CURRENT_DATE")
-        .groupByRaw("EXTRACT(HOUR FROM criado_em)")
+        .whereRaw(`DATE(criado_em) = CURRENT_DATE`)
+        .groupByRaw(`EXTRACT(HOUR FROM criado_em)`)
         .orderByRaw("hora");
+
+      // Log para debug
+      console.log("📊 Visitantes por hora (raw):", visitantesPorHoraRaw);
+      console.log("📊 Cadastros por hora (raw):", cadastrosPorHoraRaw);
 
       // Formatar dados dos gráficos
       const visitantesPorHora = visitantesPorHoraRaw.map((item) => ({

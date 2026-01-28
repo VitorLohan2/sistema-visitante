@@ -115,6 +115,10 @@ router.use("/feedback", feedbackRoutes);
 // Patch Notes (atualizações do sistema)
 router.use("/patch-notes", patchNotesRoutes);
 
+// Informações do Sistema (versão, commits)
+const systemRoutes = require("./system.routes");
+router.use("/system", systemRoutes);
+
 // Chat de Suporte (IA + humano)
 const chatSuporteRoutes = require("./chatSuporte.routes");
 router.use("/chat-suporte", chatSuporteRoutes);

@@ -19,7 +19,7 @@ import { getCache, setCache } from "../../services/cacheService";
 import * as socketService from "../../services/socketService";
 import Loading from "../../components/Loading";
 
-export default function VisualizarVisitante() {
+export default function VisualizarCadastroVisitante() {
   const { id } = useParams();
   const history = useHistory();
   const [visitor, setVisitor] = useState(null);

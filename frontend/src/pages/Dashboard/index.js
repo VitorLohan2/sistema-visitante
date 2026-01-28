@@ -25,6 +25,8 @@ import { getCache, setCache } from "../../services/cacheService";
 import socketService from "../../services/socketService";
 import { useAuth } from "../../hooks/useAuth";
 import { usePermissoes } from "../../hooks/usePermissoes";
+import MonitoramentoRequisicoes from "../../components/MonitoramentoRequisicoes";
+import DashboardAuth from "../../components/DashboardAuth";
 import "./styles.css";
 
 // Registrar componentes do Chart.js
@@ -37,12 +39,18 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  ArcElement
+  ArcElement,
 );
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { temPermissao, loading: permissoesLoading } = usePermissoes();
+
+  // Estado de autenticação do Dashboard
+  const [isDashboardAuthenticated, setIsDashboardAuthenticated] =
+    useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
   const [stats, setStats] = useState({
     totalVisitantes: 0,
     visitantesHoje: 0,
@@ -56,6 +64,49 @@ export default function Dashboard() {
   // Dados para gráficos
   const [visitantesPorHora, setVisitantesPorHora] = useState([]);
   const [cadastrosPorHora, setCadastrosPorHora] = useState([]);
+
+  // Verificar se há token de Dashboard válido ao carregar
+  useEffect(() => {
+    const checkDashboardAuth = async () => {
+      const token = localStorage.getItem("dashboardToken");
+      const expiry = localStorage.getItem("dashboardTokenExpiry");
+
+      // Se não tem token, não está autenticado
+      if (!token) {
+        setCheckingAuth(false);
+        return;
+      }
+
+      // Verifica se expirou localmente
+      if (expiry && new Date(expiry) < new Date()) {
+        localStorage.removeItem("dashboardToken");
+        localStorage.removeItem("dashboardTokenExpiry");
+        setCheckingAuth(false);
+        return;
+      }
+
+      // Verifica no servidor se o token ainda é válido
+      try {
+        await api.get("/api/dashboard/verify", {
+          headers: { "x-dashboard-token": token },
+        });
+        setIsDashboardAuthenticated(true);
+      } catch (err) {
+        // Token inválido, remove
+        localStorage.removeItem("dashboardToken");
+        localStorage.removeItem("dashboardTokenExpiry");
+      } finally {
+        setCheckingAuth(false);
+      }
+    };
+
+    checkDashboardAuth();
+  }, []);
+
+  // Handler quando autenticação é bem-sucedida
+  const handleDashboardAuthenticated = (token) => {
+    setIsDashboardAuthenticated(true);
+  };
 
   const carregarEstatisticas = useCallback(async () => {
     try {
@@ -114,19 +165,42 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
+    // Só carrega estatísticas se estiver autenticado no Dashboard
+    if (!isDashboardAuthenticated && !checkingAuth) return;
+    if (checkingAuth) return;
+
     carregarEstatisticas();
+
+    // Função para obter hora atual no timezone de Brasília
+    const getHoraBrasilia = () => {
+      const now = new Date();
+      // Formata a hora no timezone de Brasília e converte para número
+      const horaBrasilia = new Intl.DateTimeFormat("pt-BR", {
+        timeZone: "America/Sao_Paulo",
+        hour: "numeric",
+        hour12: false,
+      }).format(now);
+      return parseInt(horaBrasilia, 10);
+    };
 
     // Socket listeners para tempo real
     const socket = socketService.getSocket();
 
-    // Quando um novo visitante entra
-    const handleNovoVisitante = () => {
+    // Verifica se o socket está pronto
+    if (!socket) {
+      console.warn("Dashboard: Socket não está pronto ainda.");
+      return;
+    }
+
+    // Quando um novo visitante ENTRA (registra visita) - visitor:create
+    const handleVisitorCreate = () => {
+      console.log("📡 Dashboard: visitor:create recebido");
       setStats((prev) => ({
         ...prev,
         visitantesHoje: prev.visitantesHoje + 1,
       }));
-      // Atualiza gráfico da hora atual
-      const horaAtual = new Date().getHours();
+      // Atualiza gráfico da hora atual (Brasília)
+      const horaAtual = getHoraBrasilia();
       setVisitantesPorHora((prev) => {
         const newData = [...prev];
         const index = newData.findIndex((item) => item.hora === horaAtual);
@@ -135,20 +209,24 @@ export default function Dashboard() {
             ...newData[index],
             quantidade: newData[index].quantidade + 1,
           };
+        } else {
+          // Se não existir, adiciona nova entrada
+          newData.push({ hora: horaAtual, quantidade: 1 });
         }
         return newData;
       });
     };
 
-    // Quando um novo cadastro é feito
-    const handleNovoCadastro = () => {
+    // Quando um novo CADASTRO é feito - visitante:created
+    const handleVisitanteCreated = () => {
+      console.log("📡 Dashboard: visitante:created recebido");
       setStats((prev) => ({
         ...prev,
         totalVisitantes: prev.totalVisitantes + 1,
         cadastrosHoje: prev.cadastrosHoje + 1,
       }));
-      // Atualiza gráfico da hora atual
-      const horaAtual = new Date().getHours();
+      // Atualiza gráfico da hora atual (Brasília)
+      const horaAtual = getHoraBrasilia();
       setCadastrosPorHora((prev) => {
         const newData = [...prev];
         const index = newData.findIndex((item) => item.hora === horaAtual);
@@ -157,49 +235,60 @@ export default function Dashboard() {
             ...newData[index],
             quantidade: newData[index].quantidade + 1,
           };
+        } else {
+          // Se não existir, adiciona nova entrada
+          newData.push({ hora: horaAtual, quantidade: 1 });
         }
         return newData;
       });
     };
 
-    // Quando um agendamento é criado
-    const handleNovoAgendamento = () => {
+    // Quando um agendamento é criado - agendamento:create
+    const handleAgendamentoCreate = () => {
+      console.log("📡 Dashboard: agendamento:create recebido");
       setStats((prev) => ({
         ...prev,
         agendamentos: prev.agendamentos + 1,
       }));
     };
 
-    // Quando um ticket é criado
-    const handleNovoTicket = () => {
+    // Quando um ticket é criado - ticket:create
+    const handleTicketCreate = () => {
+      console.log("📡 Dashboard: ticket:create recebido");
       setStats((prev) => ({
         ...prev,
         tickets: prev.tickets + 1,
       }));
     };
 
-    // Quando ticket é resolvido
-    const handleTicketResolvido = () => {
-      setStats((prev) => ({
-        ...prev,
-        tickets: Math.max(0, prev.tickets - 1),
-      }));
+    // Quando ticket é resolvido/atualizado - ticket:update
+    const handleTicketUpdate = (data) => {
+      console.log("📡 Dashboard: ticket:update recebido", data);
+      if (data?.status === "resolvido") {
+        setStats((prev) => ({
+          ...prev,
+          tickets: Math.max(0, prev.tickets - 1),
+        }));
+      }
     };
 
-    socket.on("visitante:entrada", handleNovoVisitante);
-    socket.on("visitante:novo", handleNovoCadastro);
-    socket.on("agendamento:novo", handleNovoAgendamento);
-    socket.on("ticket:novo", handleNovoTicket);
-    socket.on("ticket:resolvido", handleTicketResolvido);
+    // Registra os listeners com os eventos CORRETOS do backend
+    socket.on("visitor:create", handleVisitorCreate);
+    socket.on("visitante:created", handleVisitanteCreated);
+    socket.on("agendamento:create", handleAgendamentoCreate);
+    socket.on("ticket:create", handleTicketCreate);
+    socket.on("ticket:update", handleTicketUpdate);
+
+    console.log("✅ Dashboard: Socket listeners registrados para tempo real");
 
     return () => {
-      socket.off("visitante:entrada", handleNovoVisitante);
-      socket.off("visitante:novo", handleNovoCadastro);
-      socket.off("agendamento:novo", handleNovoAgendamento);
-      socket.off("ticket:novo", handleNovoTicket);
-      socket.off("ticket:resolvido", handleTicketResolvido);
+      socket.off("visitor:create", handleVisitorCreate);
+      socket.off("visitante:created", handleVisitanteCreated);
+      socket.off("agendamento:create", handleAgendamentoCreate);
+      socket.off("ticket:create", handleTicketCreate);
+      socket.off("ticket:update", handleTicketUpdate);
     };
-  }, [carregarEstatisticas]);
+  }, [carregarEstatisticas, isDashboardAuthenticated, checkingAuth]);
 
   // Gerar labels de horas (6h às 23h) - estendido para incluir 23h
   const horasLabel = Array.from({ length: 18 }, (_, i) => `${i + 6}h`);
@@ -287,7 +376,7 @@ export default function Dashboard() {
   };
 
   // Verifica permissão via RBAC (temPermissao já considera ADMIN)
-  if (permissoesLoading) {
+  if (permissoesLoading || checkingAuth) {
     return (
       <div className="dashboard-container">
         <div className="dashboard-loading">
@@ -306,6 +395,13 @@ export default function Dashboard() {
         </div>
       </div>
     );
+  }
+
+  // Se não está autenticado no Dashboard, mostra tela de senha
+  // NOTA: Em desenvolvimento sem DASHBOARD_PASSWORD_HASH configurado,
+  // a autenticação é ignorada no backend
+  if (!isDashboardAuthenticated) {
+    return <DashboardAuth onAuthenticated={handleDashboardAuthenticated} />;
   }
 
   return (
@@ -405,8 +501,9 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Monitoramento de Requisições */}
+      <MonitoramentoRequisicoes />
     </div>
   );
 }
-
-

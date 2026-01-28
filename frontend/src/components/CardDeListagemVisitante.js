@@ -23,6 +23,19 @@ export default function CardDeListagemVisitante({
 }) {
   const [photoModalVisible, setPhotoModalVisible] = useState(false);
 
+  // Log para debug - ver TODOS os campos do visitante
+  if (visitante.id === 687 || visitante.id === 688) {
+    console.log(`📋 Card ${visitante.id} - Objeto completo:`, {
+      id: visitante.id,
+      nome: visitante.nome,
+      empresa: visitante.empresa,
+      empresa_id: visitante.empresa_id,
+      setor: visitante.setor,
+      setor_id: visitante.setor_id,
+      todas_chaves: Object.keys(visitante),
+    });
+  }
+
   const handleOpenPhotoModal = () => {
     if (visitante.avatar_imagem) {
       setPhotoModalVisible(true);
@@ -77,12 +90,16 @@ export default function CardDeListagemVisitante({
 
               <div className="card-detail">
                 <span className="card-detail-label">Empresa</span>
-                <span className="card-detail-value">{visitante.empresa}</span>
+                <span className="card-detail-value">
+                  {visitante.empresa || "Não informado"}
+                </span>
               </div>
 
               <div className="card-detail">
                 <span className="card-detail-label">Setor</span>
-                <span className="card-detail-value">{visitante.setor}</span>
+                <span className="card-detail-value">
+                  {visitante.setor || "Não informado"}
+                </span>
               </div>
 
               <div className="card-detail">

@@ -307,6 +307,15 @@ docker compose down
 docker compose up -d
 ```
 
+### Pull da nova imagem e restart do container:
+
+```bash
+cd /home/dev/sistema/prod
+docker compose -f docker-compose-prod.yml pull
+docker compose -f docker-compose-prod.yml down
+docker compose -f docker-compose-prod.yml up -d
+```
+
 ### 6.8 Verificar containers rodando
 
 ```bash

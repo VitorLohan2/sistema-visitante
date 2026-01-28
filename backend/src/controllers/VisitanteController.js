@@ -50,21 +50,28 @@ module.exports = {
 
     try {
       const visitors = await connection("visitante")
-        //.where('usuario_id', usuario_id) // Ative se for multi-usuário
+        .leftJoin(
+          "empresa_atribuida",
+          "visitante.empresa_atribuida_id",
+          "empresa_atribuida.id",
+        )
+        //.where('visitante.usuario_id', usuario_id) // Ative se for multi-usuário
         .select([
-          "id",
-          "nome",
-          "cpf",
-          "empresa",
-          "setor",
-          "placa_veiculo",
-          "cor_veiculo",
-          "tipo_veiculo",
-          "funcao",
-          "responsavel",
-          "observacao",
-          "data_de_entrada",
-          "criado_em",
+          "visitante.id",
+          "visitante.nome",
+          "visitante.cpf",
+          "visitante.empresa",
+          "visitante.empresa_atribuida_id",
+          "empresa_atribuida.nome as empresa_destino",
+          "visitante.setor",
+          "visitante.placa_veiculo",
+          "visitante.cor_veiculo",
+          "visitante.tipo_veiculo",
+          "visitante.funcao",
+          "visitante.responsavel",
+          "visitante.observacao",
+          "visitante.data_de_entrada",
+          "visitante.criado_em",
         ]);
 
       return response.json(visitors);
@@ -85,6 +92,7 @@ module.exports = {
       nome,
       cpf,
       empresa,
+      empresa_atribuida_id,
       setor,
       placa_veiculo,
       cor_veiculo,
@@ -101,10 +109,24 @@ module.exports = {
         .json({ error: "Authorization header é obrigatório" });
     }
 
+    // Trata empresa_atribuida_id vazio ou inválido como null
+    const empresaAtribuidaIdFinal =
+      empresa_atribuida_id && empresa_atribuida_id !== ""
+        ? parseInt(empresa_atribuida_id)
+        : null;
+
+    // Validação: empresa_atribuida_id é obrigatória
+    if (!empresaAtribuidaIdFinal) {
+      return response.status(400).json({
+        error: "Empresa destino é obrigatória",
+      });
+    }
+
     console.log("🔍 Dados recebidos:", {
       nome,
       cpf,
       empresa,
+      empresa_atribuida_id: empresaAtribuidaIdFinal,
       setor,
       placa_veiculo,
       cor_veiculo,
@@ -135,6 +157,7 @@ module.exports = {
           nome,
           cpf,
           empresa,
+          empresa_atribuida_id: empresaAtribuidaIdFinal,
           setor,
           placa_veiculo,
           cor_veiculo,
@@ -212,6 +235,7 @@ module.exports = {
           nome: visitor.nome,
           cpf: visitor.cpf,
           empresa: visitor.empresa,
+          empresa_atribuida_id: visitor.empresa_atribuida_id,
           setor: visitor.setor,
           placa_veiculo: visitor.placa_veiculo,
           cor_veiculo: visitor.cor_veiculo,
@@ -285,9 +309,17 @@ module.exports = {
 
     try {
       const results = await connection("historico_visitante")
-        //.where('usuario_id', usuario_id) // Descomente se multi-usuário
-        .select("*")
-        .orderBy("data_de_saida", "desc");
+        .leftJoin(
+          "empresa_atribuida",
+          "historico_visitante.empresa_atribuida_id",
+          "empresa_atribuida.id",
+        )
+        //.where('historico_visitante.usuario_id', usuario_id) // Descomente se multi-usuário
+        .select(
+          "historico_visitante.*",
+          "empresa_atribuida.nome as empresa_destino",
+        )
+        .orderBy("historico_visitante.data_de_saida", "desc");
 
       return response.json(results);
     } catch (err) {

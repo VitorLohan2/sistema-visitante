@@ -139,8 +139,8 @@ const deletar = async (req, res) => {
 
     await db("patch_notes").where({ id }).del();
 
-    // Emitir evento Socket.IO
-    io.to("global").emit("patch-note:deleted", { id });
+    // Emitir evento Socket.IO (garante que o ID seja número)
+    io.to("global").emit("patch-note:deleted", { id: parseInt(id) });
 
     res.json({ message: "Atualização removida com sucesso" });
   } catch (error) {
