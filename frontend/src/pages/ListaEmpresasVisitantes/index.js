@@ -1,5 +1,5 @@
 import logger from "../../utils/logger";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   FiEdit2,
@@ -9,6 +9,8 @@ import {
   FiX,
   FiArrowLeft,
   FiBriefcase,
+  FiChevronLeft,
+  FiChevronRight,
 } from "react-icons/fi";
 import api from "../../services/api";
 import {
@@ -26,6 +28,10 @@ export default function ListaEmpresasVisitantes() {
   const [empresas, setEmpresas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Estados de paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 50;
 
   // Estados para modal de edição
   const [modalVisible, setModalVisible] = useState(false);
@@ -62,7 +68,7 @@ export default function ListaEmpresasVisitantes() {
       const response = await api.get("/empresas-visitantes");
 
       const empresasOrdenadas = response.data.sort((a, b) =>
-        a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" })
+        a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }),
       );
 
       setCache("empresasVisitantes", empresasOrdenadas);
@@ -91,7 +97,7 @@ export default function ListaEmpresasVisitantes() {
         const existe = prev.find((e) => e.id === novaEmpresa.id);
         if (existe) return prev;
         const novaLista = [...prev, novaEmpresa].sort((a, b) =>
-          a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" })
+          a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }),
         );
         addEmpresaVisitanteToCache(novaEmpresa);
         return novaLista;
@@ -105,7 +111,7 @@ export default function ListaEmpresasVisitantes() {
         const novaLista = prev
           .map((e) => (e.id === empresaAtualizada.id ? empresaAtualizada : e))
           .sort((a, b) =>
-            a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" })
+            a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }),
           );
         updateEmpresaVisitanteInCache(empresaAtualizada.id, empresaAtualizada);
         return novaLista;
@@ -129,15 +135,72 @@ export default function ListaEmpresasVisitantes() {
     };
   }, [socket]);
 
-  // Filtrar empresas
-  const empresasFiltradas = empresas.filter((empresa) => {
-    const termo = searchTerm.toLowerCase();
-    return (
-      empresa.nome?.toLowerCase().includes(termo) ||
-      empresa.cnpj?.includes(searchTerm.replace(/\D/g, "")) ||
-      empresa.email?.toLowerCase().includes(termo)
-    );
-  });
+  // Filtrar empresas com useMemo
+  const empresasFiltradas = useMemo(() => {
+    return empresas.filter((empresa) => {
+      const termo = searchTerm.toLowerCase();
+      return (
+        empresa.nome?.toLowerCase().includes(termo) ||
+        empresa.cnpj?.includes(searchTerm.replace(/\D/g, "")) ||
+        empresa.email?.toLowerCase().includes(termo)
+      );
+    });
+  }, [empresas, searchTerm]);
+
+  // Calcular paginação
+  const totalPages = Math.ceil(empresasFiltradas.length / recordsPerPage);
+
+  const paginatedData = useMemo(() => {
+    const startIndex = (currentPage - 1) * recordsPerPage;
+    const endIndex = startIndex + recordsPerPage;
+    return empresasFiltradas.slice(startIndex, endIndex);
+  }, [empresasFiltradas, currentPage, recordsPerPage]);
+
+  // Reset para página 1 quando filtro muda
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  // Handler de mudança de página
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      // Scroll suave para o topo da tabela
+      document.querySelector(".empresas-list")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  };
+
+  // Gera array de páginas para renderizar
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) pages.push(i);
+        pages.push("...");
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1);
+        pages.push("...");
+        for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        pages.push("...");
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+        pages.push("...");
+        pages.push(totalPages);
+      }
+    }
+    return pages;
+  };
 
   // Abrir modal para editar
   const handleEditar = (empresa) => {
@@ -222,7 +285,7 @@ export default function ListaEmpresasVisitantes() {
   const handleDeletar = async (empresa) => {
     if (
       !window.confirm(
-        `Deseja excluir a empresa "${empresa.nome}"?\n\nEsta ação não pode ser desfeita.`
+        `Deseja excluir a empresa "${empresa.nome}"?\n\nEsta ação não pode ser desfeita.`,
       )
     ) {
       return;
@@ -334,47 +397,96 @@ export default function ListaEmpresasVisitantes() {
             </p>
           </div>
         ) : (
-          <table className="empresas-table">
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>CNPJ</th>
-                <th>Telefone</th>
-                <th>Email</th>
-                <th>Endereço</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {empresasFiltradas.map((empresa) => (
-                <tr key={empresa.id}>
-                  <td className="empresa-nome">{empresa.nome}</td>
-                  <td>{formatCNPJ(empresa.cnpj) || "-"}</td>
-                  <td>{formatTelefone(empresa.telefone) || "-"}</td>
-                  <td>{empresa.email || "-"}</td>
-                  <td className="empresa-endereco">
-                    {empresa.endereco || "-"}
-                  </td>
-                  <td className="acoes">
-                    <button
-                      className="btn-editar"
-                      onClick={() => handleEditar(empresa)}
-                      title="Editar"
-                    >
-                      <FiEdit2 size={16} />
-                    </button>
-                    <button
-                      className="btn-deletar"
-                      onClick={() => handleDeletar(empresa)}
-                      title="Excluir"
-                    >
-                      <FiTrash2 size={16} />
-                    </button>
-                  </td>
+          <>
+            <table className="empresas-table">
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>CNPJ</th>
+                  <th>Telefone</th>
+                  <th>Email</th>
+                  <th>Endereço</th>
+                  <th>Ações</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {paginatedData.map((empresa, index) => (
+                  <tr key={empresa.id}>
+                    <td className="empresa-nome">{empresa.nome}</td>
+                    <td>{formatCNPJ(empresa.cnpj) || "-"}</td>
+                    <td>{formatTelefone(empresa.telefone) || "-"}</td>
+                    <td>{empresa.email || "-"}</td>
+                    <td className="empresa-endereco">
+                      {empresa.endereco || "-"}
+                    </td>
+                    <td className="acoes">
+                      <button
+                        className="btn-editar"
+                        onClick={() => handleEditar(empresa)}
+                        title="Editar"
+                      >
+                        <FiEdit2 size={16} />
+                      </button>
+                      <button
+                        className="btn-deletar"
+                        onClick={() => handleDeletar(empresa)}
+                        title="Excluir"
+                      >
+                        <FiTrash2 size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* PAGINAÇÃO */}
+            {totalPages > 1 && (
+              <div className="empresas-pagination">
+                <div className="empresas-pagination-info">
+                  Mostrando {(currentPage - 1) * recordsPerPage + 1} -{" "}
+                  {Math.min(
+                    currentPage * recordsPerPage,
+                    empresasFiltradas.length,
+                  )}{" "}
+                  de {empresasFiltradas.length} registros
+                </div>
+
+                <div className="empresas-pagination-controls">
+                  <button
+                    className="empresas-pagination-btn"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    title="Página anterior"
+                  >
+                    <FiChevronLeft size={18} />
+                  </button>
+
+                  {getPageNumbers().map((page, index) => (
+                    <button
+                      key={index}
+                      className={`empresas-pagination-btn ${
+                        page === currentPage ? "active" : ""
+                      } ${page === "..." ? "dots" : ""}`}
+                      onClick={() => page !== "..." && handlePageChange(page)}
+                      disabled={page === "..."}
+                    >
+                      {page}
+                    </button>
+                  ))}
+
+                  <button
+                    className="empresas-pagination-btn"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    title="Próxima página"
+                  >
+                    <FiChevronRight size={18} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -384,7 +496,10 @@ export default function ListaEmpresasVisitantes() {
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{empresaEditando ? "Editar Empresa" : "Nova Empresa"}</h2>
-              <button className="btn-fechar" onClick={handleFecharModal}>
+              <button
+                className="btn-fechar-empresavisitante"
+                onClick={handleFecharModal}
+              >
                 <FiX size={20} />
               </button>
             </div>
@@ -457,7 +572,7 @@ export default function ListaEmpresasVisitantes() {
               <div className="modal-actions">
                 <button
                   type="submit"
-                  className="btn-salvar"
+                  className="btn-primary"
                   disabled={salvando}
                 >
                   {salvando ? "Salvando..." : "Salvar"}
@@ -477,5 +592,3 @@ export default function ListaEmpresasVisitantes() {
     </div>
   );
 }
-
-

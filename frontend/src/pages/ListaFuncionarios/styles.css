@@ -784,19 +784,19 @@
   border-radius: var(--func-radius-sm);
 }
 
-.historico-table {
+.historico-funcionarios-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
 }
 
-.historico-table thead {
+.historico-funcionarios-table thead {
   position: sticky;
   top: 0;
   background: #5e5e5e;
 }
 
-.historico-table thead th {
+.historico-funcionarios-table thead th {
   padding: 12px 16px;
   text-align: left;
   font-weight: 600;
@@ -806,19 +806,19 @@
   letter-spacing: 0.5px;
 }
 
-.historico-table tbody tr {
+.historico-funcionarios-table tbody tr {
   border-bottom: 1px solid var(--func-border);
 }
 
-.historico-table tbody tr:last-child {
+.historico-funcionarios-table tbody tr:last-child {
   border-bottom: none;
 }
 
-.historico-table tbody tr:hover {
+.historico-funcionarios-table tbody tr:hover {
   background: rgba(5, 150, 105, 0.03);
 }
 
-.historico-table tbody td {
+.historico-funcionarios-table tbody td {
   padding: 12px 16px;
   color: var(--func-text);
 }

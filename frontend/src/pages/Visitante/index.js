@@ -1,5 +1,11 @@
 import logger from "../../utils/logger";
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import { useHistory } from "react-router-dom";
 import {
   FiArrowLeft,
@@ -8,6 +14,8 @@ import {
   FiMessageSquare,
   FiX,
   FiUsers,
+  FiFilter,
+  FiCalendar,
 } from "react-icons/fi";
 
 import api from "../../services/api";
@@ -19,6 +27,8 @@ import "./styles.css";
 export default function Visitante() {
   const [visitors, setVisitors] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterDestino, setFilterDestino] = useState("");
+  const [filterDate, setFilterDate] = useState("");
   const [selectedObservation, setSelectedObservation] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -191,14 +201,50 @@ export default function Visitante() {
     setIsModalOpen(true);
   }
 
-  // Filtra visitantes por nome ou CPF
-  const filteredVisitors = visitors.filter((visitor) => {
-    const matchesSearch =
-      (visitor.nome &&
-        visitor.nome.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (visitor.cpf && visitor.cpf.includes(searchTerm));
-    return matchesSearch;
-  });
+  // Lista única de destinos para o filtro
+  const destinosUnicos = useMemo(() => {
+    const destinos = new Set();
+    visitors.forEach((visitor) => {
+      if (visitor.empresa_destino) destinos.add(visitor.empresa_destino);
+    });
+    return Array.from(destinos).sort((a, b) =>
+      a.localeCompare(b, "pt-BR", { sensitivity: "base" }),
+    );
+  }, [visitors]);
+
+  // Filtra visitantes por nome, CPF, destino e data
+  const filteredVisitors = useMemo(() => {
+    return visitors.filter((visitor) => {
+      const matchesSearch =
+        (visitor.nome &&
+          visitor.nome.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (visitor.cpf && visitor.cpf.includes(searchTerm));
+
+      const matchesDestino =
+        !filterDestino || visitor.empresa_destino === filterDestino;
+
+      let matchesDate = true;
+      if (filterDate) {
+        const entryDate = new Date(
+          visitor.data_de_entrada || visitor.criado_em,
+        );
+        const filterDateObj = new Date(filterDate + "T00:00:00");
+        matchesDate =
+          entryDate.getFullYear() === filterDateObj.getFullYear() &&
+          entryDate.getMonth() === filterDateObj.getMonth() &&
+          entryDate.getDate() === filterDateObj.getDate();
+      }
+
+      return matchesSearch && matchesDestino && matchesDate;
+    });
+  }, [visitors, searchTerm, filterDestino, filterDate]);
+
+  // Limpar filtros
+  const clearFilters = () => {
+    setSearchTerm("");
+    setFilterDestino("");
+    setFilterDate("");
+  };
 
   return (
     <div className="visitante-container">
@@ -206,37 +252,78 @@ export default function Visitante() {
       <header className="visitante-header">
         <div className="visitante-logo-wrapper">
           <div className="visitante-title-group">
-            <h1 className="visitante-title">Visitantes</h1>
+            <h1 className="visitante-title">Visitas no Local</h1>
           </div>
         </div>
       </header>
 
-      {/* TABELA CONTAINER */}
-      <section className="visitante-table-container">
-        <div className="visitante-table-header">
-          <h2 className="visitante-table-title">Visitas no Local</h2>
-          <div className="visitante-search-wrapper">
-            <div className="visitante-search-box">
-              <FiSearch className="search-icon" size={18} />
-              <input
-                type="text"
-                placeholder="Buscar por nome ou CPF..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              {searchTerm && (
-                <button
-                  className="search-clear-btn-visitante"
-                  onClick={() => setSearchTerm("")}
-                  title="Limpar busca"
-                >
-                  <FiX size={16} />
-                </button>
-              )}
-            </div>
+      {/* FILTROS - Novo layout igual ListaAgendamentos */}
+      <section className="visitante-filters">
+        <div className="filters-left">
+          {/* Campo de Busca */}
+          <div className="search-wrapper">
+            <FiSearch size={18} />
+            <input
+              type="text"
+              placeholder="Buscar por nome, CPF ou setor..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button
+                className="btn-clear-search"
+                onClick={() => setSearchTerm("")}
+              >
+                <FiX size={16} />
+              </button>
+            )}
           </div>
+
+          {/* Filtro por Destino */}
+          <div className="filter-item">
+            <FiFilter size={16} />
+            <select
+              value={filterDestino}
+              onChange={(e) => setFilterDestino(e.target.value)}
+            >
+              <option value="">Todos os destinos</option>
+              {destinosUnicos.map((destino) => (
+                <option key={destino} value={destino}>
+                  {destino}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filtro por Data */}
+          <div className="filter-item">
+            <FiCalendar size={16} />
+            <input
+              type="date"
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+            />
+          </div>
+
+          {/* Botão Limpar Filtros */}
+          {(searchTerm || filterDestino || filterDate) && (
+            <button className="btn-clear-filters" onClick={clearFilters}>
+              Limpar filtros
+            </button>
+          )}
         </div>
 
+        <div className="filters-right">
+          {/* Contador de Resultados */}
+          <span className="results-count-visitante">
+            {filteredVisitors.length} visitante
+            {filteredVisitors.length !== 1 ? "s" : ""}
+          </span>
+        </div>
+      </section>
+
+      {/* TABELA CONTAINER */}
+      <section className="visitante-table-container">
         {filteredVisitors.length === 0 ? (
           <div className="visitante-empty">
             <FiUsers size={48} />
@@ -351,10 +438,7 @@ export default function Visitante() {
         >
           <div className="visitante-modal" onClick={(e) => e.stopPropagation()}>
             <div className="visitante-modal-header">
-              <h3>
-                <FiMessageSquare size={20} />
-                Observação
-              </h3>
+              <h3>Observação</h3>
               <button
                 className="visitante-modal-close"
                 onClick={() => setIsModalOpen(false)}
@@ -368,7 +452,7 @@ export default function Visitante() {
             <div className="visitante-modal-footer">
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="visitante-modal-btn"
+                className="btn-primary"
               >
                 Fechar
               </button>

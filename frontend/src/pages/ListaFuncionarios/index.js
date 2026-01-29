@@ -108,7 +108,7 @@ export default function ListaFuncionarios() {
       });
 
       const funcionariosOrdenados = response.data.sort((a, b) =>
-        a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" })
+        a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }),
       );
 
       setCache("funcionarios", funcionariosOrdenados);
@@ -149,7 +149,7 @@ export default function ListaFuncionarios() {
         const existe = prev.find((f) => f.cracha === novoFuncionario.cracha);
         if (existe) return prev;
         const novaLista = [...prev, novoFuncionario].sort((a, b) =>
-          a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" })
+          a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }),
         );
         addFuncionarioToCache(novoFuncionario);
         return novaLista;
@@ -163,14 +163,14 @@ export default function ListaFuncionarios() {
           .map((f) =>
             f.cracha === funcionarioAtualizado.cracha
               ? funcionarioAtualizado
-              : f
+              : f,
           )
           .sort((a, b) =>
-            a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" })
+            a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }),
           );
         updateFuncionarioInCache(
           funcionarioAtualizado.cracha,
-          funcionarioAtualizado
+          funcionarioAtualizado,
         );
         return novaLista;
       });
@@ -456,7 +456,7 @@ export default function ListaFuncionarios() {
         "/funcionarios/registros-ponto/historico",
         {
           params,
-        }
+        },
       );
       setRegistrosPonto(response.data.registros || []);
     } catch (error) {
@@ -897,7 +897,7 @@ export default function ListaFuncionarios() {
                     <p>Nenhum registro de ponto encontrado</p>
                   </div>
                 ) : (
-                  <table className="historico-table">
+                  <table className="historico-funcionarios-table">
                     <thead>
                       <tr>
                         <th>Data</th>
@@ -938,5 +938,3 @@ export default function ListaFuncionarios() {
     </div>
   );
 }
-
-

@@ -16,10 +16,14 @@ import {
   FiClock,
   FiUsers,
   FiFilter,
+  FiDownload,
+  FiCalendar,
 } from "react-icons/fi";
 
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 import api from "../../services/api";
 import * as socketService from "../../services/socketService";
@@ -38,6 +42,7 @@ import logoImg from "../../assets/logo.svg";
 export default function HistoricoVisitante() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDate, setFilterDate] = useState("");
+  const [filterEmpresa, setFilterEmpresa] = useState("");
 
   // ✅ Garante conexão do socket
   useSocket();
@@ -281,7 +286,13 @@ export default function HistoricoVisitante() {
           visitor.nome.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (visitor.cpf && visitor.cpf.includes(searchTerm));
 
-      if (!filterDate) return matchesSearch;
+      // Filtro por empresa
+      const matchesEmpresa =
+        !filterEmpresa ||
+        visitor.empresa === filterEmpresa ||
+        visitor.empresa_destino === filterEmpresa;
+
+      if (!filterDate) return matchesSearch && matchesEmpresa;
 
       function formatDateToLocalYYYYMMDD(dateString) {
         const date = new Date(dateString);
@@ -295,9 +306,23 @@ export default function HistoricoVisitante() {
         visitor.data_de_entrada || visitor.criado_em,
       );
 
-      return matchesSearch && entryDateFormatted === filterDate;
+      return (
+        matchesSearch && matchesEmpresa && entryDateFormatted === filterDate
+      );
     });
-  }, [historyData, searchTerm, filterDate]);
+  }, [historyData, searchTerm, filterDate, filterEmpresa]);
+
+  // Lista única de empresas para o filtro
+  const empresasUnicas = useMemo(() => {
+    const empresas = new Set();
+    historyData.forEach((visitor) => {
+      if (visitor.empresa) empresas.add(visitor.empresa);
+      if (visitor.empresa_destino) empresas.add(visitor.empresa_destino);
+    });
+    return Array.from(empresas).sort((a, b) =>
+      a.localeCompare(b, "pt-BR", { sensitivity: "base" }),
+    );
+  }, [historyData]);
 
   // ═══════════════════════════════════════════════════════════════
   // PAGINAÇÃO
@@ -313,7 +338,7 @@ export default function HistoricoVisitante() {
   // Reset para página 1 quando filtros mudam
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterDate]);
+  }, [searchTerm, filterDate, filterEmpresa]);
 
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) {
@@ -412,8 +437,55 @@ export default function HistoricoVisitante() {
       type: "array",
     });
     const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
-    saveAs(blob, "relatorio_visitas.xlsx");
+    saveAs(
+      blob,
+      `relatorio_visitas_${new Date().toISOString().split("T")[0]}.xlsx`,
+    );
   }
+
+  // ═══════════════════════════════════════════════════════════════
+  // EXPORTAR PDF
+  // ═══════════════════════════════════════════════════════════════
+  function exportToPDF(data) {
+    const doc = new jsPDF({ orientation: "landscape" });
+    doc.text("Relatório de Histórico de Visitas", 14, 15);
+    doc.setFontSize(10);
+    doc.text(`Gerado em: ${new Date().toLocaleString()}`, 14, 22);
+    doc.text(`Total de registros: ${data.length}`, 14, 28);
+
+    autoTable(doc, {
+      startY: 35,
+      head: [
+        ["Nome", "CPF", "Empresa", "Destino", "Setor", "Entrada", "Saída"],
+      ],
+      body: data.map((visitor) => [
+        visitor.nome || "-",
+        visitor.cpf || "-",
+        visitor.empresa || "-",
+        visitor.empresa_destino || "-",
+        visitor.setor || "-",
+        visitor.data_de_entrada
+          ? new Date(visitor.data_de_entrada).toLocaleString()
+          : "-",
+        visitor.data_de_saida
+          ? new Date(visitor.data_de_saida).toLocaleString()
+          : "-",
+      ]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [55, 65, 81] },
+    });
+
+    doc.save(`relatorio_visitas_${new Date().toISOString().split("T")[0]}.pdf`);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // LIMPAR FILTROS
+  // ═══════════════════════════════════════════════════════════════
+  const clearFilters = () => {
+    setSearchTerm("");
+    setFilterDate("");
+    setFilterEmpresa("");
+  };
 
   // ═══════════════════════════════════════════════════════════════
   // MODAL DE OBSERVAÇÃO
@@ -428,32 +500,11 @@ export default function HistoricoVisitante() {
   // ═══════════════════════════════════════════════════════════════
   return (
     <div className="historico-container">
-      {/* HEADER */}
+      {/* HEADER - Apenas título */}
       <header className="historico-header">
         <div className="historico-logo-wrapper">
           <div className="historico-title-group">
             <h1 className="historico-title">Histórico de Visitas</h1>
-          </div>
-        </div>
-
-        <div className="historico-search-wrapper">
-          <div className="historico-search-box">
-            <FiSearch className="search-icon" size={18} />
-            <input
-              type="text"
-              placeholder="Buscar por nome ou CPF..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            {searchTerm && (
-              <button
-                className="search-clear-btn-hv"
-                onClick={() => setSearchTerm("")}
-                title="Limpar busca"
-              >
-                <FiX size={16} />
-              </button>
-            )}
           </div>
         </div>
       </header>
@@ -503,37 +554,89 @@ export default function HistoricoVisitante() {
         </div>
       </section>
 
-      {/* TOOLBAR */}
-      <section className="historico-toolbar">
-        <div className="historico-date-filter">
-          <label htmlFor="filterDate">
+      {/* TOOLBAR - Filtros e Ações (Novo Layout) */}
+      <section className="historico-filters">
+        <div className="filters-left">
+          {/* Campo de Busca */}
+          <div className="search-wrapper">
+            <FiSearch size={18} />
+            <input
+              type="text"
+              placeholder="Buscar por nome ou CPF..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button
+                className="btn-clear-search"
+                onClick={() => setSearchTerm("")}
+              >
+                <FiX size={16} />
+              </button>
+            )}
+          </div>
+
+          {/* Filtro por Empresa */}
+          <div className="filter-item">
             <FiFilter size={16} />
-            Filtrar por data:
-          </label>
-          <input
-            type="date"
-            id="filterDate"
-            value={filterDate}
-            onChange={(e) => setFilterDate(e.target.value)}
-          />
-          {filterDate && (
-            <button
-              className="historico-clear-filter"
-              onClick={() => setFilterDate("")}
-              title="Limpar filtro"
+            <select
+              value={filterEmpresa}
+              onChange={(e) => setFilterEmpresa(e.target.value)}
             >
-              <FiX size={16} />
+              <option value="">Todas as empresas</option>
+              {empresasUnicas.map((empresa) => (
+                <option key={empresa} value={empresa}>
+                  {empresa}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filtro por Data */}
+          <div className="filter-item">
+            <FiCalendar size={16} />
+            <input
+              type="date"
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+            />
+          </div>
+
+          {/* Botão Limpar Filtros */}
+          {(searchTerm || filterDate || filterEmpresa) && (
+            <button className="btn-clear-filters" onClick={clearFilters}>
+              Limpar filtros
             </button>
           )}
         </div>
 
-        <button
-          onClick={() => exportToExcel(filteredHistoryData)}
-          className="historico-export-btn"
-        >
-          <FiFileText size={18} />
-          Exportar Relatório
-        </button>
+        <div className="filters-right">
+          {/* Contador de Resultados */}
+          <span className="results-count">
+            {filteredHistoryData.length} registro
+            {filteredHistoryData.length !== 1 ? "s" : ""}
+          </span>
+
+          {/* Botão Excel */}
+          <button
+            className="btn-export"
+            onClick={() => exportToExcel(filteredHistoryData)}
+            title="Exportar Excel"
+          >
+            <FiDownload size={16} />
+            <span>Excel</span>
+          </button>
+
+          {/* Botão PDF */}
+          <button
+            className="btn-export pdf"
+            onClick={() => exportToPDF(filteredHistoryData)}
+            title="Exportar PDF"
+          >
+            <FiDownload size={16} />
+            <span>PDF</span>
+          </button>
+        </div>
       </section>
 
       {/* TABELA */}
@@ -583,7 +686,18 @@ export default function HistoricoVisitante() {
                       <td data-label="Empresa">
                         {visitor.empresa || "Não informado"}
                       </td>
-                      <td data-label="Destino">
+                      <td
+                        data-label="Destino"
+                        style={{
+                          fontWeight: "bold",
+                          color:
+                            visitor.empresa_destino === "DIME"
+                              ? "green"
+                              : visitor.empresa_destino === "GUEPAR"
+                                ? "blue"
+                                : "inherit",
+                        }}
+                      >
                         {visitor.empresa_destino || "-"}
                       </td>
                       <td data-label="Setor">
@@ -687,10 +801,7 @@ export default function HistoricoVisitante() {
         >
           <div className="historico-modal" onClick={(e) => e.stopPropagation()}>
             <div className="historico-modal-header">
-              <h2>
-                <FiMessageSquare size={20} />
-                Observação
-              </h2>
+              <h2>Observação</h2>
               <button
                 className="historico-modal-close"
                 onClick={() => setIsModalOpen(false)}
@@ -704,7 +815,7 @@ export default function HistoricoVisitante() {
             <div className="historico-modal-footer">
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="historico-modal-btn"
+                className="btn-primary"
               >
                 Fechar
               </button>

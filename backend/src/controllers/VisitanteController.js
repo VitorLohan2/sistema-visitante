@@ -172,18 +172,30 @@ module.exports = {
 
       console.log("✅ Visita registrada com sucesso");
 
-      // ✅ EMITIR EVENTO DE CRIAÇÃO
+      // ✅ Buscar o nome da empresa destino para enviar via socket
+      let empresaDestinoNome = null;
+      if (empresaAtribuidaIdFinal) {
+        const empresaDestino = await connection("empresa_atribuida")
+          .where("id", empresaAtribuidaIdFinal)
+          .first();
+        empresaDestinoNome = empresaDestino ? empresaDestino.nome : null;
+      }
+
+      // ✅ EMITIR EVENTO DE CRIAÇÃO COM TODOS OS DADOS
       const eventData = {
         id: visitor.id,
         nome,
         cpf,
         empresa,
+        empresa_atribuida_id: empresaAtribuidaIdFinal,
+        empresa_destino: empresaDestinoNome,
         setor,
         placa_veiculo,
         cor_veiculo,
         tipo_veiculo,
         funcao,
         responsavel,
+        observacao,
         data_de_entrada: new Date(),
         usuario_id,
         timestamp: new Date(),
