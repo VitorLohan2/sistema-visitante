@@ -215,12 +215,19 @@ const configurations = {
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
       ssl: false, // Ajuste conforme necessário
+      timezone: "America/Sao_Paulo", // Horário de Brasília
     },
     pool: {
       min: 2,
       max: 20,
       acquireTimeoutMillis: 30000,
       idleTimeoutMillis: 30000,
+      afterCreate: (conn, done) => {
+        // Define timezone para horário de Brasília em cada conexão
+        conn.query("SET timezone='America/Sao_Paulo';", (err) => {
+          done(err, conn);
+        });
+      },
     },
     migrations: {
       directory: "./src/database/migrations",
@@ -245,6 +252,12 @@ const configurations = {
       max: 20,
       acquireTimeoutMillis: 30000,
       idleTimeoutMillis: 30000,
+      afterCreate: (conn, done) => {
+        // Define timezone para horário de Brasília em cada conexão
+        conn.query("SET timezone='America/Sao_Paulo';", (err) => {
+          done(err, conn);
+        });
+      },
     },
     migrations: {
       directory: "./src/database/migrations",

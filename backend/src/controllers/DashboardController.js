@@ -19,8 +19,7 @@ module.exports = {
       const totalVisitantes = parseInt(totalVisitantesResult?.total || 0);
 
       // Visitantes que entraram hoje (baseado em historico_visitante)
-      // Se a coluna for TIMESTAMP WITHOUT TIME ZONE, os dados já estão no horário local
-      // Usamos CURRENT_DATE que também usa o timezone da sessão
+      // O timezone da sessão já está definido como America/Sao_Paulo via pool.afterCreate
       const visitantesHojeResult = await connection("historico_visitante")
         .whereRaw(`DATE(data_de_entrada) = CURRENT_DATE`)
         .count("id as total")
@@ -49,7 +48,7 @@ module.exports = {
       const tickets = parseInt(ticketsResult?.total || 0);
 
       // Visitantes por hora (entradas de hoje) - usando data_de_entrada
-      // Extrair a hora diretamente (sem conversão de timezone)
+      // O timezone da sessão já está como America/Sao_Paulo, então EXTRACT retorna hora correta
       const visitantesPorHoraRaw = await connection("historico_visitante")
         .select(connection.raw(`EXTRACT(HOUR FROM data_de_entrada) as hora`))
         .count("id as quantidade")
