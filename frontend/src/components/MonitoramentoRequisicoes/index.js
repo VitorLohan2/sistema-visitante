@@ -449,9 +449,9 @@ export default function MonitoramentoRequisicoes() {
           />
         </div>
         <div className="consumption-bar-labels">
-          <span className="label-low">🟢 Baixo (0-20)</span>
-          <span className="label-medium">🟡 Médio (20-50)</span>
-          <span className="label-high">🔴 Alto (50+)</span>
+          <span className="label-low">🟢 Baixo (0-5000)</span>
+          <span className="label-medium">🟡 Médio (5001-10000)</span>
+          <span className="label-high">🔴 Alto (10000+)</span>
         </div>
       </div>
     </div>

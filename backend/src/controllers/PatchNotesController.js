@@ -110,7 +110,9 @@ const atualizar = async (req, res) => {
         descricao: descricao || patchNote.descricao,
         tipo: tipo || patchNote.tipo,
         data_lancamento: data_lancamento || patchNote.data_lancamento,
-        atualizado_em: new Date(),
+        atualizado_em: db.raw(
+          "CURRENT_TIMESTAMP AT TIME ZONE 'America/Sao_Paulo'",
+        ),
       })
       .returning("*");
 

@@ -39,7 +39,7 @@ module.exports = {
 
       if (!registro) {
         const [novoRegistro] = await connection(
-          "registro_funcionario_interno_cracha"
+          "registro_funcionario_interno_cracha",
         )
           .insert({
             funcionario_id: funcionario.id,
@@ -65,13 +65,15 @@ module.exports = {
         const horasTrabalhadas = (diffMs / (1000 * 60 * 60)).toFixed(2);
 
         const [registroAtualizado] = await connection(
-          "registro_funcionario_interno_cracha"
+          "registro_funcionario_interno_cracha",
         )
           .where("id", registro.id)
           .update({
             hora_saida: horaSaida,
             tempo_total: horasTrabalhadas,
-            atualizado_em: new Date(),
+            atualizado_em: connection.raw(
+              "CURRENT_TIMESTAMP AT TIME ZONE 'America/Sao_Paulo'",
+            ),
           })
           .returning("*");
 

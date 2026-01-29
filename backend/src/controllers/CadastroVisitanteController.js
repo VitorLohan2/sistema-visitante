@@ -180,6 +180,7 @@ module.exports = {
       }
 
       // Inserir no banco
+      // Usa connection.raw para garantir que CURRENT_TIMESTAMP use o timezone da sessão (America/Sao_Paulo)
       const [insertResult] = await connection(TABELA_VISITANTES)
         .insert({
           nome,
@@ -196,7 +197,12 @@ module.exports = {
           imagem3: imageUrls[2] || null,
           avatar_imagem: imageUrls[0] || null,
           usuario_id: usuario_id, // Quem cadastrou
-          criado_em: new Date(), // Data de criação
+          criado_em: connection.raw(
+            "CURRENT_TIMESTAMP AT TIME ZONE 'America/Sao_Paulo'",
+          ),
+          atualizado_em: connection.raw(
+            "CURRENT_TIMESTAMP AT TIME ZONE 'America/Sao_Paulo'",
+          ),
         })
         .returning("id");
 
@@ -560,7 +566,9 @@ module.exports = {
         veiculo_visitante_id: veiculoVisitanteId,
         funcao_visitante_id: funcao_visitante_id || null,
         avatar_imagem: avatarToSave,
-        atualizado_em: new Date(), // Data de atualização
+        atualizado_em: connection.raw(
+          "CURRENT_TIMESTAMP AT TIME ZONE 'America/Sao_Paulo'",
+        ),
       };
 
       // Só inclui bloqueado se foi explicitamente enviado
