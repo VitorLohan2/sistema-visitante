@@ -70,7 +70,13 @@ function requestMonitor(req, res, next) {
   const startTime = Date.now();
   const endpoint = req.path;
   const method = req.method;
-  const hour = new Date().getHours();
+  // Usa timezone de Brasília para garantir consistência entre ambientes
+  const hour = new Date().toLocaleString("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    hour: "numeric",
+    hour12: false,
+  });
+  const hourInt = parseInt(hour, 10);
 
   // Captura IP (considera proxies)
   const clientIP =
@@ -121,7 +127,7 @@ function requestMonitor(req, res, next) {
   // Incrementa contadores
   requestStats.total++;
   requestStats.byMethod[method] = (requestStats.byMethod[method] || 0) + 1;
-  requestStats.byHour[hour] = (requestStats.byHour[hour] || 0) + 1;
+  requestStats.byHour[hourInt] = (requestStats.byHour[hourInt] || 0) + 1;
 
   // Rastreia por IP
   if (!requestStats.byIP[clientIP]) {
