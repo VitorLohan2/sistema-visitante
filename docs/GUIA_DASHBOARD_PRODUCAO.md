@@ -35,7 +35,7 @@ O Dashboard do Sistema de Visitantes inclui um sistema robusto de **monitorament
 
 ## 2. Autenticação do Dashboard
 
-### 2.1 Como Funciona
+### 2.1 Como Funciona:
 
 1. Ao acessar o Dashboard, será exibida uma tela de login
 2. Após autenticação, um **token JWT** é gerado (válido por 8 horas)
