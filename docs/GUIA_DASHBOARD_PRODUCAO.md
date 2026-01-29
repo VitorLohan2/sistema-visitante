@@ -1,31 +1,50 @@
-# 📊 Guia de Monitoramento do Dashboard
+# 📊 Dashboard de Monitoramento - Produção
 
-## Visão Geral
+> **Última atualização:** Janeiro 2026
 
-O Dashboard do Sistema de Visitantes agora inclui um sistema robusto de monitoramento de requisições e segurança extra com senha de acesso.
+Este documento explica o sistema de monitoramento do Dashboard, incluindo autenticação, métricas coletadas e configuração.
 
 ---
 
-## 🔐 Sistema de Autenticação do Dashboard
+## 📋 Índice
 
-### Como Funciona
+1. [Visão Geral](#1-visão-geral)
+2. [Autenticação do Dashboard](#2-autenticação-do-dashboard)
+3. [Métricas Coletadas](#3-métricas-coletadas)
+4. [Componentes do Dashboard](#4-componentes-do-dashboard)
+5. [API de Estatísticas](#5-api-de-estatísticas)
+6. [Configuração](#6-configuração)
+7. [Segurança](#7-segurança)
 
-1. **Ao acessar o Dashboard**, será exibida uma tela de login solicitando senha
-2. **Após autenticação**, um token JWT é gerado válido por **8 horas**
-3. **O token é armazenado** no localStorage do navegador
-4. **Sessão persistente**: Ao recarregar a página, o token é verificado automaticamente
+---
 
-### Configuração da Senha (PRODUÇÃO)
+## 1. Visão Geral
 
-#### Passo 1: Gerar a senha e hash
+O Dashboard do Sistema de Visitantes inclui um sistema robusto de **monitoramento de requisições** em tempo real via Socket.IO, com proteção por senha.
 
-**Opção A - Via API (apenas em desenvolvimento):**
+### Funcionalidades:
 
-```bash
-curl http://localhost:3001/api/dashboard/generate-password
-```
+- ✅ Monitoramento de requisições em tempo real
+- ✅ Autenticação com senha + JWT
+- ✅ Estatísticas por método HTTP
+- ✅ Top endpoints mais acessados
+- ✅ Rastreamento por IP e usuário
+- ✅ Taxa de erros e endpoints problemáticos
 
-**Opção B - Via Node.js:**
+---
+
+## 2. Autenticação do Dashboard
+
+### 2.1 Como Funciona
+
+1. Ao acessar o Dashboard, será exibida uma tela de login
+2. Após autenticação, um **token JWT** é gerado (válido por 8 horas)
+3. Token armazenado no localStorage do navegador
+4. Sessão persistente ao recarregar a página
+
+### 2.2 Gerar Senha e Hash (Produção)
+
+**Via Node.js:**
 
 ```javascript
 const bcrypt = require("bcryptjs");
@@ -47,170 +66,53 @@ console.log("Senha:", password);
 console.log("Hash:", hash);
 ```
 
-#### Passo 2: Configurar variáveis de ambiente
+### 2.3 Configurar Variáveis de Ambiente
 
-Adicione ao seu `.env` de produção:
+Adicione ao `.env.producao`:
 
 ```env
 # Senha do Dashboard (hash bcrypt)
-DASHBOARD_PASSWORD_HASH=$2a$12$xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+DASHBOARD_PASSWORD_HASH=$2b$12$xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
-# Chave secreta para tokens JWT do Dashboard (gere uma chave única!)
+# Chave secreta para tokens JWT do Dashboard
 DASHBOARD_JWT_SECRET=sua_chave_secreta_muito_longa_e_aleatoria_aqui
 ```
 
-#### Passo 3: Guardar a senha em local seguro
-
-⚠️ **IMPORTANTE**: A senha gerada NÃO fica armazenada em nenhum lugar. Guarde-a em um gerenciador de senhas seguro (1Password, Bitwarden, etc.)
+> ⚠️ **IMPORTANTE**: Guarde a senha em local seguro! Ela não é recuperável.
 
 ---
 
-## 📈 Monitoramento de Requisições
+## 3. Métricas Coletadas
 
-### Dados Coletados
+### 3.1 Dados Monitorados
 
-O sistema monitora automaticamente:
+| Dado                        | Descrição                             |
+| --------------------------- | ------------------------------------- |
+| **Total de Requisições**    | Contador desde início do servidor     |
+| **Requisições por Método**  | GET, POST, PUT, DELETE, PATCH         |
+| **Requisições por Hora**    | Distribuição ao longo do dia          |
+| **Requisições por IP**      | Identificação de cada cliente         |
+| **Requisições por Usuário** | Rastreamento de usuários autenticados |
+| **Taxa de Erros**           | Percentual de erros 4xx/5xx           |
+| **Endpoints com Erros**     | Lista dos endpoints com mais falhas   |
 
-| Dado                        | Descrição                                 |
-| --------------------------- | ----------------------------------------- |
-| **Total de Requisições**    | Contador geral desde o início do servidor |
-| **Requisições por Método**  | GET, POST, PUT, DELETE, PATCH             |
-| **Requisições por Hora**    | Distribuição ao longo do dia              |
-| **Requisições por IP**      | Identificação de cada cliente             |
-| **Requisições por Usuário** | Rastreamento de usuários autenticados     |
-| **Taxa de Erros**           | Percentual de erros 4xx/5xx               |
-| **Endpoints com Erros**     | Lista dos endpoints com mais falhas       |
+### 3.2 Dados de IP
 
-### Dados de IP Coletados
+- Endereço IP do cliente (considera `x-forwarded-for`)
+- Quantidade de requisições por IP
+- Última requisição feita
+- Principal endpoint acessado
 
-- **Endereço IP** do cliente (considera headers de proxy como `x-forwarded-for`)
-- **Quantidade de requisições** por IP
-- **Última requisição** feita
-- **Principal endpoint** acessado por aquele IP
+### 3.3 Dados de Usuário
 
-### Dados de Usuário Coletados
-
-- **ID do usuário** (extraído do token JWT)
-- **Nome do usuário** (se disponível no token)
-- **Quantidade de requisições**
-- **Quantidade de IPs diferentes** usados (útil para detectar compartilhamento de conta)
-
----
-
-## 🔄 Persistência dos Dados
-
-### ⚠️ IMPORTANTE: Dados em Memória
-
-Os dados de monitoramento são armazenados **em memória RAM** do servidor Node.js.
-
-**Isso significa que:**
-
-✅ **Os dados PERMANECEM** enquanto o servidor estiver rodando
-✅ **Os dados são atualizados** em tempo real via Socket.IO
-✅ **Ao sair da página Dashboard**, os dados continuam sendo coletados no backend
-
-❌ **Os dados são PERDIDOS** quando:
-
-- O servidor é reiniciado
-- O container Docker é recriado
-- Ocorre um deploy com reinício
-
-### Como manter dados após reinício?
-
-Para persistência em produção, você pode implementar:
-
-1. **Salvar em Redis** (recomendado para dados temporários)
-2. **Salvar em PostgreSQL** (para histórico completo)
-3. **Exportar para arquivo** antes de reiniciar
-
----
-
-## 🖥️ Componentes do Dashboard
-
-### 1. Estatísticas Gerais
-
-- Total de requisições
-- Quantidade de erros
-- Taxa de erro percentual
-- Média de requisições por minuto
-- Uptime do servidor
-
-### 2. Gráfico de Métodos HTTP
-
-Mostra a distribuição visual de requisições por método (GET, POST, PUT, DELETE).
-
-### 3. Top Endpoints
-
-Lista os 10 endpoints mais acessados com:
-
-- Badge colorido do método HTTP
-- Path do endpoint
-- Contador de acessos
-
-### 4. Endpoints com Erros
-
-Lista endpoints que retornaram erro com:
-
-- Método HTTP
-- Path do endpoint
-- Status do último erro
-- Timestamp da última ocorrência
-- Contador de erros
-
-### 5. Top IPs (NOVO!)
-
-Lista os 10 IPs mais ativos com:
-
-- Ranking
-- Endereço IP
-- Endpoint mais acessado
-- Contador de requisições
-- Horário da última requisição
-
-### 6. Top Usuários (NOVO!)
-
-Lista os 10 usuários mais ativos com:
-
-- Ranking
+- ID do usuário (do token JWT)
 - Nome do usuário
-- ID do usuário
-- Contador de requisições
+- Quantidade de requisições
 - Quantidade de IPs diferentes usados
 
-### 7. Indicador de Consumo
+### 3.4 Requisições Ignoradas
 
-Barra visual mostrando nível de consumo:
-
-- 🟢 **Baixo**: 0-20 req/min
-- 🟡 **Médio**: 20-50 req/min
-- 🔴 **Alto**: 50+ req/min
-
----
-
-## ⚙️ Configuração de Ambiente
-
-### Variáveis de Ambiente Necessárias
-
-```env
-# Ativar contagem de requisições
-COUNT_REQUESTS=true
-
-# Ativar logs detalhados de requisições (opcional)
-LOG_REQUESTS=false
-
-# Chave de admin para API de estatísticas (produção)
-ADMIN_STATS_KEY=sua_chave_segura_aqui
-
-# Senha do Dashboard (hash bcrypt)
-DASHBOARD_PASSWORD_HASH=$2a$12$xxxxx
-
-# Chave JWT do Dashboard
-DASHBOARD_JWT_SECRET=chave_secreta_longa_aqui
-```
-
-### Requisições Ignoradas
-
-O sistema NÃO conta as seguintes requisições:
+O sistema **NÃO conta**:
 
 - `/socket.io/*` - Polling do Socket.IO
 - `/uploads/*` - Arquivos estáticos
@@ -221,39 +123,75 @@ O sistema NÃO conta as seguintes requisições:
 
 ---
 
-## 🔒 Segurança
+## 4. Componentes do Dashboard
 
-### Proteções Implementadas
+### 4.1 Estatísticas Gerais
 
-1. **Senha do Dashboard**: Acesso requer autenticação específica
-2. **Token JWT**: Sessão expira em 8 horas
-3. **Bloqueio após 5 tentativas**: Previne força bruta
-4. **Hash bcrypt**: Senha armazenada com salt round 12
-5. **Chave admin separada**: API de stats protegida
+- Total de requisições
+- Quantidade de erros
+- Taxa de erro percentual
+- Média de requisições por minuto
+- Uptime do servidor
 
-### Recomendações para Produção
+### 4.2 Gráfico de Métodos HTTP
 
-1. **Use HTTPS** para todas as conexões
-2. **Rotacione a senha** periodicamente
-3. **Monitore logs** de tentativas de acesso
-4. **Configure firewall** para limitar IPs de acesso ao admin
-5. **Não compartilhe** a senha do Dashboard
+Distribuição visual por método (GET, POST, PUT, DELETE).
+
+### 4.3 Top Endpoints
+
+Lista os 10 endpoints mais acessados:
+
+- Badge colorido do método HTTP
+- Path do endpoint
+- Contador de acessos
+
+### 4.4 Endpoints com Erros
+
+Lista endpoints que retornaram erro:
+
+- Método HTTP
+- Path do endpoint
+- Status do último erro
+- Timestamp da última ocorrência
+
+### 4.5 Top IPs
+
+Lista os 10 IPs mais ativos:
+
+- Endereço IP
+- Endpoint mais acessado
+- Contador de requisições
+
+### 4.6 Top Usuários
+
+Lista os 10 usuários mais ativos:
+
+- Nome e ID do usuário
+- Contador de requisições
+- Quantidade de IPs diferentes
+
+### 4.7 Indicador de Consumo
+
+| Nível    | Cor      | Requisições/min |
+| -------- | -------- | --------------- |
+| 🟢 Baixo | Verde    | 0-20            |
+| 🟡 Médio | Amarelo  | 20-50           |
+| 🔴 Alto  | Vermelho | 50+             |
 
 ---
 
-## 📝 API de Estatísticas
+## 5. API de Estatísticas
 
-### Endpoints Disponíveis
+### 5.1 Endpoints Disponíveis
 
-| Método | Endpoint                           | Descrição                             |
-| ------ | ---------------------------------- | ------------------------------------- |
-| GET    | `/api/stats`                       | Estatísticas básicas                  |
-| GET    | `/api/stats?details=true`          | Estatísticas com requisições recentes |
-| POST   | `/api/dashboard/auth`              | Autenticação do Dashboard             |
-| GET    | `/api/dashboard/verify`            | Verificar token                       |
-| GET    | `/api/dashboard/generate-password` | Gerar nova senha (só dev)             |
+| Método | Endpoint                  | Descrição               |
+| ------ | ------------------------- | ----------------------- |
+| GET    | `/api/stats`              | Estatísticas básicas    |
+| GET    | `/api/stats?details=true` | Estatísticas detalhadas |
+| POST   | `/api/dashboard/auth`     | Autenticação            |
+| GET    | `/api/dashboard/verify`   | Verificar token         |
 
-### Exemplo de Resposta `/api/stats`
+### 5.2 Exemplo de Resposta
 
 ```json
 {
@@ -270,33 +208,81 @@ O sistema NÃO conta as seguintes requisições:
     "DELETE": 8
   },
   "topEndpoints": [
-    { "endpoint": "/visitantes", "method": "GET", "count": 450 },
-    { "endpoint": "/historico", "method": "GET", "count": 320 }
+    { "endpoint": "/visitantes", "method": "GET", "count": 450 }
   ],
-  "topIPs": [
-    {
-      "ip": "192.168.1.100",
-      "count": 500,
-      "lastRequest": "2024-01-15T10:30:00Z"
-    }
-  ],
-  "topUsers": [
-    {
-      "userId": "abc123",
-      "userName": "João Silva",
-      "count": 250,
-      "ipsCount": 1
-    }
-  ],
-  "consumptionLevel": "baixo",
-  "uniqueIPs": 15,
-  "uniqueUsers": 8
+  "topIPs": [{ "ip": "192.168.1.100", "count": 500 }],
+  "topUsers": [{ "userId": "abc123", "userName": "João", "count": 250 }],
+  "consumptionLevel": "baixo"
 }
 ```
 
 ---
 
-## 🚀 Checklist de Deploy
+## 6. Configuração
+
+### 6.1 Variáveis de Ambiente
+
+```env
+# Ativar contagem de requisições
+COUNT_REQUESTS=true
+
+# Ativar logs detalhados (opcional)
+LOG_REQUESTS=false
+
+# Chave de admin para API de estatísticas
+ADMIN_STATS_KEY=sua_chave_segura_aqui
+
+# Senha do Dashboard (hash bcrypt)
+DASHBOARD_PASSWORD_HASH=$2b$12$xxxxx
+
+# Chave JWT do Dashboard
+DASHBOARD_JWT_SECRET=chave_secreta_longa_aqui
+```
+
+### 6.2 Acessar o Dashboard
+
+1. Faça login no sistema
+2. Navegue até o Dashboard
+3. Role até **Monitoramento de Requisições**
+4. Dados atualizam em tempo real via Socket.IO
+
+---
+
+## 7. Segurança
+
+### 7.1 Proteções Implementadas
+
+| Proteção                   | Descrição                             |
+| -------------------------- | ------------------------------------- |
+| Senha do Dashboard         | Acesso requer autenticação específica |
+| Token JWT                  | Sessão expira em 8 horas              |
+| Bloqueio após 5 tentativas | Previne força bruta                   |
+| Hash bcrypt                | Senha com salt round 12               |
+| Chave admin separada       | API de stats protegida                |
+
+### 7.2 Recomendações para Produção
+
+1. **Use HTTPS** para todas as conexões
+2. **Rotacione a senha** periodicamente
+3. **Monitore logs** de tentativas de acesso
+4. **Configure firewall** para limitar IPs
+5. **Não compartilhe** a senha do Dashboard
+
+### 7.3 Persistência dos Dados
+
+> ⚠️ **ATENÇÃO**: Dados são armazenados em **memória RAM**.
+
+**Os dados PERMANECEM** enquanto o servidor estiver rodando.
+
+**Os dados são PERDIDOS** quando:
+
+- O servidor é reiniciado
+- O container Docker é recriado
+- Ocorre um deploy com reinício
+
+---
+
+## 📋 Checklist de Deploy
 
 - [ ] `COUNT_REQUESTS=true` configurado
 - [ ] `DASHBOARD_PASSWORD_HASH` configurado
@@ -305,4 +291,11 @@ O sistema NÃO conta as seguintes requisições:
 - [ ] Senha guardada em local seguro
 - [ ] HTTPS habilitado
 - [ ] Testado login no Dashboard
-- [ ] Monitoramento aparecendo dados corretos
+
+---
+
+## 📚 Documentos Relacionados
+
+- [COMO_FUNCIONA_AMBIENTES.md](COMO_FUNCIONA_AMBIENTES.md) - Configuração de ambientes
+- [BACKEND_ARQUITETURA.md](BACKEND_ARQUITETURA.md) - Arquitetura do sistema
+- [DEPLOY_PRODUCAO_GUIA.md](DEPLOY_PRODUCAO_GUIA.md) - Deploy automatizado

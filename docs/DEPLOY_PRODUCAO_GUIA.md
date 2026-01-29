@@ -1,583 +1,451 @@
 # 🚀 Guia de Deploy para Produção
 
-> **Documento criado em:** Janeiro de 2026  
-> **Última atualização:** v2.0.1
+> **Última atualização:** Janeiro 2026 | **Versão:** 2.0
 
-Este guia documenta o processo completo de deploy do Sistema Visitante para produção, desde o merge de branches até a atualização dos containers.
+Este guia documenta o processo de deploy do Backend para produção, utilizando **GitHub Actions** para automação completa.
 
 ---
 
 ## 📋 Índice
 
-1. [Pré-requisitos](#1-pré-requisitos)
-2. [Merge de Branch para Main](#2-merge-de-branch-para-main)
-3. [Versionamento com Tags](#3-versionamento-com-tags)
-4. [Build da Imagem Docker](#4-build-da-imagem-docker)
-5. [Push para Docker Hub](#5-push-para-docker-hub)
-6. [Deploy na VM de Produção](#6-deploy-na-vm-de-produção)
-7. [Migração do Banco de Dados](#7-migração-do-banco-de-dados)
-8. [Deploy do Frontend no Vercel](#8-deploy-do-frontend-no-vercel)
-9. [Verificação Final](#9-verificação-final)
-10. [Troubleshooting](#10-troubleshooting)
+1. [Visão Geral do Fluxo](#1-visão-geral-do-fluxo)
+2. [Pré-requisitos](#2-pré-requisitos)
+3. [Deploy Automático (Recomendado)](#3-deploy-automático-recomendado)
+4. [Versionamento Semântico](#4-versionamento-semântico)
+5. [Deploy Manual (Emergência)](#5-deploy-manual-emergência)
+6. [Estrutura da VM de Produção](#6-estrutura-da-vm-de-produção)
+7. [Migração de Banco de Dados](#7-migração-de-banco-de-dados)
+8. [Verificação e Monitoramento](#8-verificação-e-monitoramento)
+9. [Troubleshooting](#9-troubleshooting)
 
 ---
 
-## 1. Pré-requisitos
+## 1. Visão Geral do Fluxo
 
-### 1.1 Ferramentas necessárias na máquina local
+### 🔄 Fluxo Automatizado
 
-- **Git** instalado e configurado
-- **Docker Desktop** instalado e **em execução**
-- **Conta no Docker Hub** com login realizado
-- **Acesso SSH** à VM de produção
-- **psql** (cliente PostgreSQL) para migrações
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           FLUXO DE DEPLOY AUTOMÁTICO                        │
+└─────────────────────────────────────────────────────────────────────────────┘
 
-### 1.2 Credenciais necessárias
-
-| Item                       | Descrição                                               |
-| -------------------------- | ------------------------------------------------------- |
-| Docker Hub                 | `vitorlohan` (usuário)                                  |
-| VM Produção                | SSH para `dev@34.225.38.222`                            |
-| PostgreSQL Produção        | Host: `34.225.38.222`, Porta: `5786`, DB: `neondb_prod` |
-| PostgreSQL Desenvolvimento | Host: `34.225.38.222`, Porta: `5432`, DB: `neondb`      |
-
-### 1.3 Verificar Docker Desktop
-
-Antes de começar, certifique-se que o Docker Desktop está em execução:
-
-```powershell
-# Verificar se Docker está rodando
-docker info
+  Developer                GitHub Actions                    VM Produção
+     │                          │                                │
+     │  git push origin main    │                                │
+     ├─────────────────────────>│                                │
+     │                          │                                │
+     │                    ┌─────┴─────┐                          │
+     │                    │ auto-tag  │                          │
+     │                    │ v2.0.5    │  Cria tag semântica      │
+     │                    └─────┬─────┘                          │
+     │                          │                                │
+     │                    ┌─────┴─────┐                          │
+     │                    │  build &  │                          │
+     │                    │   push    │──> Docker Hub            │
+     │                    └─────┬─────┘    (vitorlohan/liberae)  │
+     │                          │                                │
+     │                    ┌─────┴─────┐   Self-Hosted Runner     │
+     │                    │  deploy   │─────────────────────────>│
+     │                    │   prod    │  • Atualiza .env         │
+     │                    └─────┬─────┘  • docker compose up     │
+     │                          │                                │
+     │                    ┌─────┴─────┐                          │
+     │                    │  health   │<─────────────────────────│
+     │                    │  check    │   ✅ Backend OK          │
+     │                    └───────────┘                          │
 ```
 
-Se não estiver rodando, abra o Docker Desktop e aguarde inicializar.
+### O que acontece automaticamente:
+
+1. **Auto-tag**: Analisa commits e gera versão semântica (v2.0.5, v2.1.0, etc.)
+2. **Build**: Constrói imagem Docker do backend
+3. **Push**: Envia imagem para Docker Hub
+4. **Deploy**: Atualiza containers na VM de produção
+5. **Health Check**: Verifica se aplicação está respondendo
 
 ---
 
-## 2. Merge de Branch para Main
+## 2. Pré-requisitos
 
-### 2.1 Preparação
+### 2.1 GitHub Secrets Configurados
+
+Acesse: **Settings > Secrets and variables > Actions**
+
+| Secret            | Descrição                     |
+| ----------------- | ----------------------------- |
+| `DOCKER_USERNAME` | Usuário do Docker Hub         |
+| `DOCKER_TOKEN`    | Token de acesso do Docker Hub |
+
+### 2.2 Self-Hosted Runner na VM
+
+O runner deve estar instalado e rodando na VM:
 
 ```bash
-# Navegar para o diretório do projeto
+# Verificar status do runner na VM
+cd /home/dev/actions-runner
+./svc.sh status
+```
+
+### 2.3 Estrutura na VM
+
+```
+/home/dev/sistema/prod/
+├── .env                      # DOCKER_USERNAME e IMAGE_TAG
+├── docker-compose-prod.yml   # Configuração dos containers
+├── nginx/
+│   ├── nginx.conf
+│   └── conf.d/
+├── certs/                    # Certificados SSL
+└── backup_neondb.sql         # Backup do banco (opcional)
+```
+
+---
+
+## 3. Deploy Automático (Recomendado)
+
+### 3.1 Fazer alterações e commit
+
+```bash
 cd c:\Users\vitor.lohan\documents\sistema-visitante
 
-# Verificar status atual
-git status
-
-# Verificar branch atual
-git branch
-```
-
-### 2.2 Atualizar branches
-
-```bash
-# Buscar atualizações do remoto
-git fetch origin
-
-# Mudar para a branch main
-git checkout main
-
-# Atualizar main com o remoto
-git pull origin main
-```
-
-### 2.3 Realizar o merge
-
-```bash
-# Fazer merge da branch de desenvolvimento para main
-# Substitua 'aplicativo' pelo nome da sua branch de feature
-git merge aplicativo -m "Merge branch 'aplicativo' into main - versão X.X.X"
-
-# Se houver conflitos, resolva-os e depois:
+# Fazer alterações no código
 git add .
-git commit -m "Resolve conflitos do merge"
+
+# Commit com prefixo semântico
+git commit -m "feat: nova funcionalidade de relatórios"
 ```
 
-### 2.4 Enviar para o repositório remoto
+### 3.2 Push para main
 
 ```bash
 git push origin main
 ```
 
-> ⚠️ **ATENÇÃO:** O push para `main` dispara automaticamente o GitHub Actions que cria uma nova tag de versão baseada no prefixo do commit (Conventional Commits).
+**Pronto!** O GitHub Actions faz todo o resto automaticamente.
+
+### 3.3 Acompanhar o deploy
+
+1. Acesse a aba **Actions** no GitHub
+2. Clique no workflow em execução
+3. Acompanhe os jobs: `auto-tag` → `build-and-push` → `deploy-prod`
 
 ---
 
-## 3. Versionamento com Tags (Conventional Commits)
+## 4. Versionamento Semântico
 
-O projeto utiliza **Conventional Commits** para versionamento semântico automático. O GitHub Actions analisa os prefixos das mensagens de commit para determinar o tipo de versão.
+O sistema analisa os prefixos dos commits para determinar o tipo de versão.
 
-### 3.1 Tabela de Prefixos de Commit
+### 4.1 Tabela de Prefixos
 
-| Prefixo do Commit                                                   | Tipo de Versão | Incremento | Exemplo                              |
-| ------------------------------------------------------------------- | -------------- | ---------- | ------------------------------------ |
-| `major:` ou `BREAKING CHANGE`                                       | **Major**      | X.0.0      | `major: nova arquitetura do sistema` |
-| `feat:`                                                             | **Minor**      | 0.X.0      | `feat: adicionado chat de suporte`   |
-| `fix:`, `docs:`, `style:`, `refactor:`, `chore:`, ou qualquer outro | **Patch**      | 0.0.X      | `fix: corrigido bug no cronômetro`   |
+| Prefixo                           | Versão    | Exemplo                 | Resultado       |
+| --------------------------------- | --------- | ----------------------- | --------------- |
+| `major:` ou `BREAKING CHANGE`     | **Major** | `major: nova API`       | v2.0.0 → v3.0.0 |
+| `feat:`                           | **Minor** | `feat: chat de suporte` | v2.0.0 → v2.1.0 |
+| `fix:`, `docs:`, `chore:`, outros | **Patch** | `fix: bug no login`     | v2.0.0 → v2.0.1 |
 
-### 3.2 Exemplos de Commits
+### 4.2 Exemplos de Commits
 
 ```bash
-# ══════════════════════════════════════════════════════════════════
-# PATCH (0.0.X) - Correções de bugs, ajustes menores
-# ══════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════
+# PATCH (0.0.X) - Correções e ajustes
+# ═══════════════════════════════════════════════════════════════════
 git commit -m "fix: corrigido bug no cronômetro"
-git commit -m "fix: ajustado layout do modal de confirmação"
-git commit -m "docs: atualizado README com instruções de instalação"
-git commit -m "style: formatação do código"
-git commit -m "refactor: reorganizado estrutura de pastas"
+git commit -m "docs: atualizado README"
 git commit -m "chore: atualizado dependências"
+git commit -m "style: formatação do código"
+git commit -m "refactor: reorganizado estrutura"
 
-# ══════════════════════════════════════════════════════════════════
-# MINOR (0.X.0) - Novas funcionalidades (sem quebrar compatibilidade)
-# ══════════════════════════════════════════════════════════════════
-git commit -m "feat: adicionado filtro de busca no histórico"
-git commit -m "feat: implementado sistema de notificações"
-git commit -m "feat: nova página de relatórios"
+# ═══════════════════════════════════════════════════════════════════
+# MINOR (0.X.0) - Novas funcionalidades
+# ═══════════════════════════════════════════════════════════════════
+git commit -m "feat: filtro de busca no histórico"
+git commit -m "feat: sistema de notificações"
+git commit -m "feat: página de relatórios"
 
-# ══════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════
 # MAJOR (X.0.0) - Mudanças que quebram compatibilidade
-# ══════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════
 git commit -m "major: nova estrutura de banco de dados"
-git commit -m "major: API v2 com endpoints reestruturados"
-git commit -m "BREAKING CHANGE: removido suporte a autenticação legada"
+git commit -m "BREAKING CHANGE: removido suporte legado"
 ```
 
-### 3.3 Como funciona o versionamento automático
-
-Quando você faz `git push origin main`, o GitHub Actions:
-
-1. **Busca a última tag** existente (ex: `v2.0.1`)
-2. **Analisa os commits** desde a última tag
-3. **Determina o incremento** baseado nos prefixos encontrados:
-   - Se encontrar `major:` ou `BREAKING CHANGE` → incrementa Major
-   - Se encontrar `feat:` → incrementa Minor
-   - Caso contrário → incrementa Patch
-4. **Cria a nova tag** automaticamente (ex: `v2.0.2`)
-5. **Faz build e push** da imagem Docker com a nova tag
-6. **Deploya** na VM de produção
-
-### 3.4 Criar tag manualmente (se necessário)
-
-Em casos especiais, você pode criar tags manualmente:
+### 4.3 Verificar tags existentes
 
 ```bash
-# Criar tag manualmente
-git tag -a v2.0.0 -m "Major version 2.0.0 - Descrição das mudanças"
-
-# Enviar a tag para o remoto
-git push origin v2.0.0
-```
-
-### 3.5 Verificar tags existentes
-
-```bash
-# Listar todas as tags
-git tag -l
-
-# Ver a última tag
-git describe --tags --abbrev=0
-```
-
-### 3.3 Verificar tags existentes
-
-```bash
-# Listar todas as tags
-git tag -l
-
-# Ver a última tag
-git describe --tags --abbrev=0
+git tag -l                    # Lista todas as tags
+git describe --tags --abbrev=0  # Última tag
 ```
 
 ---
 
-## 4. Build da Imagem Docker
+## 5. Deploy Manual (Emergência)
 
-### 4.1 Navegar para pasta do backend
+Use apenas se o deploy automático falhar.
+
+### 5.1 Build local da imagem
 
 ```powershell
 cd c:\Users\vitor.lohan\documents\sistema-visitante\backend
+
+# Build com a versão desejada
+docker build -t vitorlohan/liberae:v2.0.6 .
+
+# Criar tag latest
+docker tag vitorlohan/liberae:v2.0.6 vitorlohan/liberae:latest
 ```
 
-### 4.2 Build da imagem com tag de versão
-
-```powershell
-# Substituir vX.X.X pela versão atual (ex: v2.0.1)
-docker build -t vitorlohan/liberae:v2.0.1 .
-```
-
-### 4.3 Criar tag latest
-
-```powershell
-docker tag vitorlohan/liberae:v2.0.1 vitorlohan/liberae:latest
-```
-
-### 4.4 Verificar imagens criadas
-
-```powershell
-docker images | Select-String "liberae"
-```
-
----
-
-## 5. Push para Docker Hub
-
-### 5.1 Login no Docker Hub (se necessário)
+### 5.2 Push para Docker Hub
 
 ```powershell
 docker login
-# Inserir usuário: vitorlohan
-# Inserir senha/token
-```
-
-### 5.2 Enviar imagem versionada
-
-```powershell
-docker push vitorlohan/liberae:v2.0.1
-```
-
-### 5.3 Enviar imagem latest
-
-```powershell
+docker push vitorlohan/liberae:v2.0.6
 docker push vitorlohan/liberae:latest
 ```
 
-### 5.4 Verificar no Docker Hub
-
-Acesse https://hub.docker.com/r/vitorlohan/liberae/tags para confirmar as imagens.
-
----
-
-## 6. Deploy na VM de Produção
-
-### 6.1 Conectar via SSH
+### 5.3 Deploy na VM
 
 ```bash
+# Conectar via SSH
 ssh dev@34.225.38.222
-```
 
-### 6.2 Navegar para pasta de produção
-
-```bash
+# Ir para pasta de produção
 cd /home/dev/sistema/prod
-```
 
-### 6.3 Configurar variáveis de ambiente
+# Atualizar .env com nova tag
+echo "DOCKER_USERNAME=vitorlohan" > .env
+echo "IMAGE_TAG=v2.0.6" >> .env
 
-Criar/editar arquivo `.env` na pasta prod:
-
-```bash
-nano .env
-```
-
-Conteúdo do `.env`:
-
-```env
-DOCKER_USERNAME=vitorlohan
-IMAGE_TAG=v2.0.1
-```
-
-### 6.4 Verificar docker-compose.yml
-
-O arquivo deve usar as variáveis de ambiente:
-
-```yaml
-services:
-  backend:
-    image: ${DOCKER_USERNAME}/liberae:${IMAGE_TAG}
-    # ... resto da configuração
-```
-
-### 6.5 Pull da nova imagem
-
-```bash
-docker pull vitorlohan/liberae:v2.0.1
-```
-
-### 6.6 Parar containers antigos
-
-```bash
-docker compose down
-```
-
-### 6.7 Iniciar novos containers
-
-```bash
-docker compose up -d
-```
-
-### Pull da nova imagem e restart do container:
-
-```bash
-cd /home/dev/sistema/prod
-docker compose -f docker-compose-prod.yml pull
+# Atualizar containers
+docker compose -f docker-compose-prod.yml pull backend
 docker compose -f docker-compose-prod.yml down
 docker compose -f docker-compose-prod.yml up -d
-```
 
-### 6.8 Verificar containers rodando
-
-```bash
+# Verificar
 docker ps
-```
-
-Containers esperados:
-
-- `sistema_visitante_db_prod`
-- `sistema_visitante_backend_prod`
-- `nginx_prod`
-
-### 6.9 Verificar logs do backend
-
-```bash
 docker logs sistema_visitante_backend_prod --tail 50
 ```
 
-### 6.10 Verificar logs em tempo real
+---
+
+## 6. Estrutura da VM de Produção
+
+### 6.1 Arquivo `.env`
+
+```env
+DOCKER_USERNAME=vitorlohan
+IMAGE_TAG=v2.0.5
+```
+
+> ⚠️ Este arquivo é **atualizado automaticamente** pelo GitHub Actions.
+
+### 6.2 Arquivo `docker-compose-prod.yml`
+
+```yaml
+services:
+  database:
+    image: postgres:15
+    container_name: sistema_visitante_db_prod
+    environment:
+      POSTGRES_DB: neondb_prod
+      POSTGRES_USER: neondb_owner_prod
+      POSTGRES_PASSWORD: npg_prod_senha
+    ports:
+      - "5786:5432"
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    networks:
+      - app-network-prod
+
+  backend:
+    image: "${DOCKER_USERNAME}/liberae:${IMAGE_TAG}"
+    container_name: sistema_visitante_backend_prod
+    expose:
+      - "3707"
+    environment:
+      - NODE_ENV=production_local
+      - DATABASE_URL=postgresql://user:pass@database:5432/neondb_prod
+      - DB_HOST=database
+      - PORT=3707
+      # ... outras variáveis
+    depends_on:
+      - database
+    networks:
+      - app-network-prod
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx_prod
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/letsencrypt
+    depends_on:
+      - backend
+    networks:
+      - app-network-prod
+```
+
+### 6.3 Containers Ativos
+
+| Container                        | Porta Interna | Porta Externa | Descrição           |
+| -------------------------------- | ------------- | ------------- | ------------------- |
+| `sistema_visitante_db_prod`      | 5432          | 5786          | PostgreSQL          |
+| `sistema_visitante_backend_prod` | 3707          | -             | Node.js (via Nginx) |
+| `nginx_prod`                     | 80, 443       | 80, 443       | Proxy reverso + SSL |
+
+---
+
+## 7. Migração de Banco de Dados
+
+### 7.1 Quando executar
+
+- Alterações em tabelas (CREATE, ALTER, DROP)
+- Novas permissões ou papéis
+- Seeds de dados
+
+### 7.2 Backup antes da migração
 
 ```bash
+pg_dump -h 34.225.38.222 -p 5786 -U neondb_owner_prod -d neondb_prod > backup_$(date +%Y%m%d).sql
+```
+
+### 7.3 Executar migração
+
+```powershell
+# Windows
+$env:PGPASSWORD='SUA_SENHA'
+psql -h 34.225.38.222 -p 5786 -U neondb_owner_prod -d neondb_prod -f backend/sql/SCRIPT.sql
+```
+
+### 7.4 Scripts disponíveis
+
+| Script                             | Descrição                  |
+| ---------------------------------- | -------------------------- |
+| `seed_papeis_permissoes.sql`       | Popula permissões e papéis |
+| `seed_chat_suporte_permissoes.sql` | Permissões do chat         |
+| `migration_v2.0.0_safe.sql`        | Migração completa v2.0     |
+
+---
+
+## 8. Verificação e Monitoramento
+
+### 8.1 Checklist pós-deploy
+
+- [ ] Containers rodando: `docker ps`
+- [ ] Backend respondendo: `curl http://localhost:3707/health`
+- [ ] Logs sem erros: `docker logs sistema_visitante_backend_prod --tail 50`
+- [ ] Login funcionando no frontend
+- [ ] WebSocket conectando
+
+### 8.2 Verificar logs
+
+```bash
+# Últimas 50 linhas
+docker logs sistema_visitante_backend_prod --tail 50
+
+# Tempo real
 docker logs -f sistema_visitante_backend_prod
+
+# Apenas erros
+docker logs sistema_visitante_backend_prod 2>&1 | grep -i error
 ```
 
----
-
-## 7. Migração do Banco de Dados
-
-### 7.1 Quando executar migração
-
-Execute migração SQL quando houver alterações em:
-
-- Estrutura de tabelas (CREATE, ALTER, DROP)
-- Renomeação de colunas ou tabelas
-- Novas constraints ou índices
-- Dados de seed (permissões, papéis, etc.)
-
-### 7.2 Backup antes da migração (IMPORTANTE!)
+### 8.3 Health check
 
 ```bash
-# Na VM de produção ou máquina local com acesso ao banco
-pg_dump -h 34.225.38.222 -p 5786 -U neondb_owner_prod -d neondb_prod > backup_antes_migracao_$(date +%Y%m%d_%H%M%S).sql
-```
-
-### 7.3 Executar script de migração
-
-Da máquina local:
-
-```powershell
-# Definir senha como variável de ambiente
-$env:PGPASSWORD='SUA_SENHA_AQUI'
-
-# Executar migração
-psql -h 34.225.38.222 -p 5786 -U neondb_owner_prod -d neondb_prod -f backend/sql/NOME_DO_SCRIPT.sql
-```
-
-### 7.4 Verificar migração
-
-```powershell
-# Verificar se tabelas foram criadas/alteradas
-$env:PGPASSWORD='SUA_SENHA_AQUI'
-psql -h 34.225.38.222 -p 5786 -U neondb_owner_prod -d neondb_prod -c "\dt"
-```
-
-### 7.5 Scripts de migração comuns
-
-| Script                             | Descrição                                              |
-| ---------------------------------- | ------------------------------------------------------ |
-| `migration_v2.0.0_safe.sql`        | Migração completa v2.0.0 (renomeia tabelas, cria RBAC) |
-| `seed_papeis_permissoes.sql`       | Popula permissões e papéis                             |
-| `seed_chat_suporte_permissoes.sql` | Permissões do chat de suporte                          |
-
----
-
-## 8. Deploy do Frontend no Vercel
-
-### 8.1 Deploy automático
-
-O Vercel faz deploy automático quando há push para a branch configurada (geralmente `main`).
-
-### 8.2 Variáveis de ambiente necessárias
-
-No painel do Vercel (Settings → Environment Variables):
-
-| Variável            | Valor                                     |
-| ------------------- | ----------------------------------------- |
-| `CI`                | `false`                                   |
-| `REACT_APP_API_URL` | `https://visitante.dimeexperience.com.br` |
-
-### 8.3 Redeploy manual (se necessário)
-
-1. Acesse o dashboard do Vercel
-2. Vá em **Deployments**
-3. Clique nos **3 pontos** do último deploy
-4. Selecione **Redeploy**
-
-### 8.4 Verificar build logs
-
-Se o deploy falhar, verifique os logs de build no Vercel para identificar erros de ESLint ou compilação.
-
-> 💡 **Dica:** A variável `CI=false` faz com que warnings do ESLint não falhem o build.
-
----
-
-## 9. Verificação Final
-
-### 9.1 Checklist de verificação
-
-- [ ] Containers rodando na VM (`docker ps`)
-- [ ] Backend respondendo: `https://visitante.dimeexperience.com.br/api/health`
-- [ ] Frontend carregando: `https://seu-dominio-vercel.vercel.app`
-- [ ] Login funcionando
-- [ ] WebSocket conectando (verificar console do navegador)
-- [ ] Funcionalidades principais testadas
-
-### 9.2 Testar WebSocket
-
-No console do navegador (F12):
-
-```javascript
-// Verificar conexão socket
-// Deve aparecer logs de conexão socket.io
-```
-
-### 9.3 Verificar logs de erro
-
-```bash
-# Na VM
-docker logs sistema_visitante_backend_prod --tail 100 | grep -i error
+curl http://localhost:3707/health
+# Resposta esperada:
+# {"status":"OK","timestamp":"2026-01-29T...","version":"2.0.5"}
 ```
 
 ---
 
-## 10. Troubleshooting
+## 9. Troubleshooting
 
-### 10.1 Docker Desktop não está rodando
-
-**Erro:** `error during connect: ... Is the docker daemon running?`
-
-**Solução:** Abrir Docker Desktop e aguardar inicialização completa.
-
-### 10.2 Falha no push para Docker Hub
-
-**Erro:** `denied: requested access to the resource is denied`
-
-**Solução:**
-
-```powershell
-docker logout
-docker login
-# Inserir credenciais novamente
-```
-
-### 10.3 Variáveis de ambiente não definidas na VM
-
-**Erro:** `DOCKER_USERNAME variable is not set`
-
-**Solução:** Criar arquivo `.env` na pasta do docker-compose:
-
-```bash
-echo "DOCKER_USERNAME=vitorlohan" >> .env
-echo "IMAGE_TAG=vX.X.X" >> .env
-```
-
-### 10.4 Erro de sintaxe SQL
-
-**Erro:** `ERROR: syntax error at or near "NOT"` (para IF NOT EXISTS em constraints)
-
-**Solução:** PostgreSQL não suporta `IF NOT EXISTS` em `ADD CONSTRAINT`. Usar bloco condicional:
-
-```sql
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'nome_constraint') THEN
-        ALTER TABLE tabela ADD CONSTRAINT nome_constraint ...;
-    END IF;
-END $$;
-```
-
-### 10.5 Build do Vercel falhando por ESLint
-
-**Erro:** `Treating warnings as errors because process.env.CI = true`
-
-**Solução:** Adicionar variável de ambiente `CI=false` no Vercel.
-
-### 10.6 WebSocket não conecta
+### 9.1 Deploy automático não executou
 
 **Verificar:**
 
-1. CORS configurado corretamente no backend
-2. URL do socket no frontend aponta para produção
-3. Nginx configurado para proxy de WebSocket
+1. Self-hosted runner está online? (Settings > Actions > Runners)
+2. Push foi feito para branch `main`?
+3. Workflow tem erros? (aba Actions)
 
----
-
-## 📝 Resumo dos Comandos Principais
+### 9.2 Imagem não foi atualizada
 
 ```bash
-# ═══════════════════════════════════════════════════════════════════════════
-# 1. MERGE COM CONVENTIONAL COMMITS
-# ═══════════════════════════════════════════════════════════════════════════
-git checkout main
-git merge aplicativo
-
-# Escolha o prefixo conforme o tipo de mudança:
-git commit -m "fix: corrigido bug X"      # → Patch (0.0.X)
-git commit -m "feat: nova funcionalidade" # → Minor (0.X.0)
-git commit -m "major: mudança breaking"   # → Major (X.0.0)
-
-git push origin main
-# ✅ GitHub Actions cria tag automaticamente e faz deploy!
-
-# ═══════════════════════════════════════════════════════════════════════════
-# 2. DEPLOY MANUAL (se necessário)
-# ═══════════════════════════════════════════════════════════════════════════
-
-# BUILD DOCKER (local)
-cd backend
-docker build -t vitorlohan/liberae:vX.X.X .
-docker tag vitorlohan/liberae:vX.X.X vitorlohan/liberae:latest
-
-# PUSH DOCKER (local)
-docker push vitorlohan/liberae:vX.X.X
-docker push vitorlohan/liberae:latest
-
-# DEPLOY VM (via SSH)
-ssh dev@34.225.38.222
-cd /home/dev/sistema/prod
-docker pull vitorlohan/liberae:vX.X.X
-docker compose down
-docker compose up -d
-
-# ═══════════════════════════════════════════════════════════════════════════
-# 3. MIGRAÇÃO SQL (se necessário)
-# ═══════════════════════════════════════════════════════════════════════════
-$env:PGPASSWORD='SENHA'; psql -h 34.225.38.222 -p 5786 -U neondb_owner_prod -d neondb_prod -f script.sql
-
-# ═══════════════════════════════════════════════════════════════════════════
-# 4. VERCEL - Automático ou redeploy manual pelo dashboard
-# ═══════════════════════════════════════════════════════════════════════════
+# Forçar pull da nova imagem
+docker compose -f docker-compose-prod.yml pull backend
+docker compose -f docker-compose-prod.yml up -d --force-recreate backend
 ```
 
-### 📋 Referência Rápida de Conventional Commits
+### 9.3 Container não inicia
 
-| Prefixo     | Versão | Quando usar                              |
-| ----------- | ------ | ---------------------------------------- |
-| `fix:`      | Patch  | Correção de bugs                         |
-| `feat:`     | Minor  | Nova funcionalidade                      |
-| `major:`    | Major  | Mudança que quebra compatibilidade       |
-| `docs:`     | Patch  | Apenas documentação                      |
-| `style:`    | Patch  | Formatação, sem mudança de código        |
-| `refactor:` | Patch  | Refatoração sem mudança de comportamento |
-| `chore:`    | Patch  | Tarefas de manutenção                    |
+```bash
+# Ver logs detalhados
+docker logs sistema_visitante_backend_prod
+
+# Verificar variáveis de ambiente
+docker exec sistema_visitante_backend_prod env | grep -E "DB_|NODE_"
+```
+
+### 9.4 Banco de dados não conecta
+
+```bash
+# Testar conexão do container
+docker exec sistema_visitante_backend_prod nc -zv database 5432
+
+# Verificar se database está rodando
+docker ps | grep database
+```
+
+### 9.5 Rollback para versão anterior
+
+```bash
+# Editar .env com versão anterior
+echo "IMAGE_TAG=v2.0.4" > /home/dev/sistema/prod/.env
+echo "DOCKER_USERNAME=vitorlohan" >> /home/dev/sistema/prod/.env
+
+# Recriar container
+docker compose -f docker-compose-prod.yml up -d --force-recreate backend
+```
 
 ---
 
-## 🔗 Links Úteis
+## 📝 Resumo de Comandos
 
-- **Docker Hub:** https://hub.docker.com/r/vitorlohan/liberae
-- **Vercel Dashboard:** https://vercel.com/dashboard
-- **GitHub Actions:** Ver aba "Actions" no repositório
+```bash
+# ═══════════════════════════════════════════════════════════════════
+# DEPLOY AUTOMÁTICO (normal)
+# ═══════════════════════════════════════════════════════════════════
+git add .
+git commit -m "feat: nova funcionalidade"
+git push origin main
+# ✅ GitHub Actions faz o resto!
+
+# ═══════════════════════════════════════════════════════════════════
+# VERIFICAÇÃO NA VM
+# ═══════════════════════════════════════════════════════════════════
+ssh dev@34.225.38.222
+cd /home/dev/sistema/prod
+docker ps
+docker logs sistema_visitante_backend_prod --tail 50
+cat .env
+
+# ═══════════════════════════════════════════════════════════════════
+# COMANDOS ÚTEIS
+# ═══════════════════════════════════════════════════════════════════
+docker compose -f docker-compose-prod.yml ps      # Status
+docker compose -f docker-compose-prod.yml logs -f # Logs tempo real
+docker compose -f docker-compose-prod.yml restart backend  # Reiniciar
+docker image prune -f                             # Limpar imagens antigas
+```
 
 ---
 
-> 📅 **Próxima atualização:** Adicionar seção de rollback em caso de falha
+## 📚 Documentos Relacionados
+
+- [COMO_FUNCIONA_AMBIENTES.md](COMO_FUNCIONA_AMBIENTES.md) - Configuração de ambientes
+- [BACKEND_ARQUITETURA.md](BACKEND_ARQUITETURA.md) - Arquitetura do sistema
+- [GUIA_DASHBOARD_PRODUCAO.md](GUIA_DASHBOARD_PRODUCAO.md) - Monitoramento

@@ -1,6 +1,6 @@
-# 🌍 Gerenciamento de Ambientes - Sistema Liberaê
+# 🌍 Gerenciamento de Ambientes - Backend
 
-Este documento explica como o sistema de ambientes está configurado e funcionando no **Backend** e **Frontend**.
+Este documento explica como o sistema de ambientes está configurado e funcionando no **Backend**.
 
 ---
 
@@ -8,25 +8,25 @@ Este documento explica como o sistema de ambientes está configurado e funcionan
 
 O sistema utiliza **arquivos de ambiente separados** para facilitar a alternância entre desenvolvimento e produção, sem necessidade de editar configurações manualmente.
 
-### ✅ Arquivos Utilizados
+### ✅ Arquivos de Ambiente
 
-| Localização | Arquivo            | Uso             | Versionado no Git? |
-| ----------- | ------------------ | --------------- | ------------------ |
-| `backend/`  | `.env.development` | Desenvolvimento | ❌ Não             |
-| `backend/`  | `.env.production`  | Produção        | ❌ Não             |
-| `frontend/` | `.env.development` | Desenvolvimento | ❌ Não             |
-| `frontend/` | `.env.production`  | Produção        | ❌ Não             |
+| Arquivo                | Uso                   | NODE_ENV           | Porta |
+| ---------------------- | --------------------- | ------------------ | ----- |
+| `.env.desenvolvimento` | Desenvolvimento local | `docker`           | 3001  |
+| `.env.producao`        | Produção (VM/Docker)  | `production_local` | 3707  |
+| `.env.teste`           | Testes automatizados  | `teste`            | 3002  |
+
+> ⚠️ **Importante:** Nenhum arquivo `.env` é versionado no Git por segurança.
 
 ---
 
-## 🖥️ Backend - Node.js / Express
-
-### 📁 Estrutura de Arquivos
+## 📁 Estrutura de Arquivos
 
 ```
 backend/
-├── .env.development        # Config de desenvolvimento (porta 3001)
-├── .env.production         # Config de produção (porta 3707)
+├── .env.desenvolvimento    # Config de desenvolvimento (porta 3001)
+├── .env.producao           # Config de produção (porta 3707)
+├── .env.teste              # Config de testes
 ├── .gitignore              # Ignora arquivos .env
 ├── src/
 │   ├── config/
@@ -35,17 +35,22 @@ backend/
 └── package.json            # Scripts npm
 ```
 
-### ⚙️ Como Funciona
+---
 
-O backend usa o arquivo [src/config/env.js](backend/src/config/env.js) que:
+## ⚙️ Como Funciona o Carregamento
+
+O backend usa o arquivo `src/config/env.js` que:
 
 1. **Detecta o ambiente** via variável `NODE_ENV`
 2. **Carrega o arquivo correto**:
-   - `NODE_ENV=docker` → carrega `.env.development`
-   - `NODE_ENV=production_local` → carrega `.env.production`
+   - `NODE_ENV=docker` → carrega `.env.desenvolvimento`
+   - `NODE_ENV=production_local` → carrega `.env.producao`
+   - `NODE_ENV=teste` → carrega `.env.teste`
 3. **Exibe no console** qual arquivo foi carregado
 
-### 🚀 Scripts Disponíveis
+---
+
+## 🚀 Scripts Disponíveis
 
 ```bash
 cd backend
@@ -56,15 +61,18 @@ npm run dev
 # Produção (porta 3707)
 npm run prod
 
-# Produção com auto-reload (monitoramento)
+# Produção com auto-reload
 npm run prod:watch
+
+# Testes
+npm test
 ```
 
-### 📊 Indicador Visual
+---
 
-Ao iniciar, o servidor exibe:
+## 📊 Indicador Visual no Console
 
-**Desenvolvimento:**
+### Desenvolvimento:
 
 ```
 ══════════════════════════════════════════════════════════════════════
@@ -77,7 +85,7 @@ Ao iniciar, o servidor exibe:
 ══════════════════════════════════════════════════════════════════════
 ```
 
-**Produção:**
+### Produção:
 
 ```
 ══════════════════════════════════════════════════════════════════════
@@ -90,214 +98,168 @@ Ao iniciar, o servidor exibe:
 ══════════════════════════════════════════════════════════════════════
 ```
 
-### 🔧 Configurações por Ambiente
+---
 
-#### `.env.development` (Desenvolvimento)
+## 🔧 Variáveis de Ambiente por Arquivo
+
+### `.env.desenvolvimento`
 
 ```env
 NODE_ENV=docker
 PORT=3001
-DB_HOST_DOCKER=34.225.38.222
-DB_PORT_DOCKER=5432
-DB_NAME_DOCKER=neondb
+
+# Banco de Dados (Desenvolvimento)
+DB_CLIENT=pg
+DB_HOST=34.225.38.222
+DB_PORT=5432
+DB_NAME=neondb
+DB_USER=neondb_owner
+DB_PASSWORD=sua_senha_dev
+
+# CORS
 CORS_ORIGIN=http://localhost:3000
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3002
+
+# Cloudinary
+CLOUDINARY_CLOUD_NAME=xxx
+CLOUDINARY_API_KEY=xxx
+CLOUDINARY_API_SECRET=xxx
+
+# JWT
+JWT_SECRET=chave_desenvolvimento
+JWT_EXPIRES_IN=7d
 ```
 
-#### `.env.production` (Produção)
+### `.env.producao`
 
 ```env
 NODE_ENV=production_local
 PORT=3707
-DB_HOST=34.225.38.222
-DB_PORT=5786
+
+# Banco de Dados (Produção)
+DB_CLIENT=pg
+DB_HOST=database              # Nome do container no Docker
+DB_PORT=5432
 DB_NAME=neondb_prod
+DB_USER=neondb_owner_prod
+DB_PASSWORD=sua_senha_prod
+
+# CORS
 CORS_ORIGIN=https://visitante.dimeexperience.com.br
-ALLOWED_ORIGINS=https://visitante.dimeexperience.com.br
+ALLOWED_ORIGINS=https://visitante.dimeexperience.com.br,https://sistema-visitante.vercel.app
+
+# Cloudinary
+CLOUDINARY_CLOUD_NAME=xxx
+CLOUDINARY_API_KEY=xxx
+CLOUDINARY_API_SECRET=xxx
+
+# JWT (GERE CHAVES FORTES!)
+JWT_SECRET=chave_producao_muito_forte_64_caracteres
+JWT_EXPIRES_IN=7d
+
+# Dashboard
+DASHBOARD_PASSWORD_HASH=$2b$12$xxx
+DASHBOARD_JWT_SECRET=chave_jwt_dashboard
+
+# Monitoramento
+COUNT_REQUESTS=true
+LOG_REQUESTS=false
+ADMIN_STATS_KEY=chave_admin_stats
 ```
 
 ---
 
-## 💻 Frontend - React
+## 🐳 Ambiente no Docker (Produção - VM)
 
-### 📁 Estrutura de Arquivos
+Na VM de produção, as variáveis são passadas via `docker-compose-prod.yml`:
 
-```
-frontend/
-├── .env.development        # Config de desenvolvimento
-├── .env.production         # Config de produção
-├── .gitignore              # Ignora arquivos .env
-├── src/
-│   └── services/
-│       └── api.js          # Axios com baseURL dinâmica
-└── package.json            # Scripts npm
-```
-
-### ⚙️ Como Funciona
-
-O React detecta **automaticamente** qual arquivo `.env` usar:
-
-- **`npm start`** → usa `.env.development`
-- **`npm run build`** → usa `.env.production`
-
-Não precisa de configuração adicional! O React lê as variáveis `REACT_APP_*` automaticamente.
-
-### 🚀 Scripts Disponíveis
-
-```bash
-cd frontend
-
-# Desenvolvimento (conecta em localhost:3001)
-npm start
-
-# Build de produção (conecta em visitante.dimeexperience.com.br)
-npm run build
-
-# Testar produção localmente
-npm run start:prod
+```yaml
+backend:
+  image: "${DOCKER_USERNAME}/liberae:${IMAGE_TAG}"
+  environment:
+    - NODE_ENV=production_local
+    - DATABASE_URL=postgresql://user:pass@database:5432/neondb_prod
+    - DB_HOST=database # Container interno
+    - PORT=3707
+    # ... outras variáveis
 ```
 
-### 🔧 Configurações por Ambiente
-
-#### `.env.development` (Desenvolvimento)
+O arquivo `.env` da VM contém apenas:
 
 ```env
-REACT_APP_ENV=development
-REACT_APP_API_URL=http://localhost:3001
-REACT_APP_SOCKET_URL=http://localhost:3001
-REACT_APP_DEBUG=true
+DOCKER_USERNAME=vitorlohan
+IMAGE_TAG=v2.0.5
 ```
 
-#### `.env.production` (Produção)
-
-```env
-REACT_APP_ENV=production
-REACT_APP_API_URL=https://visitante.dimeexperience.com.br
-REACT_APP_SOCKET_URL=https://visitante.dimeexperience.com.br
-REACT_APP_DEBUG=false
-```
-
-### 📡 Integração com Backend
-
-O arquivo [frontend/src/services/api.js](frontend/src/services/api.js) usa:
-
-```javascript
-const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || "http://localhost:3001",
-});
-```
-
-A variável `REACT_APP_API_URL` muda automaticamente conforme o ambiente!
+> 📖 Veja [DEPLOY_PRODUCAO_GUIA.md](DEPLOY_PRODUCAO_GUIA.md) para detalhes do deploy automatizado.
 
 ---
 
-## 🔄 Fluxo de Trabalho Completo
+## 🔄 Fluxo de Trabalho
 
-### 1️⃣ Desenvolvimento Local
+### Desenvolvimento Local
 
 ```bash
-# Terminal 1 - Backend
+# Terminal - Backend
 cd backend
 npm run dev
 # Servidor rodando em http://localhost:3001
-
-# Terminal 2 - Frontend
-cd frontend
-npm start
-# Aplicação rodando em http://localhost:3000
+# Conectando ao banco de desenvolvimento (neondb)
 ```
 
-✅ **Resultado:**
-
-- Frontend conecta automaticamente em `http://localhost:3001`
-- Banco de dados de desenvolvimento (`neondb`)
-- CORS liberado para localhost
-- Auto-reload ativo em ambos
-
----
-
-### 2️⃣ Produção
+### Produção (Deploy Automatizado)
 
 ```bash
-# Backend (no servidor)
-cd backend
-npm run prod
-# Servidor rodando em http://localhost:3707
+# Fazer commit e push
+git add .
+git commit -m "feat: nova funcionalidade"
+git push origin main
 
-# Frontend (build local)
-cd frontend
-npm run build
-# Gera pasta build/ otimizada
+# GitHub Actions automaticamente:
+# 1. Cria nova tag (v2.0.x)
+# 2. Build da imagem Docker
+# 3. Push para Docker Hub
+# 4. Deploy na VM
 ```
-
-✅ **Resultado:**
-
-- Frontend aponta para `https://visitante.dimeexperience.com.br`
-- Banco de dados de produção (`neondb_prod`)
-- CORS restrito
-- Código otimizado
 
 ---
 
-## 🔒 Segurança e Git
+## 🔒 Segurança
 
 ### ⚠️ O que NÃO é versionado:
 
-```bash
+```gitignore
 # Backend
 .env
-.env.development
-.env.production
-
-# Frontend
-.env
-.env.development
-.env.production
+.env.desenvolvimento
+.env.producao
+.env.teste
 ```
 
-Estes arquivos estão no `.gitignore` de cada projeto!
+### ✅ Boas Práticas:
 
-### ✅ O que PODE ser versionado:
+- Nunca commit arquivos `.env` com dados reais
+- Use chaves diferentes para dev e prod
+- Gere chaves fortes para produção:
 
-- ❌ Nenhum arquivo `.env` com dados reais
-- ✅ Apenas templates vazios (removidos neste projeto)
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
 
 ---
 
 ## 🛠️ Troubleshooting
 
-### Backend não está conectando ao banco
+### Backend não conecta ao banco
 
-1. Verifique o arquivo `.env.development` ou `.env.production`
-2. Confirme as credenciais do banco de dados
+1. Verifique o arquivo `.env.desenvolvimento` ou `.env.producao`
+2. Confirme as credenciais do banco
 3. Teste a conexão:
    ```bash
    curl http://localhost:3001/health
    ```
 
-### Frontend não está conectando ao Backend
-
-1. Verifique se o backend está rodando:
-
-   ```bash
-   curl http://localhost:3001/health
-   ```
-
-2. Confirme o `.env.development`:
-
-   ```env
-   REACT_APP_API_URL=http://localhost:3001
-   ```
-
-3. **Reinicie o frontend** após alterar `.env`:
-   ```bash
-   # Ctrl+C no terminal
-   npm start
-   ```
-
 ### Erro: "Porta já em uso"
-
-**Solução:**
 
 ```bash
 # Windows
@@ -308,114 +270,27 @@ taskkill /PID <PID> /F
 lsof -ti :3001 | xargs kill -9
 ```
 
----
-
-## 📊 Tabela Resumida
-
-### Backend
-
-| Comando        | Ambiente        | Porta | Arquivo Carregado  | Banco de Dados |
-| -------------- | --------------- | ----- | ------------------ | -------------- |
-| `npm run dev`  | Desenvolvimento | 3001  | `.env.development` | neondb (dev)   |
-| `npm run prod` | Produção        | 3707  | `.env.production`  | neondb_prod    |
-
-### Frontend
-
-| Comando              | Ambiente        | API URL                                 | Arquivo Carregado  |
-| -------------------- | --------------- | --------------------------------------- | ------------------ |
-| `npm start`          | Desenvolvimento | http://localhost:3001                   | `.env.development` |
-| `npm run build`      | Produção        | https://visitante.dimeexperience.com.br | `.env.production`  |
-| `npm run start:prod` | Teste Produção  | https://visitante.dimeexperience.com.br | `.env.production`  |
-
----
-
-## 🎯 Checklist Rápido
-
-### ✅ Antes de Iniciar Desenvolvimento
-
-- [ ] Backend: `.env.development` existe e está configurado
-- [ ] Frontend: `.env.development` existe e está configurado
-- [ ] Porta 3001 está livre
-- [ ] Porta 3000 está livre
-
-### ✅ Antes de Deploy em Produção
-
-- [ ] Backend: `.env.production` existe e está configurado corretamente
-- [ ] Frontend: `.env.production` aponta para URL de produção
-- [ ] Banco de dados de produção está acessível
-- [ ] CORS configurado corretamente
-- [ ] Chaves JWT e secrets são diferentes de desenvolvimento
-
----
-
-## 💡 Dicas Profissionais
-
-### 1. Verificar ambiente ativo
-
-**Backend:**
+### Verificar ambiente ativo
 
 ```bash
-cd backend
-cat .env.development | grep NODE_ENV
-```
-
-**Frontend:**
-
-```bash
-cd frontend
-cat .env.development | grep REACT_APP_ENV
-```
-
-### 2. Testar integração
-
-```bash
-# Backend rodando?
-curl http://localhost:3001/health
-
-# Resposta esperada:
-# {"status":"OK","timestamp":"2026-01-27T15:44:36.532Z","version":"2.0.0"}
-```
-
-### 3. Gerar chaves seguras
-
-```bash
-# Para JWT_SECRET e ENCRYPTION_KEY
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+# Ver qual ambiente está configurado
+cat backend/.env.desenvolvimento | grep NODE_ENV
 ```
 
 ---
 
-## 📚 Documentação Relacionada
+## 📊 Tabela Resumo
 
-- [ENVIRONMENT.md](ENVIRONMENT.md) - Guia completo de configuração
-- [QUICK_START.md](QUICK_START.md) - Guia rápido de início
-- [backend/README.md](../backend/README.md) - Documentação do backend
-
----
-
-## 🎉 Resumo
-
-### Sistema Atual:
-
-✅ **Backend:** Usa `.env.development` e `.env.production` com scripts `npm run dev` e `npm run prod`  
-✅ **Frontend:** Usa `.env.development` e `.env.production` automaticamente  
-✅ **Git:** Não versiona arquivos `.env` com dados sensíveis  
-✅ **Profissional:** Indicadores visuais claros de qual ambiente está ativo
-
-### Execução Simples:
-
-```bash
-# Desenvolvimento
-cd backend && npm run dev     # Backend porta 3001
-cd frontend && npm start      # Frontend porta 3000
-
-# Produção
-cd backend && npm run prod    # Backend porta 3707
-cd frontend && npm run build  # Build otimizado
-```
-
-**Tudo funcionando de forma limpa, organizada e profissional!** 🚀
+| Comando        | Ambiente        | Porta | Arquivo Carregado      | Banco        |
+| -------------- | --------------- | ----- | ---------------------- | ------------ |
+| `npm run dev`  | Desenvolvimento | 3001  | `.env.desenvolvimento` | neondb       |
+| `npm run prod` | Produção        | 3707  | `.env.producao`        | neondb_prod  |
+| `npm test`     | Teste           | 3002  | `.env.teste`           | neondb_teste |
 
 ---
 
-**Desenvolvido por Vitor Lohan**
+## 📚 Documentos Relacionados
+
+- [DEPLOY_PRODUCAO_GUIA.md](DEPLOY_PRODUCAO_GUIA.md) - Deploy automatizado
+- [BACKEND_ARQUITETURA.md](BACKEND_ARQUITETURA.md) - Arquitetura do backend
+- [GUIA_DASHBOARD_PRODUCAO.md](GUIA_DASHBOARD_PRODUCAO.md) - Dashboard de monitoramento
