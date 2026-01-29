@@ -6,6 +6,14 @@ import {
   FiMessageSquare,
   FiCalendar,
   FiTrendingUp,
+  FiX,
+  FiClock,
+  FiLogIn,
+  FiLogOut,
+  FiUser,
+  FiPhone,
+  FiMapPin,
+  FiCheckCircle,
 } from "react-icons/fi";
 import {
   Chart as ChartJS,
@@ -64,6 +72,13 @@ export default function Dashboard() {
   // Dados para gráficos
   const [visitantesPorHora, setVisitantesPorHora] = useState([]);
   const [cadastrosPorHora, setCadastrosPorHora] = useState([]);
+
+  // Estados dos modais
+  const [showVisitantesModal, setShowVisitantesModal] = useState(false);
+  const [showCadastrosModal, setShowCadastrosModal] = useState(false);
+  const [visitantesHojeList, setVisitantesHojeList] = useState([]);
+  const [cadastrosHojeList, setCadastrosHojeList] = useState([]);
+  const [modalLoading, setModalLoading] = useState(false);
 
   // Verificar se há token de Dashboard válido ao carregar
   useEffect(() => {
@@ -163,6 +178,55 @@ export default function Dashboard() {
       setLoading(false);
     }
   }, []);
+
+  // Função para carregar visitantes de hoje (para o modal)
+  const carregarVisitantesHoje = async () => {
+    setModalLoading(true);
+    try {
+      const response = await api.get("/dashboard/visitantes-hoje");
+      setVisitantesHojeList(response.data);
+    } catch (err) {
+      logger.error("Erro ao carregar visitantes de hoje:", err);
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  // Função para carregar cadastros de hoje (para o modal)
+  const carregarCadastrosHoje = async () => {
+    setModalLoading(true);
+    try {
+      const response = await api.get("/dashboard/cadastros-hoje");
+      setCadastrosHojeList(response.data);
+    } catch (err) {
+      logger.error("Erro ao carregar cadastros de hoje:", err);
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  // Abrir modal de visitantes
+  const handleOpenVisitantesModal = () => {
+    setShowVisitantesModal(true);
+    carregarVisitantesHoje();
+  };
+
+  // Abrir modal de cadastros
+  const handleOpenCadastrosModal = () => {
+    setShowCadastrosModal(true);
+    carregarCadastrosHoje();
+  };
+
+  // Formatar hora
+  const formatarHora = (dataISO) => {
+    if (!dataISO) return "--:--";
+    const data = new Date(dataISO);
+    return data.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "America/Sao_Paulo",
+    });
+  };
 
   useEffect(() => {
     // Só carrega estatísticas se estiver autenticado no Dashboard
@@ -432,8 +496,12 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Card: Visitantes Hoje */}
-        <div className="stat-card">
+        {/* Card: Visitantes Hoje - CLICÁVEL */}
+        <div
+          className="stat-card stat-card-clickable"
+          onClick={handleOpenVisitantesModal}
+          title="Clique para ver detalhes"
+        >
           <div className="stat-icon today">
             <FiTrendingUp size={24} />
           </div>
@@ -441,10 +509,15 @@ export default function Dashboard() {
             <span className="stat-label">Visitantes Hoje</span>
             <span className="stat-value">{stats.visitantesHoje}</span>
           </div>
+          <span className="stat-click-hint">Ver detalhes →</span>
         </div>
 
-        {/* Card: Cadastros Hoje */}
-        <div className="stat-card">
+        {/* Card: Cadastros Hoje - CLICÁVEL */}
+        <div
+          className="stat-card stat-card-clickable"
+          onClick={handleOpenCadastrosModal}
+          title="Clique para ver detalhes"
+        >
           <div className="stat-icon cadastros">
             <FiClipboard size={24} />
           </div>
@@ -452,6 +525,7 @@ export default function Dashboard() {
             <span className="stat-label">Cadastros Hoje</span>
             <span className="stat-value">{stats.cadastrosHoje}</span>
           </div>
+          <span className="stat-click-hint">Ver detalhes →</span>
         </div>
 
         {/* Card: Agendamentos */}
@@ -504,6 +578,190 @@ export default function Dashboard() {
 
       {/* Monitoramento de Requisições */}
       <MonitoramentoRequisicoes />
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* MODAL: Visitantes de Hoje */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {showVisitantesModal && (
+        <div
+          className="dashboard-modal-overlay"
+          onClick={() => setShowVisitantesModal(false)}
+        >
+          <div className="dashboard-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="dashboard-modal-header">
+              <div className="modal-header-title">
+                <FiTrendingUp className="modal-icon today" />
+                <div>
+                  <h2>Visitantes de Hoje</h2>
+                  <span className="modal-subtitle">
+                    {visitantesHojeList.length} entrada
+                    {visitantesHojeList.length !== 1 ? "s" : ""} registrada
+                    {visitantesHojeList.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+              </div>
+              <button
+                className="modal-close-dashboard-btn"
+                onClick={() => setShowVisitantesModal(false)}
+              >
+                <FiX size={20} />
+              </button>
+            </div>
+
+            <div className="dashboard-modal-body">
+              {modalLoading ? (
+                <div className="modal-loading">
+                  <div className="spinner"></div>
+                  <span>Carregando visitantes...</span>
+                </div>
+              ) : visitantesHojeList.length === 0 ? (
+                <div className="modal-empty">
+                  <FiUsers size={48} />
+                  <p>Nenhum visitante registrado hoje</p>
+                </div>
+              ) : (
+                <div className="modal-list">
+                  {visitantesHojeList.map((visitante) => (
+                    <div key={visitante.id} className="modal-card">
+                      <div className="modal-card-avatar">
+                        <FiUser size={24} />
+                      </div>
+                      <div className="modal-card-info">
+                        <h4>{visitante.nome}</h4>
+                        <div className="modal-card-details">
+                          {visitante.cpf && (
+                            <span className="detail-item">
+                              <FiUser size={12} /> {visitante.cpf}
+                            </span>
+                          )}
+                          {visitante.empresa && (
+                            <span className="detail-item">
+                              <FiMapPin size={12} /> Origem: {visitante.empresa}
+                            </span>
+                          )}
+                          <span className="detail-item">
+                            <FiMapPin size={12} /> Destino:{" "}
+                            {visitante.empresaDestino}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="modal-card-times">
+                        <div className="time-badge entrada">
+                          <FiLogIn size={14} />
+                          <span>
+                            Entrada: {formatarHora(visitante.entrada)}
+                          </span>
+                        </div>
+                        {visitante.saida ? (
+                          <div className="time-badge saida">
+                            <FiLogOut size={14} />
+                            <span>Saída: {formatarHora(visitante.saida)}</span>
+                          </div>
+                        ) : (
+                          <div className="time-badge presente">
+                            <FiCheckCircle size={14} />
+                            <span>Ainda presente</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* MODAL: Cadastros de Hoje */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {showCadastrosModal && (
+        <div
+          className="dashboard-modal-overlay"
+          onClick={() => setShowCadastrosModal(false)}
+        >
+          <div className="dashboard-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="dashboard-modal-header cadastros">
+              <div className="modal-header-title">
+                <FiClipboard className="modal-icon cadastros" />
+                <div>
+                  <h2>Cadastros de Hoje</h2>
+                  <span className="modal-subtitle">
+                    {cadastrosHojeList.length} cadastro
+                    {cadastrosHojeList.length !== 1 ? "s" : ""} realizado
+                    {cadastrosHojeList.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+              </div>
+              <button
+                className="modal-close-dashboard-btn"
+                onClick={() => setShowCadastrosModal(false)}
+              >
+                <FiX size={20} />
+              </button>
+            </div>
+
+            <div className="dashboard-modal-body">
+              {modalLoading ? (
+                <div className="modal-loading">
+                  <div className="spinner"></div>
+                  <span>Carregando cadastros...</span>
+                </div>
+              ) : cadastrosHojeList.length === 0 ? (
+                <div className="modal-empty">
+                  <FiClipboard size={48} />
+                  <p>Nenhum cadastro realizado hoje</p>
+                </div>
+              ) : (
+                <div className="modal-list">
+                  {cadastrosHojeList.map((cadastro) => (
+                    <div key={cadastro.id} className="modal-card">
+                      <div className="modal-card-avatar">
+                        {cadastro.avatar ? (
+                          <img src={cadastro.avatar} alt={cadastro.nome} />
+                        ) : (
+                          <FiUser size={24} />
+                        )}
+                      </div>
+                      <div className="modal-card-info">
+                        <h4>{cadastro.nome}</h4>
+                        <div className="modal-card-details">
+                          {cadastro.cpf && (
+                            <span className="detail-item">
+                              <FiUser size={12} /> {cadastro.cpf}
+                            </span>
+                          )}
+                          {cadastro.telefone && (
+                            <span className="detail-item">
+                              <FiPhone size={12} /> {cadastro.telefone}
+                            </span>
+                          )}
+                          <span className="detail-item">
+                            <FiMapPin size={12} /> {cadastro.empresa}
+                          </span>
+                        </div>
+                        <span className="cadastrado-por">
+                          Cadastrado por:{" "}
+                          <strong>{cadastro.cadastradoPor}</strong>
+                        </span>
+                      </div>
+                      <div className="modal-card-times">
+                        <div className="time-badge cadastro">
+                          <FiClock size={14} />
+                          <span>
+                            Cadastro: {formatarHora(cadastro.criadoEm)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

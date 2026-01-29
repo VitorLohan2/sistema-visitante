@@ -95,4 +95,115 @@ module.exports = {
       });
     }
   },
+
+  // GET /dashboard/visitantes-hoje - Lista detalhada de visitantes que entraram hoje
+  async visitantesHoje(request, response) {
+    try {
+      // A tabela historico_visitante já tem os dados do visitante diretamente
+      // (nome, cpf, empresa, etc.) - não precisa de JOIN com cadastro_visitante
+      const visitantes = await connection("historico_visitante")
+        .leftJoin(
+          "empresa_atribuida",
+          "empresa_atribuida.id",
+          "=",
+          "historico_visitante.empresa_atribuida_id",
+        )
+        .whereRaw(`DATE(historico_visitante.data_de_entrada) = CURRENT_DATE`)
+        .orderBy("historico_visitante.data_de_entrada", "desc")
+        .select([
+          "historico_visitante.id",
+          "historico_visitante.nome",
+          "historico_visitante.cpf",
+          "historico_visitante.empresa",
+          "historico_visitante.setor",
+          "historico_visitante.funcao",
+          "historico_visitante.data_de_entrada",
+          "historico_visitante.data_de_saida",
+          "empresa_atribuida.nome as empresa_destino",
+        ]);
+
+      // Formatar dados
+      const visitantesFormatados = visitantes.map((v) => ({
+        id: v.id,
+        nome: v.nome || "Visitante",
+        cpf: v.cpf
+          ? v.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4")
+          : null,
+        empresa: v.empresa || "Não informada",
+        setor: v.setor || null,
+        funcao: v.funcao || null,
+        empresaDestino: v.empresa_destino || "Não informada",
+        entrada: v.data_de_entrada,
+        saida: v.data_de_saida,
+        status: v.data_de_saida ? "saiu" : "presente",
+      }));
+
+      return response.json(visitantesFormatados);
+    } catch (error) {
+      console.error("Erro ao buscar visitantes de hoje:", error);
+      return response.status(500).json({
+        error: "Erro ao buscar visitantes de hoje",
+      });
+    }
+  },
+
+  // GET /dashboard/cadastros-hoje - Lista detalhada de cadastros realizados hoje
+  async cadastrosHoje(request, response) {
+    try {
+      const cadastros = await connection("cadastro_visitante")
+        .leftJoin(
+          "empresa_visitante",
+          "empresa_visitante.id",
+          "=",
+          "cadastro_visitante.empresa_id",
+        )
+        .leftJoin(
+          "setor_visitante",
+          "setor_visitante.id",
+          "=",
+          "cadastro_visitante.setor_id",
+        )
+        .leftJoin(
+          "usuarios",
+          "usuarios.id",
+          "=",
+          "cadastro_visitante.usuario_id",
+        )
+        .whereRaw(`DATE(cadastro_visitante.criado_em) = CURRENT_DATE`)
+        .orderBy("cadastro_visitante.criado_em", "desc")
+        .select([
+          "cadastro_visitante.id",
+          "cadastro_visitante.nome",
+          "cadastro_visitante.cpf",
+          "cadastro_visitante.telefone",
+          "cadastro_visitante.avatar_imagem",
+          "cadastro_visitante.criado_em",
+          "empresa_visitante.nome as empresa",
+          "setor_visitante.nome as setor",
+          "usuarios.nome as cadastrado_por",
+        ]);
+
+      // Formatar dados
+      const cadastrosFormatados = cadastros.map((c) => ({
+        id: c.id,
+        nome: c.nome,
+        cpf: c.cpf
+          ? c.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4")
+          : null,
+        telefone: c.telefone,
+        avatar: c.avatar_imagem,
+        empresa: c.empresa || "Não informada",
+        setor: c.setor || "Não informado",
+        cadastradoPor: c.cadastrado_por || "Sistema",
+        criadoEm: c.criado_em,
+      }));
+
+      return response.json(cadastrosFormatados);
+    } catch (error) {
+      console.error("Erro ao buscar cadastros de hoje:", error);
+      return response.status(500).json({
+        error: "Erro ao buscar cadastros de hoje",
+      });
+    }
+  },
 };
