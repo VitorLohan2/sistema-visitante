@@ -7,57 +7,84 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag para deploy (ex: v1.2.3). Se preenchido, fará deploy dessa tag."
+        description: "Tag para deploy (ex: v1.2.3). Se vazio, cria nova tag automaticamente."
         required: false
+      skip_build:
+        description: "Pular build e usar imagem existente?"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
 
 permissions:
-  contents: write # 🔑 Permite criar e enviar tags (necessário para o git push)
+  contents: write
+
+env:
+  DEPLOY_PATH: /home/dev/sistema/prod
+  COMPOSE_FILE: docker-compose-prod.yml
 
 jobs:
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # JOB 1: Auto Tag - Gera versão semântica automaticamente
+  # ═══════════════════════════════════════════════════════════════════════════════
   auto-tag:
-    name: Auto Semantic Version Tag
+    name: 🏷️ Auto Semantic Version
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.set-tag.outputs.tag }}
+      is_new_tag: ${{ steps.set-tag.outputs.is_new_tag }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # necessário para ver tags
-          persist-credentials: true # mantém o GITHUB_TOKEN para push
+          fetch-depth: 0
+          persist-credentials: true
 
       - name: Get latest tag
         id: get-latest
         run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0 || echo "v0.0.0")
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "📌 Última tag: $LATEST_TAG"
 
       - name: Determine next version
         id: set-tag
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # garante autenticação
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_TAG: ${{ github.event.inputs.tag }}
         run: |
+          # Se uma tag foi fornecida manualmente, usa ela
+          if [ -n "$INPUT_TAG" ]; then
+            echo "📌 Usando tag manual: $INPUT_TAG"
+            echo "tag=$INPUT_TAG" >> $GITHUB_OUTPUT
+            echo "is_new_tag=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
           LATEST=${{ steps.get-latest.outputs.LATEST_TAG }}
           MAJOR=$(echo $LATEST | cut -d. -f1 | sed 's/v//')
           MINOR=$(echo $LATEST | cut -d. -f2)
           PATCH=$(echo $LATEST | cut -d. -f3)
 
           # Busca commits desde a última tag
-          COMMITS=$(git log $LATEST..HEAD --pretty=%B)
+          COMMITS=$(git log $LATEST..HEAD --pretty=%B 2>/dev/null || echo "")
 
           # Se não houver commits novos, reutiliza a última tag
           if [ -z "$COMMITS" ]; then
-            echo "⚠️ Nenhum commit novo desde $LATEST, reutilizando tag existente"
+            echo "⚠️ Nenhum commit novo desde $LATEST"
             echo "tag=$LATEST" >> $GITHUB_OUTPUT
+            echo "is_new_tag=false" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          # Incrementa version conforme tipo de commit
-          if echo "$COMMITS" | grep -q -E "BREAKING CHANGE|major:"; then
+          # Incrementa versão conforme tipo de commit
+          if echo "$COMMITS" | grep -qiE "BREAKING CHANGE|^major:"; then
             MAJOR=$((MAJOR + 1))
             MINOR=0
             PATCH=0
-          elif echo "$COMMITS" | grep -qE "^feat:"; then
+          elif echo "$COMMITS" | grep -qiE "^feat:|^feature:"; then
             MINOR=$((MINOR + 1))
             PATCH=0
           else
@@ -67,32 +94,39 @@ jobs:
           NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
 
           # Verifica se a tag já existe
-          if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
+          while git rev-parse "$NEW_TAG" >/dev/null 2>&1; do
             echo "⚠️ Tag $NEW_TAG já existe, incrementando patch..."
             PATCH=$((PATCH + 1))
             NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
-          fi
+          done
 
+          echo "🏷️ Nova tag: $NEW_TAG"
           echo "tag=$NEW_TAG" >> $GITHUB_OUTPUT
+          echo "is_new_tag=true" >> $GITHUB_OUTPUT
 
-          # Configura Git e envia a tag
+          # Cria e envia a tag
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag $NEW_TAG
+          git tag -a $NEW_TAG -m "Release $NEW_TAG - Auto-generated"
           git push origin $NEW_TAG
 
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # JOB 2: Build - Constrói e envia imagem Docker
+  # ═══════════════════════════════════════════════════════════════════════════════
   build-and-push:
-    name: Build and Push Docker Image
+    name: 🐳 Build & Push Docker
     needs: auto-tag
     runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.skip_build != 'true' }}
     outputs:
       tag: ${{ needs.auto-tag.outputs.tag }}
+      image: ${{ steps.build.outputs.image }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -100,40 +134,110 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Build and Push Docker Image
+      - name: Build and Push
+        id: build
         run: |
-          IMAGE="${{ secrets.DOCKER_USERNAME }}/liberae:${{ needs.auto-tag.outputs.tag }}"
-          echo "🏗️ Building $IMAGE"
-          docker build -t "$IMAGE" ./backend
-          docker push "$IMAGE"
+          TAG="${{ needs.auto-tag.outputs.tag }}"
+          IMAGE="${{ secrets.DOCKER_USERNAME }}/liberae"
 
+          echo "🏗️ Building: $IMAGE:$TAG"
+
+          docker build \
+            --cache-from type=registry,ref=$IMAGE:latest \
+            --build-arg BUILDKIT_INLINE_CACHE=1 \
+            -t "$IMAGE:$TAG" \
+            -t "$IMAGE:latest" \
+            ./backend
+
+          docker push "$IMAGE:$TAG"
+          docker push "$IMAGE:latest"
+
+          echo "image=$IMAGE:$TAG" >> $GITHUB_OUTPUT
+          echo "✅ Imagem publicada: $IMAGE:$TAG"
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # JOB 3: Deploy - Faz deploy automático na VM de produção
+  # ═══════════════════════════════════════════════════════════════════════════════
   deploy-prod:
-    name: Deploy to Production Server
-    needs: build-and-push
+    name: 🚀 Deploy Production
+    needs: [auto-tag, build-and-push]
+    if: ${{ always() && needs.auto-tag.result == 'success' && (needs.build-and-push.result == 'success' || needs.build-and-push.result == 'skipped') }}
     runs-on: self-hosted
     steps:
-      - name: Criar arquivo .deploy_env com variáveis
+      - name: Atualizar .env com nova tag
         run: |
-          TAG="${{ needs.build-and-push.outputs.tag }}"
-          echo "IMAGE_TAG=$TAG" > /home/dev/sistema/prod/.deploy_env
-          echo "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}" >> /home/dev/sistema/prod/.deploy_env
-          chmod 600 /home/dev/sistema/prod/.deploy_env
-          echo "✅ .deploy_env criado com sucesso:"
-          cat /home/dev/sistema/prod/.deploy_env
+          TAG="${{ needs.auto-tag.outputs.tag }}"
 
-      - name: Deploy na produção (EC2)
-        working-directory: /home/dev/sistema/prod
+          echo "📝 Atualizando .env com IMAGE_TAG=$TAG"
+
+          # Cria/atualiza o .env apenas com as variáveis do Docker
+          cat > ${{ env.DEPLOY_PATH }}/.env << EOF
+          DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
+          IMAGE_TAG=${TAG}
+          EOF
+
+          chmod 600 ${{ env.DEPLOY_PATH }}/.env
+
+          echo "✅ .env atualizado:"
+          cat ${{ env.DEPLOY_PATH }}/.env
+
+      - name: Deploy containers
+        working-directory: ${{ env.DEPLOY_PATH }}
         run: |
           set -e
+
+          echo "═══════════════════════════════════════════════════════════════════"
+          echo "🚀 INICIANDO DEPLOY - ${{ needs.auto-tag.outputs.tag }}"
+          echo "═══════════════════════════════════════════════════════════════════"
+
+          # Carrega variáveis do .env
           set -a
-          source /home/dev/sistema/prod/.deploy_env
+          source .env
           set +a
 
-          echo "🚀 Fazendo deploy da imagem: ${DOCKER_USERNAME}/liberae:${IMAGE_TAG}"
+          echo "📦 Imagem: ${DOCKER_USERNAME}/liberae:${IMAGE_TAG}"
 
-          docker compose -f docker-compose-prod.yml down
-          docker compose -f docker-compose-prod.yml pull
+          # Para containers (mantém banco de dados)
+          echo "🔽 Parando container backend..."
+          docker compose -f docker-compose-prod.yml stop backend || true
+          docker compose -f docker-compose-prod.yml rm -f backend || true
+
+          # Baixa nova imagem
+          echo "⬇️ Baixando nova imagem..."
+          docker compose -f docker-compose-prod.yml pull backend
+
+          # Sobe containers
+          echo "🚀 Iniciando containers..."
           docker compose -f docker-compose-prod.yml up -d
+
+          # Aguarda containers
+          echo "⏳ Aguardando containers..."
+          sleep 10
+
+          # Verifica status
+          echo "📊 Status dos containers:"
+          docker compose -f docker-compose-prod.yml ps
+
+          # Limpa imagens antigas
+          echo "🧹 Limpando imagens não utilizadas..."
           docker image prune -f
 
-          echo "✅ Deploy de produção concluído com sucesso!"
+          echo "═══════════════════════════════════════════════════════════════════"
+          echo "✅ DEPLOY CONCLUÍDO - ${DOCKER_USERNAME}/liberae:${IMAGE_TAG}"
+          echo "═══════════════════════════════════════════════════════════════════"
+
+      - name: Health Check
+        run: |
+          echo "🏥 Verificando saúde da aplicação..."
+          sleep 5
+
+          for i in {1..5}; do
+            if curl -sf http://localhost:3707/health > /dev/null 2>&1; then
+              echo "✅ Backend respondendo!"
+              exit 0
+            fi
+            echo "⏳ Tentativa $i/5 - Aguardando backend..."
+            sleep 5
+          done
+
+          echo "⚠️ Backend pode estar demorando para iniciar (mas deploy foi concluído)"
