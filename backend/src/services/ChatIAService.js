@@ -1,40 +1,46 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * CHAT IA SERVICE
+ * CHAT IA SERVICE - MAX (Assistente Virtual Inteligente)
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * Serviço de integração com IA para respostas automáticas no chat.
- * Suporta múltiplos provedores de IA (Grok, OpenAI, etc.)
+ * Serviço de integração com IA Groq para respostas automáticas no chat.
+ * Max é o assistente virtual que ajuda usuários com dúvidas sobre o sistema.
  *
  * FUNCIONALIDADES:
- * - Responder perguntas usando FAQ local
- * - Integração com API de IA externa (Grok/OpenAI)
+ * - Conversa natural usando IA Groq (LLaMA 3)
+ * - Utiliza FAQ como base de conhecimento
  * - Detecção de intenção de falar com humano
- * - Fallback para respostas genéricas
+ * - Respostas contextualizadas sobre o sistema
  *
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
 const db = require("../database/connection");
 
-// Configuração da API de IA (pode ser Grok, OpenAI, etc.)
-const IA_CONFIG = {
-  // Para Grok (X.AI)
-  GROK_API_KEY: process.env.GROK_API_KEY || "",
-  GROK_API_URL: "https://api.x.ai/v1/chat/completions",
+// ═══════════════════════════════════════════════════════════════════════════
+// CONFIGURAÇÃO DA API GROQ
+// ═══════════════════════════════════════════════════════════════════════════
 
-  // Para OpenAI (alternativa)
-  OPENAI_API_KEY: process.env.OPENAI_API_KEY || "",
-  OPENAI_API_URL: "https://api.openai.com/v1/chat/completions",
-
-  // Modelo a usar
-  MODEL: process.env.IA_MODEL || "grok-beta",
-
+const GROQ_CONFIG = {
+  API_KEY: process.env.GROQ_API_KEY || "",
+  API_URL: "https://api.groq.com/openai/v1/chat/completions",
+  // Modelos disponíveis: llama-3.3-70b-versatile, llama-3.1-8b-instant, mixtral-8x7b-32768
+  MODEL: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
   // Timeout em ms
   TIMEOUT: 30000,
+  // Temperatura (0 = mais preciso, 1 = mais criativo)
+  TEMPERATURE: 0.7,
+  // Máximo de tokens na resposta
+  MAX_TOKENS: 1000,
 };
 
-// Palavras-chave que indicam desejo de falar com humano
+// Nome do assistente virtual
+const NOME_ASSISTENTE = "Max";
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PALAVRAS-CHAVE PARA TRANSFERÊNCIA HUMANA
+// ═══════════════════════════════════════════════════════════════════════════
+
 const PALAVRAS_ATENDENTE = [
   "atendente",
   "humano",
@@ -43,10 +49,6 @@ const PALAVRAS_ATENDENTE = [
   "falar com alguem",
   "suporte humano",
   "atendimento humano",
-  "não entendi",
-  "nao entendi",
-  "não ajudou",
-  "nao ajudou",
   "operador",
   "funcionário",
   "funcionario",
@@ -57,7 +59,26 @@ const PALAVRAS_ATENDENTE = [
   "reclamacao",
   "problema grave",
   "urgente",
+  "não está funcionando",
+  "nao esta funcionando",
+  "bug",
+  "erro grave",
+  "sistema travou",
+  "não consigo acessar",
+  "nao consigo acessar",
 ];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FUNÇÕES AUXILIARES
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Verifica se a API do Groq está configurada
+ * @returns {boolean} Se está configurada
+ */
+function isGroqConfigurado() {
+  return Boolean(GROQ_CONFIG.API_KEY && GROQ_CONFIG.API_KEY.length > 0);
+}
 
 /**
  * Verifica se a mensagem indica desejo de falar com atendente humano
@@ -68,16 +89,16 @@ function desejaFalarComHumano(mensagem) {
   const mensagemLower = mensagem.toLowerCase().trim();
 
   return PALAVRAS_ATENDENTE.some((palavra) =>
-    mensagemLower.includes(palavra.toLowerCase())
+    mensagemLower.includes(palavra.toLowerCase()),
   );
 }
 
 /**
- * Busca resposta no FAQ local (mais rápido e sem custo)
+ * Busca FAQs relevantes para contextualizar a IA
  * @param {string} pergunta - Pergunta do usuário
- * @returns {Promise<Object|null>} FAQ encontrado ou null
+ * @returns {Promise<Array>} Lista de FAQs relevantes
  */
-async function buscarNoFAQ(pergunta) {
+async function buscarFAQsRelevantes(pergunta) {
   try {
     const perguntaLower = pergunta.toLowerCase();
     const palavras = perguntaLower.split(/\s+/).filter((p) => p.length > 2);
@@ -85,17 +106,15 @@ async function buscarNoFAQ(pergunta) {
     // Busca FAQs ativos
     const faqs = await db("chat_faq").where({ ativo: true }).select("*");
 
-    let melhorMatch = null;
-    let melhorScore = 0;
-
-    for (const faq of faqs) {
+    // Calcula relevância de cada FAQ
+    const faqsComScore = faqs.map((faq) => {
       let score = 0;
 
       // Verifica palavras-chave
       if (faq.palavras_chave) {
         for (const palavra of faq.palavras_chave) {
           if (perguntaLower.includes(palavra.toLowerCase())) {
-            score += 2;
+            score += 3;
           }
         }
       }
@@ -108,73 +127,140 @@ async function buscarNoFAQ(pergunta) {
         }
       }
 
-      if (score > melhorScore) {
-        melhorScore = score;
-        melhorMatch = faq;
-      }
-    }
+      return { ...faq, score };
+    });
 
-    // Retorna se teve um match razoável (score >= 3)
-    if (melhorScore >= 3 && melhorMatch) {
-      // Incrementa contador de uso
-      await db("chat_faq")
-        .where({ id: melhorMatch.id })
-        .increment("vezes_utilizado", 1);
-
-      return {
-        resposta: melhorMatch.resposta,
-        fonte: "FAQ",
-        confianca: Math.min(melhorScore / 10, 1),
-        categoria: melhorMatch.categoria,
-      };
-    }
-
-    return null;
+    // Retorna os mais relevantes (score > 0, máximo 5)
+    return faqsComScore
+      .filter((f) => f.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
   } catch (error) {
-    console.error("❌ Erro ao buscar no FAQ:", error);
-    return null;
+    console.error("❌ Erro ao buscar FAQs relevantes:", error);
+    return [];
   }
 }
 
 /**
- * Gera resposta usando API de IA externa (Grok/OpenAI)
+ * Busca todos os FAQs para contexto geral
+ * @returns {Promise<Array>} Lista de FAQs
+ */
+async function buscarTodosFAQs() {
+  try {
+    return await db("chat_faq")
+      .where({ ativo: true })
+      .select("pergunta", "resposta", "categoria")
+      .orderBy("vezes_utilizado", "desc")
+      .limit(15);
+  } catch (error) {
+    console.error("❌ Erro ao buscar FAQs:", error);
+    return [];
+  }
+}
+
+/**
+ * Incrementa contador de uso do FAQ
+ * @param {number} faqId - ID do FAQ
+ */
+async function incrementarUsoFAQ(faqId) {
+  try {
+    await db("chat_faq").where({ id: faqId }).increment("vezes_utilizado", 1);
+  } catch (error) {
+    console.error("❌ Erro ao incrementar uso do FAQ:", error);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PROMPT DO SISTEMA (PERSONALIDADE DO MAX)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Gera o prompt do sistema para o Max
+ * @param {Array} faqs - FAQs para contexto
+ * @returns {string} Prompt do sistema
+ */
+function gerarPromptSistema(faqs = []) {
+  let contextoFAQ = "";
+
+  if (faqs.length > 0) {
+    contextoFAQ = `
+═══════════════════════════════════════════════════════════════
+BASE DE CONHECIMENTO (FAQ DO SISTEMA):
+═══════════════════════════════════════════════════════════════
+${faqs.map((faq) => `📌 Categoria: ${faq.categoria || "Geral"}\nPergunta: ${faq.pergunta}\nResposta: ${faq.resposta}`).join("\n\n")}
+═══════════════════════════════════════════════════════════════
+`;
+  }
+
+  return `Você é o ${NOME_ASSISTENTE}, um assistente virtual inteligente e amigável do Sistema de Gestão de Visitantes.
+
+═══════════════════════════════════════════════════════════════
+SUA PERSONALIDADE:
+═══════════════════════════════════════════════════════════════
+- Você é educado, prestativo e profissional
+- Sempre se apresenta como "${NOME_ASSISTENTE}" quando apropriado
+- Usa emojis com moderação para ser mais amigável
+- Responde sempre em português do Brasil
+- É objetivo mas completo nas respostas
+- Demonstra empatia quando o usuário tem problemas
+
+═══════════════════════════════════════════════════════════════
+SOBRE O SISTEMA:
+═══════════════════════════════════════════════════════════════
+O Sistema de Gestão de Visitantes é uma plataforma web completa para:
+- Cadastro e controle de visitantes
+- Registro de entrada e saída de visitas
+- Criação de agendamentos de visitas
+- Histórico completo de todas as visitas
+- Geração de relatórios e dashboards
+- Gestão de empresas e setores
+- Controle de permissões de usuários
+- Integração com portaria e segurança
+
+═══════════════════════════════════════════════════════════════
+DIRETRIZES:
+═══════════════════════════════════════════════════════════════
+1. Responda de forma clara e objetiva
+2. Use as informações do FAQ quando disponíveis
+3. Se não souber algo específico, seja honesto e sugira falar com um atendente
+4. NUNCA invente funcionalidades que não existem
+5. Mantenha respostas concisas (máximo 3-4 parágrafos)
+6. Se o usuário parecer frustrado ou com problema grave, sugira falar com atendente humano
+7. Pode usar formatação simples (negrito, listas) para clareza
+
+═══════════════════════════════════════════════════════════════
+COMO SE APRESENTAR (apenas quando apropriado):
+═══════════════════════════════════════════════════════════════
+- Na primeira interação ou quando perguntarem quem você é
+- Exemplo: "Olá! 👋 Eu sou o ${NOME_ASSISTENTE}, seu assistente virtual. Estou aqui para ajudar com dúvidas sobre o Sistema de Gestão de Visitantes. Como posso ajudar você hoje?"
+
+${contextoFAQ}
+
+IMPORTANTE: Se o usuário pedir para falar com um atendente humano ou se você não conseguir resolver o problema, responda de forma empática e indique que vai transferir para um atendente.`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INTEGRAÇÃO COM API GROQ
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Chama a API do Groq para gerar resposta
  * @param {string} mensagem - Mensagem do usuário
- * @param {Array} historico - Histórico de mensagens da conversa
+ * @param {Array} historico - Histórico de mensagens
+ * @param {Array} faqs - FAQs para contexto
  * @returns {Promise<Object|null>} Resposta da IA ou null
  */
-async function gerarRespostaIA(mensagem, historico = []) {
-  // Se não tem API key configurada, retorna null
-  if (!IA_CONFIG.GROK_API_KEY && !IA_CONFIG.OPENAI_API_KEY) {
-    console.log("⚠️ Nenhuma API de IA configurada, usando apenas FAQ");
+async function chamarGroq(mensagem, historico = [], faqs = []) {
+  if (!isGroqConfigurado()) {
+    console.log("⚠️ API Groq não configurada (GROQ_API_KEY ausente)");
     return null;
   }
 
   try {
-    const apiKey = IA_CONFIG.GROK_API_KEY || IA_CONFIG.OPENAI_API_KEY;
-    const apiUrl = IA_CONFIG.GROK_API_KEY
-      ? IA_CONFIG.GROK_API_URL
-      : IA_CONFIG.OPENAI_API_URL;
-
-    // Monta o contexto do sistema
-    const systemPrompt = `Você é um assistente virtual de suporte do Sistema de Gestão de Visitantes.
-Seu papel é ajudar usuários com dúvidas sobre o sistema.
-
-Informações sobre o sistema:
-- É um sistema web para controle de entrada e saída de visitantes
-- Permite cadastrar visitantes, registrar entradas/saídas, criar agendamentos
-- Possui histórico de visitas e relatórios
-- Usuários podem ter diferentes níveis de permissão
-
-Diretrizes:
-- Seja educado, profissional e objetivo
-- Responda em português do Brasil
-- Se não souber a resposta, sugira falar com um atendente humano
-- Não invente funcionalidades que não existem
-- Mantenha respostas concisas (máximo 3 parágrafos)`;
-
-    // Monta o histórico de mensagens
+    // Monta as mensagens para a API
     const messages = [
-      { role: "system", content: systemPrompt },
+      { role: "system", content: gerarPromptSistema(faqs) },
+      // Últimas 10 mensagens do histórico
       ...historico.slice(-10).map((msg) => ({
         role: msg.origem === "USUARIO" ? "user" : "assistant",
         content: msg.mensagem,
@@ -182,21 +268,23 @@ Diretrizes:
       { role: "user", content: mensagem },
     ];
 
-    // Faz a requisição para a API
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), IA_CONFIG.TIMEOUT);
+    console.log(`🤖 [${NOME_ASSISTENTE}] Chamando API Groq...`);
 
-    const response = await fetch(apiUrl, {
+    // Faz a requisição com timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), GROQ_CONFIG.TIMEOUT);
+
+    const response = await fetch(GROQ_CONFIG.API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${GROQ_CONFIG.API_KEY}`,
       },
       body: JSON.stringify({
-        model: IA_CONFIG.MODEL,
+        model: GROQ_CONFIG.MODEL,
         messages,
-        max_tokens: 500,
-        temperature: 0.7,
+        max_tokens: GROQ_CONFIG.MAX_TOKENS,
+        temperature: GROQ_CONFIG.TEMPERATURE,
       }),
       signal: controller.signal,
     });
@@ -204,26 +292,87 @@ Diretrizes:
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      throw new Error(`API retornou status ${response.status}`);
+      const errorBody = await response.text();
+      throw new Error(
+        `API Groq retornou status ${response.status}: ${errorBody}`,
+      );
     }
 
     const data = await response.json();
     const respostaIA = data.choices?.[0]?.message?.content;
 
     if (respostaIA) {
+      console.log(`✅ [${NOME_ASSISTENTE}] Resposta gerada com sucesso`);
       return {
         resposta: respostaIA.trim(),
         fonte: "IA",
-        confianca: 0.8,
-        modelo: IA_CONFIG.MODEL,
+        confianca: 0.9,
+        modelo: GROQ_CONFIG.MODEL,
       };
     }
 
     return null;
   } catch (error) {
-    console.error("❌ Erro ao chamar API de IA:", error.message);
+    if (error.name === "AbortError") {
+      console.error(`❌ [${NOME_ASSISTENTE}] Timeout na API Groq`);
+    } else {
+      console.error(`❌ [${NOME_ASSISTENTE}] Erro na API Groq:`, error.message);
+    }
     return null;
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RESPOSTAS FALLBACK
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Busca resposta direta no FAQ (fallback quando IA não está disponível)
+ * @param {string} pergunta - Pergunta do usuário
+ * @returns {Promise<Object|null>} Resposta do FAQ ou null
+ */
+async function buscarRespostaFAQ(pergunta) {
+  const faqsRelevantes = await buscarFAQsRelevantes(pergunta);
+
+  if (faqsRelevantes.length > 0 && faqsRelevantes[0].score >= 3) {
+    const faq = faqsRelevantes[0];
+    await incrementarUsoFAQ(faq.id);
+
+    return {
+      resposta: `${faq.resposta}\n\n💡 Se precisar de mais ajuda, é só perguntar ou solicitar um atendente humano!`,
+      fonte: "FAQ",
+      confianca: Math.min(faq.score / 10, 0.8),
+      categoria: faq.categoria,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Resposta de boas-vindas do Max
+ * @param {string} nomeUsuario - Nome do usuário (opcional)
+ * @returns {Object} Resposta de boas-vindas
+ */
+function respostaBoasVindas(nomeUsuario = "") {
+  const saudacao = nomeUsuario ? `Olá, ${nomeUsuario}! 👋` : "Olá! 👋";
+
+  return {
+    resposta: `${saudacao} Eu sou o ${NOME_ASSISTENTE}, seu assistente virtual do Sistema de Gestão de Visitantes.
+
+Estou aqui para ajudar você com dúvidas sobre:
+• 📝 Cadastro de visitantes
+• 🚪 Registro de entrada e saída
+• 📅 Agendamentos
+• 📊 Relatórios e histórico
+• ⚙️ Configurações do sistema
+
+Como posso ajudar você hoje? Fique à vontade para fazer sua pergunta!
+
+Se preferir falar com um atendente humano, é só me avisar. 😊`,
+    fonte: "SISTEMA",
+    confianca: 1,
+  };
 }
 
 /**
@@ -231,16 +380,17 @@ Diretrizes:
  * @returns {Object} Resposta padrão
  */
 function respostaPadrao() {
-  const respostas = [
-    "Desculpe, não consegui entender sua pergunta. Poderia reformular ou ser mais específico?",
-    "Não encontrei uma resposta para sua dúvida. Posso ajudar com algo mais?",
-    "Hmm, não tenho certeza sobre isso. Gostaria de falar com um atendente humano?",
-  ];
-
   return {
-    resposta: respostas[Math.floor(Math.random() * respostas.length)],
+    resposta: `Hmm, não consegui encontrar uma resposta específica para sua dúvida. 🤔
+
+Posso tentar ajudar de outra forma:
+• Reformule sua pergunta de maneira diferente
+• Pergunte sobre uma funcionalidade específica do sistema
+• Ou, se preferir, posso transferir você para um atendente humano
+
+O que você prefere?`,
     fonte: "PADRAO",
-    confianca: 0,
+    confianca: 0.3,
   };
 }
 
@@ -250,55 +400,117 @@ function respostaPadrao() {
  */
 function respostaTransferencia() {
   return {
-    resposta:
-      "Entendi que você deseja falar com um atendente humano. Vou transferir você para nossa equipe de suporte. Por favor, aguarde um momento enquanto um atendente fica disponível.",
+    resposta: `Entendi! Vou transferir você para um atendente humano agora. 👨‍💼
+
+Por favor, aguarde um momento enquanto um de nossos atendentes fica disponível. Você será atendido por ordem de chegada.
+
+Enquanto isso, fique à vontade para descrever seu problema ou dúvida aqui, assim o atendente já terá o contexto quando assumir a conversa. 😊`,
     fonte: "SISTEMA",
     confianca: 1,
     solicitouHumano: true,
   };
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// FUNÇÃO PRINCIPAL DE PROCESSAMENTO
+// ═══════════════════════════════════════════════════════════════════════════
+
 /**
- * Processa mensagem e gera resposta
+ * Processa mensagem e gera resposta do Max
  * @param {string} mensagem - Mensagem do usuário
  * @param {Array} historico - Histórico de mensagens
+ * @param {Object} opcoes - Opções adicionais
+ * @param {boolean} opcoes.primeiraInteracao - Se é a primeira mensagem da conversa
  * @returns {Promise<Object>} Resposta gerada
  */
-async function processarMensagem(mensagem, historico = []) {
-  console.log(`🤖 Processando mensagem: "${mensagem.substring(0, 50)}..."`);
+async function processarMensagem(mensagem, historico = [], opcoes = {}) {
+  console.log(
+    `🤖 [${NOME_ASSISTENTE}] Processando: "${mensagem.substring(0, 50)}..."`,
+  );
 
-  // 1. Verifica se quer falar com humano
+  // 1. Verifica se é primeira interação (saudação)
+  if (opcoes.primeiraInteracao || historico.length === 0) {
+    // Se a mensagem for só saudação, responde com boas-vindas
+    const saudacoes = [
+      "oi",
+      "olá",
+      "ola",
+      "hey",
+      "e aí",
+      "e ai",
+      "bom dia",
+      "boa tarde",
+      "boa noite",
+      "hello",
+      "hi",
+    ];
+    const mensagemLower = mensagem.toLowerCase().trim();
+
+    if (
+      saudacoes.some(
+        (s) =>
+          mensagemLower === s ||
+          mensagemLower.startsWith(s + " ") ||
+          mensagemLower.startsWith(s + ","),
+      )
+    ) {
+      return respostaBoasVindas();
+    }
+  }
+
+  // 2. Verifica se quer falar com humano
   if (desejaFalarComHumano(mensagem)) {
-    console.log("👤 Usuário solicitou atendente humano");
+    console.log(`👤 [${NOME_ASSISTENTE}] Usuário solicitou atendente humano`);
     return respostaTransferencia();
   }
 
-  // 2. Tenta buscar no FAQ (mais rápido e gratuito)
-  const respostaFAQ = await buscarNoFAQ(mensagem);
-  if (respostaFAQ && respostaFAQ.confianca >= 0.3) {
-    console.log(
-      `📚 Resposta encontrada no FAQ (confiança: ${respostaFAQ.confianca})`
-    );
+  // 3. Busca FAQs relevantes para dar contexto à IA
+  const faqsRelevantes = await buscarFAQsRelevantes(mensagem);
+  const todosFAQs = await buscarTodosFAQs();
+
+  // Combina FAQs relevantes com FAQs gerais para contexto
+  const faqsParaContexto = [
+    ...faqsRelevantes,
+    ...todosFAQs.filter((f) => !faqsRelevantes.find((r) => r.id === f.id)),
+  ].slice(0, 10);
+
+  // 4. Tenta usar IA Groq
+  if (isGroqConfigurado()) {
+    const respostaIA = await chamarGroq(mensagem, historico, faqsParaContexto);
+
+    if (respostaIA) {
+      // Se usou um FAQ específico, incrementa o contador
+      if (faqsRelevantes.length > 0 && faqsRelevantes[0].score >= 3) {
+        await incrementarUsoFAQ(faqsRelevantes[0].id);
+      }
+
+      return respostaIA;
+    }
+  }
+
+  // 5. Fallback: Tenta buscar resposta direta no FAQ
+  console.log(
+    `⚠️ [${NOME_ASSISTENTE}] IA não disponível, usando FAQ como fallback`,
+  );
+  const respostaFAQ = await buscarRespostaFAQ(mensagem);
+
+  if (respostaFAQ) {
+    console.log(`📚 [${NOME_ASSISTENTE}] Resposta encontrada no FAQ`);
     return respostaFAQ;
   }
 
-  // 3. Tenta usar IA externa
-  const respostaIA = await gerarRespostaIA(mensagem, historico);
-  if (respostaIA) {
-    console.log(`🧠 Resposta gerada pela IA (${respostaIA.modelo})`);
-    return respostaIA;
-  }
-
-  // 4. Resposta padrão
-  console.log("❓ Usando resposta padrão");
+  // 6. Resposta padrão
+  console.log(`❓ [${NOME_ASSISTENTE}] Usando resposta padrão`);
   return respostaPadrao();
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// FUNÇÕES DE GESTÃO DE FAQ (mantidas para compatibilidade)
+// ═══════════════════════════════════════════════════════════════════════════
+
 /**
  * Lista FAQs cadastrados
- * @param {Object} [opcoes] - Opções de filtro
- * @param {string} [opcoes.categoria] - Filtrar por categoria
- * @param {boolean} [opcoes.apenasAtivos=true] - Apenas FAQs ativos
+ * @param {Object} opcoes - Opções de filtro
  * @returns {Promise<Array>} Lista de FAQs
  */
 async function listarFAQs({ categoria, apenasAtivos = true } = {}) {
@@ -329,7 +541,6 @@ async function salvarFAQ({
   ativo = true,
 }) {
   if (id) {
-    // Atualiza
     const [atualizado] = await db("chat_faq")
       .where({ id })
       .update({
@@ -343,7 +554,6 @@ async function salvarFAQ({
       .returning("*");
     return atualizado;
   } else {
-    // Cria
     const [criado] = await db("chat_faq")
       .insert({
         pergunta,
@@ -367,12 +577,41 @@ async function removerFAQ(id) {
   return removido > 0;
 }
 
+/**
+ * Retorna informações sobre o assistente
+ * @returns {Object} Informações do assistente
+ */
+function getInfoAssistente() {
+  return {
+    nome: NOME_ASSISTENTE,
+    modelo: GROQ_CONFIG.MODEL,
+    iaConfigurada: isGroqConfigurado(),
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXPORTS
+// ═══════════════════════════════════════════════════════════════════════════
+
 module.exports = {
+  // Função principal
   processarMensagem,
+
+  // Funções auxiliares
   desejaFalarComHumano,
-  buscarNoFAQ,
-  gerarRespostaIA,
+  isGroqConfigurado,
+  getInfoAssistente,
+
+  // Respostas especiais
+  respostaBoasVindas,
+  respostaTransferencia,
+
+  // Gestão de FAQ
   listarFAQs,
   salvarFAQ,
   removerFAQ,
+
+  // Para testes
+  buscarFAQsRelevantes,
+  chamarGroq,
 };

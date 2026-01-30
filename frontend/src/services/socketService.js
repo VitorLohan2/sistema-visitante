@@ -49,14 +49,8 @@ const eventCallbacks = {
   "agendamento:delete": [],
   "descarga:nova": [],
   "descarga:atualizada": [],
-  // Chat de Suporte
-  "chat-suporte:mensagem": [],
-  "chat-suporte:digitando": [],
-  "chat-suporte:parou-digitar": [],
-  "chat-suporte:atendente-entrou": [],
-  "chat-suporte:conversa-finalizada": [],
-  "chat-suporte:fila-atualizada": [],
-  "chat-suporte:nova-fila": [],
+  // Chat de Suporte - REMOVIDO do socket principal
+  // Agora usa o namespace /suporte dedicado via connectSuporte()
   // Ronda Vigilante (Tempo Real)
   "ronda:nova-iniciada": [],
   "ronda:posicao-atualizada": [],
@@ -448,42 +442,9 @@ export function connect(token) {
   });
 
   // ═══════════════════════════════════════════════════════════════
-  // EVENTOS DE CHAT DE SUPORTE
+  // EVENTOS DE CHAT DE SUPORTE - REMOVIDO DO SOCKET PRINCIPAL
+  // Agora usa o namespace /suporte dedicado via connectSuporte()
   // ═══════════════════════════════════════════════════════════════
-  socket.on("chat-suporte:mensagem", (data) => {
-    logger.log("💬 Mensagem de chat recebida via Socket:", data);
-    eventCallbacks["chat-suporte:mensagem"].forEach((cb) => cb(data));
-  });
-
-  socket.on("chat-suporte:digitando", (data) => {
-    eventCallbacks["chat-suporte:digitando"].forEach((cb) => cb(data));
-  });
-
-  socket.on("chat-suporte:parou-digitar", (data) => {
-    eventCallbacks["chat-suporte:parou-digitar"].forEach((cb) => cb(data));
-  });
-
-  socket.on("chat-suporte:atendente-entrou", (data) => {
-    logger.log("👨‍💼 Atendente entrou via Socket:", data);
-    eventCallbacks["chat-suporte:atendente-entrou"].forEach((cb) => cb(data));
-  });
-
-  socket.on("chat-suporte:conversa-finalizada", (data) => {
-    logger.log("🔚 Conversa finalizada via Socket:", data);
-    eventCallbacks["chat-suporte:conversa-finalizada"].forEach((cb) =>
-      cb(data),
-    );
-  });
-
-  socket.on("chat-suporte:fila-atualizada", (data) => {
-    logger.log("📋 Fila atualizada via Socket:", data);
-    eventCallbacks["chat-suporte:fila-atualizada"].forEach((cb) => cb(data));
-  });
-
-  socket.on("chat-suporte:nova-fila", (data) => {
-    logger.log("📢 Nova conversa na fila via Socket:", data);
-    eventCallbacks["chat-suporte:nova-fila"].forEach((cb) => cb(data));
-  });
 
   // ═══════════════════════════════════════════════════════════════
   // EVENTOS DE RONDA VIGILANTE (TEMPO REAL)
@@ -808,6 +769,188 @@ export function getVisitorSocket() {
   return visitorSocket;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// SOCKET DE SUPORTE (CHAT - USUÁRIOS AUTENTICADOS COM PERMISSÃO)
+// ═══════════════════════════════════════════════════════════════════════════
+
+let suporteSocket = null;
+const suporteEventCallbacks = {
+  "suporte:mensagem": [],
+  "suporte:digitando": [],
+  "suporte:parou-digitar": [],
+  "suporte:atendente-entrou": [],
+  "suporte:conversa-finalizada": [],
+  "suporte:fila-atualizada": [],
+  "suporte:nova-fila": [],
+  connected: [],
+  disconnected: [],
+  error: [],
+};
+
+/**
+ * Conecta ao namespace /suporte (para usuários autenticados com permissão de chat)
+ * @param {string} token - JWT Token do usuário
+ */
+export function connectSuporte(token) {
+  // Evita conexões duplicadas
+  if (suporteSocket?.connected) {
+    logger.log("🔌 [Suporte] Socket já conectado, reutilizando");
+    return suporteSocket;
+  }
+
+  // Limpa socket anterior se existir
+  if (suporteSocket && !suporteSocket.connected) {
+    suporteSocket.removeAllListeners();
+    suporteSocket.disconnect();
+    suporteSocket = null;
+  }
+
+  const socketUrl = getSocketUrl();
+  logger.log("🔌 [Suporte] Conectando ao namespace /suporte:", socketUrl);
+
+  suporteSocket = io(`${socketUrl}/suporte`, {
+    auth: { token },
+    extraHeaders: {
+      Authorization: `Bearer ${token}`,
+    },
+    transports: ["websocket", "polling"],
+    reconnection: true,
+    reconnectionAttempts: MAX_RECONNECT_ATTEMPTS,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
+    timeout: 20000,
+    forceNew: false,
+  });
+
+  // Eventos de conexão
+  suporteSocket.on("connect", () => {
+    logger.log("✅ [Suporte] Socket conectado:", suporteSocket.id);
+    suporteEventCallbacks.connected.forEach((cb) => cb(suporteSocket.id));
+  });
+
+  suporteSocket.on("disconnect", (reason) => {
+    logger.log("🔴 [Suporte] Socket desconectado:", reason);
+    suporteEventCallbacks.disconnected.forEach((cb) => cb(reason));
+  });
+
+  suporteSocket.on("connect_error", (error) => {
+    logger.error("❌ [Suporte] Erro de conexão:", error.message);
+    suporteEventCallbacks.error.forEach((cb) => cb(error));
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // EVENTOS DE CHAT
+  // ═══════════════════════════════════════════════════════════════
+
+  suporteSocket.on("suporte:mensagem", (data) => {
+    logger.log("💬 [Suporte] Nova mensagem:", data);
+    suporteEventCallbacks["suporte:mensagem"].forEach((cb) => cb(data));
+  });
+
+  suporteSocket.on("suporte:digitando", (data) => {
+    suporteEventCallbacks["suporte:digitando"].forEach((cb) => cb(data));
+  });
+
+  suporteSocket.on("suporte:parou-digitar", (data) => {
+    suporteEventCallbacks["suporte:parou-digitar"].forEach((cb) => cb(data));
+  });
+
+  suporteSocket.on("suporte:atendente-entrou", (data) => {
+    logger.log("🎉 [Suporte] Atendente entrou:", data);
+    suporteEventCallbacks["suporte:atendente-entrou"].forEach((cb) => cb(data));
+  });
+
+  suporteSocket.on("suporte:conversa-finalizada", (data) => {
+    logger.log("🏁 [Suporte] Conversa finalizada:", data);
+    suporteEventCallbacks["suporte:conversa-finalizada"].forEach((cb) =>
+      cb(data),
+    );
+  });
+
+  suporteSocket.on("suporte:fila-atualizada", (data) => {
+    console.log("📋 [Suporte] Fila atualizada:", data);
+    suporteEventCallbacks["suporte:fila-atualizada"].forEach((cb) => cb(data));
+  });
+
+  suporteSocket.on("suporte:nova-fila", (data) => {
+    console.log("📢 [Suporte] Nova conversa na fila:", data);
+    suporteEventCallbacks["suporte:nova-fila"].forEach((cb) => cb(data));
+  });
+
+  return suporteSocket;
+}
+
+/**
+ * Desconecta o socket de suporte
+ */
+export function disconnectSuporte() {
+  if (suporteSocket) {
+    logger.log("🔌 [Suporte] Desconectando socket");
+    suporteSocket.removeAllListeners();
+    suporteSocket.disconnect();
+    suporteSocket = null;
+
+    // Limpa callbacks
+    Object.keys(suporteEventCallbacks).forEach((key) => {
+      suporteEventCallbacks[key] = [];
+    });
+  }
+}
+
+/**
+ * Verifica se o socket de suporte está conectado
+ */
+export function isSuporteConnected() {
+  return suporteSocket?.connected || false;
+}
+
+/**
+ * Registra callback para evento no socket de suporte
+ */
+export function onSuporte(event, callback) {
+  if (suporteEventCallbacks[event]) {
+    suporteEventCallbacks[event].push(callback);
+    return () => {
+      suporteEventCallbacks[event] = suporteEventCallbacks[event].filter(
+        (cb) => cb !== callback,
+      );
+    };
+  }
+  return () => {};
+}
+
+/**
+ * Remove callback de evento no socket de suporte
+ */
+export function offSuporte(event, callback) {
+  if (suporteEventCallbacks[event]) {
+    suporteEventCallbacks[event] = suporteEventCallbacks[event].filter(
+      (cb) => cb !== callback,
+    );
+  }
+}
+
+/**
+ * Emite evento pelo socket de suporte
+ */
+export function emitSuporte(event, data) {
+  if (suporteSocket?.connected) {
+    suporteSocket.emit(event, data);
+    logger.log(`📤 [Suporte] Emitindo ${event}:`, data);
+  } else {
+    logger.warn(
+      `⚠️ [Suporte] Socket não conectado, não foi possível emitir ${event}`,
+    );
+  }
+}
+
+/**
+ * Obtém o socket de suporte
+ */
+export function getSuporteSocket() {
+  return suporteSocket;
+}
+
 export default {
   connect,
   disconnect,
@@ -827,4 +970,12 @@ export default {
   offVisitor,
   emitVisitor,
   getVisitorSocket,
+  // Suporte socket
+  connectSuporte,
+  disconnectSuporte,
+  isSuporteConnected,
+  onSuporte,
+  offSuporte,
+  emitSuporte,
+  getSuporteSocket,
 };

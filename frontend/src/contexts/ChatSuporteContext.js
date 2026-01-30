@@ -102,6 +102,37 @@ export function ChatSuporteProvider({ children }) {
   // FUNÇÕES DE CARREGAMENTO (usando refs para evitar stale closures)
   // ═══════════════════════════════════════════════════════════════
 
+  // Carrega o contador da fila para TODOS com permissão de chat
+  const carregarContadorFilaInterno = async () => {
+    if (!temPermissaoChatRef.current || !isAuthenticatedRef.current) {
+      logger.log(
+        "📋 [Context] Skipping fila count - sem permissão de chat ou não autenticado",
+      );
+      return;
+    }
+
+    try {
+      // Usa endpoint de atendente para obter a fila (retorna mesmo se não for atendente, pois verifica permissão no backend)
+      const response = await api.get("/chat-suporte/atendente/fila");
+      const fila = response.data.fila || [];
+      logger.log(
+        "📋 [Context] Contador da fila carregado:",
+        fila.length,
+        "conversas",
+      );
+      setFilaCount(fila.length);
+      return fila.length;
+    } catch (err) {
+      // Se erro 403, usuário não tem permissão - não é erro crítico
+      if (err.response?.status === 403) {
+        logger.log("📋 [Context] Sem permissão para acessar fila");
+        return 0;
+      }
+      logger.error("Erro ao carregar contador da fila:", err);
+      return 0;
+    }
+  };
+
   const carregarFilaInterno = async () => {
     if (!isAtendenteRef.current || !isAuthenticatedRef.current) {
       logger.log(
@@ -179,7 +210,10 @@ export function ChatSuporteProvider({ children }) {
       isAtendente,
     );
 
-    // Carrega dados iniciais APENAS se é atendente (pode aceitar conversas)
+    // Carrega contador da fila para TODOS com permissão de chat (para o badge no menu)
+    carregarContadorFilaInterno();
+
+    // Carrega dados completos APENAS se é atendente (pode aceitar conversas)
     if (isAtendente) {
       carregarFilaInterno();
       carregarConversasAtivasInterno();
@@ -220,52 +254,114 @@ export function ChatSuporteProvider({ children }) {
       "🔌 [ChatSuporteContext GLOBAL] ═══════════════════════════════════",
     );
 
-    // Garante que o socket está conectado
+    // Conecta ao namespace /suporte (dedicado para chat de suporte)
     const token = localStorage.getItem("token");
-    if (token && !socketService.isConnected()) {
-      logger.log("🔌 [ChatSuporteContext GLOBAL] Conectando socket...");
-      socketService.connect(token);
+    if (token && !socketService.isSuporteConnected()) {
+      logger.log(
+        "🔌 [ChatSuporteContext GLOBAL] Conectando ao namespace /suporte...",
+      );
+      socketService.connectSuporte(token);
     }
 
-    // Função para entrar na sala de chat-suporte (TODOS com permissão)
-    const entrarSalaChatSuporte = () => {
-      if (socketService.isConnected() && temPermissaoChatRef.current) {
-        logger.log(
-          "👥 [Context GLOBAL] Entrando na sala chat-suporte... ID:",
-          userIdRef.current,
-        );
-        // Emite evento para entrar na sala de notificações de chat
-        socketService.emit("chat-suporte:usuario-online", {
-          usuario_id: userIdRef.current,
-        });
+    // Função para verificar e notificar sobre conversas pendentes na fila
+    const verificarFilaPendente = async () => {
+      try {
+        const response = await api.get("/chat-suporte/atendente/fila");
+        const fila = response.data.fila || [];
 
-        // Se é atendente, também emite para sala de atendentes
-        if (isAtendenteRef.current) {
-          logger.log(
-            "👨‍💼 [Context GLOBAL] Também entrando na sala de atendentes...",
-          );
-          socketService.emit("chat-suporte:atendente-online", {
-            atendente_id: userIdRef.current,
-          });
+        console.log(
+          "📋 [Context GLOBAL] Verificando fila pendente:",
+          fila.length,
+          "conversas",
+        );
+
+        if (fila.length > 0) {
+          setFilaCount(fila.length);
+
+          // Mostra toast de notificação se não houver um ativo
+          const toastId =
+            fila.length === 1
+              ? `nova-fila-${fila[0].conversa_id}`
+              : "nova-fila-pendentes";
+
+          if (!toast.isActive(toastId)) {
+            const mensagem =
+              fila.length === 1
+                ? `🆕 ${fila[0].nome_visitante || fila[0].nome_usuario || "Um visitante"} está aguardando atendimento`
+                : `📋 Há ${fila.length} conversas aguardando atendimento`;
+
+            console.log(
+              "📢 [Context GLOBAL] Mostrando toast de fila pendente:",
+              mensagem,
+            );
+
+            toast.info(mensagem, {
+              toastId: toastId,
+              position: "top-right",
+              autoClose: 8000,
+              hideProgressBar: false,
+              closeOnClick: true,
+              pauseOnHover: true,
+              draggable: true,
+              onClick: () => {
+                window.location.href = "/chat-suporte/atendente";
+              },
+            });
+          }
+        }
+      } catch (err) {
+        // Se erro 403, usuário não tem permissão - ignora silenciosamente
+        if (err.response?.status !== 403) {
+          console.error("Erro ao verificar fila pendente:", err);
         }
       }
     };
 
-    // IMPORTANTE: Entra na sala IMEDIATAMENTE se já conectado
+    // Função para entrar nas salas do namespace /suporte
+    const entrarSalasSuporte = () => {
+      if (socketService.isSuporteConnected() && temPermissaoChatRef.current) {
+        console.log(
+          "👥 [Context GLOBAL] Entrando nas salas do /suporte... ID:",
+          userIdRef.current,
+        );
+        // Emite evento para entrar na sala de notificações
+        socketService.emitSuporte("suporte:entrar-notificacoes", {
+          usuario_id: userIdRef.current,
+        });
+
+        // Se é atendente, também entra na sala de atendentes
+        if (isAtendenteRef.current) {
+          console.log(
+            "👨‍💼 [Context GLOBAL] Também entrando na sala de atendentes...",
+          );
+          socketService.emitSuporte("suporte:entrar-atendentes", {
+            atendente_id: userIdRef.current,
+          });
+        }
+
+        // Verifica se há conversas pendentes e mostra notificação
+        // Delay pequeno para garantir que os listeners já foram registrados
+        setTimeout(() => {
+          verificarFilaPendente();
+        }, 500);
+      }
+    };
+
+    // IMPORTANTE: Entra nas salas IMEDIATAMENTE se já conectado
     // O evento "connected" pode já ter sido disparado antes deste useEffect
-    if (socketService.isConnected()) {
-      logger.log(
-        "🔌 [Context GLOBAL] Socket JÁ conectado, entrando na sala AGORA!",
+    if (socketService.isSuporteConnected()) {
+      console.log(
+        "🔌 [Context GLOBAL] Socket /suporte JÁ conectado, entrando nas salas AGORA!",
       );
-      entrarSalaChatSuporte();
+      entrarSalasSuporte();
     }
 
     // Também registra para quando conectar/reconectar
-    const unsubConnected = socketService.on("connected", () => {
-      logger.log(
-        "✅ [Context GLOBAL] Socket conectado (evento), entrando na sala...",
+    const unsubConnected = socketService.onSuporte("connected", () => {
+      console.log(
+        "✅ [Context GLOBAL] Socket /suporte conectado (evento), entrando nas salas...",
       );
-      entrarSalaChatSuporte();
+      entrarSalasSuporte();
       // Recarrega dados ao reconectar (apenas se é atendente)
       if (isAtendenteRef.current) {
         carregarFilaInterno();
@@ -273,43 +369,84 @@ export function ChatSuporteProvider({ children }) {
       }
     });
 
-    // Intervalo para manter na sala (heartbeat) - apenas para atendentes que precisam aceitar conversas
-    // Para visualização de notificações, não precisa de heartbeat
+    // Intervalo para heartbeat - apenas para atendentes que precisam aceitar conversas
     const heartbeatInterval = setInterval(() => {
-      if (socketService.isConnected() && isAtendenteRef.current) {
-        socketService.emit("chat-suporte:atendente-online", {
+      if (socketService.isSuporteConnected() && isAtendenteRef.current) {
+        socketService.emitSuporte("suporte:heartbeat-atendente", {
           atendente_id: userIdRef.current,
         });
       }
-    }, 120000); // A cada 2 minutos (antes era 30 segundos)
+    }, 120000); // A cada 2 minutos
 
     // Listener para nova conversa na fila - ATUALIZA CONTADOR VIA SOCKET (sem requisição)
-    const unsubNovaFila = socketService.on("chat-suporte:nova-fila", (data) => {
-      logger.log("📢 [Context GLOBAL] SOCKET: Nova conversa na fila!", data);
-
-      // Cria ID único para evitar toasts duplicados
-      const toastId = `nova-fila-${data?.conversa_id || Date.now()}`;
-
-      // Verifica se já processamos esta notificação
-      if (toast.isActive(toastId)) {
-        logger.log(
-          "📢 [Context GLOBAL] Toast nova-fila já ativo, ignorando duplicata",
+    const unsubNovaFila = socketService.onSuporte(
+      "suporte:nova-fila",
+      (data) => {
+        console.log("📢 [Context GLOBAL] SOCKET: Nova conversa na fila!", data);
+        console.log(
+          "📢 [Context GLOBAL] solicitante_id:",
+          data?.solicitante_id,
+          "| userId:",
+          userIdRef.current,
         );
-        return;
-      }
 
-      // Atualiza o contador usando o filaCount recebido do backend
-      if (data?.filaCount !== undefined) {
-        setFilaCount(data.filaCount);
-      } else {
-        // Fallback: incrementa se não recebeu o count
-        setFilaCount((prev) => prev + 1);
-      }
+        // Se o solicitante foi o próprio usuário, não mostra toast (ele já sabe que solicitou)
+        // Mas ainda atualiza o contador
+        const isMinhaSolicitacao =
+          data?.solicitante_id && data.solicitante_id === userIdRef.current;
 
-      // Toast de notificação
-      toast.info(
-        `🆕 ${data?.nome || "Um visitante"} está aguardando atendimento`,
-        {
+        // Atualiza o contador usando o filaCount recebido do backend
+        if (data?.filaCount !== undefined) {
+          console.log(
+            "📢 [Context GLOBAL] Atualizando filaCount para:",
+            data.filaCount,
+          );
+          setFilaCount(data.filaCount);
+        } else {
+          // Fallback: incrementa se não recebeu o count
+          console.log("📢 [Context GLOBAL] Incrementando filaCount");
+          setFilaCount((prev) => prev + 1);
+        }
+
+        // Se foi o próprio usuário que solicitou, não mostra toast
+        if (isMinhaSolicitacao) {
+          console.log(
+            "📢 [Context GLOBAL] É minha própria solicitação, não mostrando toast",
+          );
+          return;
+        }
+
+        // Cria ID único para evitar toasts duplicados
+        // Para pendentes, usa um ID fixo para não mostrar múltiplos toasts
+        const toastId = data?.pendentes
+          ? "nova-fila-pendentes"
+          : `nova-fila-${data?.conversa_id || Date.now()}`;
+
+        console.log(
+          "📢 [Context GLOBAL] ToastId:",
+          toastId,
+          "| toast.isActive:",
+          toast.isActive(toastId),
+        );
+
+        // Verifica se já existe toast ativo com este ID (evita duplicata de múltiplas salas)
+        if (toast.isActive(toastId)) {
+          console.log(
+            "📢 [Context GLOBAL] Toast nova-fila já ativo, ignorando duplicata:",
+            toastId,
+          );
+          return;
+        }
+
+        // Mensagem diferente para conversas pendentes (que entraram antes do atendente logar)
+        const mensagemToast =
+          data?.pendentes && data?.filaCount > 1
+            ? `📋 Há ${data.filaCount} conversas aguardando atendimento`
+            : `🆕 ${data?.nome || "Um visitante"} está aguardando atendimento`;
+
+        console.log("📢 [Context GLOBAL] Exibindo toast:", mensagemToast);
+
+        toast.info(mensagemToast, {
           toastId: toastId,
           position: "top-right",
           autoClose: 8000,
@@ -321,33 +458,42 @@ export function ChatSuporteProvider({ children }) {
             // Navega para o painel de atendimento ao clicar
             window.location.href = "/chat-suporte/atendente";
           },
-        },
-      );
-
-      // Toca som de notificação
-      try {
-        const audio = new Audio(notificacaoSound);
-        audio.volume = 0.5;
-        audio.play().catch((err) => {
-          logger.log("🔇 Erro ao tocar som:", err.message);
         });
-      } catch (e) {
-        logger.log("🔇 Erro ao criar áudio:", e.message);
-      }
-    });
+
+        // Toca som de notificação
+        try {
+          const audio = new Audio(notificacaoSound);
+          audio.volume = 0.5;
+          audio.play().catch((err) => {
+            console.log("🔇 Erro ao tocar som:", err.message);
+          });
+        } catch (e) {
+          console.log("🔇 Erro ao criar áudio:", e.message);
+        }
+      },
+    );
 
     // Listener para fila atualizada (recebe o tamanho da fila via socket)
-    const unsubFilaAtualizada = socketService.on(
-      "chat-suporte:fila-atualizada",
+    const unsubFilaAtualizada = socketService.onSuporte(
+      "suporte:fila-atualizada",
       (data) => {
-        logger.log("📢 [Context GLOBAL] SOCKET: Fila atualizada!", data);
+        console.log("📢 [Context GLOBAL] SOCKET: Fila atualizada!", data);
+
         // Atualiza contador diretamente se recebeu o tamanho
         if (data?.fila !== undefined) {
           const novoCount = Array.isArray(data.fila)
             ? data.fila.length
             : data.filaCount || 0;
+          console.log(
+            "📢 [Context GLOBAL] Atualizando filaCount para:",
+            novoCount,
+          );
           setFilaCount(novoCount);
         } else if (data?.filaCount !== undefined) {
+          console.log(
+            "📢 [Context GLOBAL] Atualizando filaCount para:",
+            data.filaCount,
+          );
           setFilaCount(data.filaCount);
         }
         // Se não recebeu dados, decrementa (provavelmente uma conversa foi aceita)
@@ -358,137 +504,143 @@ export function ChatSuporteProvider({ children }) {
     );
 
     // Listener para nova mensagem (atualiza contadores E emite toast)
-    const unsubMensagem = socketService.on("chat-suporte:mensagem", (data) => {
-      logger.log("📢 [Context GLOBAL] SOCKET: Nova mensagem recebida!", data);
+    const unsubMensagem = socketService.onSuporte(
+      "suporte:mensagem",
+      (data) => {
+        logger.log("📢 [Context GLOBAL] SOCKET: Nova mensagem recebida!", data);
 
-      // Cria ID único para a mensagem (para evitar processar duplicatas)
-      const mensagemId =
-        data.mensagem?.id ||
-        `${data.conversa_id}-${data.mensagem?.criado_em || Date.now()}`;
+        // Cria ID único para a mensagem (para evitar processar duplicatas)
+        const mensagemId =
+          data.mensagem?.id ||
+          `${data.conversa_id}-${data.mensagem?.criado_em || Date.now()}`;
 
-      // Verifica se esta mensagem já foi processada (pode chegar duplicada de múltiplas salas)
-      if (mensagensProcessadasRef.current.has(mensagemId)) {
+        // Verifica se esta mensagem já foi processada (pode chegar duplicada de múltiplas salas)
+        if (mensagensProcessadasRef.current.has(mensagemId)) {
+          logger.log(
+            "📢 [Context GLOBAL] Mensagem já processada, ignorando:",
+            mensagemId,
+          );
+          return;
+        }
+
+        // Marca como processada (limpa após 5 segundos para não acumular)
+        mensagensProcessadasRef.current.add(mensagemId);
+        setTimeout(() => {
+          mensagensProcessadasRef.current.delete(mensagemId);
+        }, 5000);
+
         logger.log(
-          "📢 [Context GLOBAL] Mensagem já processada, ignorando:",
-          mensagemId,
+          "📢 [Context GLOBAL] Conversa visualizando:",
+          conversaVisualizandoRef.current,
         );
-        return;
-      }
-
-      // Marca como processada (limpa após 5 segundos para não acumular)
-      mensagensProcessadasRef.current.add(mensagemId);
-      setTimeout(() => {
-        mensagensProcessadasRef.current.delete(mensagemId);
-      }, 5000);
-
-      logger.log(
-        "📢 [Context GLOBAL] Conversa visualizando:",
-        conversaVisualizandoRef.current,
-      );
-      logger.log("📢 [Context GLOBAL] Conversa da mensagem:", data.conversa_id);
-
-      // Verifica se é uma mensagem de cliente (não do atendente/bot/sistema)
-      const origem = data.mensagem?.origem || data.origem;
-      const isMessageFromClient =
-        origem === "USUARIO" || origem === "VISITANTE";
-
-      logger.log(
-        "📢 [Context GLOBAL] Origem da mensagem:",
-        origem,
-        "| É do cliente:",
-        isMessageFromClient,
-      );
-
-      // Se não é a conversa sendo visualizada E é mensagem de cliente
-      if (
-        data.conversa_id !== conversaVisualizandoRef.current &&
-        isMessageFromClient
-      ) {
         logger.log(
-          "📢 [Context GLOBAL] Incrementando contador de não lidas para conversa:",
+          "📢 [Context GLOBAL] Conversa da mensagem:",
           data.conversa_id,
         );
 
-        // Incrementa contador de não lidas
-        setMensagensNaoLidas((prev) => {
-          const newCount = (prev[data.conversa_id] || 0) + 1;
-          logger.log(
-            "📢 [Context GLOBAL] Novo contador para conversa",
-            data.conversa_id,
-            ":",
-            newCount,
-          );
-          return {
-            ...prev,
-            [data.conversa_id]: newCount,
-          };
-        });
-
-        // Emite notificação toast para nova mensagem
-        const nomeRemetente =
-          data.mensagem?.remetente_nome ||
-          data.mensagem?.nome_remetente ||
-          data.nome ||
-          "Cliente";
-        const textoMensagem = data.mensagem?.mensagem || data.mensagem || "";
-        const previewMensagem =
-          typeof textoMensagem === "string"
-            ? textoMensagem.substring(0, 50)
-            : "Nova mensagem";
-
-        // Cria um ID único para o toast baseado na mensagem para evitar duplicação
-        const mensagemId =
-          data.mensagem?.id || `${data.conversa_id}-${Date.now()}`;
-        const toastId = `msg-${mensagemId}`;
+        // Verifica se é uma mensagem de cliente (não do atendente/bot/sistema)
+        const origem = data.mensagem?.origem || data.origem;
+        const isMessageFromClient =
+          origem === "USUARIO" || origem === "VISITANTE";
 
         logger.log(
-          "📢 [Context GLOBAL] Exibindo toast para:",
-          nomeRemetente,
-          "-",
-          previewMensagem,
-          "| ToastID:",
-          toastId,
+          "📢 [Context GLOBAL] Origem da mensagem:",
+          origem,
+          "| É do cliente:",
+          isMessageFromClient,
         );
 
-        // Só exibe se não existir toast com mesmo ID (evita duplicação)
-        if (!toast.isActive(toastId)) {
-          toast.info(
-            `💬 ${nomeRemetente}: ${previewMensagem}${previewMensagem.length >= 50 ? "..." : ""}`,
-            {
-              toastId: toastId,
-              position: "top-right",
-              autoClose: 5000,
-              hideProgressBar: false,
-              closeOnClick: true,
-              pauseOnHover: true,
-              draggable: true,
-              onClick: () => {
-                // Navega para o painel de atendimento ao clicar
-                window.location.href = "/chat-suporte/atendente";
-              },
-            },
+        // Se não é a conversa sendo visualizada E é mensagem de cliente
+        if (
+          data.conversa_id !== conversaVisualizandoRef.current &&
+          isMessageFromClient
+        ) {
+          logger.log(
+            "📢 [Context GLOBAL] Incrementando contador de não lidas para conversa:",
+            data.conversa_id,
           );
 
-          // Toca som de notificação (mais suave para mensagens)
-          try {
-            const audio = new Audio(notificacaoSound);
-            audio.volume = 0.3;
-            audio.play().catch((err) => {
-              logger.log("🔇 Erro ao tocar som:", err.message);
-            });
-          } catch (e) {
-            logger.log("🔇 Erro ao criar áudio:", e.message);
+          // Incrementa contador de não lidas
+          setMensagensNaoLidas((prev) => {
+            const newCount = (prev[data.conversa_id] || 0) + 1;
+            logger.log(
+              "📢 [Context GLOBAL] Novo contador para conversa",
+              data.conversa_id,
+              ":",
+              newCount,
+            );
+            return {
+              ...prev,
+              [data.conversa_id]: newCount,
+            };
+          });
+
+          // Emite notificação toast para nova mensagem
+          const nomeRemetente =
+            data.mensagem?.remetente_nome ||
+            data.mensagem?.nome_remetente ||
+            data.nome ||
+            "Cliente";
+          const textoMensagem = data.mensagem?.mensagem || data.mensagem || "";
+          const previewMensagem =
+            typeof textoMensagem === "string"
+              ? textoMensagem.substring(0, 50)
+              : "Nova mensagem";
+
+          // Cria um ID único para o toast baseado na mensagem para evitar duplicação
+          const mensagemId =
+            data.mensagem?.id || `${data.conversa_id}-${Date.now()}`;
+          const toastId = `msg-${mensagemId}`;
+
+          logger.log(
+            "📢 [Context GLOBAL] Exibindo toast para:",
+            nomeRemetente,
+            "-",
+            previewMensagem,
+            "| ToastID:",
+            toastId,
+          );
+
+          // Só exibe se não existir toast com mesmo ID (evita duplicação)
+          if (!toast.isActive(toastId)) {
+            toast.info(
+              `💬 ${nomeRemetente}: ${previewMensagem}${previewMensagem.length >= 50 ? "..." : ""}`,
+              {
+                toastId: toastId,
+                position: "top-right",
+                autoClose: 5000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                onClick: () => {
+                  // Navega para o painel de atendimento ao clicar
+                  window.location.href = "/chat-suporte/atendente";
+                },
+              },
+            );
+
+            // Toca som de notificação (mais suave para mensagens)
+            try {
+              const audio = new Audio(notificacaoSound);
+              audio.volume = 0.3;
+              audio.play().catch((err) => {
+                logger.log("🔇 Erro ao tocar som:", err.message);
+              });
+            } catch (e) {
+              logger.log("🔇 Erro ao criar áudio:", e.message);
+            }
           }
         }
-      }
 
-      // Atualiza conversas ativas
-      carregarConversasAtivasInterno();
-    });
+        // Atualiza conversas ativas
+        carregarConversasAtivasInterno();
+      },
+    );
 
     // Listener para conversa aceita por outro atendente
-    const unsubAtendenteEntrou = socketService.on(
-      "chat-suporte:atendente-entrou",
+    const unsubAtendenteEntrou = socketService.onSuporte(
+      "suporte:atendente-entrou",
       () => {
         logger.log("📢 [Context GLOBAL] SOCKET: Atendente entrou em conversa!");
         carregarFilaInterno();
@@ -497,8 +649,8 @@ export function ChatSuporteProvider({ children }) {
     );
 
     // Listener para conversa finalizada
-    const unsubFinalizada = socketService.on(
-      "chat-suporte:conversa-finalizada",
+    const unsubFinalizada = socketService.onSuporte(
+      "suporte:conversa-finalizada",
       (data) => {
         logger.log("📢 [Context GLOBAL] SOCKET: Conversa finalizada!", data);
         // Remove mensagens não lidas desta conversa
@@ -519,11 +671,14 @@ export function ChatSuporteProvider({ children }) {
       clearInterval(heartbeatInterval);
 
       // Só emite offline se é atendente e estiver deslogando
-      if (socketService.isConnected() && isAtendenteRef.current) {
-        socketService.emit("chat-suporte:atendente-offline", {
+      if (socketService.isSuporteConnected() && isAtendenteRef.current) {
+        socketService.emitSuporte("suporte:atendente-offline", {
           atendente_id: userIdRef.current,
         });
       }
+      // Desconecta do namespace /suporte
+      socketService.disconnectSuporte();
+
       unsubConnected && unsubConnected();
       unsubNovaFila && unsubNovaFila();
       unsubFilaAtualizada && unsubFilaAtualizada();

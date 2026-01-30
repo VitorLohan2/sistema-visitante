@@ -253,18 +253,39 @@ export default function ChatWidget() {
   useEffect(() => {
     if (!conversa?.id) return;
 
-    // USUÁRIO AUTENTICADO - usa socket principal
-    if (isAuthenticated && socketService.isConnected()) {
+    // USUÁRIO AUTENTICADO - usa namespace /suporte
+    if (isAuthenticated) {
+      // Aguarda socket estar conectado
+      if (!socketService.isSuporteConnected()) {
+        logger.log(
+          "🔌 [ChatWidget] Socket /suporte não conectado, aguardando...",
+        );
+        // Registra listener para quando conectar
+        const unsubConnected = socketService.onSuporte("connected", () => {
+          logger.log(
+            "🔌 [ChatWidget] Socket /suporte conectado! Entrando na conversa...",
+          );
+          socketService.emitSuporte("suporte:entrar-conversa", {
+            conversa_id: conversa.id,
+          });
+        });
+        return () => {
+          unsubConnected && unsubConnected();
+        };
+      }
+
       logger.log(
-        "🔌 [ChatWidget] Configurando socket para usuário autenticado",
+        "🔌 [ChatWidget] Configurando socket /suporte para usuário autenticado",
       );
 
       // Entra na sala da conversa
-      socketService.emit("chat-suporte:entrar", conversa.id);
+      socketService.emitSuporte("suporte:entrar-conversa", {
+        conversa_id: conversa.id,
+      });
 
       // Listener para novas mensagens
-      const unsubMensagem = socketService.on(
-        "chat-suporte:mensagem",
+      const unsubMensagem = socketService.onSuporte(
+        "suporte:mensagem",
         (data) => {
           if (data.conversa_id === conversa.id) {
             setMensagens((prev) => {
@@ -276,8 +297,8 @@ export default function ChatWidget() {
       );
 
       // Listener para digitando (ignora se for o próprio usuário)
-      const unsubDigitando = socketService.on(
-        "chat-suporte:digitando",
+      const unsubDigitando = socketService.onSuporte(
+        "suporte:digitando",
         (data) => {
           if (data.conversa_id === conversa.id) {
             // Ignora se o nome é o mesmo do usuário atual (evita mostrar "você está digitando")
@@ -290,8 +311,8 @@ export default function ChatWidget() {
       );
 
       // Listener para parou de digitar
-      const unsubParouDigitar = socketService.on(
-        "chat-suporte:parou-digitar",
+      const unsubParouDigitar = socketService.onSuporte(
+        "suporte:parou-digitar",
         (data) => {
           if (data.conversa_id === conversa.id) {
             setDigitando(null);
@@ -300,8 +321,8 @@ export default function ChatWidget() {
       );
 
       // Listener para atendente entrou
-      const unsubAtendenteEntrou = socketService.on(
-        "chat-suporte:atendente-entrou",
+      const unsubAtendenteEntrou = socketService.onSuporte(
+        "suporte:atendente-entrou",
         (data) => {
           if (data.conversa_id === conversa.id) {
             logger.log("🎉 Atendente entrou na conversa:", data);
@@ -316,8 +337,8 @@ export default function ChatWidget() {
       );
 
       // Listener para conversa finalizada
-      const unsubFinalizada = socketService.on(
-        "chat-suporte:conversa-finalizada",
+      const unsubFinalizada = socketService.onSuporte(
+        "suporte:conversa-finalizada",
         (data) => {
           if (data.conversa_id === conversa.id) {
             setConversa((prev) => ({ ...prev, status: STATUS.FINALIZADA }));
@@ -327,8 +348,8 @@ export default function ChatWidget() {
       );
 
       // Listener para atualização da fila
-      const unsubFilaAtualizada = socketService.on(
-        "chat-suporte:fila-atualizada",
+      const unsubFilaAtualizada = socketService.onSuporte(
+        "suporte:fila-atualizada",
         (data) => {
           if (data.posicao && data.conversa_id === conversa.id) {
             setPosicaoFila(data.posicao);
@@ -337,8 +358,10 @@ export default function ChatWidget() {
       );
 
       return () => {
-        if (socketService.isConnected()) {
-          socketService.emit("chat-suporte:sair", conversa.id);
+        if (socketService.isSuporteConnected()) {
+          socketService.emitSuporte("suporte:sair-conversa", {
+            conversa_id: conversa.id,
+          });
         }
         unsubMensagem && unsubMensagem();
         unsubDigitando && unsubDigitando();
@@ -477,7 +500,7 @@ export default function ChatWidget() {
 
     // Verifica se o socket está conectado - se sim, não precisa de polling
     const socketConectado = isAuthenticated
-      ? socketService.isConnected()
+      ? socketService.isSuporteConnected()
       : visitorSocketConnected;
 
     if (socketConectado) {
@@ -652,9 +675,9 @@ export default function ChatWidget() {
     setNovaMensagem("");
     setEnviando(true);
 
-    // Emite evento de parou de digitar (só se socket estiver conectado)
-    if (socketService.isConnected()) {
-      socketService.emit("chat-suporte:parou-digitar", {
+    // Emite evento de parou de digitar (só se socket /suporte estiver conectado)
+    if (socketService.isSuporteConnected()) {
+      socketService.emitSuporte("suporte:parou-digitar", {
         conversa_id: conversa.id,
       });
     }
@@ -726,8 +749,8 @@ export default function ChatWidget() {
     };
 
     // Emite via socket apropriado
-    if (isAuthenticated && socketService.isConnected()) {
-      socketService.emit("chat-suporte:digitando", typingData);
+    if (isAuthenticated && socketService.isSuporteConnected()) {
+      socketService.emitSuporte("suporte:digitando", typingData);
     } else if (!isAuthenticated && socketService.isVisitorConnected()) {
       socketService.emitVisitor("chat-suporte:digitando", typingData);
     } else {
@@ -743,8 +766,8 @@ export default function ChatWidget() {
     digitandoTimeoutRef.current = setTimeout(() => {
       const stopTypingData = { conversa_id: conversa.id };
 
-      if (isAuthenticated && socketService.isConnected()) {
-        socketService.emit("chat-suporte:parou-digitar", stopTypingData);
+      if (isAuthenticated && socketService.isSuporteConnected()) {
+        socketService.emitSuporte("suporte:parou-digitar", stopTypingData);
       } else if (!isAuthenticated && socketService.isVisitorConnected()) {
         socketService.emitVisitor("chat-suporte:parou-digitar", stopTypingData);
       }

@@ -3,7 +3,11 @@ require("./config/env");
 
 const http = require("http");
 const app = require("./app");
-const { init, initVisitorNamespace } = require("./socket");
+const {
+  init,
+  initVisitorNamespace,
+  initSuporteNamespace,
+} = require("./socket");
 
 const PORT = process.env.PORT || 3001;
 const NODE_ENV = process.env.NODE_ENV || "desenvolvimento";
@@ -70,6 +74,9 @@ init(server);
 
 // 🔥 Inicializar namespace para visitantes (chat sem autenticação)
 initVisitorNamespace();
+
+// 🔥 Inicializar namespace para suporte (chat com autenticação)
+initSuporteNamespace();
 
 // 🔥 Agora usamos server.listen (não app.listen!)
 server.listen(PORT, () => {

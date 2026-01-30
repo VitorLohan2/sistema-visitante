@@ -82,11 +82,23 @@ async function criarConversa({
       user_agent,
     });
 
-    // Envia mensagem de boas-vindas do bot
+    // Envia mensagem de boas-vindas do Max (assistente virtual)
+    const primeiroNome = nome.split(" ")[0];
     await enviarMensagem({
       conversa_id: conversa.id,
       origem: "BOT",
-      mensagem: `Olá ${nome.split(" ")[0]}! 👋 Sou o assistente virtual do Sistema de Gestão de Visitantes. Como posso ajudar você hoje?`,
+      mensagem: `Olá, ${primeiroNome}! 👋 Eu sou o Max, seu assistente virtual do Sistema de Gestão de Visitantes.
+
+Estou aqui para ajudar você com dúvidas sobre:
+• 📝 Cadastro de visitantes
+• 🚪 Registro de entrada e saída
+• 📅 Agendamentos
+• 📊 Relatórios e histórico
+• ⚙️ Configurações do sistema
+
+Como posso ajudar você hoje? Fique à vontade para fazer sua pergunta!
+
+Se preferir falar com um atendente humano, é só me avisar. 😊`,
     });
 
     console.log(`✅ Conversa #${conversa.id} criada para ${nome} (${email})`);
@@ -450,13 +462,14 @@ async function solicitarAtendimentoHumano(
 
   // Envia mensagem do sistema
   const totalFila = await FilaService.contarFila();
-  await enviarMensagem({
+  const mensagemSistema = await enviarMensagem({
     conversa_id,
     origem: "SISTEMA",
     mensagem: `Você foi adicionado à fila de atendimento. Posição: ${itemFila.posicao}. ${totalFila > 1 ? `Há ${totalFila - 1} pessoa(s) na sua frente.` : "Você é o próximo a ser atendido!"} Por favor, aguarde.`,
   });
 
-  return { posicao: itemFila.posicao, jaEstaNaFila: false };
+  // Retorna a mensagem para o controller emitir via socket
+  return { posicao: itemFila.posicao, jaEstaNaFila: false, mensagemSistema };
 }
 
 /**
@@ -511,8 +524,9 @@ async function aceitarAtendimento(
   }
 
   // Envia mensagem de início de atendimento
+  let mensagemEntrada = null;
   try {
-    await enviarMensagem({
+    mensagemEntrada = await enviarMensagem({
       conversa_id,
       origem: "SISTEMA",
       mensagem: `${atendente_nome} entrou no atendimento. Como posso ajudar?`,
@@ -526,7 +540,9 @@ async function aceitarAtendimento(
   console.log(
     `✅ Conversa #${conversa_id} aceita pelo atendente ${atendente_nome}`,
   );
-  return conversaAtualizada;
+
+  // Retorna a conversa atualizada E a mensagem de entrada para emitir via socket
+  return { ...conversaAtualizada, mensagemEntrada };
 }
 
 /**

@@ -160,8 +160,17 @@ export default function PainelAtendente() {
 
   const carregarMensagens = async (conversaId) => {
     try {
+      console.log(
+        `📨 [PainelAtendente] Carregando mensagens da conversa ${conversaId}...`,
+      );
       const response = await api.get(`/chat-suporte/conversas/${conversaId}`);
       const novasMensagens = response.data.mensagens || [];
+
+      console.log(
+        `📨 [PainelAtendente] Mensagens carregadas:`,
+        novasMensagens.length,
+        "mensagens",
+      );
 
       // Salva no cache
       mensagensCache.current[conversaId] = novasMensagens;
@@ -171,7 +180,7 @@ export default function PainelAtendente() {
 
       return novasMensagens;
     } catch (err) {
-      logger.error("Erro ao carregar mensagens:", err);
+      console.error("❌ [PainelAtendente] Erro ao carregar mensagens:", err);
       return [];
     }
   };
@@ -184,16 +193,20 @@ export default function PainelAtendente() {
   useEffect(() => {
     if (!conversasAtivas.length) return;
 
-    // Entra em todas as salas de conversas ativas
+    // Entra em todas as salas de conversas ativas via namespace /suporte
     conversasAtivas.forEach((conversa) => {
-      socketService.emit("chat-suporte:entrar", conversa.id);
+      socketService.emitSuporte("suporte:entrar-conversa", {
+        conversa_id: conversa.id,
+      });
       logger.log(`🚪 Atendente entrou na sala da conversa ${conversa.id}`);
     });
 
     return () => {
       // Sai de todas as salas ao desmontar
       conversasAtivas.forEach((conversa) => {
-        socketService.emit("chat-suporte:sair", conversa.id);
+        socketService.emitSuporte("suporte:sair-conversa", {
+          conversa_id: conversa.id,
+        });
       });
     };
   }, [conversasAtivas]);
@@ -207,20 +220,23 @@ export default function PainelAtendente() {
     // Aqui apenas registramos listeners locais para atualizar a UI desta página
 
     // Listener para nova conversa na fila
-    const unsubNovaFila = socketService.on("chat-suporte:nova-fila", (data) => {
-      logger.log("📢 Nova conversa na fila - dados recebidos:", data);
-      // Se recebeu a fila completa, usa diretamente
-      if (data?.fila && Array.isArray(data.fila)) {
-        setFila(data.fila);
-      } else {
-        // Se não recebeu dados completos, recarrega
-        carregarFila();
-      }
-    });
+    const unsubNovaFila = socketService.onSuporte(
+      "suporte:nova-fila",
+      (data) => {
+        logger.log("📢 Nova conversa na fila - dados recebidos:", data);
+        // Se recebeu a fila completa, usa diretamente
+        if (data?.fila && Array.isArray(data.fila)) {
+          setFila(data.fila);
+        } else {
+          // Se não recebeu dados completos, recarrega
+          carregarFila();
+        }
+      },
+    );
 
     // Listener para fila atualizada (geralmente quando uma conversa foi aceita)
-    const unsubFilaAtualizada = socketService.on(
-      "chat-suporte:fila-atualizada",
+    const unsubFilaAtualizada = socketService.onSuporte(
+      "suporte:fila-atualizada",
       (data) => {
         logger.log("📢 Fila atualizada - dados recebidos:", data);
         // Se recebeu a fila completa, usa diretamente
@@ -235,8 +251,8 @@ export default function PainelAtendente() {
 
     // Listener GLOBAL para novas mensagens em qualquer conversa do atendente
     // Isso atualiza a lista de conversas ativas E O CACHE mesmo quando não está visualizando
-    const unsubMensagemGlobal = socketService.on(
-      "chat-suporte:mensagem",
+    const unsubMensagemGlobal = socketService.onSuporte(
+      "suporte:mensagem",
       (data) => {
         logger.log("📢 Nova mensagem recebida (global):", data.conversa_id);
 
@@ -314,8 +330,8 @@ export default function PainelAtendente() {
       }
     }, 500);
 
-    const unsubDigitando = socketService.on(
-      "chat-suporte:digitando",
+    const unsubDigitando = socketService.onSuporte(
+      "suporte:digitando",
       (data) => {
         if (data.conversa_id === conversaSelecionada.id) {
           // Ignora se o nome é do próprio atendente
@@ -327,8 +343,8 @@ export default function PainelAtendente() {
       },
     );
 
-    const unsubParouDigitar = socketService.on(
-      "chat-suporte:parou-digitar",
+    const unsubParouDigitar = socketService.onSuporte(
+      "suporte:parou-digitar",
       (data) => {
         if (data.conversa_id === conversaSelecionada.id) {
           setDigitando(null);
@@ -336,8 +352,8 @@ export default function PainelAtendente() {
       },
     );
 
-    const unsubFinalizada = socketService.on(
-      "chat-suporte:conversa-finalizada",
+    const unsubFinalizada = socketService.onSuporte(
+      "suporte:conversa-finalizada",
       (data) => {
         if (data.conversa_id === conversaSelecionada.id) {
           setConversaSelecionada((prev) => ({
@@ -415,9 +431,14 @@ export default function PainelAtendente() {
 
   // Seleciona uma conversa para visualizar
   const selecionarConversa = async (conversa) => {
+    console.log(`🔍 [PainelAtendente] Selecionando conversa ${conversa.id}`);
+
     // Salva mensagens da conversa atual no cache antes de trocar
     if (conversaSelecionada?.id && mensagens.length > 0) {
       mensagensCache.current[conversaSelecionada.id] = mensagens;
+      console.log(
+        `💾 [PainelAtendente] Salvou ${mensagens.length} mensagens no cache da conversa ${conversaSelecionada.id}`,
+      );
     }
 
     setConversaSelecionada(conversa);
@@ -425,13 +446,23 @@ export default function PainelAtendente() {
     // Marca no context que está visualizando esta conversa (zera contador de não lidas)
     visualizandoConversa(conversa.id);
 
-    // Verifica se tem mensagens no cache
-    if (mensagensCache.current[conversa.id]) {
-      setMensagens(mensagensCache.current[conversa.id]);
+    // Mostra mensagens do cache imediatamente se existirem (melhor UX)
+    const cacheAtual = mensagensCache.current[conversa.id];
+    if (cacheAtual?.length > 0) {
+      console.log(
+        `📦 [PainelAtendente] Usando cache com ${cacheAtual.length} mensagens`,
+      );
+      setMensagens(cacheAtual);
     } else {
+      console.log(
+        `📦 [PainelAtendente] Cache vazio para conversa ${conversa.id}`,
+      );
       setMensagens([]);
-      await carregarMensagens(conversa.id);
     }
+
+    // SEMPRE carrega do servidor para garantir que temos o histórico completo
+    // O cache é usado apenas para mostrar algo imediatamente enquanto carrega
+    await carregarMensagens(conversa.id);
   };
 
   // Envia mensagem
@@ -444,7 +475,7 @@ export default function PainelAtendente() {
     setNovaMensagem("");
     setEnviando(true);
 
-    socketService.emit("chat-suporte:parou-digitar", {
+    socketService.emitSuporte("suporte:parou-digitar", {
       conversa_id: conversaSelecionada.id,
     });
 
@@ -478,7 +509,7 @@ export default function PainelAtendente() {
   const handleTyping = useCallback(() => {
     if (!conversaSelecionada?.id) return;
 
-    socketService.emit("chat-suporte:digitando", {
+    socketService.emitSuporte("suporte:digitando", {
       conversa_id: conversaSelecionada.id,
       nome: user?.nome || "Atendente",
     });
@@ -488,7 +519,7 @@ export default function PainelAtendente() {
     }
 
     digitandoTimeoutRef.current = setTimeout(() => {
-      socketService.emit("chat-suporte:parou-digitar", {
+      socketService.emitSuporte("suporte:parou-digitar", {
         conversa_id: conversaSelecionada.id,
       });
     }, 2000);

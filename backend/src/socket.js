@@ -4,6 +4,9 @@ let io;
 // Mapa de usuários online (conectados via socket)
 const usuariosOnline = new Map();
 
+// Mapa de usuários conectados ao namespace /suporte
+const usuariosSuporteOnline = new Map();
+
 function init(server) {
   const { Server } = require("socket.io");
   const { verificarToken } = require("./utils/jwt");
@@ -90,115 +93,7 @@ function init(server) {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // EVENTOS DO CHAT DE SUPORTE
-    // ═══════════════════════════════════════════════════════════════
-
-    // 👉 ENTRAR NA CONVERSA DE CHAT SUPORTE
-    socket.on("chat-suporte:entrar", (conversa_id) => {
-      socket.join(`conversa:${conversa_id}`);
-      console.log(
-        `💬 Socket ${socket.id} entrou na conversa de suporte ${conversa_id}`,
-      );
-    });
-
-    // 👉 SAIR DA CONVERSA DE CHAT SUPORTE
-    socket.on("chat-suporte:sair", (conversa_id) => {
-      socket.leave(`conversa:${conversa_id}`);
-      console.log(
-        `💬 Socket ${socket.id} saiu da conversa de suporte ${conversa_id}`,
-      );
-    });
-
-    // 👉 USUÁRIO COM PERMISSÃO DE CHAT ENTRA NA SALA DE NOTIFICAÇÕES
-    socket.on("chat-suporte:usuario-online", async () => {
-      // Verifica se já está na sala para evitar operações desnecessárias
-      const jaEstaNaSala = socket.rooms.has("chat-suporte-notificacoes");
-
-      if (!jaEstaNaSala) {
-        socket.join("chat-suporte-notificacoes");
-        console.log(
-          `👥 Usuário ${socket.userName} entrou na sala de notificações de chat`,
-        );
-
-        // Emite o tamanho atual da fila para o novo usuário
-        const FilaService = require("./services/ChatFilaService");
-        const fila = await FilaService.listar();
-        socket.emit("chat-suporte:fila-atualizada", {
-          fila,
-          filaCount: fila.length,
-        });
-      }
-    });
-
-    // 👉 ATENDENTE ENTRA NA SALA DE ATENDENTES (pode aceitar conversas)
-    socket.on("chat-suporte:atendente-online", async () => {
-      // Verifica se já está na sala para evitar operações desnecessárias
-      const jaEstaNaSalaAtendentes = socket.rooms.has("atendentes");
-      const jaEstaNaSalaNotificacoes = socket.rooms.has(
-        "chat-suporte-notificacoes",
-      );
-
-      // Atendentes também entram na sala de notificações
-      if (!jaEstaNaSalaNotificacoes) {
-        socket.join("chat-suporte-notificacoes");
-      }
-
-      if (!jaEstaNaSalaAtendentes) {
-        socket.join("atendentes");
-        console.log(
-          `👨‍💼 Atendente ${socket.userName} entrou na sala de atendentes`,
-        );
-
-        // Emite atualização da fila APENAS na primeira entrada
-        const FilaService = require("./services/ChatFilaService");
-        const fila = await FilaService.listar();
-        socket.emit("chat-suporte:fila-atualizada", {
-          fila,
-          filaCount: fila.length,
-        });
-      }
-      // Heartbeat silencioso - não loga se já está na sala
-    });
-
-    // 👉 ATENDENTE SAI DA SALA DE ATENDENTES
-    socket.on("chat-suporte:atendente-offline", () => {
-      socket.leave("atendentes");
-      console.log(`👨‍💼 Atendente ${socket.userName} saiu da sala de atendentes`);
-    });
-
-    // 👉 DIGITANDO (usuário ou atendente)
-    socket.on("chat-suporte:digitando", ({ conversa_id, nome }) => {
-      // Emite para outros na mesma sala do namespace principal (exclui o remetente)
-      socket.to(`conversa:${conversa_id}`).emit("chat-suporte:digitando", {
-        conversa_id,
-        nome,
-      });
-
-      // TAMBÉM emite para o namespace de visitantes (caso seja conversa com visitante)
-      const visitanteNs = io.of("/visitante");
-      visitanteNs.to(`conversa:${conversa_id}`).emit("chat-suporte:digitando", {
-        conversa_id,
-        nome,
-      });
-    });
-
-    // 👉 PAROU DE DIGITAR
-    socket.on("chat-suporte:parou-digitar", ({ conversa_id }) => {
-      socket.to(`conversa:${conversa_id}`).emit("chat-suporte:parou-digitar", {
-        conversa_id,
-      });
-
-      // TAMBÉM emite para o namespace de visitantes
-      const visitanteNs = io.of("/visitante");
-      visitanteNs
-        .to(`conversa:${conversa_id}`)
-        .emit("chat-suporte:parou-digitar", {
-          conversa_id,
-        });
-    });
-
-    // ═══════════════════════════════════════════════════════════════
-    // EVENTOS LEGADOS (CHAT INTERNO)
+    // EVENTOS LEGADOS (CHAT INTERNO) - Mantido para compatibilidade
     // ═══════════════════════════════════════════════════════════════
 
     // 👉 ENTRAR NA CONVERSA
@@ -528,23 +423,33 @@ function initVisitorNamespace() {
 
     // 👉 VISITANTE DIGITANDO
     socket.on("chat-suporte:digitando", ({ conversa_id, nome }) => {
-      // Emite para namespace principal (onde os atendentes estão) - usa io.to() pois atendentes precisam receber
-      io.to(`conversa:${conversa_id}`).emit("chat-suporte:digitando", {
+      // Emite para namespace /suporte (onde os atendentes e usuários internos estão)
+      const suporteNs = io.of("/suporte");
+      suporteNs.to(`conversa:${conversa_id}`).emit("suporte:digitando", {
         conversa_id,
         nome,
       });
+
       // Para outros visitantes na mesma conversa (exclui o remetente com socket.to)
       socket.to(`conversa:${conversa_id}`).emit("chat-suporte:digitando", {
         conversa_id,
         nome,
       });
+
+      console.log(
+        `⌨️ [Visitante] ${nome} digitando na conversa ${conversa_id}`,
+      );
     });
 
     // 👉 VISITANTE PAROU DE DIGITAR
     socket.on("chat-suporte:parou-digitar", ({ conversa_id }) => {
-      io.to(`conversa:${conversa_id}`).emit("chat-suporte:parou-digitar", {
+      // Emite para namespace /suporte
+      const suporteNs = io.of("/suporte");
+      suporteNs.to(`conversa:${conversa_id}`).emit("suporte:parou-digitar", {
         conversa_id,
       });
+
+      // Para outros visitantes
       socket.to(`conversa:${conversa_id}`).emit("chat-suporte:parou-digitar", {
         conversa_id,
       });
@@ -645,12 +550,301 @@ function getIPsDeUsuariosLogados() {
   }));
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// NAMESPACE /suporte - CHAT DE SUPORTE (USUÁRIOS AUTENTICADOS COM PERMISSÃO)
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Namespace dedicado ao Chat de Suporte
+ * Separado do namespace principal para:
+ * - Não poluir a sala "global" com eventos de chat
+ * - Permitir controle de acesso por permissão
+ * - Isolar eventos de chat de eventos gerais do sistema
+ *
+ * SALAS:
+ * - "atendentes" → Todos os atendentes conectados
+ * - "conversa:{id}" → Participantes de uma conversa específica
+ */
+function initSuporteNamespace() {
+  if (!io) return;
+
+  const { verificarToken } = require("./utils/jwt");
+  const suporteNs = io.of("/suporte");
+
+  suporteNs.on("connection", async (socket) => {
+    console.log("🟢 [Suporte] Novo socket conectando:", socket.id);
+
+    // ✅ VALIDAR JWT - Requer autenticação
+    let token = socket.handshake.auth?.token;
+    if (!token) {
+      token = socket.handshake.headers.authorization?.replace("Bearer ", "");
+    }
+
+    if (!token) {
+      console.log("❌ [Suporte] Socket rejeitado: Sem token JWT");
+      socket.disconnect(true);
+      return;
+    }
+
+    try {
+      const usuario = verificarToken(token);
+
+      // Armazena dados do usuário no socket
+      socket.userId = usuario.id;
+      socket.userName = usuario.nome;
+      socket.userEmail = usuario.email;
+      socket.isAdmin = usuario.isAdmin;
+
+      console.log(
+        `✅ [Suporte] Usuário autenticado: ${usuario.nome} (ID: ${usuario.id})`,
+      );
+
+      // Registra no mapa de usuários do suporte
+      usuariosSuporteOnline.set(socket.id, {
+        socketId: socket.id,
+        userId: usuario.id,
+        userName: usuario.nome,
+        userEmail: usuario.email,
+        connectedAt: new Date(),
+        isAdmin: usuario.isAdmin,
+      });
+    } catch (error) {
+      console.log("❌ [Suporte] Token inválido:", error.message);
+      socket.disconnect(true);
+      return;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // EVENTOS DE ENTRADA/SAÍDA DE SALAS
+    // ═══════════════════════════════════════════════════════════════
+
+    // 👉 USUÁRIO COM PERMISSÃO ENTRA NA SALA DE NOTIFICAÇÕES
+    socket.on("suporte:entrar-notificacoes", async () => {
+      const jaEstaNaSala = socket.rooms.has("notificacoes");
+
+      if (!jaEstaNaSala) {
+        socket.join("notificacoes");
+        console.log(
+          `👥 [Suporte] ${socket.userName} entrou na sala de notificações`,
+        );
+
+        // Emite o tamanho atual da fila
+        const FilaService = require("./services/ChatFilaService");
+        const fila = await FilaService.listar();
+        socket.emit("suporte:fila-atualizada", {
+          fila,
+          filaCount: fila.length,
+        });
+
+        // Se há conversas pendentes, notifica
+        if (fila.length > 0) {
+          console.log(
+            `📢 [Suporte] ${socket.userName} entrou - ${fila.length} conversa(s) na fila`,
+          );
+          socket.emit("suporte:nova-fila", {
+            conversa_id: fila[0].conversa_id,
+            nome: fila[0].nome_visitante || fila[0].nome_usuario || "Alguém",
+            posicao: 1,
+            fila,
+            filaCount: fila.length,
+            pendentes: true,
+          });
+        }
+      }
+    });
+
+    // 👉 ATENDENTE ENTRA NA SALA DE ATENDENTES
+    socket.on("suporte:entrar-atendentes", async () => {
+      const jaEstaNaSalaAtendentes = socket.rooms.has("atendentes");
+      const jaEstaNaSalaNotificacoes = socket.rooms.has("notificacoes");
+
+      // Atendentes também entram na sala de notificações
+      if (!jaEstaNaSalaNotificacoes) {
+        socket.join("notificacoes");
+      }
+
+      if (!jaEstaNaSalaAtendentes) {
+        socket.join("atendentes");
+        console.log(
+          `👨‍💼 [Suporte] Atendente ${socket.userName} entrou na sala de atendentes`,
+        );
+
+        // Emite atualização da fila
+        const FilaService = require("./services/ChatFilaService");
+        const fila = await FilaService.listar();
+        socket.emit("suporte:fila-atualizada", {
+          fila,
+          filaCount: fila.length,
+        });
+
+        // Se há conversas pendentes, notifica
+        if (fila.length > 0) {
+          console.log(
+            `📢 [Suporte] Atendente ${socket.userName} entrou - ${fila.length} conversa(s) na fila`,
+          );
+          socket.emit("suporte:nova-fila", {
+            conversa_id: fila[0].conversa_id,
+            nome: fila[0].nome_visitante || fila[0].nome_usuario || "Alguém",
+            posicao: 1,
+            fila,
+            filaCount: fila.length,
+            pendentes: true,
+          });
+        }
+      }
+    });
+
+    // 👉 HEARTBEAT DO ATENDENTE (mantém na sala)
+    socket.on("suporte:heartbeat-atendente", () => {
+      // Garante que continua nas salas
+      if (!socket.rooms.has("atendentes")) {
+        socket.join("atendentes");
+      }
+      if (!socket.rooms.has("notificacoes")) {
+        socket.join("notificacoes");
+      }
+      console.log(`💓 [Suporte] Heartbeat de ${socket.userName}`);
+    });
+
+    // 👉 ATENDENTE SAI DA SALA
+    socket.on("suporte:atendente-offline", () => {
+      socket.leave("atendentes");
+      console.log(
+        `👨‍💼 [Suporte] Atendente ${socket.userName} saiu da sala de atendentes`,
+      );
+    });
+
+    // 👉 ENTRAR EM UMA CONVERSA ESPECÍFICA
+    socket.on("suporte:entrar-conversa", ({ conversa_id }) => {
+      socket.join(`conversa:${conversa_id}`);
+      console.log(
+        `💬 [Suporte] ${socket.userName} entrou na conversa ${conversa_id}`,
+      );
+    });
+
+    // 👉 SAIR DE UMA CONVERSA
+    socket.on("suporte:sair-conversa", ({ conversa_id }) => {
+      socket.leave(`conversa:${conversa_id}`);
+      console.log(
+        `💬 [Suporte] ${socket.userName} saiu da conversa ${conversa_id}`,
+      );
+    });
+
+    // ═══════════════════════════════════════════════════════════════
+    // EVENTOS DE DIGITAÇÃO
+    // ═══════════════════════════════════════════════════════════════
+
+    // 👉 DIGITANDO
+    socket.on("suporte:digitando", ({ conversa_id, nome }) => {
+      console.log(`⌨️ [Suporte] ${nome} digitando na conversa ${conversa_id}`);
+
+      // Emite para outros na mesma conversa (exclui o remetente)
+      socket.to(`conversa:${conversa_id}`).emit("suporte:digitando", {
+        conversa_id,
+        nome,
+      });
+
+      // Também emite para namespace de visitantes
+      const visitanteNs = io.of("/visitante");
+      visitanteNs.to(`conversa:${conversa_id}`).emit("chat-suporte:digitando", {
+        conversa_id,
+        nome,
+      });
+    });
+
+    // 👉 PAROU DE DIGITAR
+    socket.on("suporte:parou-digitar", ({ conversa_id }) => {
+      socket.to(`conversa:${conversa_id}`).emit("suporte:parou-digitar", {
+        conversa_id,
+      });
+
+      // Também emite para namespace de visitantes
+      const visitanteNs = io.of("/visitante");
+      visitanteNs
+        .to(`conversa:${conversa_id}`)
+        .emit("chat-suporte:parou-digitar", {
+          conversa_id,
+        });
+    });
+
+    // ═══════════════════════════════════════════════════════════════
+    // DESCONEXÃO
+    // ═══════════════════════════════════════════════════════════════
+
+    socket.on("disconnect", () => {
+      console.log(`🔴 [Suporte] ${socket.userName || socket.id} desconectado`);
+      usuariosSuporteOnline.delete(socket.id);
+    });
+  });
+
+  console.log("✅ Namespace /suporte inicializado");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FUNÇÕES DE EMISSÃO PARA O NAMESPACE /suporte
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Emite evento para o namespace /suporte
+ * @param {string} evento - Nome do evento
+ * @param {object} dados - Dados do evento
+ * @param {string} sala - Sala específica (opcional)
+ */
+function emitirParaSuporte(evento, dados, sala = null) {
+  if (!io) return;
+
+  const suporteNs = io.of("/suporte");
+
+  if (sala) {
+    const room = suporteNs.adapter.rooms.get(sala);
+    const socketsNaSala = room ? room.size : 0;
+    console.log(
+      `📡 [Suporte] Emitindo ${evento} para sala "${sala}" (${socketsNaSala} sockets)`,
+    );
+    suporteNs.to(sala).emit(evento, dados);
+  } else {
+    console.log(`📡 [Suporte] Emitindo ${evento} para todo o namespace`);
+    suporteNs.emit(evento, dados);
+  }
+}
+
+/**
+ * Emite evento para todas as salas relevantes (notificações + atendentes)
+ * Usado para nova-fila e fila-atualizada
+ */
+function emitirParaAtendentes(evento, dados) {
+  if (!io) return;
+
+  const suporteNs = io.of("/suporte");
+
+  // Verifica quantos estão na sala de notificações
+  const roomNotificacoes = suporteNs.adapter.rooms.get("notificacoes");
+  const socketsNotificacoes = roomNotificacoes ? roomNotificacoes.size : 0;
+
+  console.log(
+    `📡 [Suporte] Emitindo ${evento} para sala "notificacoes" (${socketsNotificacoes} sockets)`,
+  );
+
+  // Emite para sala de notificações (todos com permissão de chat)
+  suporteNs.to("notificacoes").emit(evento, dados);
+}
+
+/**
+ * Retorna quantidade de usuários conectados ao namespace /suporte
+ */
+function getUsuariosSuporteOnline() {
+  return usuariosSuporteOnline.size;
+}
+
 module.exports = {
   init,
   getIo,
   emitirEquipeOnline,
   initVisitorNamespace,
+  initSuporteNamespace,
   emitirParaVisitante,
+  emitirParaSuporte,
+  emitirParaAtendentes,
   getUsuariosOnline,
+  getUsuariosSuporteOnline,
   getIPsDeUsuariosLogados,
 };
