@@ -11,12 +11,12 @@ const formatDateForDB = (dateString) => {
   if (!dateString) {
     return db.raw("CURRENT_DATE");
   }
-  
+
   // Valida formato YYYY-MM-DD
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-    throw new Error('Data inválida. Use o formato YYYY-MM-DD');
+    throw new Error("Data inválida. Use o formato YYYY-MM-DD");
   }
-  
+
   // Usa db.raw com CAST para garantir que seja tratado como DATE puro
   // Isso evita qualquer conversão de timezone
   return db.raw(`DATE '${dateString}'`);
@@ -129,7 +129,9 @@ const atualizar = async (req, res) => {
         titulo: titulo || patchNote.titulo,
         descricao: descricao || patchNote.descricao,
         tipo: tipo || patchNote.tipo,
-        data_lancamento: data_lancamento ? formatDateForDB(data_lancamento) : patchNote.data_lancamento,
+        data_lancamento: data_lancamento
+          ? formatDateForDB(data_lancamento)
+          : patchNote.data_lancamento,
         atualizado_em: db.raw(
           "CURRENT_TIMESTAMP AT TIME ZONE 'America/Sao_Paulo'",
         ),
