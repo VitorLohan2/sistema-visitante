@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -11,8 +11,19 @@ import { AgendamentoProvider } from "./contexts/AgendamentoContext";
 import { DescargaProvider } from "./contexts/DescargaContext";
 import { ChatSuporteProvider } from "./contexts/ChatSuporteContext";
 import ChatWidget from "./components/ChatWidget";
+import { initVersionCheck, stopVersionCheck } from "./services/versionService";
 
 function App() {
+  // Inicializa verificação de versão ao montar o App
+  useEffect(() => {
+    initVersionCheck();
+
+    // Cleanup ao desmontar
+    return () => {
+      stopVersionCheck();
+    };
+  }, []);
+
   return (
     <AuthProvider>
       <TicketProvider>
