@@ -3,6 +3,26 @@ const db = require("../database/connection");
 const { getIo } = require("../socket");
 
 /**
+ * Formata uma string de data para o banco garantindo timezone correto
+ * Solução: usar CAST para garantir que a string seja interpretada como DATE
+ * e não como TIMESTAMP que poderia sofrer conversão de timezone
+ */
+const formatDateForDB = (dateString) => {
+  if (!dateString) {
+    return db.raw("CURRENT_DATE");
+  }
+  
+  // Valida formato YYYY-MM-DD
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    throw new Error('Data inválida. Use o formato YYYY-MM-DD');
+  }
+  
+  // Usa db.raw com CAST para garantir que seja tratado como DATE puro
+  // Isso evita qualquer conversão de timezone
+  return db.raw(`DATE '${dateString}'`);
+};
+
+/**
  * Listar todos os patch notes (ordenados por data, mais recentes primeiro)
  */
 const listar = async (req, res) => {
@@ -47,7 +67,7 @@ const criar = async (req, res) => {
         titulo,
         descricao,
         tipo: tipo || "improvement",
-        data_lancamento: data_lancamento || new Date(),
+        data_lancamento: formatDateForDB(data_lancamento),
       })
       .returning("*");
 
@@ -109,7 +129,7 @@ const atualizar = async (req, res) => {
         titulo: titulo || patchNote.titulo,
         descricao: descricao || patchNote.descricao,
         tipo: tipo || patchNote.tipo,
-        data_lancamento: data_lancamento || patchNote.data_lancamento,
+        data_lancamento: data_lancamento ? formatDateForDB(data_lancamento) : patchNote.data_lancamento,
         atualizado_em: db.raw(
           "CURRENT_TIMESTAMP AT TIME ZONE 'America/Sao_Paulo'",
         ),

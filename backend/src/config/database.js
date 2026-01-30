@@ -246,6 +246,7 @@ const configurations = {
     connection: {
       connectionString: process.env.DATABASE_URL,
       ssl: { rejectUnauthorized: false }, // Necessário para Neon
+      timezone: "America/Sao_Paulo", // Horário de Brasília
     },
     pool: {
       min: 2,
@@ -276,10 +277,17 @@ const configurations = {
     connection: {
       connectionString: process.env.DATABASE_URL_STAGING,
       ssl: { rejectUnauthorized: false },
+      timezone: "America/Sao_Paulo", // Horário de Brasília
     },
     pool: {
       min: 1,
       max: 5,
+      afterCreate: (conn, done) => {
+        // Define timezone para horário de Brasília em cada conexão
+        conn.query("SET timezone='America/Sao_Paulo';", (err) => {
+          done(err, conn);
+        });
+      },
     },
     migrations: {
       directory: "./src/database/migrations",
