@@ -78,31 +78,6 @@
   flex-wrap: wrap;
 }
 
-.btn-novo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  background: linear-gradient(135deg, #28a745 0%, #218838 100%);
-  color: #fff;
-  border: none;
-  border-radius: var(--func-radius-sm);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
-}
-
-.btn-novo:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(40, 167, 69, 0.4);
-}
-
-.btn-novo svg {
-  font-size: 16px;
-}
-
 /* ═══════════════════════════════════════════════════════════════
    SEARCH BAR - Design Elegante
    ═══════════════════════════════════════════════════════════════ */
@@ -241,7 +216,7 @@
 }
 
 .funcionarios-table thead {
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  background: #374151;
 }
 
 .funcionarios-table thead th {
@@ -254,7 +229,7 @@
   letter-spacing: 0.5px;
   white-space: nowrap;
   border-bottom: 2px solid var(--func-border);
-  background: #5e5e5e;
+  background: #374151;
 }
 
 .funcionarios-table tbody tr {
@@ -546,24 +521,23 @@
   color: var(--func-text-light);
 }
 
-.btn-fechar {
+.btn-funcionarios-fechar {
   background: transparent;
-  border: none;
-  color: var(--func-text-light);
+  border: 1px solid #dee2e6;
+  color: #495057;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
 }
 
-.funcionarios-btn-fechar:hover {
-  background: rgba(0, 0, 0, 0.05);
-  color: var(--func-text);
-}
-
-.modal-body {
-  padding: 24px;
+.btn-funcionarios-fechar:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -640,33 +614,6 @@
 .funcionarios-btn-cancelar:hover {
   background: #e5e7eb;
   border-color: var(--func-text-light);
-}
-
-.btn-salvar {
-  padding: 12px 24px;
-  background: linear-gradient(
-    135deg,
-    var(--func-primary) 0%,
-    var(--func-primary-hover) 100%
-  );
-  color: white;
-  border: none;
-  border-radius: var(--func-radius-sm);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
-}
-
-.funcionarios-btn-salvar:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(5, 150, 105, 0.4);
-}
-
-.funcionarios-btn-salvar:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -912,13 +859,6 @@
     width: 100%;
   }
 
-  .btn-novo {
-    flex: 1;
-    justify-content: center;
-    padding: 10px 16px;
-    font-size: 13px;
-  }
-
   .search-bar {
     flex-direction: column;
     align-items: stretch;
@@ -1019,10 +959,6 @@
     font-size: 18px;
   }
 
-  .modal-body {
-    padding: 16px;
-  }
-
   .form-row {
     grid-template-columns: 1fr;
     gap: 12px;
@@ -1033,8 +969,7 @@
     gap: 8px;
   }
 
-  .btn-cancelar,
-  .btn-salvar {
+  .btn-cancelar {
     width: 100%;
     padding: 11px 16px;
     font-size: 13px;
@@ -1078,10 +1013,5 @@
 
   .modal-content {
     max-height: 98vh;
-  }
-
-  .btn-novo {
-    font-size: 12px;
-    padding: 10px 12px;
   }
 }

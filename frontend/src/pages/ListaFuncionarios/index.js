@@ -510,7 +510,7 @@ export default function ListaFuncionarios() {
         </div>
         <div className="header-right">
           {podeCriar && (
-            <button className="btn-novo" onClick={handleNovo}>
+            <button className="btn-primary" onClick={handleNovo}>
               <FiPlus size={18} />
               Novo Funcionário
             </button>
@@ -658,12 +658,15 @@ export default function ListaFuncionarios() {
                   ? "Editar Funcionário"
                   : "Novo Funcionário"}
               </h2>
-              <button className="btn-fechar" onClick={handleFecharModalForm}>
+              <button
+                className="btn-funcionarios-fechar"
+                onClick={handleFecharModalForm}
+              >
                 <FiX size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleSalvar} className="modal-body">
+            <form onSubmit={handleSalvar} className="modal-form">
               {/* Crachá - apenas para novo */}
               {!funcionarioEditando && (
                 <div className="funcionarios-form-group">
@@ -776,7 +779,7 @@ export default function ListaFuncionarios() {
               <div className="funcionarios-modal-actions">
                 <button
                   type="submit"
-                  className="btn-salvar"
+                  className="btn-primary"
                   disabled={salvando}
                 >
                   {salvando ? "Salvando..." : "Salvar"}

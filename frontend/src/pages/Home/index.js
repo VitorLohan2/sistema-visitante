@@ -48,12 +48,22 @@ export default function Home() {
   const [showPatchNoteModal, setShowPatchNoteModal] = useState(false);
   const [editingPatchNote, setEditingPatchNote] = useState(null);
   const [savingPatchNote, setSavingPatchNote] = useState(false);
+
+  // Função auxiliar para obter data local no formato YYYY-MM-DD
+  const getLocalDateString = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
   const [patchNoteForm, setPatchNoteForm] = useState({
     versao: "",
     titulo: "",
     descricao: "",
     tipo: "improvement",
-    data_lancamento: new Date().toISOString().split("T")[0],
+    data_lancamento: getLocalDateString(),
   });
 
   // Status do sistema - dados reais
@@ -231,7 +241,7 @@ export default function Home() {
       titulo: "",
       descricao: "",
       tipo: "improvement",
-      data_lancamento: new Date().toISOString().split("T")[0],
+      data_lancamento: getLocalDateString(),
     });
     setShowPatchNoteModal(true);
   };
@@ -245,8 +255,7 @@ export default function Home() {
       descricao: note.descricao,
       tipo: note.tipo,
       data_lancamento:
-        note.data_lancamento?.split("T")[0] ||
-        new Date().toISOString().split("T")[0],
+        note.data_lancamento?.split("T")[0] || getLocalDateString(),
     });
     setShowPatchNoteModal(true);
   };
