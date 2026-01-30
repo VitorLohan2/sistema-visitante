@@ -179,6 +179,18 @@ export default function Home() {
     return date.toLocaleDateString("pt-BR", options);
   };
 
+  // Formata data do patch note (evita problema de timezone UTC)
+  const formatPatchNoteDate = (dateString) => {
+    if (!dateString) return "";
+
+    // Pega a string de data do banco (YYYY-MM-DD) e formata diretamente
+    // Sem criar objeto Date para evitar conversão de timezone
+    const [year, month, day] = dateString.split("T")[0].split("-");
+
+    // Formata para DD/MM/YYYY
+    return `${day}/${month}/${year}`;
+  };
+
   // Formata o horário
   const formatTime = (date) => {
     return date.toLocaleTimeString("pt-BR", {
@@ -413,9 +425,7 @@ export default function Home() {
                       <div className="update-header">
                         <span className="update-version">v{note.versao}</span>
                         <span className="update-date">
-                          {new Date(note.data_lancamento).toLocaleDateString(
-                            "pt-BR",
-                          )}
+                          {formatPatchNoteDate(note.data_lancamento)}
                         </span>
                         {podeGerenciarPatchNotes && (
                           <div className="update-actions">
