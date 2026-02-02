@@ -170,11 +170,18 @@ jobs:
 
           echo "📝 Atualizando .env com IMAGE_TAG=$TAG"
 
-          # Cria/atualiza o .env apenas com as variáveis do Docker
-          cat > ${{ env.DEPLOY_PATH }}/.env << EOF
-          DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
-          IMAGE_TAG=${TAG}
-          EOF
+          # Verifica se o arquivo .env existe
+          if [ ! -f "${{ env.DEPLOY_PATH }}/.env" ]; then
+            echo "⚠️ Arquivo .env não encontrado, criando..."
+            touch "${{ env.DEPLOY_PATH }}/.env"
+          fi
+
+          # Atualiza variáveis SEM sobrescrever outras (preserva CONTROLID_IMAGE_TAG)
+          sed -i '/^DOCKER_USERNAME=/d' "${{ env.DEPLOY_PATH }}/.env"
+          sed -i '/^IMAGE_TAG=/d' "${{ env.DEPLOY_PATH }}/.env"
+
+          echo "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}" >> "${{ env.DEPLOY_PATH }}/.env"
+          echo "IMAGE_TAG=${TAG}" >> "${{ env.DEPLOY_PATH }}/.env"
 
           chmod 600 ${{ env.DEPLOY_PATH }}/.env
 
