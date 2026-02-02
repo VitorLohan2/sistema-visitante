@@ -206,9 +206,10 @@ jobs:
           echo "⬇️ Baixando nova imagem..."
           docker compose -f docker-compose-prod.yml pull backend
 
-          # Sobe containers
-          echo "🚀 Iniciando containers..."
-          docker compose -f docker-compose-prod.yml up -d
+          # Sobe containers principais (backend, database, nginx)
+          # O controlid-service é gerenciado pelo workflow deploy-controlid-service.yml
+          echo "🚀 Iniciando containers (backend, database, nginx)..."
+          docker compose -f docker-compose-prod.yml up -d backend database nginx
 
           # Aguarda containers
           echo "⏳ Aguardando containers..."
