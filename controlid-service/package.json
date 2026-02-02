@@ -1,6 +1,6 @@
 {
   "name": "controlid-service",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Microserviço de integração com equipamentos Control iD - Controle de Acesso",
   "main": "src/server.js",
   "scripts": {
