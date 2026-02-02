@@ -37,7 +37,7 @@ controlid-service:
   networks:
     - app-network-prod
   healthcheck:
-    test: ["CMD", "wget", "-q", "--spider", "http://localhost:3050/health"]
+    test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3050/health"]
     interval: 30s
     timeout: 10s
     retries: 3
