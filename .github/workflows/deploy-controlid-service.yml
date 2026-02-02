@@ -9,9 +9,11 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag para deploy (ex: v1.0.0). Se vazio, usa 'latest'."
+        description: "Tag para deploy (ex: v1.0.0). Se vazio, incrementa automaticamente."
         required: false
-        default: "latest"
+
+permissions:
+  contents: write
 
 env:
   DEPLOY_PATH: /home/dev/sistema/prod
@@ -19,25 +21,115 @@ env:
 
 jobs:
   # ═══════════════════════════════════════════════════════════════════════════════
-  # JOB 1: Build e Push da imagem Docker
+  # JOB 1: Auto Tag - Gera versão semântica automaticamente
+  # ═══════════════════════════════════════════════════════════════════════════════
+  auto-tag:
+    name: 🏷️ Auto Version Control iD
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.set-tag.outputs.tag }}
+      is_new_tag: ${{ steps.set-tag.outputs.is_new_tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Get latest controlid tag
+        id: get-latest
+        run: |
+          # Busca a última tag específica do controlid-service
+          LATEST_TAG=$(git tag -l "controlid-v*" --sort=-v:refname | head -n1 || echo "")
+          if [ -z "$LATEST_TAG" ]; then
+            LATEST_TAG="controlid-v0.0.0"
+          fi
+          echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "📌 Última tag Control iD: $LATEST_TAG"
+
+      - name: Determine next version
+        id: set-tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          # Se uma tag foi fornecida manualmente, usa ela
+          if [ -n "$INPUT_TAG" ]; then
+            # Adiciona prefixo se não tiver
+            if [[ "$INPUT_TAG" != controlid-* ]]; then
+              INPUT_TAG="controlid-$INPUT_TAG"
+            fi
+            echo "📌 Usando tag manual: $INPUT_TAG"
+            echo "tag=$INPUT_TAG" >> $GITHUB_OUTPUT
+            echo "is_new_tag=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          LATEST=${{ steps.get-latest.outputs.LATEST_TAG }}
+          # Remove o prefixo controlid-v para extrair a versão
+          VERSION=$(echo $LATEST | sed 's/controlid-v//')
+          MAJOR=$(echo $VERSION | cut -d. -f1)
+          MINOR=$(echo $VERSION | cut -d. -f2)
+          PATCH=$(echo $VERSION | cut -d. -f3)
+
+          # Busca commits no diretório controlid-service desde a última tag
+          if git rev-parse "$LATEST" >/dev/null 2>&1; then
+            COMMITS=$(git log $LATEST..HEAD --pretty=%B -- controlid-service/ 2>/dev/null || echo "")
+          else
+            COMMITS=$(git log --pretty=%B -- controlid-service/ 2>/dev/null | head -20 || echo "initial")
+          fi
+
+          # Se não houver commits novos, reutiliza a última tag
+          if [ -z "$COMMITS" ]; then
+            echo "⚠️ Nenhum commit novo desde $LATEST"
+            echo "tag=$LATEST" >> $GITHUB_OUTPUT
+            echo "is_new_tag=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Incrementa versão conforme tipo de commit
+          if echo "$COMMITS" | grep -qiE "BREAKING CHANGE|^major:"; then
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+          elif echo "$COMMITS" | grep -qiE "^feat:|^feature:"; then
+            MINOR=$((MINOR + 1))
+            PATCH=0
+          else
+            PATCH=$((PATCH + 1))
+          fi
+
+          NEW_TAG="controlid-v${MAJOR}.${MINOR}.${PATCH}"
+
+          # Verifica se a tag já existe
+          while git rev-parse "$NEW_TAG" >/dev/null 2>&1; do
+            echo "⚠️ Tag $NEW_TAG já existe, incrementando patch..."
+            PATCH=$((PATCH + 1))
+            NEW_TAG="controlid-v${MAJOR}.${MINOR}.${PATCH}"
+          done
+
+          echo "🏷️ Nova tag: $NEW_TAG"
+          echo "tag=$NEW_TAG" >> $GITHUB_OUTPUT
+          echo "is_new_tag=true" >> $GITHUB_OUTPUT
+
+          # Cria e envia a tag
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a $NEW_TAG -m "Release $NEW_TAG - Control iD Service"
+          git push origin $NEW_TAG
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # JOB 2: Build e Push da imagem Docker
   # ═══════════════════════════════════════════════════════════════════════════════
   build-and-push:
     name: 🐳 Build Docker Image
     runs-on: ubuntu-latest
+    needs: auto-tag
     outputs:
-      image_tag: ${{ steps.set-tag.outputs.tag }}
+      image_tag: ${{ needs.auto-tag.outputs.tag }}
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
-
-      - name: Determinar tag da imagem
-        id: set-tag
-        run: |
-          if [ -n "${{ github.event.inputs.tag }}" ] && [ "${{ github.event.inputs.tag }}" != "latest" ]; then
-            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
-          else
-            echo "tag=latest" >> $GITHUB_OUTPUT
-          fi
 
       - name: Login no Docker Hub
         uses: docker/login-action@v3
@@ -49,41 +141,86 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build e Push da imagem
-        uses: docker/build-push-action@v5
-        with:
-          context: ./controlid-service
-          file: ./controlid-service/Dockerfile
-          push: true
-          tags: |
-            ${{ secrets.DOCKER_USERNAME }}/controlid-service:${{ steps.set-tag.outputs.tag }}
-            ${{ secrets.DOCKER_USERNAME }}/controlid-service:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+        run: |
+          TAG="${{ needs.auto-tag.outputs.tag }}"
+          # Remove o prefixo controlid- para a tag da imagem Docker
+          DOCKER_TAG=$(echo $TAG | sed 's/controlid-//')
+          IMAGE="${{ secrets.DOCKER_USERNAME }}/controlid-service"
+
+          echo "🏗️ Building: $IMAGE:$DOCKER_TAG"
+
+          docker build \
+            --cache-from type=registry,ref=$IMAGE:latest \
+            --build-arg BUILDKIT_INLINE_CACHE=1 \
+            -t "$IMAGE:$DOCKER_TAG" \
+            -t "$IMAGE:latest" \
+            ./controlid-service
+
+          docker push "$IMAGE:$DOCKER_TAG"
+          docker push "$IMAGE:latest"
+
+          echo "✅ Imagem publicada: $IMAGE:$DOCKER_TAG"
 
       - name: Resumo do Build
         run: |
+          TAG="${{ needs.auto-tag.outputs.tag }}"
+          DOCKER_TAG=$(echo $TAG | sed 's/controlid-//')
           echo "## 🐳 Build Control iD Service" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Item | Valor |" >> $GITHUB_STEP_SUMMARY
           echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| Imagem | \`${{ secrets.DOCKER_USERNAME }}/controlid-service\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Tag | \`${{ steps.set-tag.outputs.tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tag | \`$DOCKER_TAG\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Git Tag | \`$TAG\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
 
   # ═══════════════════════════════════════════════════════════════════════════════
-  # JOB 2: Deploy na VM (self-hosted runner)
+  # JOB 3: Deploy na VM (self-hosted runner)
   # ═══════════════════════════════════════════════════════════════════════════════
   deploy:
     name: 🚀 Deploy to Production
     runs-on: self-hosted
-    needs: build-and-push
+    needs: [auto-tag, build-and-push]
+    if: ${{ always() && needs.auto-tag.result == 'success' && needs.build-and-push.result == 'success' }}
     steps:
-      - name: Atualizar container Control iD Service
-        working-directory: ${{ env.DEPLOY_PATH }}
-        env:
-          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+      - name: Atualizar .env com tag do Control iD
         run: |
-          echo "🔄 Atualizando Control iD Service..."
+          TAG="${{ needs.auto-tag.outputs.tag }}"
+          # Remove o prefixo controlid- para a tag da imagem Docker
+          DOCKER_TAG=$(echo $TAG | sed 's/controlid-//')
+
+          echo "📝 Atualizando .env com CONTROLID_IMAGE_TAG=$DOCKER_TAG"
+
+          # Verifica se o arquivo .env existe
+          if [ ! -f "${{ env.DEPLOY_PATH }}/.env" ]; then
+            echo "⚠️ Arquivo .env não encontrado, criando..."
+            touch "${{ env.DEPLOY_PATH }}/.env"
+          fi
+
+          # Remove linha antiga se existir e adiciona a nova
+          sed -i '/^CONTROLID_IMAGE_TAG=/d' "${{ env.DEPLOY_PATH }}/.env"
+          echo "CONTROLID_IMAGE_TAG=${DOCKER_TAG}" >> "${{ env.DEPLOY_PATH }}/.env"
+
+          chmod 600 "${{ env.DEPLOY_PATH }}/.env"
+
+          echo "✅ .env atualizado:"
+          cat "${{ env.DEPLOY_PATH }}/.env"
+
+      - name: Deploy container Control iD Service
+        working-directory: ${{ env.DEPLOY_PATH }}
+        run: |
+          set -e
+
+          echo "═══════════════════════════════════════════════════════════════════"
+          echo "🚀 INICIANDO DEPLOY CONTROL iD - ${{ needs.auto-tag.outputs.tag }}"
+          echo "═══════════════════════════════════════════════════════════════════"
+
+          # Carrega variáveis do .env
+          set -a
+          source .env
+          set +a
+
+          echo "📦 Imagem: ${DOCKER_USERNAME}/controlid-service:${CONTROLID_IMAGE_TAG}"
 
           # Verifica se o serviço existe no compose
           if ! grep -q "controlid-service" ${{ env.COMPOSE_FILE }}; then
@@ -92,38 +229,61 @@ jobs:
             exit 1
           fi
 
+          # Para e remove container antigo
+          echo "🔽 Parando container controlid-service..."
+          docker compose -f ${{ env.COMPOSE_FILE }} stop controlid-service || true
+          docker compose -f ${{ env.COMPOSE_FILE }} rm -f controlid-service || true
+
+          # Baixa nova imagem
           echo "⬇️ Baixando nova imagem..."
           docker compose -f ${{ env.COMPOSE_FILE }} pull controlid-service
 
-          echo "🔄 Recriando container..."
+          # Sobe container
+          echo "🚀 Iniciando container..."
           docker compose -f ${{ env.COMPOSE_FILE }} up -d controlid-service
 
-          echo "⏳ Aguardando health check (30s)..."
+          # Aguarda container
+          echo "⏳ Aguardando container..."
           sleep 10
 
-          # Health check
+          # Verifica status
+          echo "📊 Status do container:"
+          docker compose -f ${{ env.COMPOSE_FILE }} ps controlid-service
+
+          # Limpa imagens antigas
+          echo "🧹 Limpando imagens não utilizadas..."
+          docker image prune -f
+
+          echo "═══════════════════════════════════════════════════════════════════"
+          echo "✅ DEPLOY CONCLUÍDO - ${DOCKER_USERNAME}/controlid-service:${CONTROLID_IMAGE_TAG}"
+          echo "═══════════════════════════════════════════════════════════════════"
+
+      - name: Health Check
+        run: |
+          echo "🏥 Verificando saúde do Control iD Service..."
+          sleep 5
+
           for i in {1..6}; do
-            if docker compose -f ${{ env.COMPOSE_FILE }} exec -T controlid-service curl -sf http://localhost:3050/health > /dev/null 2>&1; then
-              echo "✅ Health check passou!"
-              break
+            # Health check via HTTP do host (não precisa de curl no container)
+            if curl -sf http://localhost:3050/health > /dev/null 2>&1; then
+              echo "✅ Control iD Service respondendo!"
+              curl -s http://localhost:3050/health | head -c 200
+              echo ""
+              exit 0
             fi
-            if [ $i -eq 6 ]; then
-              echo "❌ Health check falhou após 60s"
-              docker compose -f ${{ env.COMPOSE_FILE }} logs controlid-service --tail=50
-              exit 1
-            fi
-            echo "⏳ Tentativa $i/6 - aguardando..."
+            echo "⏳ Tentativa $i/6 - Aguardando Control iD Service..."
             sleep 10
           done
 
-          echo "🧹 Limpando imagens antigas..."
-          docker image prune -f
-
-          echo "✅ Deploy concluído!"
+          echo "❌ Health check falhou após 60s"
+          docker compose -f ${{ env.DEPLOY_PATH }}/${{ env.COMPOSE_FILE }} logs controlid-service --tail=50
+          exit 1
 
       - name: Resumo do Deploy
         if: success()
         run: |
+          TAG="${{ needs.auto-tag.outputs.tag }}"
+          DOCKER_TAG=$(echo $TAG | sed 's/controlid-//')
           echo "## 🚀 Deploy Control iD Service" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ **Deploy realizado com sucesso!**" >> $GITHUB_STEP_SUMMARY
@@ -131,5 +291,6 @@ jobs:
           echo "| Item | Valor |" >> $GITHUB_STEP_SUMMARY
           echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| Serviço | Control iD Microservice |" >> $GITHUB_STEP_SUMMARY
-          echo "| Tag | \`${{ needs.build-and-push.outputs.image_tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Git Tag | \`$TAG\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docker Tag | \`$DOCKER_TAG\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Path | \`${{ env.DEPLOY_PATH }}\` |" >> $GITHUB_STEP_SUMMARY
