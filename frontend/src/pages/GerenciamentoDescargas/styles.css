@@ -449,7 +449,7 @@
   color: #1f2937;
   margin: 0;
   flex: 1;
-  text-align: center;
+  /* text-align: center; */
 }
 
 .gd-modal-header-aprovar,
@@ -541,7 +541,7 @@
 .gd-detalhes-section h3 svg {
   width: 18px;
   height: 18px;
-  color: #6366f1;
+  color: #047857;
 }
 
 .gd-detalhes-grid {
@@ -580,7 +580,7 @@
 .gd-detalhe-item .gd-protocolo {
   font-family: "Courier New", monospace;
   font-weight: 600;
-  color: #6366f1;
+  color: #047857;
   font-size: 1rem;
 }
 

@@ -22,6 +22,8 @@ import { FiSearch, FiChevronLeft, FiChevronRight, FiX } from "react-icons/fi";
 
 import api from "../../services/api";
 import { useAuth } from "../../hooks/useAuth";
+import { useConfirm } from "../../hooks/useConfirm";
+import { useToast } from "../../hooks/useToast";
 import { getCache, setCache } from "../../services/cacheService";
 import * as socketService from "../../services/socketService";
 
@@ -36,6 +38,8 @@ import logo from "../../assets/logo.svg";
 export default function ListagemVisitante() {
   const history = useHistory();
   const { user, logout } = useAuth();
+  const { confirm, ConfirmDialog } = useConfirm();
+  const { showToast, ToastContainer } = useToast();
 
   // ═══════════════════════════════════════════════════════════════
   // DADOS DO CACHE (carregados pela Home)
@@ -243,8 +247,14 @@ export default function ListagemVisitante() {
   };
 
   async function handleDeleteIncident(id) {
-    if (!window.confirm("Tem certeza que deseja deletar este cadastro?"))
-      return;
+    const confirmed = await confirm({
+      title: "Confirmar Exclusão",
+      message: "Tem certeza que deseja deletar este cadastro?",
+      confirmText: "Deletar",
+      cancelText: "Cancelar",
+      variant: "danger",
+    });
+    if (!confirmed) return;
 
     try {
       const response = await api.delete(`cadastro-visitantes/${id}`);
@@ -260,18 +270,21 @@ export default function ListagemVisitante() {
         // Atualiza a lista filtrada também
         setFilteredVisitantes((prev) => prev.filter((v) => v.id !== id));
 
-        alert("Cadastro deletado com sucesso!");
+        showToast("Cadastro deletado com sucesso!", "success");
       }
     } catch (err) {
       const error = err.response?.data?.error || err.message;
-      alert(`Acesso Bloqueado: ${error}`);
+      showToast(`Acesso Bloqueado: ${error}`, "error");
     }
   }
 
   function handleRegisterVisit(id) {
     const visitante = sortedVisitantes.find((v) => v.id === id);
     if (visitante?.bloqueado) {
-      alert("Este visitante está bloqueado. Registro de visita não permitido.");
+      showToast(
+        "Este visitante está bloqueado. Registro de visita não permitido.",
+        "warning",
+      );
       return;
     }
     setSelectedVisitante(visitante);
@@ -348,12 +361,12 @@ export default function ListagemVisitante() {
         observacao,
       });
 
-      alert("Visita registrada com sucesso!");
+      showToast("Visita registrada com sucesso!", "success");
       setVisitModalVisible(false);
       setSelectedVisitante(null);
       history.push("/visitantes");
     } catch (err) {
-      alert("Erro ao registrar visita: " + err.message);
+      showToast("Erro ao registrar visita: " + err.message, "error");
     }
   }
 
@@ -365,8 +378,15 @@ export default function ListagemVisitante() {
     history.push(`/cadastro-visitantes/view/${id}`);
   }
 
-  function handleLogout() {
-    if (window.confirm("Tem certeza que deseja sair?")) {
+  async function handleLogout() {
+    const confirmed = await confirm({
+      title: "Confirmar Saída",
+      message: "Tem certeza que deseja sair?",
+      confirmText: "Sair",
+      cancelText: "Cancelar",
+      variant: "warning",
+    });
+    if (confirmed) {
       logout();
     }
   }
@@ -380,7 +400,7 @@ export default function ListagemVisitante() {
       });
       setBadgeModalVisible(true);
     } catch (err) {
-      alert("Erro ao abrir crachá: " + err.message);
+      showToast("Erro ao abrir crachá: " + err.message, "error");
     }
   }
 
@@ -553,6 +573,10 @@ export default function ListagemVisitante() {
         responsaveis={responsaveis.map((r) => r.nome)}
         visitante={selectedVisitante}
       />
+
+      {/* Modais de UI */}
+      <ConfirmDialog />
+      <ToastContainer />
     </div>
   );
 }

@@ -36,6 +36,8 @@ import {
   FiCrosshair,
 } from "react-icons/fi";
 import { usePermissoes } from "../../hooks/usePermissoes";
+import { useConfirm } from "../../hooks/useConfirm";
+import { useToast } from "../../hooks/useToast";
 import { getCache, setCache } from "../../services/cacheService";
 import rondaService from "../../services/rondaService";
 import "./styles.css";
@@ -77,6 +79,8 @@ export default function PontosControle() {
   // HOOKS E PERMISSÕES
   // ═══════════════════════════════════════════════════════════════════════════
   const { temPermissao } = usePermissoes();
+  const { confirm, ConfirmDialog } = useConfirm();
+  const { showToast, ToastContainer } = useToast();
   const podeGerenciar = temPermissao("ronda_pontos_controle_gerenciar");
   const mapRef = useRef(null);
   const leafletMapRef = useRef(null);
@@ -513,7 +517,7 @@ export default function PontosControle() {
       carregarDados();
     } catch (err) {
       logger.error("Erro ao excluir ponto:", err);
-      alert(err.response?.data?.error || "Erro ao excluir ponto");
+      showToast(err.response?.data?.error || "Erro ao excluir ponto", "error");
     }
   };
 
@@ -522,7 +526,7 @@ export default function PontosControle() {
   // ═══════════════════════════════════════════════════════════════════════════
   const obterLocalizacaoAtual = () => {
     if (!navigator.geolocation) {
-      alert("Geolocalização não suportada pelo navegador");
+      showToast("Geolocalização não suportada pelo navegador", "warning");
       return;
     }
 
@@ -536,7 +540,7 @@ export default function PontosControle() {
       },
       (error) => {
         logger.error("Erro de geolocalização:", error);
-        alert("Não foi possível obter sua localização");
+        showToast("Não foi possível obter sua localização", "error");
       },
       { enableHighAccuracy: true },
     );
@@ -553,7 +557,7 @@ export default function PontosControle() {
       carregarDados();
     } catch (err) {
       logger.error("Erro ao alterar status:", err);
-      alert("Erro ao alterar status do ponto");
+      showToast("Erro ao alterar status do ponto", "error");
     }
   };
 
@@ -1212,8 +1216,10 @@ export default function PontosControle() {
           </div>
         </div>
       )}
+
+      {/* Modais de UI */}
+      <ConfirmDialog />
+      <ToastContainer />
     </div>
   );
 }
-
-

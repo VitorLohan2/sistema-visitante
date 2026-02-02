@@ -39,6 +39,8 @@ import {
   FiCalendar,
 } from "react-icons/fi";
 import { useAuth } from "../../hooks/useAuth";
+import { useConfirm } from "../../hooks/useConfirm";
+import { useToast } from "../../hooks/useToast";
 import api from "../../services/api";
 import * as socketService from "../../services/socketService";
 import { useChatSuporte } from "../../contexts/ChatSuporteContext";
@@ -54,6 +56,8 @@ const STATUS = {
 
 export default function PainelAtendente() {
   const { user } = useAuth();
+  const { confirm, ConfirmDialog } = useConfirm();
+  const { showToast, ToastContainer } = useToast();
   const {
     mensagensNaoLidas,
     visualizandoConversa,
@@ -529,9 +533,14 @@ export default function PainelAtendente() {
   const finalizarConversa = async () => {
     if (!conversaSelecionada?.id) return;
 
-    if (!window.confirm("Tem certeza que deseja finalizar este atendimento?")) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: "Finalizar Atendimento",
+      message: "Tem certeza que deseja finalizar este atendimento?",
+      confirmText: "Finalizar",
+      cancelText: "Cancelar",
+      variant: "warning",
+    });
+    if (!confirmed) return;
 
     try {
       // Usa o endpoint de atendente para finalizar
@@ -918,6 +927,10 @@ export default function PainelAtendente() {
           </button>
         </div>
       )}
+
+      {/* Modais de UI */}
+      <ConfirmDialog />
+      <ToastContainer />
     </div>
   );
 }

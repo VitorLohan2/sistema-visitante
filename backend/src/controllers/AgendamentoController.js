@@ -77,7 +77,7 @@ module.exports = {
       const dataLocal = new Date(horario_agendado);
       const offsetBrasilia = -3;
       const dataBrasilia = new Date(
-        dataLocal.getTime() + offsetBrasilia * 60 * 60 * 1000
+        dataLocal.getTime() + offsetBrasilia * 60 * 60 * 1000,
       );
       const horarioAjustado = dataBrasilia.toISOString();
 
@@ -124,6 +124,7 @@ module.exports = {
         horario_agendado: agendamento.horario_agendado,
         observacao: agendamento.observacao,
         criado_por: agendamento.criado_por,
+        criado_em: agendamento.criado_em || new Date().toISOString(),
         foto_colaborador: agendamento.foto_colaborador,
         confirmado: agendamento.confirmado || false,
         presente: agendamento.presente || false,
@@ -214,7 +215,7 @@ module.exports = {
       // Verificar permissão via RBAC - qualquer papel com agendamento_editar pode confirmar
       const podeConfirmar = await temPermissao(
         usuario_id,
-        "agendamento_editar"
+        "agendamento_editar",
       );
 
       if (!podeConfirmar) {
@@ -348,7 +349,7 @@ module.exports = {
       // Verificar permissão via RBAC - qualquer papel com agendamento_editar pode registrar presença
       const podeRegistrarPresenca = await temPermissao(
         usuario_id,
-        "agendamento_editar"
+        "agendamento_editar",
       );
 
       if (!podeRegistrarPresenca) {

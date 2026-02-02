@@ -6,6 +6,8 @@ import React, {
   useRef,
   useMemo,
 } from "react";
+import { useConfirm } from "../../hooks/useConfirm";
+import { useToast } from "../../hooks/useToast";
 import {
   FiSearch,
   FiFileText,
@@ -40,6 +42,8 @@ import "./styles.css";
 import logoImg from "../../assets/logo.svg";
 
 export default function HistoricoVisitante() {
+  const { confirm, ConfirmDialog } = useConfirm();
+  const { showToast, ToastContainer } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDate, setFilterDate] = useState("");
   const [filterEmpresa, setFilterEmpresa] = useState("");
@@ -259,7 +263,10 @@ export default function HistoricoVisitante() {
         logger.error("Erro ao carregar histórico:", error);
         // Se falhou mas tem cache, mantém o cache
         if (!getCache("historico")) {
-          alert("Erro ao carregar histórico. Verifique sua conexão.");
+          showToast(
+            "Erro ao carregar histórico. Verifique sua conexão.",
+            "error",
+          );
         }
       }
     };
@@ -823,6 +830,8 @@ export default function HistoricoVisitante() {
           </div>
         </div>
       )}
+      <ConfirmDialog />
+      <ToastContainer />
     </div>
   );
 }

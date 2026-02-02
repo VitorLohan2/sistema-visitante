@@ -10,6 +10,7 @@ import {
 } from "react-icons/fi";
 import api from "../services/api";
 import logger from "../utils/logger";
+import { useToast } from "../hooks/useToast";
 import "../styles/ModalRegistrarVisita.css";
 
 export default function ModalRegistrarVisita({
@@ -22,6 +23,9 @@ export default function ModalRegistrarVisita({
   const [selected, setSelected] = useState("");
   const [observacao, setObservacao] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // Hook de Toast
+  const { showToast, ToastContainer } = useToast();
 
   // Campos de edição rápida
   const [empresa, setEmpresa] = useState("");
@@ -86,12 +90,12 @@ export default function ModalRegistrarVisita({
 
   const handleConfirm = async () => {
     if (!selected) {
-      alert("Por favor, selecione um responsável.");
+      showToast("Por favor, selecione um responsável.", "warning");
       return;
     }
 
     if (!empresaAtribuida) {
-      alert("Por favor, selecione a empresa destino.");
+      showToast("Por favor, selecione a empresa destino.", "warning");
       return;
     }
 
@@ -108,9 +112,10 @@ export default function ModalRegistrarVisita({
         });
       } catch (err) {
         logger.error("Erro ao confirmar visita:", err);
-        alert(
+        showToast(
           "Erro ao confirmar visita: " +
             (err.response?.data?.error || err.message),
+          "error",
         );
       } finally {
         setIsLoading(false);
@@ -307,6 +312,9 @@ export default function ModalRegistrarVisita({
           </button>
         </div>
       </div>
+
+      {/* Toast Container */}
+      <ToastContainer />
     </div>
   );
 }

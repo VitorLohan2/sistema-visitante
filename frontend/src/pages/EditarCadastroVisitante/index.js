@@ -17,9 +17,14 @@ import api from "../../services/api";
 import { getCache, setCache } from "../../services/cacheService";
 import * as socketService from "../../services/socketService";
 import { usePermissoes } from "../../hooks/usePermissoes";
+import { useConfirm } from "../../hooks/useConfirm";
+import { useToast } from "../../hooks/useToast";
 import "./styles.css";
 
 export default function EditarCadastroVisitante() {
+  const { confirm, ConfirmDialog } = useConfirm();
+  const { showToast, ToastContainer } = useToast();
+
   // Dados das novas tabelas (carregados da API)
   const [coresVeiculos, setCoresVeiculos] = useState([]);
   const [tiposVeiculos, setTiposVeiculos] = useState([]);
@@ -130,7 +135,7 @@ export default function EditarCadastroVisitante() {
         setTiposVeiculos(tiposResponse.data);
         setFuncoesVisitantes(funcoesResponse.data);
       } catch (err) {
-        alert("Erro ao carregar dados do incidente");
+        showToast("Erro ao carregar dados do incidente", "error");
         history.push("/listagem-visitante");
       }
     }
@@ -335,15 +340,21 @@ export default function EditarCadastroVisitante() {
     });
 
     if (cpfClean.length !== 11) {
-      return alert("CPF inválido. Deve conter 11 dígitos.");
+      showToast("CPF inválido. Deve conter 11 dígitos.", "warning");
+      return;
     }
 
     if (telefoneClean.length !== 11) {
-      return alert("Telefone inválido. Deve conter 11 dígitos com DDD.");
+      showToast(
+        "Telefone inválido. Deve conter 11 dígitos com DDD.",
+        "warning",
+      );
+      return;
     }
 
     if (!form.empresa || !form.setor) {
-      return alert("Empresa e setor são obrigatórios.");
+      showToast("Empresa e setor são obrigatórios.", "warning");
+      return;
     }
 
     // ← VALIDAÇÃO: Se tem placa, deve ter cor e tipo
@@ -361,7 +372,8 @@ export default function EditarCadastroVisitante() {
         cor_veiculo_visitante_id:
           "Cor do veículo é obrigatória quando a placa é informada",
       }));
-      return alert("Por favor, selecione a cor do veículo.");
+      showToast("Por favor, selecione a cor do veículo.", "warning");
+      return;
     }
 
     if (hasPlaca && !hasTipo) {
@@ -370,7 +382,8 @@ export default function EditarCadastroVisitante() {
         tipo_veiculo_visitante_id:
           "Tipo do veículo é obrigatório quando a placa é informada",
       }));
-      return alert("Por favor, selecione o tipo do veículo.");
+      showToast("Por favor, selecione o tipo do veículo.", "warning");
+      return;
     }
 
     if ((hasCor || hasTipo) && !hasPlaca) {
@@ -379,7 +392,7 @@ export default function EditarCadastroVisitante() {
         placa_veiculo:
           "Placa do veículo é obrigatória quando a cor/tipo é informada",
       }));
-      alert("Por favor, preencha a placa do veículo.");
+      showToast("Por favor, preencha a placa do veículo.", "warning");
       return;
     }
 
@@ -389,7 +402,8 @@ export default function EditarCadastroVisitante() {
         ...prev,
         placa_veiculo: "Placa deve ter 7 caracteres",
       }));
-      return alert("Placa do veículo deve ter 7 caracteres.");
+      showToast("Placa do veículo deve ter 7 caracteres.", "warning");
+      return;
     }
 
     const payload = {
@@ -413,11 +427,14 @@ export default function EditarCadastroVisitante() {
 
       // Socket.IO vai sincronizar automaticamente com outros usuários
 
-      alert("Dados atualizados com sucesso!");
+      showToast("Dados atualizados com sucesso!", "success");
       history.push("/listagem-visitante");
     } catch (err) {
       logger.error("Erro na atualização:", err.response?.data || err);
-      alert(err.response?.data?.error || "Erro ao atualizar incidente");
+      showToast(
+        err.response?.data?.error || "Erro ao atualizar incidente",
+        "error",
+      );
     }
   };
 
@@ -638,8 +655,8 @@ export default function EditarCadastroVisitante() {
           </button>
         </form>
       </div>
+      <ConfirmDialog />
+      <ToastContainer />
     </div>
   );
 }
-
-

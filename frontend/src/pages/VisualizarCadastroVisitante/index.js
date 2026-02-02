@@ -17,6 +17,7 @@ import "./styles.css";
 import api from "../../services/api";
 import { getCache, setCache } from "../../services/cacheService";
 import * as socketService from "../../services/socketService";
+import { useToast } from "../../hooks/useToast";
 import Loading from "../../components/Loading";
 
 export default function VisualizarCadastroVisitante() {
@@ -25,6 +26,9 @@ export default function VisualizarCadastroVisitante() {
   const [visitor, setVisitor] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
   const socketListenersRef = useRef([]);
+
+  // Hook de Toast
+  const { showToast, ToastContainer } = useToast();
 
   // ═══════════════════════════════════════════════════════════════
   // CARREGAMENTO INICIAL - Primeiro do cache, depois API se necessário
@@ -67,13 +71,13 @@ export default function VisualizarCadastroVisitante() {
           fotos,
         });
       } catch (err) {
-        alert("Erro ao buscar o cadastro.");
+        showToast("Erro ao buscar o cadastro.", "error");
         history.push("/listagem-visitante");
       }
     }
 
     loadVisitor();
-  }, [id, history]);
+  }, [id, history, showToast]);
 
   // ═══════════════════════════════════════════════════════════════
   // SOCKET.IO - Sincronização em tempo real
@@ -121,7 +125,7 @@ export default function VisualizarCadastroVisitante() {
     const unsubDelete = socketService.on("visitante:deleted", (dados) => {
       if (dados.id === parseInt(id)) {
         logger.log("🗑️ Socket: Visitante deletado", dados.id);
-        alert("Este visitante foi removido do sistema.");
+        showToast("Este visitante foi removido do sistema.", "warning");
         history.push("/listagem-visitante");
       }
     });
@@ -277,8 +281,9 @@ export default function VisualizarCadastroVisitante() {
           </div>
         </div>
       )}
+
+      {/* Toast Container */}
+      <ToastContainer />
     </div>
   );
 }
-
-

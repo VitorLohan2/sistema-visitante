@@ -57,6 +57,9 @@ import HistoricoRondas from "../pages/Ronda/HistoricoRondas";
 import PainelRondas from "../pages/PainelRondas";
 import PontosControle from "../pages/PontosControle";
 
+// Páginas protegidas - Control iD
+import EquipamentosControlId from "../pages/EquipamentosControlId";
+
 // Componente de rota protegida
 import ProtectedRoute from "./protectedRoutes";
 
@@ -253,6 +256,18 @@ export default function Routes() {
           permissao="ronda_pontos_controle_visualizar"
         >
           <PontosControle />
+        </ProtectedRoute>
+
+        {/* ════════════════════════════════════════════════════════════ */}
+        {/* MÓDULO: CONTROL iD - EQUIPAMENTOS */}
+        {/* ════════════════════════════════════════════════════════════ */}
+
+        {/* Gerenciamento de Equipamentos Control iD */}
+        <ProtectedRoute
+          path="/equipamentos-controlid"
+          permissao="controlid_visualizar"
+        >
+          <EquipamentosControlId />
         </ProtectedRoute>
       </Switch>
     </BrowserRouter>

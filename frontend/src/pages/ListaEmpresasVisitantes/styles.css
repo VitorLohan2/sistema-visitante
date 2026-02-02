@@ -462,7 +462,6 @@
 .modal-form .form-group textarea {
   width: 100%;
   padding: 12px 14px;
-  border: 2px solid var(--empresas-border);
   border-radius: var(--empresas-radius-sm);
   font-size: 14px;
   color: var(--empresas-text);
@@ -473,9 +472,7 @@
 .modal-form .form-group input:focus,
 .modal-form .form-group textarea:focus {
   outline: none;
-  border-color: var(--empresas-primary);
   background: #fff;
-  box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.1);
 }
 
 .modal-form .form-group textarea {

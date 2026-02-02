@@ -1,0 +1,135 @@
+name: Deploy Control iD Service
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "controlid-service/**"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag para deploy (ex: v1.0.0). Se vazio, usa 'latest'."
+        required: false
+        default: "latest"
+
+env:
+  DEPLOY_PATH: /home/dev/sistema/prod
+  COMPOSE_FILE: docker-compose-prod.yml
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # JOB 1: Build e Push da imagem Docker
+  # ═══════════════════════════════════════════════════════════════════════════════
+  build-and-push:
+    name: 🐳 Build Docker Image
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.set-tag.outputs.tag }}
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Determinar tag da imagem
+        id: set-tag
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ] && [ "${{ github.event.inputs.tag }}" != "latest" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Login no Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build e Push da imagem
+        uses: docker/build-push-action@v5
+        with:
+          context: ./controlid-service
+          file: ./controlid-service/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/controlid-service:${{ steps.set-tag.outputs.tag }}
+            ${{ secrets.DOCKER_USERNAME }}/controlid-service:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Resumo do Build
+        run: |
+          echo "## 🐳 Build Control iD Service" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Valor |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Imagem | \`${{ secrets.DOCKER_USERNAME }}/controlid-service\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tag | \`${{ steps.set-tag.outputs.tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # JOB 2: Deploy na VM (self-hosted runner)
+  # ═══════════════════════════════════════════════════════════════════════════════
+  deploy:
+    name: 🚀 Deploy to Production
+    runs-on: self-hosted
+    needs: build-and-push
+    steps:
+      - name: Atualizar container Control iD Service
+        working-directory: ${{ env.DEPLOY_PATH }}
+        env:
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+        run: |
+          echo "🔄 Atualizando Control iD Service..."
+
+          # Verifica se o serviço existe no compose
+          if ! grep -q "controlid-service" ${{ env.COMPOSE_FILE }}; then
+            echo "⚠️ Serviço controlid-service não encontrado no docker-compose!"
+            echo "Por favor, adicione o serviço ao docker-compose-prod.yml"
+            exit 1
+          fi
+
+          echo "⬇️ Baixando nova imagem..."
+          docker compose -f ${{ env.COMPOSE_FILE }} pull controlid-service
+
+          echo "🔄 Recriando container..."
+          docker compose -f ${{ env.COMPOSE_FILE }} up -d controlid-service
+
+          echo "⏳ Aguardando health check (30s)..."
+          sleep 10
+
+          # Health check
+          for i in {1..6}; do
+            if docker compose -f ${{ env.COMPOSE_FILE }} exec -T controlid-service curl -sf http://localhost:3050/health > /dev/null 2>&1; then
+              echo "✅ Health check passou!"
+              break
+            fi
+            if [ $i -eq 6 ]; then
+              echo "❌ Health check falhou após 60s"
+              docker compose -f ${{ env.COMPOSE_FILE }} logs controlid-service --tail=50
+              exit 1
+            fi
+            echo "⏳ Tentativa $i/6 - aguardando..."
+            sleep 10
+          done
+
+          echo "🧹 Limpando imagens antigas..."
+          docker image prune -f
+
+          echo "✅ Deploy concluído!"
+
+      - name: Resumo do Deploy
+        if: success()
+        run: |
+          echo "## 🚀 Deploy Control iD Service" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Deploy realizado com sucesso!**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Valor |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Serviço | Control iD Microservice |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tag | \`${{ needs.build-and-push.outputs.image_tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Path | \`${{ env.DEPLOY_PATH }}\` |" >> $GITHUB_STEP_SUMMARY

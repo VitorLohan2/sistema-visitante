@@ -28,10 +28,15 @@ import api from "../../services/api";
 import Loading from "../../components/Loading";
 import { getCache, setCache } from "../../services/cacheService";
 import * as socketService from "../../services/socketService";
+import { useConfirm } from "../../hooks/useConfirm";
+import { useToast } from "../../hooks/useToast";
 import "./styles.css";
 import logoImg from "../../assets/logo.svg";
 
 export default function CadastrarVisitante() {
+  const { confirm, ConfirmDialog } = useConfirm();
+  const { showToast, ToastContainer } = useToast();
+
   // Etapas do formulário
   const STEPS = [
     { id: 1, title: "Dados Pessoais", icon: FiUser },
@@ -150,7 +155,7 @@ export default function CadastrarVisitante() {
         setFuncoesVisitantes(funcoesResponse.data);
       } catch (err) {
         logger.error("Erro ao carregar dados:", err);
-        alert("Erro ao carregar opções de empresa e setor");
+        showToast("Erro ao carregar opções de empresa e setor", "error");
       }
     }
 
@@ -418,7 +423,10 @@ export default function CadastrarVisitante() {
       const combinedFiles = [...prev.fotos, ...nonDuplicateFiles].slice(0, 3);
 
       if (nonDuplicateFiles.length < newFiles.length) {
-        alert("Algumas imagens foram ignoradas porque já foram selecionadas.");
+        showToast(
+          "Algumas imagens foram ignoradas porque já foram selecionadas.",
+          "info",
+        );
       }
 
       return { ...prev, fotos: combinedFiles };
@@ -450,7 +458,7 @@ export default function CadastrarVisitante() {
         }
       } catch (err) {
         logger.error("Erro ao acessar a câmera:", err);
-        alert("Não foi possível acessar a câmera.");
+        showToast("Não foi possível acessar a câmera.", "error");
         setCameraAtiva(false);
         setShowModal(false);
         setCameraLoading(false);
@@ -536,7 +544,7 @@ export default function CadastrarVisitante() {
       });
       setForm((prev) => {
         if (prev.fotos.length >= 3) {
-          alert("Máximo de 3 imagens atingido.");
+          showToast("Máximo de 3 imagens atingido.", "warning");
           return prev;
         }
         return { ...prev, fotos: [...prev.fotos, file] };
@@ -553,27 +561,30 @@ export default function CadastrarVisitante() {
     switch (step) {
       case 1:
         if (!form.nome.trim()) {
-          alert("Nome é obrigatório.");
+          showToast("Nome é obrigatório.", "warning");
           return false;
         }
         if (!form.nascimento) {
-          alert("Data de nascimento é obrigatória.");
+          showToast("Data de nascimento é obrigatória.", "warning");
           return false;
         }
         if (cpfClean.length !== 11) {
-          alert("CPF inválido. Deve conter 11 dígitos.");
+          showToast("CPF inválido. Deve conter 11 dígitos.", "warning");
           return false;
         }
         if (cpfError) {
-          alert("CPF já cadastrado no sistema!");
+          showToast("CPF já cadastrado no sistema!", "error");
           return false;
         }
         if (!form.empresa_id || !form.setor_id) {
-          alert("Empresa e setor são obrigatórios.");
+          showToast("Empresa e setor são obrigatórios.", "warning");
           return false;
         }
         if (telefoneClean.length !== 11) {
-          alert("Telefone inválido. Deve conter 11 dígitos com DDD.");
+          showToast(
+            "Telefone inválido. Deve conter 11 dígitos com DDD.",
+            "warning",
+          );
           return false;
         }
         return true;
@@ -592,7 +603,7 @@ export default function CadastrarVisitante() {
             cor_veiculo_visitante_id:
               "Cor do veículo é obrigatória quando a placa é informada",
           }));
-          alert("Por favor, selecione a cor do veículo.");
+          showToast("Por favor, selecione a cor do veículo.", "warning");
           return false;
         }
 
@@ -602,7 +613,7 @@ export default function CadastrarVisitante() {
             tipo_veiculo_visitante_id:
               "Tipo do veículo é obrigatório quando a placa é informada",
           }));
-          alert("Por favor, selecione o tipo do veículo.");
+          showToast("Por favor, selecione o tipo do veículo.", "warning");
           return false;
         }
 
@@ -612,7 +623,7 @@ export default function CadastrarVisitante() {
             placa_veiculo:
               "Placa do veículo é obrigatória quando a cor/tipo é informada",
           }));
-          alert("Por favor, preencha a placa do veículo.");
+          showToast("Por favor, preencha a placa do veículo.", "warning");
           return false;
         }
 
@@ -621,14 +632,14 @@ export default function CadastrarVisitante() {
             ...prev,
             placa_veiculo: "Placa deve ter 7 caracteres",
           }));
-          alert("Placa do veículo deve ter 7 caracteres.");
+          showToast("Placa do veículo deve ter 7 caracteres.", "warning");
           return false;
         }
         return true;
 
       case 3:
         if (form.fotos.length === 0) {
-          alert("Envie pelo menos uma imagem.");
+          showToast("Envie pelo menos uma imagem.", "warning");
           return false;
         }
         return true;
@@ -687,7 +698,8 @@ export default function CadastrarVisitante() {
       const { data } = await api.get(`/cadastro-visitantes/cpf/${cpfClean}`);
       if (data.exists) {
         setIsSubmitting(false);
-        return alert("CPF já cadastrado. Verifique antes de continuar.");
+        showToast("CPF já cadastrado. Verifique antes de continuar.", "error");
+        return;
       }
 
       setUploadStatus("Preparando dados...");
@@ -755,7 +767,10 @@ export default function CadastrarVisitante() {
     } catch (err) {
       logger.error("Erro detalhado:", err.response?.data);
       setIsSubmitting(false);
-      alert(`Erro: ${err.response?.data?.error || "Falha no cadastro"}`);
+      showToast(
+        `Erro: ${err.response?.data?.error || "Falha no cadastro"}`,
+        "error",
+      );
     }
   };
 
@@ -1353,6 +1368,8 @@ export default function CadastrarVisitante() {
           </div>
         )}
       </div>
+      <ConfirmDialog />
+      <ToastContainer />
     </div>
   );
 }

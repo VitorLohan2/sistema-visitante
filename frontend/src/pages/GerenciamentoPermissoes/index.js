@@ -13,6 +13,8 @@ import logger from "../../utils/logger";
 // src/pages/GerenciamentoPermissoes/index.js
 import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import { useConfirm } from "../../hooks/useConfirm";
+import { useToast } from "../../hooks/useToast";
 import {
   FiArrowLeft,
   FiUsers,
@@ -34,6 +36,9 @@ import "./styles.css";
 export default function GerenciamentoPermissoes() {
   // Manter conexão do socket ativa
   useSocket();
+
+  const { confirm, ConfirmDialog } = useConfirm();
+  const { showToast, ToastContainer } = useToast();
 
   // ═══════════════════════════════════════════════════════════════
   // DADOS DO CACHE (carregados pelo useDataLoader)
@@ -121,7 +126,7 @@ export default function GerenciamentoPermissoes() {
       setCache("allPermissoes", permissoesData);
     } catch (error) {
       logger.error("Erro ao carregar dados:", error);
-      alert("Erro ao carregar dados de permissões");
+      showToast("Erro ao carregar dados de permissões", "error");
     } finally {
       setLoading(false);
     }
@@ -237,13 +242,16 @@ export default function GerenciamentoPermissoes() {
         papel_ids: papeisSelecionados,
       });
 
-      alert("Papéis atualizados com sucesso!");
+      showToast("Papéis atualizados com sucesso!", "success");
       setEditandoUsuario(null);
       setPapeisSelecionados([]);
       carregarDados();
     } catch (error) {
       logger.error("Erro ao salvar papéis:", error);
-      alert(error.response?.data?.error || "Erro ao salvar papéis");
+      showToast(
+        error.response?.data?.error || "Erro ao salvar papéis",
+        "error",
+      );
     }
   };
 
@@ -282,13 +290,16 @@ export default function GerenciamentoPermissoes() {
         permissao_ids: permissoesSelecionadas,
       });
 
-      alert("Permissões atualizadas com sucesso!");
+      showToast("Permissões atualizadas com sucesso!", "success");
       setEditandoPapel(null);
       setPermissoesSelecionadas([]);
       carregarDados();
     } catch (error) {
       logger.error("Erro ao salvar permissões:", error);
-      alert(error.response?.data?.error || "Erro ao salvar permissões");
+      showToast(
+        error.response?.data?.error || "Erro ao salvar permissões",
+        "error",
+      );
     }
   };
 
@@ -400,28 +411,31 @@ export default function GerenciamentoPermissoes() {
     // Validações
     const cleanedCpf = novoUsuario.cpf.replace(/\D/g, "");
     if (cleanedCpf.length !== 11) {
-      alert("O CPF deve conter 11 dígitos.");
+      showToast("O CPF deve conter 11 dígitos.", "warning");
       return;
     }
 
     if (!novoUsuario.email || !novoUsuario.email.includes("@")) {
-      alert("Digite um email válido.");
+      showToast("Digite um email válido.", "warning");
       return;
     }
 
     if (!novoUsuario.nome.trim()) {
-      alert("Digite o nome do usuário.");
+      showToast("Digite o nome do usuário.", "warning");
       return;
     }
 
     if (!novoUsuario.papel_id) {
-      alert("Selecione o papel do usuário.");
+      showToast("Selecione o papel do usuário.", "warning");
       return;
     }
 
     // Valida senha obrigatória
     if (!novoUsuario.senha || novoUsuario.senha.length < 6) {
-      alert("A senha é obrigatória e deve ter no mínimo 6 caracteres.");
+      showToast(
+        "A senha é obrigatória e deve ter no mínimo 6 caracteres.",
+        "warning",
+      );
       return;
     }
 
@@ -444,14 +458,20 @@ export default function GerenciamentoPermissoes() {
         senha: novoUsuario.senha,
       });
 
-      alert(`✅ Usuário cadastrado com sucesso!\nID: ${response.data.id}`);
+      showToast(
+        `✅ Usuário cadastrado com sucesso! ID: ${response.data.id}`,
+        "success",
+      );
       limparFormularioCadastro();
       carregarDados(); // Recarrega lista de usuários
       setActiveTab("usuarios"); // Volta para aba de usuários
     } catch (error) {
       logger.error("Erro ao cadastrar usuário:", error);
       logger.error("Resposta do servidor:", error.response?.data);
-      alert(error.response?.data?.error || "Erro ao cadastrar usuário");
+      showToast(
+        error.response?.data?.error || "Erro ao cadastrar usuário",
+        "error",
+      );
     } finally {
       setCadastrando(false);
     }
@@ -956,6 +976,8 @@ export default function GerenciamentoPermissoes() {
           </div>
         )}
       </div>
+      <ConfirmDialog />
+      <ToastContainer />
     </div>
   );
 }

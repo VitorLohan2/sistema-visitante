@@ -276,12 +276,12 @@
   border-color: #cbd5e1;
 }
 
-.sd-form-group input:focus,
+/* .sd-form-group input:focus,
 .sd-form-group select:focus,
 .sd-form-group textarea:focus {
   border-color: #10b981;
   box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
-}
+} */
 
 .sd-form-group input::placeholder,
 .sd-form-group textarea::placeholder {

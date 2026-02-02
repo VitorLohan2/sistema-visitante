@@ -7,7 +7,7 @@
  * - Manter contagem da fila de atendimento em tempo real
  * - Gerenciar mensagens não lidas por conversa
  * - Notificar atendentes sobre novas mensagens/conversas
- * - Emitir notificações globais no sistema (usando react-toastify)
+ * - Emitir notificações globais no sistema (usando ToastContext)
  *
  * IMPORTANTE: Socket.IO é usado para TEMPO REAL. Os listeners são registrados
  * uma única vez e usam refs para evitar problemas de stale closures.
@@ -23,7 +23,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
-import { toast } from "react-toastify";
+import { toast } from "./ToastContext";
 import { useAuth } from "../hooks/useAuth";
 import { usePermissoes } from "../hooks/usePermissoes";
 import api from "../services/api";
@@ -297,12 +297,7 @@ export function ChatSuporteProvider({ children }) {
 
             toast.info(mensagem, {
               toastId: toastId,
-              position: "top-right",
               autoClose: 8000,
-              hideProgressBar: false,
-              closeOnClick: true,
-              pauseOnHover: true,
-              draggable: true,
               onClick: () => {
                 window.location.href = "/chat-suporte/atendente";
               },
@@ -448,12 +443,7 @@ export function ChatSuporteProvider({ children }) {
 
         toast.info(mensagemToast, {
           toastId: toastId,
-          position: "top-right",
           autoClose: 8000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
           onClick: () => {
             // Navega para o painel de atendimento ao clicar
             window.location.href = "/chat-suporte/atendente";
@@ -607,12 +597,7 @@ export function ChatSuporteProvider({ children }) {
               `💬 ${nomeRemetente}: ${previewMensagem}${previewMensagem.length >= 50 ? "..." : ""}`,
               {
                 toastId: toastId,
-                position: "top-right",
                 autoClose: 5000,
-                hideProgressBar: false,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
                 onClick: () => {
                   // Navega para o painel de atendimento ao clicar
                   window.location.href = "/chat-suporte/atendente";

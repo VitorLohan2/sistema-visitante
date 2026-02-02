@@ -1,5 +1,7 @@
 import logger from "../../utils/logger";
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useConfirm } from "../../hooks/useConfirm";
+import { useToast } from "../../hooks/useToast";
 import {
   FiTruck,
   FiSearch,
@@ -24,6 +26,8 @@ import socketService from "../../services/socketService";
 import "./styles.css";
 
 const GerenciamentoDescargas = () => {
+  const { confirm, ConfirmDialog } = useConfirm();
+  const { showToast, ToastContainer } = useToast();
   const { user } = useAuth();
   const { temPermissao } = usePermissoes();
 
@@ -92,12 +96,12 @@ const GerenciamentoDescargas = () => {
           if (cachedData && cachedData.data?.length > 0) {
             logger.log(
               "⚡ Descargas carregadas do cache:",
-              cachedData.data.length
+              cachedData.data.length,
             );
             setSolicitacoes(cachedData.data);
             setTotalPaginas(cachedData.totalPaginas || 1);
             setTotalRegistros(
-              cachedData.totalRegistros || cachedData.data.length
+              cachedData.totalRegistros || cachedData.data.length,
             );
             setLoading(false);
             cacheUsado = true;
@@ -125,7 +129,7 @@ const GerenciamentoDescargas = () => {
         if (f.busca) params.append("busca", f.busca);
 
         const response = await api.get(
-          `/solicitacoes-descarga?${params.toString()}`
+          `/solicitacoes-descarga?${params.toString()}`,
         );
 
         // Mapear dados vindos do backend para o formato esperado
@@ -161,7 +165,7 @@ const GerenciamentoDescargas = () => {
         setRefreshing(false);
       }
     },
-    [] // Sem dependências - usa refs
+    [], // Sem dependências - usa refs
   );
 
   useEffect(() => {
@@ -196,7 +200,7 @@ const GerenciamentoDescargas = () => {
       // Atualiza a solicitação na lista local e no cache
       setSolicitacoes((prev) => {
         const novaLista = prev.map((s) =>
-          s.id === data.id ? { ...s, ...data } : s
+          s.id === data.id ? { ...s, ...data } : s,
         );
         // Atualiza cache
         const cached = getCache("solicitacoesDescarga");
@@ -213,11 +217,11 @@ const GerenciamentoDescargas = () => {
     // Registra os listeners
     const unsubscribeNova = socketService.on(
       "descarga:nova",
-      handleNovaDescarga
+      handleNovaDescarga,
     );
     const unsubscribeAtualizada = socketService.on(
       "descarga:atualizada",
-      handleDescargaAtualizada
+      handleDescargaAtualizada,
     );
 
     // Cleanup ao desmontar
@@ -255,18 +259,19 @@ const GerenciamentoDescargas = () => {
     try {
       setProcessando(true);
       await api.post(
-        `/solicitacoes-descarga/${modalAprovar.solicitacao.id}/aprovar`
+        `/solicitacoes-descarga/${modalAprovar.solicitacao.id}/aprovar`,
       );
 
       setModalAprovar({ aberto: false, solicitacao: null });
       buscarSolicitacoes(paginaAtual, filtrosAtivos);
 
-      alert(
-        "Solicitação aprovada com sucesso! O solicitante foi notificado por e-mail."
+      showToast(
+        "Solicitação aprovada com sucesso! O solicitante foi notificado por e-mail.",
+        "success",
       );
     } catch (error) {
       logger.error("Erro ao aprovar:", error);
-      alert("Erro ao aprovar solicitação. Tente novamente.");
+      showToast("Erro ao aprovar solicitação. Tente novamente.", "error");
     } finally {
       setProcessando(false);
     }
@@ -275,7 +280,7 @@ const GerenciamentoDescargas = () => {
   // Rejeitar solicitação
   const handleRejeitar = async () => {
     if (!modalRejeitar.solicitacao || !motivoRejeicao.trim()) {
-      alert("Por favor, informe o motivo da rejeição.");
+      showToast("Por favor, informe o motivo da rejeição.", "warning");
       return;
     }
 
@@ -285,17 +290,20 @@ const GerenciamentoDescargas = () => {
         `/solicitacoes-descarga/${modalRejeitar.solicitacao.id}/rejeitar`,
         {
           observacao: motivoRejeicao,
-        }
+        },
       );
 
       setModalRejeitar({ aberto: false, solicitacao: null });
       setMotivoRejeicao("");
       buscarSolicitacoes(paginaAtual, filtrosAtivos);
 
-      alert("Solicitação rejeitada. O solicitante foi notificado por e-mail.");
+      showToast(
+        "Solicitação rejeitada. O solicitante foi notificado por e-mail.",
+        "success",
+      );
     } catch (error) {
       logger.error("Erro ao rejeitar:", error);
-      alert("Erro ao rejeitar solicitação. Tente novamente.");
+      showToast("Erro ao rejeitar solicitação. Tente novamente.", "error");
     } finally {
       setProcessando(false);
     }
@@ -304,7 +312,7 @@ const GerenciamentoDescargas = () => {
   // Ajustar horário
   const handleAjustarHorario = async () => {
     if (!modalAjustar.solicitacao || !novoHorario.data || !novoHorario.hora) {
-      alert("Por favor, informe a nova data e horário.");
+      showToast("Por favor, informe a nova data e horário.", "warning");
       return;
     }
 
@@ -320,19 +328,20 @@ const GerenciamentoDescargas = () => {
         {
           novo_horario: dataHoraLocal,
           observacao: novoHorario.motivo,
-        }
+        },
       );
 
       setModalAjustar({ aberto: false, solicitacao: null });
       setNovoHorario({ data: "", hora: "", motivo: "" });
       buscarSolicitacoes(paginaAtual, filtrosAtivos);
 
-      alert(
-        "Horário ajustado com sucesso! O solicitante foi notificado por e-mail."
+      showToast(
+        "Horário ajustado com sucesso! O solicitante foi notificado por e-mail.",
+        "success",
       );
     } catch (error) {
       logger.error("Erro ao ajustar horário:", error);
-      alert("Erro ao ajustar horário. Tente novamente.");
+      showToast("Erro ao ajustar horário. Tente novamente.", "error");
     } finally {
       setProcessando(false);
     }
@@ -347,7 +356,7 @@ const GerenciamentoDescargas = () => {
     } else if (numeros.length === 14) {
       return numeros.replace(
         /(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,
-        "$1.$2.$3/$4-$5"
+        "$1.$2.$3/$4-$5",
       );
     }
     return documento;
@@ -367,7 +376,7 @@ const GerenciamentoDescargas = () => {
     const str = typeof data === "string" ? data : data.toString();
     // Extrair componentes da data
     const match = str.match(
-      /(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):?(\d{2})?/
+      /(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):?(\d{2})?/,
     );
     if (match) {
       const [, ano, mes, dia, hora, min, seg = "00"] = match;
@@ -378,7 +387,7 @@ const GerenciamentoDescargas = () => {
         parseInt(dia),
         parseInt(hora),
         parseInt(min),
-        parseInt(seg)
+        parseInt(seg),
       );
     }
     // Fallback para Date padrão
@@ -696,7 +705,7 @@ const GerenciamentoDescargas = () => {
                     <label>CNPJ/CPF</label>
                     <span>
                       {formatarDocumento(
-                        modalDetalhes.solicitacao.empresa_cnpj
+                        modalDetalhes.solicitacao.empresa_cnpj,
                       )}
                     </span>
                   </div>
@@ -728,7 +737,7 @@ const GerenciamentoDescargas = () => {
                     <label>CPF</label>
                     <span>
                       {formatarDocumento(
-                        modalDetalhes.solicitacao.motorista_cpf
+                        modalDetalhes.solicitacao.motorista_cpf,
                       )}
                     </span>
                   </div>
@@ -773,7 +782,7 @@ const GerenciamentoDescargas = () => {
                     <span>
                       <FiCalendar />{" "}
                       {formatarData(
-                        modalDetalhes.solicitacao.horario_solicitado
+                        modalDetalhes.solicitacao.horario_solicitado,
                       )}
                     </span>
                   </div>
@@ -782,7 +791,7 @@ const GerenciamentoDescargas = () => {
                     <span>
                       <FiClock />{" "}
                       {formatarHorario(
-                        modalDetalhes.solicitacao.horario_solicitado
+                        modalDetalhes.solicitacao.horario_solicitado,
                       )}
                     </span>
                   </div>
@@ -902,7 +911,7 @@ const GerenciamentoDescargas = () => {
                   <label>Horário:</label>
                   <span>
                     {formatarHorario(
-                      modalAprovar.solicitacao.horario_solicitado
+                      modalAprovar.solicitacao.horario_solicitado,
                     )}
                   </span>
                 </div>
@@ -1029,7 +1038,7 @@ const GerenciamentoDescargas = () => {
                     {formatarData(modalAjustar.solicitacao.horario_solicitado)}{" "}
                     às{" "}
                     {formatarHorario(
-                      modalAjustar.solicitacao.horario_solicitado
+                      modalAjustar.solicitacao.horario_solicitado,
                     )}
                   </span>
                 </div>
@@ -1102,10 +1111,10 @@ const GerenciamentoDescargas = () => {
           </div>
         </div>
       )}
+      <ConfirmDialog />
+      <ToastContainer />
     </div>
   );
 };
 
 export default GerenciamentoDescargas;
-
-

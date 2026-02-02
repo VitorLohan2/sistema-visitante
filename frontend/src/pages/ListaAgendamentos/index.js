@@ -32,6 +32,8 @@ import { useAuth } from "../../hooks/useAuth";
 import Loading from "../../components/Loading";
 import { usePermissoes } from "../../hooks/usePermissoes";
 import { useAgendamentos } from "../../contexts/AgendamentoContext";
+import { useConfirm } from "../../hooks/useConfirm";
+import { useToast } from "../../hooks/useToast";
 
 import "./styles.css";
 
@@ -45,6 +47,10 @@ export default function ListaAgendamentos() {
     removeAgendamento,
     isLoading: contextLoading,
   } = useAgendamentos();
+
+  // Hooks de UI
+  const { confirm, ConfirmDialog } = useConfirm();
+  const { showToast, ToastContainer } = useToast();
 
   // Auth e Permissões
   const { user } = useAuth();
@@ -236,14 +242,14 @@ export default function ListaAgendamentos() {
     if (selectedFile) {
       // Validar tipo e tamanho do arquivo
       if (!selectedFile.type.startsWith("image/")) {
-        alert("Por favor, selecione apenas arquivos de imagem.");
+        showToast("Por favor, selecione apenas arquivos de imagem.", "warning");
         e.target.value = ""; // Limpa o input
         return;
       }
 
       if (selectedFile.size > 5 * 1024 * 1024) {
         // 5MB
-        alert("A imagem deve ter no máximo 5MB.");
+        showToast("A imagem deve ter no máximo 5MB.", "warning");
         e.target.value = ""; // Limpa o input
         return;
       }
@@ -269,22 +275,22 @@ export default function ListaAgendamentos() {
     const { nome, cpf, setor_id, horario_agendado } = formData;
 
     if (!nome.trim()) {
-      alert("Nome é obrigatório");
+      showToast("Nome é obrigatório", "warning");
       return false;
     }
 
     if (!cpf || cpf.replace(/\D/g, "").length !== 11) {
-      alert("CPF deve ter 11 dígitos");
+      showToast("CPF deve ter 11 dígitos", "warning");
       return false;
     }
 
     if (!setor_id) {
-      alert("Setor é obrigatório");
+      showToast("Setor é obrigatório", "warning");
       return false;
     }
 
     if (!horario_agendado) {
-      alert("Horário agendado é obrigatório");
+      showToast("Horário agendado é obrigatório", "warning");
       return false;
     }
 
@@ -292,7 +298,7 @@ export default function ListaAgendamentos() {
     const horarioSelecionado = new Date(horario_agendado);
 
     if (horarioSelecionado <= agora) {
-      alert("O horário agendado deve ser no futuro");
+      showToast("O horário agendado deve ser no futuro", "warning");
       return false;
     }
 
@@ -335,10 +341,13 @@ export default function ListaAgendamentos() {
       // Não precisa adicionar manualmente para evitar duplicação
 
       handleCloseModal();
-      alert("✅ Agendamento criado com sucesso!");
+      showToast("Agendamento criado com sucesso!", "success");
     } catch (error) {
       logger.error("Erro ao criar agendamento:", error);
-      alert(error.response?.data?.error || "Erro ao criar agendamento");
+      showToast(
+        error.response?.data?.error || "Erro ao criar agendamento",
+        "error",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -346,45 +355,78 @@ export default function ListaAgendamentos() {
 
   // Ações nos agendamentos
   const handleConfirmar = async (id) => {
-    if (!window.confirm("Confirmar este agendamento?")) return;
+    const confirmed = await confirm({
+      title: "Confirmar Agendamento",
+      message: "Deseja confirmar este agendamento?",
+      confirmText: "Confirmar",
+      cancelText: "Cancelar",
+      variant: "success",
+    });
+
+    if (!confirmed) return;
 
     try {
       const response = await api.put(`/agendamentos/${id}/confirmar`, {});
 
       // Não atualiza localmente - deixa o Socket fazer via listener
-      alert("✅ Agendamento confirmado!");
+      showToast("Agendamento confirmado!", "success");
     } catch (error) {
       logger.error("Erro ao confirmar:", error);
-      alert(error.response?.data?.error || "Erro ao confirmar agendamento");
+      showToast(
+        error.response?.data?.error || "Erro ao confirmar agendamento",
+        "error",
+      );
     }
   };
 
   const handleRegistrarPresenca = async (id) => {
-    if (!window.confirm("Registrar presença deste visitante?")) return;
+    const confirmed = await confirm({
+      title: "Registrar Presença",
+      message: "Deseja registrar a presença deste visitante?",
+      confirmText: "Registrar",
+      cancelText: "Cancelar",
+      variant: "info",
+    });
+
+    if (!confirmed) return;
 
     try {
       const response = await api.put(`/agendamentos/${id}/presenca`, {});
 
       // Não atualiza localmente - deixa o Socket fazer via listener
-      alert("✅ Presença registrada!");
+      showToast("Presença registrada!", "success");
     } catch (error) {
       logger.error("Erro ao registrar presença:", error);
-      alert(error.response?.data?.error || "Erro ao registrar presença");
+      showToast(
+        error.response?.data?.error || "Erro ao registrar presença",
+        "error",
+      );
     }
   };
 
   const handleExcluir = async (id) => {
-    if (!window.confirm("Tem certeza que deseja excluir este agendamento?"))
-      return;
+    const confirmed = await confirm({
+      title: "Excluir Agendamento",
+      message:
+        "Tem certeza que deseja excluir este agendamento? Esta ação não pode ser desfeita.",
+      confirmText: "Excluir",
+      cancelText: "Cancelar",
+      variant: "danger",
+    });
+
+    if (!confirmed) return;
 
     try {
       await api.delete(`/agendamentos/${id}`);
 
       // Não remove localmente - deixa o Socket fazer via listener
-      alert("✅ Agendamento excluído!");
+      showToast("Agendamento excluído!", "success");
     } catch (error) {
       logger.error("Erro ao excluir:", error);
-      alert(error.response?.data?.error || "Erro ao excluir agendamento");
+      showToast(
+        error.response?.data?.error || "Erro ao excluir agendamento",
+        "error",
+      );
     }
   };
 
@@ -714,6 +756,18 @@ export default function ListaAgendamentos() {
                       </div>
                     </div>
                   )}
+
+                  {agendamento.presente && agendamento.presente_por && (
+                    <div className="info-item">
+                      <FiUserCheck className="info-icon" />
+                      <div>
+                        <span className="info-label">Presença por</span>
+                        <span className="info-value">
+                          {agendamento.presente_por}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {agendamento.observacao && (
@@ -959,6 +1013,12 @@ export default function ListaAgendamentos() {
           </div>
         </div>
       )}
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* MODAIS DE UI */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      <ConfirmDialog />
+      <ToastContainer />
     </div>
   );
 }

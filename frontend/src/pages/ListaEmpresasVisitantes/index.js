@@ -21,6 +21,8 @@ import {
   removeEmpresaVisitanteFromCache,
 } from "../../services/cacheService";
 import { useSocket } from "../../hooks/useSocket";
+import { useConfirm } from "../../hooks/useConfirm";
+import { useToast } from "../../hooks/useToast";
 import Loading from "../../components/Loading";
 import "./styles.css";
 
@@ -28,6 +30,10 @@ export default function ListaEmpresasVisitantes() {
   const [empresas, setEmpresas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Hooks de UI
+  const { confirm, ConfirmDialog } = useConfirm();
+  const { showToast, ToastContainer } = useToast();
 
   // Estados de paginação
   const [currentPage, setCurrentPage] = useState(1);
@@ -49,37 +55,40 @@ export default function ListaEmpresasVisitantes() {
   const socket = useSocket();
 
   // Carregar empresas
-  const carregarEmpresas = useCallback(async (forceReload = false) => {
-    try {
-      setLoading(true);
+  const carregarEmpresas = useCallback(
+    async (forceReload = false) => {
+      try {
+        setLoading(true);
 
-      // Verifica cache primeiro
-      if (!forceReload) {
-        const cachedEmpresas = getCache("empresasVisitantes");
-        if (cachedEmpresas) {
-          logger.log("📦 Usando empresas visitantes do cache");
-          setEmpresas(cachedEmpresas);
-          setLoading(false);
-          return;
+        // Verifica cache primeiro
+        if (!forceReload) {
+          const cachedEmpresas = getCache("empresasVisitantes");
+          if (cachedEmpresas) {
+            logger.log("📦 Usando empresas visitantes do cache");
+            setEmpresas(cachedEmpresas);
+            setLoading(false);
+            return;
+          }
         }
+
+        // Se não tem cache, busca da API
+        const response = await api.get("/empresas-visitantes");
+
+        const empresasOrdenadas = response.data.sort((a, b) =>
+          a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }),
+        );
+
+        setCache("empresasVisitantes", empresasOrdenadas);
+        setEmpresas(empresasOrdenadas);
+      } catch (error) {
+        logger.error("Erro ao carregar empresas:", error);
+        showToast("Erro ao carregar empresas de visitantes", "error");
+      } finally {
+        setLoading(false);
       }
-
-      // Se não tem cache, busca da API
-      const response = await api.get("/empresas-visitantes");
-
-      const empresasOrdenadas = response.data.sort((a, b) =>
-        a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }),
-      );
-
-      setCache("empresasVisitantes", empresasOrdenadas);
-      setEmpresas(empresasOrdenadas);
-    } catch (error) {
-      logger.error("Erro ao carregar empresas:", error);
-      alert("Erro ao carregar empresas de visitantes");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [showToast],
+  );
 
   // Carregar dados iniciais
   useEffect(() => {
@@ -246,7 +255,7 @@ export default function ListaEmpresasVisitantes() {
     e.preventDefault();
 
     if (!formData.nome.trim()) {
-      alert("Nome da empresa é obrigatório");
+      showToast("Nome da empresa é obrigatório", "warning");
       return;
     }
 
@@ -264,18 +273,21 @@ export default function ListaEmpresasVisitantes() {
       if (empresaEditando) {
         // Atualizar
         await api.put(`/empresas-visitantes/${empresaEditando.id}`, payload);
-        alert("✅ Empresa atualizada com sucesso!");
+        showToast("Empresa atualizada com sucesso!", "success");
       } else {
         // Criar
         await api.post("/empresas-visitantes", payload);
-        alert("✅ Empresa cadastrada com sucesso!");
+        showToast("Empresa cadastrada com sucesso!", "success");
       }
 
       handleFecharModal();
       carregarEmpresas(true);
     } catch (error) {
       logger.error("Erro ao salvar empresa:", error);
-      alert(error.response?.data?.error || "Erro ao salvar empresa");
+      showToast(
+        error.response?.data?.error || "Erro ao salvar empresa",
+        "error",
+      );
     } finally {
       setSalvando(false);
     }
@@ -283,21 +295,26 @@ export default function ListaEmpresasVisitantes() {
 
   // Deletar empresa
   const handleDeletar = async (empresa) => {
-    if (
-      !window.confirm(
-        `Deseja excluir a empresa "${empresa.nome}"?\n\nEsta ação não pode ser desfeita.`,
-      )
-    ) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: "Excluir Empresa",
+      message: `Deseja excluir a empresa "${empresa.nome}"?\n\nEsta ação não pode ser desfeita.`,
+      confirmText: "Excluir",
+      cancelText: "Cancelar",
+      variant: "danger",
+    });
+
+    if (!confirmed) return;
 
     try {
       await api.delete(`/empresas-visitantes/${empresa.id}`);
-      alert("✅ Empresa excluída com sucesso!");
+      showToast("Empresa excluída com sucesso!", "success");
       carregarEmpresas(true);
     } catch (error) {
       logger.error("Erro ao deletar empresa:", error);
-      alert(error.response?.data?.error || "Erro ao excluir empresa");
+      showToast(
+        error.response?.data?.error || "Erro ao excluir empresa",
+        "error",
+      );
     }
   };
 
@@ -589,6 +606,10 @@ export default function ListaEmpresasVisitantes() {
           </div>
         </div>
       )}
+
+      {/* Modais de UI */}
+      <ConfirmDialog />
+      <ToastContainer />
     </div>
   );
 }

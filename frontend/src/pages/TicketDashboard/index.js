@@ -33,6 +33,7 @@ import { getCache, setCache } from "../../services/cacheService";
 import { useAuth } from "../../hooks/useAuth";
 import { usePermissoes } from "../../hooks/usePermissoes";
 import { useTickets } from "../../contexts/TicketContext";
+import { useToast } from "../../hooks/useToast";
 import Loading from "../../components/Loading";
 
 import "./styles.css";
@@ -45,6 +46,9 @@ const TicketDashboard = () => {
     fetchTickets: fetchTicketsContext,
   } = useTickets();
   const [filteredTickets, setFilteredTickets] = useState([]);
+
+  // Hook de Toast
+  const { showToast, ToastContainer } = useToast();
 
   // Paginação por coluna - 10 cards por vez
   const CARDS_PER_PAGE = 10;
@@ -285,7 +289,7 @@ const TicketDashboard = () => {
     } catch (err) {
       logger.error("Erro ao atualizar:", err);
       const errorMsg = err.response?.data?.error || "Erro ao atualizar status";
-      alert(errorMsg);
+      showToast(errorMsg, "error");
     }
   };
 
@@ -298,7 +302,7 @@ const TicketDashboard = () => {
     e.preventDefault();
 
     if (!formData.funcionario || !formData.motivo || !formData.descricao) {
-      alert("Por favor, preencha todos os campos obrigatórios.");
+      showToast("Por favor, preencha todos os campos obrigatórios.", "warning");
       return;
     }
 
@@ -319,10 +323,10 @@ const TicketDashboard = () => {
         setorResponsavel: "Segurança",
       });
 
-      alert(`✅ Ticket #${response.data.id} criado com sucesso!`);
+      showToast(`Ticket #${response.data.id} criado com sucesso!`, "success");
     } catch (err) {
       logger.error("Erro ao criar ticket:", err);
-      alert("❌ Erro ao criar ticket. Tente novamente.");
+      showToast("Erro ao criar ticket. Tente novamente.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -824,6 +828,9 @@ const TicketDashboard = () => {
           </div>
         </div>
       )}
+
+      {/* Toast Container */}
+      <ToastContainer />
     </div>
   );
 };

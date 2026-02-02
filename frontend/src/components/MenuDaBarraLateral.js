@@ -37,6 +37,7 @@ import {
   FiMapPin,
   FiMap,
   FiTarget,
+  FiServer,
 } from "react-icons/fi";
 import { useAuth } from "../hooks/useAuth";
 import { usePermissoes } from "../hooks/usePermissoes";
@@ -404,6 +405,21 @@ export default function MenuDaBarraLateral() {
             >
               <FiLogIn size={20} />
               <span>Bipagem Entrada/Saída</span>
+            </button>
+          )}
+
+          {/* ═══════════════════════════════════════════════════════════════ */}
+          {/* MÓDULO: CONTROL iD - EQUIPAMENTOS */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
+
+          {/* Equipamentos Control iD - controlid_visualizar */}
+          {temPermissao("controlid_visualizar") && (
+            <button
+              className={`nav-item ${isActive("/equipamentos-controlid") ? "active" : ""}`}
+              onClick={() => handleNavigation("/equipamentos-controlid")}
+            >
+              <FiServer size={20} />
+              <span>Equipamentos Control iD</span>
             </button>
           )}
 

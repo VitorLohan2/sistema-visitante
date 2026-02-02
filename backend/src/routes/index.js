@@ -127,6 +127,10 @@ router.use("/chat-suporte", chatSuporteRoutes);
 const rondaRoutes = require("./ronda.routes");
 router.use("/rondas", rondaRoutes);
 
+// Control iD - Integração com Equipamentos de Controle de Acesso
+const controlidRoutes = require("./controlid.routes");
+router.use("/controlid", controlidRoutes);
+
 // ═══════════════════════════════════════════════════════════════
 // ROTAS LEGADAS ADICIONAIS (compatibilidade com frontend)
 // ═══════════════════════════════════════════════════════════════

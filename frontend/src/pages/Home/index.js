@@ -17,6 +17,8 @@ import {
 import { useAuth } from "../../hooks/useAuth";
 import { usePermissoes } from "../../hooks/usePermissoes";
 import { useDataLoader } from "../../hooks/useDataLoader";
+import { useConfirm } from "../../hooks/useConfirm";
+import { useToast } from "../../hooks/useToast";
 import MenuDaBarraLateral from "../../components/MenuDaBarraLateral";
 import Loading from "../../components/Loading";
 import api from "../../services/api";
@@ -26,6 +28,8 @@ import "./styles.css";
 export default function Home() {
   const { user } = useAuth();
   const { temPermissao, loading: permissoesLoading } = usePermissoes();
+  const { confirm, ConfirmDialog } = useConfirm();
+  const { showToast, ToastContainer } = useToast();
 
   // ═══════════════════════════════════════════════════════════════
   // CARREGAMENTO DE DADOS DO SISTEMA (ÚNICA VEZ NO LOGIN)
@@ -217,7 +221,7 @@ export default function Home() {
       setTimeout(() => setFeedbackSent(false), 3000);
     } catch (err) {
       logger.error("Erro ao enviar feedback:", err);
-      alert("Erro ao enviar feedback. Tente novamente.");
+      showToast("Erro ao enviar feedback. Tente novamente.", "error");
     } finally {
       setSendingFeedback(false);
     }
@@ -285,7 +289,7 @@ export default function Home() {
       !patchNoteForm.titulo ||
       !patchNoteForm.descricao
     ) {
-      alert("Preencha todos os campos obrigatórios.");
+      showToast("Preencha todos os campos obrigatórios.", "warning");
       return;
     }
 
@@ -301,7 +305,10 @@ export default function Home() {
       handleCloseModal();
     } catch (err) {
       logger.error("Erro ao salvar atualização:", err);
-      alert(err.response?.data?.error || "Erro ao salvar atualização.");
+      showToast(
+        err.response?.data?.error || "Erro ao salvar atualização.",
+        "error",
+      );
     } finally {
       setSavingPatchNote(false);
     }
@@ -309,18 +316,25 @@ export default function Home() {
 
   // Deleta patch note
   const handleDeletePatchNote = async (id) => {
-    if (!window.confirm("Tem certeza que deseja excluir esta atualização?")) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: "Excluir Atualização",
+      message: "Tem certeza que deseja excluir esta atualização?",
+      confirmText: "Excluir",
+      cancelText: "Cancelar",
+      variant: "danger",
+    });
+
+    if (!confirmed) return;
 
     try {
       await api.delete(`/patch-notes/${id}`);
       // Socket.IO vai sincronizar automaticamente
     } catch (err) {
       logger.error("Erro ao excluir atualização:", err);
-      const mensagem =
-        err.response?.data?.error || "Erro ao excluir atualização.";
-      alert(mensagem);
+      showToast(
+        err.response?.data?.error || "Erro ao excluir atualização.",
+        "error",
+      );
     }
   };
 
@@ -629,6 +643,10 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* Modais de UI */}
+      <ConfirmDialog />
+      <ToastContainer />
     </div>
   );
 }

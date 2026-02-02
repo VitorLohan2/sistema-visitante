@@ -22,6 +22,7 @@ import api from "../../services/api";
 import { getCache, setCache } from "../../services/cacheService";
 import * as socketService from "../../services/socketService";
 import { useSocket } from "../../hooks/useSocket";
+import { useToast } from "../../hooks/useToast";
 import "./styles.css";
 
 export default function Visitante() {
@@ -36,6 +37,9 @@ export default function Visitante() {
 
   // ✅ Garante conexão do socket
   useSocket();
+
+  // Hook de Toast
+  const { showToast, ToastContainer } = useToast();
 
   const history = useHistory();
   const ongId = localStorage.getItem("ongId");
@@ -160,7 +164,10 @@ export default function Visitante() {
         logger.error("Erro ao carregar visitantes:", error);
         // Se não tem cache, mostra erro
         if (!cachedVisitors || cachedVisitors.length === 0) {
-          alert("Erro ao carregar visitantes. Verifique sua conexão.");
+          showToast(
+            "Erro ao carregar visitantes. Verifique sua conexão.",
+            "error",
+          );
         }
       })
       .finally(() => {
@@ -181,7 +188,7 @@ export default function Visitante() {
     try {
       await api.put(`visitantes/${id}/exit`, {});
 
-      alert("Visita Finalizada com sucesso!");
+      showToast("Visita finalizada com sucesso!", "success");
 
       // Atualiza o estado e o cache
       setVisitors((prev) => {
@@ -191,7 +198,7 @@ export default function Visitante() {
       });
     } catch (err) {
       logger.error("Erro ao encerrar visita:", err);
-      alert("Erro ao encerrar visita, tente novamente.");
+      showToast("Erro ao encerrar visita, tente novamente.", "error");
     }
   }
 
@@ -460,6 +467,9 @@ export default function Visitante() {
           </div>
         </div>
       )}
+
+      {/* Toast Container */}
+      <ToastContainer />
     </div>
   );
 }

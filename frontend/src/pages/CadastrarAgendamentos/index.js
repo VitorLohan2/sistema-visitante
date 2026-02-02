@@ -28,12 +28,16 @@ import api from "../../services/api";
 import { getCache, setCache } from "../../services/cacheService";
 import * as socketService from "../../services/socketService";
 import { useAuth } from "../../hooks/useAuth";
+import { useConfirm } from "../../hooks/useConfirm";
+import { useToast } from "../../hooks/useToast";
 import Loading from "../../components/Loading";
 
 import "./styles.css";
 import logoImg from "../../assets/logo.svg";
 
 export default function NovoAgendamento() {
+  const { confirm, ConfirmDialog } = useConfirm();
+  const { showToast, ToastContainer } = useToast();
   const [loading, setLoading] = useState(false);
   const [setoresVisitantes, setSetoresVisitantes] = useState(
     () => getCache("setoresVisitantes") || [],
@@ -172,22 +176,22 @@ export default function NovoAgendamento() {
     const { nome, cpf, setor_id, horario_agendado } = formData;
 
     if (!nome.trim()) {
-      alert("Nome é obrigatório");
+      showToast("Nome é obrigatório", "warning");
       return false;
     }
 
     if (!cpf || cpf.replace(/\D/g, "").length !== 11) {
-      alert("CPF deve ter 11 dígitos");
+      showToast("CPF deve ter 11 dígitos", "warning");
       return false;
     }
 
     if (!setor_id) {
-      alert("Setor é obrigatório");
+      showToast("Setor é obrigatório", "warning");
       return false;
     }
 
     if (!horario_agendado) {
-      alert("Horário agendado é obrigatório");
+      showToast("Horário agendado é obrigatório", "warning");
       return false;
     }
 
@@ -195,7 +199,7 @@ export default function NovoAgendamento() {
     const horarioSelecionado = new Date(horario_agendado);
 
     if (horarioSelecionado <= agora) {
-      alert("O horário agendado deve ser no futuro");
+      showToast("O horário agendado deve ser no futuro", "warning");
       return false;
     }
 
@@ -236,7 +240,7 @@ export default function NovoAgendamento() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      alert("Agendamento criado com sucesso!");
+      showToast("Agendamento criado com sucesso!", "success");
       history.push("/agendamentos");
     } catch (error) {
       logger.error("Erro ao criar agendamento:", error);
@@ -252,16 +256,22 @@ export default function NovoAgendamento() {
         }
       }
 
-      alert(errorMessage);
+      showToast(errorMessage, "error");
     } finally {
       setLoading(false);
     }
   }
 
-  function handleLogout() {
-    if (window.confirm("Tem certeza que deseja sair?")) {
-      logout();
-    }
+  async function handleLogout() {
+    const confirmed = await confirm({
+      title: "Confirmar Saída",
+      message: "Tem certeza que deseja sair?",
+      confirmText: "Sair",
+      cancelText: "Cancelar",
+      variant: "warning",
+    });
+    if (!confirmed) return;
+    logout();
   }
 
   const agora = new Date();
@@ -420,8 +430,8 @@ export default function NovoAgendamento() {
           </div>
         </form>
       </div>
+      <ConfirmDialog />
+      <ToastContainer />
     </div>
   );
 }
-
-

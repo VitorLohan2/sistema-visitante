@@ -33,6 +33,7 @@ import api from "../services/api";
 import * as socketService from "../services/socketService";
 import { getCache, setCache } from "../services/cacheService";
 import { useAuth } from "../hooks/useAuth";
+import { usePermissoes } from "../hooks/usePermissoes";
 
 // Importar som de notificação
 import notificacaoSom from "../assets/notificacao.mp3";
@@ -41,6 +42,7 @@ const AgendamentoContext = createContext({});
 
 export function AgendamentoProvider({ children }) {
   const { isAuthenticated, user } = useAuth();
+  const { papeis } = usePermissoes();
   const [agendamentos, setAgendamentos] = useState([]);
   const [agendamentosAbertos, setAgendamentosAbertos] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,6 +50,20 @@ export function AgendamentoProvider({ children }) {
   const isInitializedRef = useRef(false);
   const isFirstLoadRef = useRef(true);
   const audioRef = useRef(null);
+
+  // Verificar se é da Segurança (som só toca para SEGURANÇA)
+  // Usa Ref para garantir que o valor atual seja acessível no callback do socket
+  const isSeguranca =
+    papeis.includes("SEGURANÇA") || papeis.includes("SEGURANCA");
+  const isSegurancaRef = useRef(isSeguranca);
+
+  // Atualiza a ref sempre que isSeguranca mudar
+  useEffect(() => {
+    isSegurancaRef.current = isSeguranca;
+    if (isSeguranca) {
+      logger.log("✅ Usuário identificado como SEGURANÇA - Som habilitado");
+    }
+  }, [isSeguranca]);
 
   // Inicializar áudio
   useEffect(() => {
@@ -84,7 +100,7 @@ export function AgendamentoProvider({ children }) {
       (agendamento) => {
         logger.log(
           "📅 AgendamentoContext: Novo agendamento recebido via socket",
-          agendamento.id
+          agendamento.id,
         );
 
         setAgendamentos((prev) => {
@@ -93,39 +109,46 @@ export function AgendamentoProvider({ children }) {
           if (jaExiste) {
             logger.log(
               "⚠️ Agendamento já existe, ignorando duplicação:",
-              agendamento.id
+              agendamento.id,
             );
             return prev;
           }
 
-          // Toca som de notificação (apenas se não for o primeiro load)
-          if (!isFirstLoadRef.current) {
+          // Toca som de notificação APENAS para usuários SEGURANÇA (não no primeiro load)
+          // Usa isSegurancaRef.current para ter o valor atualizado (evita closure stale)
+          logger.log(
+            `📅 Verificando som: isFirstLoad=${isFirstLoadRef.current}, isSeguranca=${isSegurancaRef.current}`,
+          );
+          if (!isFirstLoadRef.current && isSegurancaRef.current) {
             playNotificationSound();
+            logger.log("🔔 Som de notificação tocado para SEGURANÇA");
+          } else if (!isFirstLoadRef.current && !isSegurancaRef.current) {
+            logger.log("🔇 Som NÃO tocado - usuário não é SEGURANÇA");
           }
 
           const novosAgendamentos = [agendamento, ...prev].sort(
             (a, b) =>
-              new Date(b.horario_agendado) - new Date(a.horario_agendado)
+              new Date(b.horario_agendado) - new Date(a.horario_agendado),
           );
           setCache("agendamentos", novosAgendamentos);
           calcularAgendamentosAbertos(novosAgendamentos);
           return novosAgendamentos;
         });
-      }
+      },
     );
 
     // Listener para agendamento atualizado
     const unsubUpdate = socketService.on("agendamento:update", (dados) => {
       logger.log(
         "📅 AgendamentoContext: Agendamento atualizado via socket",
-        dados.id
+        dados.id,
       );
       setAgendamentos((prev) => {
         const novosAgendamentos = prev
           .map((a) => (a.id === dados.id ? { ...a, ...dados } : a))
           .sort(
             (a, b) =>
-              new Date(b.horario_agendado) - new Date(a.horario_agendado)
+              new Date(b.horario_agendado) - new Date(a.horario_agendado),
           );
         setCache("agendamentos", novosAgendamentos);
         calcularAgendamentosAbertos(novosAgendamentos);
@@ -137,7 +160,7 @@ export function AgendamentoProvider({ children }) {
     const unsubDelete = socketService.on("agendamento:delete", (dados) => {
       logger.log(
         "📅 AgendamentoContext: Agendamento removido via socket",
-        dados.id
+        dados.id,
       );
       setAgendamentos((prev) => {
         const novosAgendamentos = prev.filter((a) => a.id !== dados.id);
@@ -172,7 +195,7 @@ export function AgendamentoProvider({ children }) {
             logger.log(
               "📅 AgendamentoContext: Carregando do cache",
               cachedAgendamentos.length,
-              "agendamentos"
+              "agendamentos",
             );
             setAgendamentos(cachedAgendamentos);
             calcularAgendamentosAbertos(cachedAgendamentos);
@@ -183,13 +206,13 @@ export function AgendamentoProvider({ children }) {
         // Buscar da API
         const response = await api.get("/agendamentos");
         const sorted = response.data.sort(
-          (a, b) => new Date(b.horario_agendado) - new Date(a.horario_agendado)
+          (a, b) => new Date(b.horario_agendado) - new Date(a.horario_agendado),
         );
 
         logger.log(
           "📅 AgendamentoContext: Carregado da API",
           sorted.length,
-          "agendamentos"
+          "agendamentos",
         );
         setAgendamentos(sorted);
         setCache("agendamentos", sorted);
@@ -208,7 +231,7 @@ export function AgendamentoProvider({ children }) {
         setIsLoading(false);
       }
     },
-    [isAuthenticated, calcularAgendamentosAbertos]
+    [isAuthenticated, calcularAgendamentosAbertos],
   );
 
   // Inicialização quando usuário loga
@@ -251,7 +274,7 @@ export function AgendamentoProvider({ children }) {
   const addAgendamento = useCallback((agendamento) => {
     setAgendamentos((prev) => {
       const novosAgendamentos = [agendamento, ...prev].sort(
-        (a, b) => new Date(b.horario_agendado) - new Date(a.horario_agendado)
+        (a, b) => new Date(b.horario_agendado) - new Date(a.horario_agendado),
       );
       setCache("agendamentos", novosAgendamentos);
       return novosAgendamentos;
@@ -262,7 +285,7 @@ export function AgendamentoProvider({ children }) {
   const updateAgendamento = useCallback((id, dados) => {
     setAgendamentos((prev) => {
       const novosAgendamentos = prev.map((a) =>
-        a.id === id ? { ...a, ...dados } : a
+        a.id === id ? { ...a, ...dados } : a,
       );
       setCache("agendamentos", novosAgendamentos);
       return novosAgendamentos;
@@ -300,12 +323,10 @@ export function useAgendamentos() {
   const context = useContext(AgendamentoContext);
   if (!context) {
     throw new Error(
-      "useAgendamentos deve ser usado dentro de um AgendamentoProvider"
+      "useAgendamentos deve ser usado dentro de um AgendamentoProvider",
     );
   }
   return context;
 }
 
 export default AgendamentoContext;
-
-

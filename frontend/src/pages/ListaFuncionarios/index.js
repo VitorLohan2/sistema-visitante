@@ -22,6 +22,8 @@ import {
 import Loading from "../../components/Loading";
 import { useSocket } from "../../hooks/useSocket";
 import { usePermissoes } from "../../hooks/usePermissoes";
+import { useConfirm } from "../../hooks/useConfirm";
+import { useToast } from "../../hooks/useToast";
 import "./styles.css";
 
 // Dados estruturais dos setores e funções
@@ -83,43 +85,48 @@ export default function ListaFuncionarios() {
   // Socket e permissões
   const socket = useSocket();
   const { temPermissao, loading: permissoesLoading } = usePermissoes();
+  const { confirm, ConfirmDialog } = useConfirm();
+  const { showToast, ToastContainer } = useToast();
 
   // ═══════════════════════════════════════════════════════════════
   // CARREGAR FUNCIONÁRIOS
   // ═══════════════════════════════════════════════════════════════
-  const carregarFuncionarios = useCallback(async (forceReload = false) => {
-    try {
-      setLoading(true);
+  const carregarFuncionarios = useCallback(
+    async (forceReload = false) => {
+      try {
+        setLoading(true);
 
-      // Verifica cache primeiro
-      if (!forceReload) {
-        const cachedFuncionarios = getCache("funcionarios");
-        if (cachedFuncionarios) {
-          logger.log("📦 Usando funcionários do cache");
-          setFuncionarios(cachedFuncionarios);
-          setLoading(false);
-          return;
+        // Verifica cache primeiro
+        if (!forceReload) {
+          const cachedFuncionarios = getCache("funcionarios");
+          if (cachedFuncionarios) {
+            logger.log("📦 Usando funcionários do cache");
+            setFuncionarios(cachedFuncionarios);
+            setLoading(false);
+            return;
+          }
         }
+
+        // Se não tem cache, busca da API
+        const response = await api.get("/funcionarios", {
+          params: { mostrarInativos: true },
+        });
+
+        const funcionariosOrdenados = response.data.sort((a, b) =>
+          a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }),
+        );
+
+        setCache("funcionarios", funcionariosOrdenados);
+        setFuncionarios(funcionariosOrdenados);
+      } catch (error) {
+        logger.error("Erro ao carregar funcionários:", error);
+        showToast("Erro ao carregar funcionários", "error");
+      } finally {
+        setLoading(false);
       }
-
-      // Se não tem cache, busca da API
-      const response = await api.get("/funcionarios", {
-        params: { mostrarInativos: true },
-      });
-
-      const funcionariosOrdenados = response.data.sort((a, b) =>
-        a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }),
-      );
-
-      setCache("funcionarios", funcionariosOrdenados);
-      setFuncionarios(funcionariosOrdenados);
-    } catch (error) {
-      logger.error("Erro ao carregar funcionários:", error);
-      alert("Erro ao carregar funcionários");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [showToast],
+  );
 
   // Carregar dados iniciais
   useEffect(() => {
@@ -258,23 +265,23 @@ export default function ListaFuncionarios() {
 
     // Validações
     if (!formData.nome.trim()) {
-      alert("Nome é obrigatório");
+      showToast("Nome é obrigatório", "warning");
       return;
     }
     if (!formData.setor) {
-      alert("Setor é obrigatório");
+      showToast("Setor é obrigatório", "warning");
       return;
     }
     if (!formData.funcao) {
-      alert("Função é obrigatória");
+      showToast("Função é obrigatória", "warning");
       return;
     }
     if (!funcionarioEditando && !formData.cracha.trim()) {
-      alert("Crachá é obrigatório");
+      showToast("Crachá é obrigatório", "warning");
       return;
     }
     if (!funcionarioEditando && formData.cracha.trim().length < 3) {
-      alert("Crachá deve ter pelo menos 3 dígitos");
+      showToast("Crachá deve ter pelo menos 3 dígitos", "warning");
       return;
     }
 
@@ -299,7 +306,7 @@ export default function ListaFuncionarios() {
           ...funcionarioEditando,
           ...payload,
         });
-        alert("✅ Funcionário atualizado com sucesso!");
+        showToast("✅ Funcionário atualizado com sucesso!", "success");
       } else {
         // Criar
         logger.log("📤 Enviando dados:", {
@@ -312,7 +319,7 @@ export default function ListaFuncionarios() {
           ...payload,
           cracha: formData.cracha.trim(),
         });
-        alert("✅ Funcionário cadastrado com sucesso!");
+        showToast("✅ Funcionário cadastrado com sucesso!", "success");
       }
 
       handleFecharModalForm();
@@ -321,9 +328,12 @@ export default function ListaFuncionarios() {
       logger.error("Erro ao salvar funcionário:", error);
       logger.error("❌ Resposta do servidor:", error.response?.data);
       if (error.response?.status === 403) {
-        alert("Sem permissão para esta ação");
+        showToast("Sem permissão para esta ação", "error");
       } else {
-        alert(error.response?.data?.error || "Erro ao salvar funcionário");
+        showToast(
+          error.response?.data?.error || "Erro ao salvar funcionário",
+          "error",
+        );
       }
     } finally {
       setSalvando(false);
@@ -357,8 +367,14 @@ export default function ListaFuncionarios() {
   // HANDLERS - INATIVAR/REATIVAR
   // ═══════════════════════════════════════════════════════════════
   const handleInativar = async (funcionario) => {
-    if (!window.confirm(`Deseja inativar o funcionário "${funcionario.nome}"?`))
-      return;
+    const confirmed = await confirm({
+      title: "Inativar Funcionário",
+      message: `Deseja inativar o funcionário "${funcionario.nome}"?`,
+      confirmText: "Inativar",
+      cancelText: "Cancelar",
+      variant: "warning",
+    });
+    if (!confirmed) return;
 
     try {
       await api.put(`/funcionarios/${funcionario.cracha}`, {
@@ -369,17 +385,26 @@ export default function ListaFuncionarios() {
         ativo: false,
         data_demissao: new Date().toISOString().split("T")[0],
       });
-      alert("✅ Funcionário inativado!");
+      showToast("✅ Funcionário inativado!", "success");
       carregarFuncionarios(true);
     } catch (error) {
       logger.error("Erro ao inativar:", error);
-      alert(error.response?.data?.error || "Erro ao inativar funcionário");
+      showToast(
+        error.response?.data?.error || "Erro ao inativar funcionário",
+        "error",
+      );
     }
   };
 
   const handleReativar = async (funcionario) => {
-    if (!window.confirm(`Deseja reativar o funcionário "${funcionario.nome}"?`))
-      return;
+    const confirmed = await confirm({
+      title: "Reativar Funcionário",
+      message: `Deseja reativar o funcionário "${funcionario.nome}"?`,
+      confirmText: "Reativar",
+      cancelText: "Cancelar",
+      variant: "success",
+    });
+    if (!confirmed) return;
 
     try {
       await api.put(`/funcionarios/${funcionario.cracha}`, {
@@ -390,11 +415,14 @@ export default function ListaFuncionarios() {
         ativo: true,
         data_demissao: null,
       });
-      alert("✅ Funcionário reativado!");
+      showToast("✅ Funcionário reativado!", "success");
       carregarFuncionarios(true);
     } catch (error) {
       logger.error("Erro ao reativar:", error);
-      alert(error.response?.data?.error || "Erro ao reativar funcionário");
+      showToast(
+        error.response?.data?.error || "Erro ao reativar funcionário",
+        "error",
+      );
     }
   };
 
@@ -461,7 +489,7 @@ export default function ListaFuncionarios() {
       setRegistrosPonto(response.data.registros || []);
     } catch (error) {
       logger.error("Erro ao carregar histórico:", error);
-      alert("Erro ao carregar histórico de ponto");
+      showToast("Erro ao carregar histórico de ponto", "error");
     } finally {
       setLoadingHistorico(false);
     }
@@ -938,6 +966,10 @@ export default function ListaFuncionarios() {
           </div>
         </div>
       )}
+
+      {/* Modais de UI */}
+      <ConfirmDialog />
+      <ToastContainer />
     </div>
   );
 }

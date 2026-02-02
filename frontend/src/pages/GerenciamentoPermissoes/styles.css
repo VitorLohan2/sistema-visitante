@@ -539,8 +539,6 @@
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
-  border-color: #1e293b;
-  box-shadow: 0 0 0 3px rgba(30, 41, 59, 0.1);
 }
 
 .form-group input::placeholder {
