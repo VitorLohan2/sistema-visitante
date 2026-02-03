@@ -39,12 +39,19 @@ import {
   FiTarget,
   FiServer,
 } from "react-icons/fi";
+import {
+  FaUserAstronaut,
+  FaUserSecret,
+  FaUserTie,
+  FaUserNinja,
+} from "react-icons/fa";
 import { useAuth } from "../hooks/useAuth";
 import { usePermissoes } from "../hooks/usePermissoes";
 import { useAgendamentos } from "../contexts/AgendamentoContext";
 import { useDescargas } from "../contexts/DescargaContext";
 import { useTickets } from "../contexts/TicketContext";
 import { useChatSuporte } from "../contexts/ChatSuporteContext";
+import logo from "../assets/logo_lateral.svg";
 import "../styles/MenuDaBarraLateral.css";
 
 export default function MenuDaBarraLateral() {
@@ -145,11 +152,52 @@ export default function MenuDaBarraLateral() {
         className={`sidebar ${sidebarOpen ? "open" : ""}`}
         ref={sidebarRef}
       >
+        {/* Logo da empresa */}
+        <div className="sidebar-logo">
+          <img src={logo} alt="Logo da Empresa" className="logo-image" />
+        </div>
+
         {/* Header da sidebar */}
         <div className="sidebar-header">
           <div className="user-info">
-            <h3>{user?.nome}</h3>
-            <p>{user?.email}</p>
+            <div className="user-avatar-container">
+              <div
+                className={`user-avatar-animated ${
+                  papeis.includes("ADMIN")
+                    ? "avatar-admin"
+                    : papeis.includes("GESTOR")
+                      ? "avatar-gestor"
+                      : papeis.includes("SEGURANÇA") ||
+                          papeis.includes("SEGURANCA")
+                        ? "avatar-security"
+                        : "avatar-user"
+                }`}
+              >
+                <div className="avatar-icon">
+                  {papeis.includes("ADMIN") ? (
+                    <FaUserAstronaut
+                      style={{ color: "white", fontSize: "24px" }}
+                    />
+                  ) : papeis.includes("GESTOR") ? (
+                    <FaUserTie style={{ color: "white", fontSize: "24px" }} />
+                  ) : papeis.includes("SEGURANÇA") ||
+                    papeis.includes("SEGURANCA") ? (
+                    <FaUserSecret
+                      style={{ color: "white", fontSize: "24px" }}
+                    />
+                  ) : (
+                    <FaUserNinja style={{ color: "white", fontSize: "24px" }} />
+                  )}
+                </div>
+                <div className="avatar-pulse"></div>
+              </div>
+              <div className="user-details">
+                <h3>{user?.nome}</h3>
+              </div>
+            </div>
+            <div className="user-email">
+              <p>{user?.email}</p>
+            </div>
             {papeis.includes("ADMIN") && (
               <span className="badge-admin">Administrador</span>
             )}

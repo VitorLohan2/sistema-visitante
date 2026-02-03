@@ -249,37 +249,74 @@
    ═══════════════════════════════════════════════════════════════════════════════ */
 .controlid-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 2rem;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
-   CARD DE DISPOSITIVO
+   CARD DE DISPOSITIVO - DESIGN TECNOLÓGICO
    ═══════════════════════════════════════════════════════════════════════════════ */
 .controlid-card {
-  background: #fff;
+  background: rgba(255, 255, 255, 0.7);
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   overflow: hidden;
   transition: all 0.3s ease;
-  border-left: 4px solid #ddd;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  position: relative;
+  backdrop-filter: blur(8px);
+}
+
+.controlid-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.02) 50%,
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
 }
 
 .controlid-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-4px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.controlid-card:hover::before {
+  opacity: 1;
 }
 
 .controlid-card.online {
-  border-left-color: #4caf50;
+  border-left: 3px solid #10b981;
+}
+
+.controlid-card.online:hover {
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.15);
 }
 
 .controlid-card.offline {
-  border-left-color: #f44336;
+  border-left: 3px solid #ef4444;
+}
+
+.controlid-card.offline:hover {
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.15);
 }
 
 .controlid-card.unknown {
-  border-left-color: #ff9800;
+  border-left: 3px solid #f59e0b;
+}
+
+.controlid-card.unknown:hover {
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.15);
 }
 
 /* Header do card */
@@ -287,50 +324,76 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 1.25rem;
-  background: #fafafa;
-  border-bottom: 1px solid #eee;
+  padding: 1.25rem;
+  background: rgba(248, 250, 252, 0.5);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .controlid-card-icon {
-  font-size: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 8px;
+  font-size: 1.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .controlid-card-status .status-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
-  padding: 0.375rem 0.75rem;
-  border-radius: 20px;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 16px;
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 1px solid;
+  transition: all 0.2s ease;
 }
 
 .status-badge.online {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border-color: rgba(16, 185, 129, 0.2);
 }
 
 .status-badge.offline {
-  background: #ffebee;
-  color: #c62828;
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  border-color: rgba(239, 68, 68, 0.2);
 }
 
 .status-badge.unknown {
-  background: #fff3e0;
-  color: #ef6c00;
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+  border-color: rgba(245, 158, 11, 0.2);
 }
 
 /* Corpo do card */
 .controlid-card-body {
   padding: 1.25rem;
+  background: transparent;
 }
 
 .controlid-card-body h3 {
   margin: 0 0 1rem;
   font-size: 1.125rem;
-  color: #1a1a2e;
+  font-weight: 600;
+  color: #1f2937;
 }
 
 .controlid-card-info {
@@ -342,24 +405,44 @@
 .controlid-card-info p {
   margin: 0;
   font-size: 0.875rem;
-  color: #555;
+  color: #6b7280;
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.controlid-card-info p:hover {
+  color: #374151;
 }
 
 .controlid-card-info p svg {
-  color: #888;
+  color: #9ca3af;
   flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.controlid-card.online .controlid-card-info p svg {
+  color: #10b981;
+}
+
+.controlid-card.offline .controlid-card-info p svg {
+  color: #ef4444;
+}
+
+.controlid-card.unknown .controlid-card-info p svg {
+  color: #f59e0b;
 }
 
 .controlid-card-info strong {
-  color: #333;
+  color: #374151;
+  font-weight: 500;
 }
 
 .controlid-card-timestamp {
   font-size: 0.75rem !important;
-  color: #999 !important;
+  color: #9ca3af !important;
   margin-top: 0.5rem !important;
 }
 
@@ -369,8 +452,8 @@
   justify-content: flex-end;
   gap: 0.5rem;
   padding: 1rem 1.25rem;
-  background: #fafafa;
-  border-top: 1px solid #eee;
+  background: rgba(248, 250, 252, 0.3);
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .controlid-action-btn {
@@ -382,57 +465,70 @@
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.controlid-action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 1);
+}
+
+.controlid-action-btn:active {
+  transform: translateY(0);
 }
 
 .controlid-action-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none !important;
 }
 
 .controlid-action-btn.status {
-  background: #e3f2fd;
   color: #1976d2;
 }
 
 .controlid-action-btn.status:hover:not(:disabled) {
-  background: #bbdefb;
+  background: rgba(25, 118, 210, 0.05);
+  border-color: rgba(25, 118, 210, 0.2);
 }
 
 .controlid-action-btn.unlock {
-  background: #fff3e0;
   color: #ef6c00;
 }
 
 .controlid-action-btn.unlock:hover:not(:disabled) {
-  background: #ffe0b2;
+  background: rgba(239, 108, 0, 0.05);
+  border-color: rgba(239, 108, 0, 0.2);
 }
 
 .controlid-action-btn.info {
-  background: #e8f5e9;
   color: #2e7d32;
 }
 
 .controlid-action-btn.info:hover:not(:disabled) {
-  background: #c8e6c9;
+  background: rgba(46, 125, 50, 0.05);
+  border-color: rgba(46, 125, 50, 0.2);
 }
 
 .controlid-action-btn.edit {
-  background: #e8eaf6;
   color: #3f51b5;
 }
 
 .controlid-action-btn.edit:hover:not(:disabled) {
-  background: #c5cae9;
+  background: rgba(63, 81, 181, 0.05);
+  border-color: rgba(63, 81, 181, 0.2);
 }
 
 .controlid-action-btn.delete {
-  background: #ffebee;
   color: #c62828;
 }
 
 .controlid-action-btn.delete:hover:not(:disabled) {
-  background: #ffcdd2;
+  background: rgba(198, 40, 40, 0.05);
+  border-color: rgba(198, 40, 40, 0.2);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════

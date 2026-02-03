@@ -37,10 +37,216 @@
   transition: transform 0.3s ease;
 }
 
+/* Logo da Sidebar */
+.sidebar-logo {
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.logo-image {
+  max-width: 180px;
+  max-height: 60px;
+  width: auto;
+  height: auto;
+  transition: all 0.3s ease;
+}
+
+.logo-image:hover {
+  transform: scale(1.02);
+}
+
 /* Sidebar Header */
 .sidebar-header {
-  padding: 2rem 1.5rem;
+  padding: 1.5rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Container do Avatar e Detalhes do Usuário */
+.user-avatar-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* Avatar Animado - Reduzido */
+.user-avatar-animated {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.user-avatar-animated::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 50%;
+  padding: 2px;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 70%
+  );
+  animation: border-spin 3s linear infinite;
+  z-index: 1;
+}
+
+.avatar-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 55px;
+  height: 55px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: pulse 2s ease-in-out infinite;
+  z-index: 0;
+}
+
+.avatar-icon {
+  font-size: 20px;
+  z-index: 2;
+  position: relative;
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Cores específicas por papel */
+.avatar-admin {
+  background: linear-gradient(135deg, #00ff88 0%, #00b894 50%, #00a86b 100%);
+  box-shadow: 0 4px 20px rgba(0, 184, 148, 0.4);
+}
+
+.avatar-admin .avatar-pulse {
+  background: radial-gradient(
+    circle,
+    rgba(0, 184, 148, 0.3) 0%,
+    transparent 70%
+  );
+}
+
+.avatar-gestor {
+  background: linear-gradient(135deg, #4834d4 0%, #686de0 50%, #30336b 100%);
+  box-shadow: 0 4px 20px rgba(72, 52, 212, 0.4);
+}
+
+.avatar-gestor .avatar-pulse {
+  background: radial-gradient(
+    circle,
+    rgba(72, 52, 212, 0.3) 0%,
+    transparent 70%
+  );
+}
+
+.avatar-security {
+  background: linear-gradient(135deg, #00d2d3 0%, #54a0ff 50%, #2f3542 100%);
+  box-shadow: 0 4px 20px rgba(0, 210, 211, 0.4);
+}
+
+.avatar-security .avatar-pulse {
+  background: radial-gradient(
+    circle,
+    rgba(0, 210, 211, 0.3) 0%,
+    transparent 70%
+  );
+}
+
+.avatar-user {
+  background: linear-gradient(135deg, #a55eea 0%, #26de81 50%, #45aaf2 100%);
+  box-shadow: 0 4px 20px rgba(165, 94, 234, 0.4);
+}
+
+.avatar-user .avatar-pulse {
+  background: radial-gradient(
+    circle,
+    rgba(165, 94, 234, 0.3) 0%,
+    transparent 70%
+  );
+}
+
+.user-avatar-animated:hover {
+  transform: scale(1.1) rotate(3deg);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.user-avatar-animated:hover .avatar-icon {
+  animation-duration: 0.5s;
+}
+
+.user-details {
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+}
+
+.user-email {
+  margin-top: 0.5rem;
+  text-align: left;
+}
+
+.user-email p {
+  margin: 0;
+  font-size: 12px;
+  color: #cbd5e1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Animações */
+@keyframes border-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 0.3;
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.user-details {
+  text-align: center;
+  margin-top: 0.5rem;
+  width: 100%;
+}
+
+.user-details h3 {
+  color: #cbd5e1;
 }
 
 .user-info h3 {
@@ -53,7 +259,7 @@
 }
 
 .user-info p {
-  margin: 0.5rem 0 0 0;
+  margin: 0.25rem 0 0 0;
   font-size: 12px;
   color: #cbd5e1;
   white-space: nowrap;

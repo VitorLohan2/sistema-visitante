@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - "controlid-service/**"
+      - ".github/workflows/deploy-controlid-service.yml"
   workflow_dispatch:
     inputs:
       tag:
@@ -45,9 +48,13 @@ jobs:
       - name: Get latest tag
         id: get-latest
         run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          # Busca apenas tags do backend (v*), IGNORANDO tags do controlid (controlid-v*)
+          LATEST_TAG=$(git tag -l "v*" --sort=-v:refname | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | head -n1 || echo "")
+          if [ -z "$LATEST_TAG" ]; then
+            LATEST_TAG="v0.0.0"
+          fi
           echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_OUTPUT
-          echo "📌 Última tag: $LATEST_TAG"
+          echo "📌 Última tag Backend: $LATEST_TAG"
 
       - name: Determine next version
         id: set-tag
@@ -57,6 +64,15 @@ jobs:
         run: |
           # Se uma tag foi fornecida manualmente, usa ela
           if [ -n "$INPUT_TAG" ]; then
+            # Garante que a tag começa com 'v' e NÃO é do controlid
+            if [[ "$INPUT_TAG" == controlid-* ]]; then
+              echo "❌ Tag do Control iD não pode ser usada neste workflow!"
+              exit 1
+            fi
+            # Adiciona 'v' se não tiver
+            if [[ "$INPUT_TAG" != v* ]]; then
+              INPUT_TAG="v$INPUT_TAG"
+            fi
             echo "📌 Usando tag manual: $INPUT_TAG"
             echo "tag=$INPUT_TAG" >> $GITHUB_OUTPUT
             echo "is_new_tag=false" >> $GITHUB_OUTPUT

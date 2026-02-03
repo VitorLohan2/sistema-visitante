@@ -57,7 +57,18 @@ jobs:
           if [ -n "$INPUT_TAG" ]; then
             # Adiciona prefixo se não tiver
             if [[ "$INPUT_TAG" != controlid-* ]]; then
-              INPUT_TAG="controlid-$INPUT_TAG"
+              # Garante formato controlid-v*
+              if [[ "$INPUT_TAG" != v* ]]; then
+                INPUT_TAG="controlid-v$INPUT_TAG"
+              else
+                INPUT_TAG="controlid-$INPUT_TAG"
+              fi
+            fi
+            # Valida formato final
+            if [[ ! "$INPUT_TAG" =~ ^controlid-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "❌ Formato de tag inválido: $INPUT_TAG"
+              echo "Formato esperado: controlid-v*.*.* (ex: controlid-v0.1.3)"
+              exit 1
             fi
             echo "📌 Usando tag manual: $INPUT_TAG"
             echo "tag=$INPUT_TAG" >> $GITHUB_OUTPUT
@@ -186,10 +197,23 @@ jobs:
       - name: Atualizar .env com tag do Control iD
         run: |
           TAG="${{ needs.auto-tag.outputs.tag }}"
+
+          # Valida que a tag é do Control iD
+          if [[ "$TAG" != controlid-v* ]]; then
+            echo "❌ ERRO: Tag inválida para Control iD: $TAG"
+            echo "Esperado formato: controlid-v*.*.* "
+            exit 1
+          fi
+
           # Remove o prefixo controlid- para a tag da imagem Docker
           DOCKER_TAG=$(echo $TAG | sed 's/controlid-//')
 
-          echo "📝 Atualizando .env com CONTROLID_IMAGE_TAG=$DOCKER_TAG"
+          echo "═══════════════════════════════════════════════════════════════════"
+          echo "📝 CONTROL iD SERVICE - Atualizando .env"
+          echo "Git Tag: $TAG"
+          echo "Docker Tag: $DOCKER_TAG"
+          echo "Variável: CONTROLID_IMAGE_TAG"
+          echo "═══════════════════════════════════════════════════════════════════"
 
           # Verifica se o arquivo .env existe
           if [ ! -f "${{ env.DEPLOY_PATH }}/.env" ]; then
@@ -197,14 +221,31 @@ jobs:
             touch "${{ env.DEPLOY_PATH }}/.env"
           fi
 
-          # Remove linha antiga se existir e adiciona a nova
+          # Mostra estado ANTES
+          echo "📄 Estado do .env ANTES:"
+          cat "${{ env.DEPLOY_PATH }}/.env" || true
+          echo ""
+
+          # Remove APENAS a linha CONTROLID_IMAGE_TAG (NÃO toca em IMAGE_TAG)
           sed -i '/^CONTROLID_IMAGE_TAG=/d' "${{ env.DEPLOY_PATH }}/.env"
+
+          # Adiciona a nova linha
           echo "CONTROLID_IMAGE_TAG=${DOCKER_TAG}" >> "${{ env.DEPLOY_PATH }}/.env"
 
           chmod 600 "${{ env.DEPLOY_PATH }}/.env"
 
-          echo "✅ .env atualizado:"
+          # Mostra estado DEPOIS
+          echo "📄 Estado do .env DEPOIS:"
           cat "${{ env.DEPLOY_PATH }}/.env"
+
+          # Validação final
+          echo ""
+          echo "🔍 Validando variáveis:"
+          echo "  IMAGE_TAG (backend): $(grep '^IMAGE_TAG=' "${{ env.DEPLOY_PATH }}/.env" | cut -d= -f2 || echo 'não definido')"
+          echo "  CONTROLID_IMAGE_TAG: $(grep '^CONTROLID_IMAGE_TAG=' "${{ env.DEPLOY_PATH }}/.env" | cut -d= -f2 || echo 'não definido')"
+
+          echo ""
+          echo "✅ .env atualizado com sucesso!"
 
       - name: Deploy container Control iD Service
         working-directory: ${{ env.DEPLOY_PATH }}
