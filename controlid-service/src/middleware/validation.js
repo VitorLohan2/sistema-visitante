@@ -39,7 +39,8 @@ const deviceSchemas = {
     model: Joi.string()
       .valid(...Object.values(DEVICE_MODELS))
       .required(),
-    description: Joi.string().max(500),
+    description: Joi.string().max(500).allow(null, ""),
+    location: Joi.string().max(200).allow(null, ""),
   }),
 
   update: Joi.object({
