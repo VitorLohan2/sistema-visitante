@@ -20,10 +20,10 @@ module.exports = {
       let lastCommitDate = null;
       let lastCommitMessage = null;
 
-      // Tenta buscar a última tag do GitHub
+      // Tenta buscar a última tag do GitHub (apenas tags do backend principal)
       try {
         const tagsResponse = await fetch(
-          `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/tags`,
+          `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/tags?per_page=100`,
           {
             headers: {
               Accept: "application/vnd.github.v3+json",
@@ -35,8 +35,16 @@ module.exports = {
         if (tagsResponse.ok) {
           const tags = await tagsResponse.json();
           if (tags && tags.length > 0) {
-            // Remove o 'v' do início se existir
-            version = tags[0].name.replace(/^v/, "");
+            // Filtra apenas tags do backend principal (formato: v*.*.*)
+            // Ignora tags de microserviços como: controlid-v*, mobile-v*, etc.
+            const backendTags = tags.filter((tag) =>
+              /^v\d+\.\d+\.\d+$/.test(tag.name),
+            );
+
+            if (backendTags.length > 0) {
+              // Remove o 'v' do início
+              version = backendTags[0].name.replace(/^v/, "");
+            }
           }
         }
       } catch (githubError) {
