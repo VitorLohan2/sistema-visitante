@@ -259,15 +259,16 @@ jobs:
           echo "═══════════════════════════════════════════════════════════════════"
 
       - name: Health Check
+        working-directory: ${{ env.DEPLOY_PATH }}
         run: |
           echo "🏥 Verificando saúde do Control iD Service..."
           sleep 5
 
           for i in {1..6}; do
-            # Health check via HTTP do host (não precisa de curl no container)
-            if curl -sf http://localhost:3050/health > /dev/null 2>&1; then
+            # Health check via rede Docker (porta não exposta para host)
+            if docker exec nginx_prod wget -qO- http://controlid-service:3050/health 2>/dev/null | grep -q '"success":true'; then
               echo "✅ Control iD Service respondendo!"
-              curl -s http://localhost:3050/health | head -c 200
+              docker exec nginx_prod wget -qO- http://controlid-service:3050/health
               echo ""
               exit 0
             fi
@@ -276,7 +277,7 @@ jobs:
           done
 
           echo "❌ Health check falhou após 60s"
-          docker compose -f ${{ env.DEPLOY_PATH }}/${{ env.COMPOSE_FILE }} logs controlid-service --tail=50
+          docker compose -f ${{ env.COMPOSE_FILE }} logs controlid-service --tail=50
           exit 1
 
       - name: Resumo do Deploy
