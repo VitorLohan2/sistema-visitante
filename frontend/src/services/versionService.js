@@ -335,7 +335,9 @@ export async function performUpdate() {
   } catch (error) {
     logger.error("[Version] Erro ao limpar cache:", error);
     // Fallback: força reload na home
-    window.location.replace(window.location.origin + "/?_refresh=" + Date.now());
+    window.location.replace(
+      window.location.origin + "/?_refresh=" + Date.now(),
+    );
   }
 }
 
