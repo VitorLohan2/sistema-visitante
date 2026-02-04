@@ -16,6 +16,8 @@
  *   node scripts/sync-version.js 2.3.0    # Define versão específica
  *
  *   npm run version                       # Mesmos comandos via npm scripts | Incrementa patch
+ *   npm run version:minor
+ *   npm run version:major
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
@@ -48,6 +50,22 @@ function readJson(filePath) {
  */
 function writeJson(filePath, data) {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2) + "\n");
+}
+
+/**
+ * Sincroniza tags do repositório remoto
+ */
+function fetchTags() {
+  try {
+    console.log("🔄 Sincronizando tags do GitHub...");
+    execSync("git fetch --tags", {
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    console.log("✅ Tags sincronizadas!\n");
+  } catch (error) {
+    console.warn("⚠️  Não foi possível sincronizar tags (offline?)");
+  }
 }
 
 /**
@@ -107,6 +125,9 @@ console.log("🔄 SYNC VERSION - Sincronização de Versão");
 console.log(
   "═══════════════════════════════════════════════════════════════\n",
 );
+
+// IMPORTANTE: Sincroniza tags do GitHub ANTES de verificar a versão
+fetchTags();
 
 // Obtém versão atual
 const frontendPkg = readJson(paths.frontendPackage);
