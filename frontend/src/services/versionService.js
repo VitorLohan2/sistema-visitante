@@ -379,3 +379,43 @@ export default {
   onUpdateAvailable,
   getVersionInfo,
 };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FUNÇÕES DE DEBUG (apenas em desenvolvimento)
+// ═══════════════════════════════════════════════════════════════════════════
+
+if (process.env.NODE_ENV === "development") {
+  /**
+   * Função de teste para simular notificação de atualização
+   * Use no console: window.__testUpdate()
+   */
+  window.__testUpdate = function (version = "99.0.0") {
+    logger.log(
+      "[Version] 🧪 TESTE: Simulando atualização para versão",
+      version,
+    );
+    notifyUpdateAvailable({
+      version: version,
+      buildTime: new Date().toISOString(),
+      buildNumber: Date.now(),
+    });
+  };
+
+  /**
+   * Reseta completamente o estado de versão
+   * Use no console: window.__resetVersion()
+   */
+  window.__resetVersion = function () {
+    localStorage.removeItem(VERSION_KEY);
+    localStorage.removeItem(BUILD_TIME_KEY);
+    localStorage.removeItem(BUILD_NUMBER_KEY);
+    localStorage.removeItem(UPDATE_DISMISSED_KEY);
+    localStorage.removeItem(RELOAD_KEY);
+    logger.log("[Version] 🧪 TESTE: Estado de versão resetado!");
+    logger.log("[Version] 🧪 Recarregue a página para testar fresh install");
+  };
+
+  logger.log("[Version] 🧪 Funções de teste disponíveis:");
+  logger.log("[Version]    window.__testUpdate('3.0.0') - Simula notificação");
+  logger.log("[Version]    window.__resetVersion() - Reseta estado de versão");
+}
