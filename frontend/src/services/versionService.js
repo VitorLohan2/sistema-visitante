@@ -3,18 +3,19 @@
  * VERSION SERVICE v2 - Sistema de Controle de Versão e Atualização
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * NOVA ABORDAGEM - Sem reloads automáticos forçados!
+ * ARQUITETURA DE PROTEÇÃO EM 2 CAMADAS:
  *
- * O problema anterior:
- * - Reload automático causava loops quando o cache não limpava corretamente
- * - Usuários perdiam trabalho em andamento
- * - Não havia visibilidade do que estava acontecendo
+ * CAMADA 1 (index.html - Script Inline):
+ * - Executa ANTES do React carregar
+ * - Detecta erros de chunk/sintaxe (código antigo incompatível)
+ * - Força reload imediato se versão diferente
+ * - Protege contra loops com cooldown de 30s
  *
- * Nova solução:
- * 1. Detecta nova versão silenciosamente
- * 2. Notifica o usuário com uma barra no topo
- * 3. Usuário decide quando atualizar
- * 4. Ao clicar em atualizar, limpa cache completamente e recarrega
+ * CAMADA 2 (Este serviço - React):
+ * - Executa DEPOIS do React carregar
+ * - Verifica versão periodicamente (a cada 60s)
+ * - Mostra notificação amigável ao usuário
+ * - Usuário decide quando atualizar
  *
  * ═══════════════════════════════════════════════════════════════════════════
  */
@@ -22,21 +23,24 @@
 import logger from "../utils/logger";
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CONSTANTES
+// CONSTANTES - DEVEM SER IGUAIS AO SCRIPT DO index.html!
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Chaves do localStorage para controle de versão
+// Chaves do localStorage (sincronizadas com index.html)
 const VERSION_KEY = "app_version";
 const BUILD_TIME_KEY = "app_build_time";
-const BUILD_NUMBER_KEY = "app_build_number";
+const BUILD_NUMBER_KEY = "app_build_number"; // Mesma chave do index.html
 const UPDATE_DISMISSED_KEY = "app_update_dismissed";
-const LAST_CHECK_KEY = "app_last_version_check";
+const RELOAD_KEY = "app_force_reload"; // Mesma chave do index.html
 
 // Intervalo de verificação (em ms)
 const CHECK_INTERVAL = 60000; // 1 minuto
 
 // Tempo para mostrar notificação novamente após dismissar
 const DISMISS_COOLDOWN = 300000; // 5 minutos
+
+// Cooldown de reload (deve ser igual ao index.html)
+const RELOAD_COOLDOWN = 30000; // 30 segundos
 
 let checkIntervalId = null;
 let updateCallbacks = [];
@@ -270,8 +274,7 @@ export async function performUpdate() {
 
     // 2. Limpa flags de controle
     localStorage.removeItem(UPDATE_DISMISSED_KEY);
-    localStorage.removeItem(LAST_CHECK_KEY);
-    localStorage.removeItem("chunk_error_reload"); // Do index.js
+    localStorage.removeItem(RELOAD_KEY); // Sincronizado com index.html
 
     // 3. Limpa Service Workers
     if ("serviceWorker" in navigator) {

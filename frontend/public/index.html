@@ -5,7 +5,119 @@
     <link rel="icon" href="%PUBLIC_URL%/secure.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#000000" />
-    <title> Sistema de Visitante - Liberaê </title>
+    <title>Sistema de Visitante - Liberaê</title>
+    
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         CRITICAL: Script de proteção contra cache desatualizado
+         Este script DEVE executar ANTES de qualquer outro JavaScript
+         ═══════════════════════════════════════════════════════════════════════ -->
+    <script>
+      (function() {
+        'use strict';
+        
+        var VERSION_KEY = 'app_build_number';
+        var RELOAD_KEY = 'app_force_reload';
+        var RELOAD_COOLDOWN = 30000; // 30 segundos
+        
+        // Verifica se pode fazer reload (evita loop)
+        function canReload() {
+          var lastReload = localStorage.getItem(RELOAD_KEY);
+          if (!lastReload) return true;
+          return (Date.now() - parseInt(lastReload, 10)) > RELOAD_COOLDOWN;
+        }
+        
+        // Limpa cache e força reload
+        function forceReload() {
+          console.warn('[VersionGuard] Forçando atualização...');
+          localStorage.setItem(RELOAD_KEY, Date.now().toString());
+          
+          // Limpa Service Workers
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+              registrations.forEach(function(r) { r.unregister(); });
+            });
+          }
+          
+          // Limpa Cache API
+          if ('caches' in window) {
+            caches.keys().then(function(names) {
+              names.forEach(function(name) { caches.delete(name); });
+            });
+          }
+          
+          // Limpa storages
+          try { sessionStorage.clear(); } catch(e) {}
+          
+          // Reload com cache-busting
+          setTimeout(function() {
+            var url = window.location.origin + window.location.pathname;
+            window.location.href = url + '?_v=' + Date.now();
+          }, 100);
+        }
+        
+        // Verifica versão imediatamente
+        function checkVersion() {
+          var xhr = new XMLHttpRequest();
+          xhr.open('GET', '/version.json?t=' + Date.now(), true);
+          xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+              try {
+                var serverVersion = JSON.parse(xhr.responseText);
+                var localBuild = localStorage.getItem(VERSION_KEY);
+                
+                if (localBuild && localBuild !== String(serverVersion.buildNumber)) {
+                  console.warn('[VersionGuard] Versão diferente detectada!');
+                  console.warn('[VersionGuard] Local:', localBuild);
+                  console.warn('[VersionGuard] Server:', serverVersion.buildNumber);
+                  
+                  // Atualiza versão local
+                  localStorage.setItem(VERSION_KEY, String(serverVersion.buildNumber));
+                  
+                  if (canReload()) {
+                    forceReload();
+                  }
+                } else if (!localBuild) {
+                  // Primeira vez - salva versão
+                  localStorage.setItem(VERSION_KEY, String(serverVersion.buildNumber));
+                }
+              } catch(e) {
+                console.error('[VersionGuard] Erro ao verificar versão:', e);
+              }
+            }
+          };
+          xhr.send();
+        }
+        
+        // Captura erros de carregamento de script (antes do React)
+        window.addEventListener('error', function(event) {
+          var msg = event.message || '';
+          var isChunkError = (
+            msg.indexOf('Loading chunk') !== -1 ||
+            msg.indexOf('Unexpected token') !== -1 ||
+            msg.indexOf('SyntaxError') !== -1 ||
+            msg.indexOf('export') !== -1 ||
+            msg.indexOf('import') !== -1 ||
+            msg.indexOf('Cannot find module') !== -1
+          );
+          
+          if (isChunkError && canReload()) {
+            console.error('[VersionGuard] Erro de chunk detectado:', msg);
+            event.preventDefault();
+            forceReload();
+          }
+        }, true); // useCapture = true para pegar antes
+        
+        // Verifica versão ao carregar
+        checkVersion();
+        
+        // Limpa parâmetro _v da URL
+        if (window.location.search.indexOf('_v=') !== -1 || 
+            window.location.search.indexOf('_refresh=') !== -1) {
+          var cleanUrl = window.location.origin + window.location.pathname;
+          window.history.replaceState({}, document.title, cleanUrl);
+        }
+      })();
+    </script>
   </head>
   <body>
     <noscript>Desenvolvido por Vitor Lohan</noscript>
