@@ -17,7 +17,9 @@ export function forceLogout() {
     globalLogoutRef();
   } else {
     // Fallback: limpa manualmente se o contexto não estiver disponível
-    logger.log("⚠️ forceLogout: AuthContext não disponível, limpando manualmente");
+    logger.log(
+      "⚠️ forceLogout: AuthContext não disponível, limpando manualmente",
+    );
     localStorage.removeItem("token");
     localStorage.removeItem("usuario");
     localStorage.removeItem("ongId");

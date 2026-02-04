@@ -71,7 +71,9 @@ function handleUnauthorized() {
   if (isLoggingOut) return;
   isLoggingOut = true;
 
-  logger.warn("🔐 Token inválido/expirado - Forçando logout via AuthContext...");
+  logger.warn(
+    "🔐 Token inválido/expirado - Forçando logout via AuthContext...",
+  );
 
   // Usa a função global que chama o logout do contexto React
   forceLogout();
