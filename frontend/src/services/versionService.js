@@ -253,11 +253,12 @@ export function dismissUpdate() {
 }
 
 /**
- * Limpa todo o cache e força reload
+ * Limpa todo o cache e força reload COMPLETO
  * Deve ser chamada quando o usuário clica em "Atualizar"
  */
 export async function performUpdate() {
   logger.log("[Version] 🔄 Usuário solicitou atualização...");
+  logger.log("[Version] 🧹 Iniciando limpeza completa de cache...");
 
   // Busca versão do servidor para salvar
   const serverVersion = await fetchServerVersion();
@@ -274,43 +275,67 @@ export async function performUpdate() {
 
     // 2. Limpa flags de controle
     localStorage.removeItem(UPDATE_DISMISSED_KEY);
-    localStorage.removeItem(RELOAD_KEY); // Sincronizado com index.html
+    localStorage.removeItem(RELOAD_KEY);
 
-    // 3. Limpa Service Workers
-    if ("serviceWorker" in navigator) {
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      for (const registration of registrations) {
-        await registration.unregister();
-        logger.log("[Version] Service Worker desregistrado");
-      }
-    }
-
-    // 4. Limpa TODOS os caches da Cache API
-    if ("caches" in window) {
-      const cacheNames = await caches.keys();
-      await Promise.all(
-        cacheNames.map((cacheName) => {
-          logger.log("[Version] Deletando cache:", cacheName);
-          return caches.delete(cacheName);
-        }),
-      );
-    }
-
-    // 5. Limpa sessionStorage (cache de dados da aplicação)
+    // 3. Limpa TODOS os dados em memória/cache da aplicação
+    // Isso garante que ao recarregar, os dados serão buscados do servidor
     sessionStorage.clear();
 
-    // 6. Faz reload forçado
-    // Usa location.reload(true) para ignorar cache do navegador
-    logger.log("[Version] ✅ Cache limpo! Recarregando...");
+    // 4. Limpa caches específicos da aplicação no localStorage
+    // (mantém apenas dados de versão e autenticação)
+    const keysToKeep = [
+      "token",
+      "usuario",
+      "ongId",
+      "ongName",
+      "ongType",
+      VERSION_KEY,
+      BUILD_TIME_KEY,
+      BUILD_NUMBER_KEY,
+    ];
 
-    // Técnica: força o navegador a buscar tudo do servidor
-    // O parâmetro será removido pelo index.js após o reload
-    const baseUrl = window.location.origin + window.location.pathname;
-    window.location.href = `${baseUrl}?_v=${Date.now()}`;
+    const allKeys = Object.keys(localStorage);
+    allKeys.forEach((key) => {
+      if (!keysToKeep.includes(key)) {
+        localStorage.removeItem(key);
+        logger.log("[Version] Removido localStorage:", key);
+      }
+    });
+
+    // 5. Limpa Service Workers (em background, não bloqueia)
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((registration) => {
+          registration.unregister();
+        });
+      });
+    }
+
+    // 6. Limpa Cache API (em background, não bloqueia)
+    // Não aguardamos para evitar ERR_CACHE_OPERATION_NOT_SUPPORTED
+    if ("caches" in window) {
+      caches.keys().then((cacheNames) => {
+        cacheNames.forEach((cacheName) => {
+          caches.delete(cacheName);
+        });
+      });
+    }
+
+    logger.log("[Version] ✅ Cache limpo! Fazendo hard reload...");
+
+    // 7. HARD RELOAD - força buscar TUDO do servidor
+    // Redireciona para a HOME com parâmetro de cache-busting
+    // Isso garante que o usuário vai para a página inicial com código novo
+    const homeUrl = window.location.origin + "/?_refresh=" + Date.now();
+
+    // Pequeno delay para garantir que as operações async iniciaram
+    setTimeout(() => {
+      window.location.replace(homeUrl);
+    }, 100);
   } catch (error) {
     logger.error("[Version] Erro ao limpar cache:", error);
-    // Fallback: reload simples
-    window.location.reload(true);
+    // Fallback: força reload na home
+    window.location.replace(window.location.origin + "/?_refresh=" + Date.now());
   }
 }
 
