@@ -9,7 +9,27 @@ const connection = require("../database/connection");
 const GITHUB_OWNER = "VitorLohan2"; // Ajuste para seu usuário/organização
 const GITHUB_REPO = "sistema-visitante"; // Ajuste para o nome do seu repositório
 
+// Versão da API do Backend - ATUALIZE A CADA DEPLOY!
+// Esta versão é usada para detectar incompatibilidades frontend/backend
+const API_VERSION = "2.2.7";
+const API_BUILD_TIME = new Date().toISOString();
+
 module.exports = {
+  /**
+   * GET /system/health
+   * Health check rápido com versão da API
+   * Usado pelo frontend para verificar compatibilidade
+   */
+  async healthCheck(request, response) {
+    return response.json({
+      status: "healthy",
+      apiVersion: API_VERSION,
+      buildTime: API_BUILD_TIME,
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+    });
+  },
+
   /**
    * GET /system/info
    * Retorna informações do sistema (versão, último commit)

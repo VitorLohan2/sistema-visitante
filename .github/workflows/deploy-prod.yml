@@ -141,6 +141,38 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: 📝 Sync version in package.json files
+        run: |
+          TAG="${{ needs.auto-tag.outputs.tag }}"
+          VERSION="${TAG#v}"  # Remove o 'v' do início (v2.2.7 -> 2.2.7)
+
+          echo "🔄 Sincronizando versão $VERSION em todos os arquivos..."
+
+          # Atualiza backend/package.json
+          if [ -f "backend/package.json" ]; then
+            jq --arg v "$VERSION" '.version = $v' backend/package.json > tmp.json && mv tmp.json backend/package.json
+            echo "✅ backend/package.json -> $VERSION"
+          fi
+
+          # Atualiza frontend/package.json
+          if [ -f "frontend/package.json" ]; then
+            jq --arg v "$VERSION" '.version = $v' frontend/package.json > tmp.json && mv tmp.json frontend/package.json
+            echo "✅ frontend/package.json -> $VERSION"
+          fi
+
+          # Atualiza frontend/public/version.json com buildNumber único
+          BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
+          BUILD_NUMBER=$(date +%s%3N)
+
+          cat > frontend/public/version.json << EOF
+          {
+            "version": "$VERSION",
+            "buildTime": "$BUILD_TIME",
+            "buildNumber": $BUILD_NUMBER
+          }
+          EOF
+          echo "✅ frontend/public/version.json -> $VERSION (build: $BUILD_NUMBER)"
+
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 

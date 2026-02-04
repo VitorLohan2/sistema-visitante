@@ -162,13 +162,19 @@
   align-items: center;
   gap: 6px;
   padding: 10px 20px;
-  background: linear-gradient(135deg, #1e293b, #334155);
-  color: white;
-  border: none;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
+  color: #475569;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+}
+
+.gd-btn-filtrar:hover {
+  background: #e2e8f0;
+  color: #1e293b;
 }
 
 .gd-btn-limpar {

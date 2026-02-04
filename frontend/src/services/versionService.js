@@ -1,40 +1,56 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * VERSION SERVICE - Sistema de Controle de Versão e Atualização Automática
+ * VERSION SERVICE v2 - Sistema de Controle de Versão e Atualização
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * Este serviço resolve o problema de usuários logados ficarem em loop
- * após uma atualização do sistema em produção.
+ * NOVA ABORDAGEM - Sem reloads automáticos forçados!
  *
- * COMO FUNCIONA:
- * 1. A cada build, o arquivo version.json é atualizado com timestamp único
- * 2. O frontend verifica periodicamente se há nova versão
- * 3. Se detectar versão nova, força um reload limpo (sem cache)
- * 4. Evita loops verificando se já tentou recarregar recentemente
+ * O problema anterior:
+ * - Reload automático causava loops quando o cache não limpava corretamente
+ * - Usuários perdiam trabalho em andamento
+ * - Não havia visibilidade do que estava acontecendo
+ *
+ * Nova solução:
+ * 1. Detecta nova versão silenciosamente
+ * 2. Notifica o usuário com uma barra no topo
+ * 3. Usuário decide quando atualizar
+ * 4. Ao clicar em atualizar, limpa cache completamente e recarrega
  *
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
 import logger from "../utils/logger";
 
-// Chaves do localStorage para controle
+// ═══════════════════════════════════════════════════════════════════════════
+// CONSTANTES
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Chaves do localStorage para controle de versão
 const VERSION_KEY = "app_version";
 const BUILD_TIME_KEY = "app_build_time";
-const LAST_RELOAD_KEY = "app_last_reload";
-const RELOAD_COOLDOWN = 60000; // 1 minuto de cooldown entre reloads
+const BUILD_NUMBER_KEY = "app_build_number";
+const UPDATE_DISMISSED_KEY = "app_update_dismissed";
+const LAST_CHECK_KEY = "app_last_version_check";
 
-// Intervalo de verificação de versão (em ms)
-const CHECK_INTERVAL = 30000; // 30 segundos
+// Intervalo de verificação (em ms)
+const CHECK_INTERVAL = 60000; // 1 minuto
+
+// Tempo para mostrar notificação novamente após dismissar
+const DISMISS_COOLDOWN = 300000; // 5 minutos
 
 let checkIntervalId = null;
+let updateCallbacks = [];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FUNÇÕES PRIVADAS
+// ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Obtém a versão atual do servidor
- * @returns {Promise<{version: string, buildTime: string} | null>}
+ * Obtém a versão atual do servidor (arquivo estático)
+ * @returns {Promise<{version: string, buildTime: string, buildNumber: number} | null>}
  */
 async function fetchServerVersion() {
   try {
-    // Adiciona timestamp para evitar cache
     const timestamp = Date.now();
     const response = await fetch(`/version.json?t=${timestamp}`, {
       cache: "no-store",
@@ -46,191 +62,275 @@ async function fetchServerVersion() {
     });
 
     if (!response.ok) {
-      logger.warn("Não foi possível obter version.json:", response.status);
+      logger.warn(
+        "[Version] Não foi possível obter version.json:",
+        response.status,
+      );
       return null;
     }
 
     const data = await response.json();
     return data;
   } catch (error) {
-    logger.error("Erro ao buscar versão do servidor:", error);
+    logger.error("[Version] Erro ao buscar versão do servidor:", error);
     return null;
   }
 }
 
 /**
  * Obtém a versão armazenada localmente
- * @returns {{version: string, buildTime: string} | null}
+ * @returns {{version: string, buildTime: string, buildNumber: number} | null}
  */
 function getLocalVersion() {
-  const version = localStorage.getItem(VERSION_KEY);
-  const buildTime = localStorage.getItem(BUILD_TIME_KEY);
+  try {
+    const version = localStorage.getItem(VERSION_KEY);
+    const buildTime = localStorage.getItem(BUILD_TIME_KEY);
+    const buildNumber = localStorage.getItem(BUILD_NUMBER_KEY);
 
-  if (version && buildTime) {
-    return { version, buildTime };
+    if (version && buildTime && buildNumber) {
+      return {
+        version,
+        buildTime,
+        buildNumber: parseInt(buildNumber, 10),
+      };
+    }
+    return null;
+  } catch (error) {
+    logger.error("[Version] Erro ao ler versão local:", error);
+    return null;
   }
-
-  return null;
 }
 
 /**
  * Salva a versão localmente
- * @param {string} version
- * @param {string} buildTime
  */
-function saveLocalVersion(version, buildTime) {
-  localStorage.setItem(VERSION_KEY, version);
-  localStorage.setItem(BUILD_TIME_KEY, buildTime);
-}
-
-/**
- * Verifica se pode fazer reload (cooldown para evitar loops)
- * @returns {boolean}
- */
-function canReload() {
-  const lastReload = localStorage.getItem(LAST_RELOAD_KEY);
-
-  if (!lastReload) {
-    return true;
-  }
-
-  const timeSinceLastReload = Date.now() - parseInt(lastReload, 10);
-  return timeSinceLastReload > RELOAD_COOLDOWN;
-}
-
-/**
- * Registra o momento do reload
- */
-function markReload() {
-  localStorage.setItem(LAST_RELOAD_KEY, Date.now().toString());
-}
-
-/**
- * Limpa todo o cache do navegador e faz reload FORÇADO
- * Usa técnica de redirecionamento com cache-busting para garantir
- * que o navegador baixe todos os arquivos novamente
- */
-async function clearCacheAndReload() {
-  logger.log("🔄 Nova versão detectada! Limpando cache e recarregando...");
-
-  // Marca o reload para evitar loops
-  markReload();
-
+function saveLocalVersion(version, buildTime, buildNumber) {
   try {
-    // 1. Limpa o cache do Service Worker se existir
-    if ("serviceWorker" in navigator) {
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      for (const registration of registrations) {
-        await registration.unregister();
-        logger.log("Service Worker desregistrado");
-      }
-    }
-
-    // 2. Limpa TODOS os caches da Cache API
-    if ("caches" in window) {
-      const cacheNames = await caches.keys();
-      await Promise.all(
-        cacheNames.map((cacheName) => {
-          logger.log("Deletando cache:", cacheName);
-          return caches.delete(cacheName);
-        }),
-      );
-    }
-
-    // 3. Limpa sessionStorage (dados de cache da aplicação)
-    sessionStorage.clear();
-
-    // 4. Técnica de HARD RELOAD real:
-    // Redireciona para a mesma URL com um parâmetro único
-    // Isso força o navegador a buscar tudo do servidor
-    const timestamp = Date.now();
-    const currentUrl = window.location.href.split("?")[0].split("#")[0];
-    const separator = currentUrl.includes("?") ? "&" : "?";
-    const newUrl = `${currentUrl}${separator}_v=${timestamp}`;
-
-    logger.log("Redirecionando para:", newUrl);
-
-    // Substitui a entrada no histórico para evitar botão "voltar" quebrado
-    window.location.replace(newUrl);
+    localStorage.setItem(VERSION_KEY, version);
+    localStorage.setItem(BUILD_TIME_KEY, buildTime);
+    localStorage.setItem(BUILD_NUMBER_KEY, buildNumber.toString());
+    logger.log("[Version] Versão salva localmente:", version, buildTime);
   } catch (error) {
-    logger.error("Erro ao limpar cache:", error);
-    // Fallback: tenta reload normal
-    window.location.href =
-      window.location.href.split("?")[0] + "?_reload=" + Date.now();
+    logger.error("[Version] Erro ao salvar versão local:", error);
   }
+}
+
+/**
+ * Verifica se a notificação foi dismissada recentemente
+ */
+function wasRecentlyDismissed() {
+  try {
+    const dismissed = localStorage.getItem(UPDATE_DISMISSED_KEY);
+    if (!dismissed) return false;
+
+    const timeSince = Date.now() - parseInt(dismissed, 10);
+    return timeSince < DISMISS_COOLDOWN;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Marca a notificação como dismissada
+ */
+function markDismissed() {
+  localStorage.setItem(UPDATE_DISMISSED_KEY, Date.now().toString());
+}
+
+/**
+ * Limpa o flag de dismiss
+ */
+function clearDismissed() {
+  localStorage.removeItem(UPDATE_DISMISSED_KEY);
+}
+
+/**
+ * Notifica todos os listeners sobre atualização disponível
+ */
+function notifyUpdateAvailable(serverVersion) {
+  logger.log("[Version] Notificando sobre atualização:", serverVersion.version);
+  updateCallbacks.forEach((callback) => {
+    try {
+      callback({
+        type: "update-available",
+        version: serverVersion.version,
+        buildTime: serverVersion.buildTime,
+        buildNumber: serverVersion.buildNumber,
+      });
+    } catch (error) {
+      logger.error("[Version] Erro no callback de atualização:", error);
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FUNÇÕES PÚBLICAS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Registra um callback para ser notificado sobre atualizações
+ * @param {Function} callback - Função a ser chamada com { type, version, buildTime }
+ * @returns {Function} - Função para remover o listener
+ */
+export function onUpdateAvailable(callback) {
+  updateCallbacks.push(callback);
+
+  // Retorna função para remover o listener
+  return () => {
+    updateCallbacks = updateCallbacks.filter((cb) => cb !== callback);
+  };
 }
 
 /**
  * Verifica se há uma nova versão disponível
- * @returns {Promise<boolean>} - true se há nova versão
+ * @param {boolean} forceNotify - Se true, notifica mesmo se já foi dismissada
+ * @returns {Promise<{hasUpdate: boolean, version?: string}>}
  */
-async function checkForUpdates() {
+export async function checkForUpdates(forceNotify = false) {
   const serverVersion = await fetchServerVersion();
 
   if (!serverVersion) {
-    return false;
+    return { hasUpdate: false };
   }
 
   const localVersion = getLocalVersion();
 
   // Primeira vez acessando - salva a versão atual
   if (!localVersion) {
-    logger.log("📦 Primeira execução, salvando versão:", serverVersion.version);
-    saveLocalVersion(serverVersion.version, serverVersion.buildTime);
-    return false;
-  }
-
-  // Compara pelo buildTime (mais confiável que version)
-  const hasNewVersion = serverVersion.buildTime !== localVersion.buildTime;
-
-  if (hasNewVersion) {
-    logger.log("🆕 Nova versão detectada!");
     logger.log(
-      "   Versão local:",
-      localVersion.version,
-      localVersion.buildTime,
+      "[Version] Primeira execução, salvando versão:",
+      serverVersion.version,
     );
-    logger.log(
-      "   Versão servidor:",
+    saveLocalVersion(
       serverVersion.version,
       serverVersion.buildTime,
+      serverVersion.buildNumber,
     );
-
-    // Atualiza a versão local antes do reload
-    saveLocalVersion(serverVersion.version, serverVersion.buildTime);
-    return true;
+    return { hasUpdate: false };
   }
 
-  return false;
+  // Compara pelo buildNumber (mais confiável)
+  const hasUpdate = serverVersion.buildNumber !== localVersion.buildNumber;
+
+  if (hasUpdate) {
+    logger.log("[Version] 🆕 Nova versão detectada!");
+    logger.log(
+      "[Version]   Local:",
+      localVersion.version,
+      `(build: ${localVersion.buildNumber})`,
+    );
+    logger.log(
+      "[Version]   Servidor:",
+      serverVersion.version,
+      `(build: ${serverVersion.buildNumber})`,
+    );
+
+    // Só notifica se não foi dismissada recentemente (ou se forçado)
+    if (forceNotify || !wasRecentlyDismissed()) {
+      notifyUpdateAvailable(serverVersion);
+    }
+
+    return {
+      hasUpdate: true,
+      version: serverVersion.version,
+      buildTime: serverVersion.buildTime,
+    };
+  }
+
+  return { hasUpdate: false };
+}
+
+/**
+ * Dismissar a notificação de atualização temporariamente
+ */
+export function dismissUpdate() {
+  logger.log("[Version] Atualização dismissada pelo usuário");
+  markDismissed();
+}
+
+/**
+ * Limpa todo o cache e força reload
+ * Deve ser chamada quando o usuário clica em "Atualizar"
+ */
+export async function performUpdate() {
+  logger.log("[Version] 🔄 Usuário solicitou atualização...");
+
+  // Busca versão do servidor para salvar
+  const serverVersion = await fetchServerVersion();
+
+  try {
+    // 1. Atualiza a versão local ANTES de limpar tudo
+    if (serverVersion) {
+      saveLocalVersion(
+        serverVersion.version,
+        serverVersion.buildTime,
+        serverVersion.buildNumber,
+      );
+    }
+
+    // 2. Limpa flags de controle
+    localStorage.removeItem(UPDATE_DISMISSED_KEY);
+    localStorage.removeItem(LAST_CHECK_KEY);
+    localStorage.removeItem("chunk_error_reload"); // Do index.js
+
+    // 3. Limpa Service Workers
+    if ("serviceWorker" in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (const registration of registrations) {
+        await registration.unregister();
+        logger.log("[Version] Service Worker desregistrado");
+      }
+    }
+
+    // 4. Limpa TODOS os caches da Cache API
+    if ("caches" in window) {
+      const cacheNames = await caches.keys();
+      await Promise.all(
+        cacheNames.map((cacheName) => {
+          logger.log("[Version] Deletando cache:", cacheName);
+          return caches.delete(cacheName);
+        }),
+      );
+    }
+
+    // 5. Limpa sessionStorage (cache de dados da aplicação)
+    sessionStorage.clear();
+
+    // 6. Faz reload forçado
+    // Usa location.reload(true) para ignorar cache do navegador
+    logger.log("[Version] ✅ Cache limpo! Recarregando...");
+
+    // Técnica: força o navegador a buscar tudo do servidor
+    // O parâmetro será removido pelo index.js após o reload
+    const baseUrl = window.location.origin + window.location.pathname;
+    window.location.href = `${baseUrl}?_v=${Date.now()}`;
+  } catch (error) {
+    logger.error("[Version] Erro ao limpar cache:", error);
+    // Fallback: reload simples
+    window.location.reload(true);
+  }
 }
 
 /**
  * Inicializa o sistema de verificação de versão
  * Deve ser chamado quando o App é montado
  */
-export async function initVersionCheck() {
-  logger.log("🔍 Iniciando verificação de versão...");
+export function initVersionCheck() {
+  logger.log("[Version] 🔍 Iniciando sistema de verificação de versão...");
 
-  // Verifica imediatamente
-  const hasUpdate = await checkForUpdates();
-
-  if (hasUpdate && canReload()) {
-    await clearCacheAndReload();
-    return; // Não continua, vai recarregar
-  }
+  // Verifica imediatamente (silenciosamente na primeira vez)
+  setTimeout(() => {
+    checkForUpdates();
+  }, 3000); // Aguarda 3 segundos para não atrapalhar carregamento inicial
 
   // Inicia verificação periódica
   if (!checkIntervalId) {
-    checkIntervalId = setInterval(async () => {
-      const hasUpdate = await checkForUpdates();
-
-      if (hasUpdate && canReload()) {
-        await clearCacheAndReload();
-      }
+    checkIntervalId = setInterval(() => {
+      checkForUpdates();
     }, CHECK_INTERVAL);
 
     logger.log(
-      `✅ Verificação de versão ativa (a cada ${CHECK_INTERVAL / 1000}s)`,
+      `[Version] ✅ Verificação ativa (a cada ${CHECK_INTERVAL / 1000}s)`,
     );
   }
 }
@@ -242,25 +342,8 @@ export function stopVersionCheck() {
   if (checkIntervalId) {
     clearInterval(checkIntervalId);
     checkIntervalId = null;
-    logger.log("⏹️ Verificação de versão parada");
+    logger.log("[Version] ⏹️ Verificação de versão parada");
   }
-}
-
-/**
- * Força verificação imediata de atualização
- * Útil para chamar manualmente ou após erro
- */
-export async function forceUpdateCheck() {
-  logger.log("🔄 Forçando verificação de atualização...");
-
-  const hasUpdate = await checkForUpdates();
-
-  if (hasUpdate && canReload()) {
-    await clearCacheAndReload();
-    return true;
-  }
-
-  return false;
 }
 
 /**
@@ -274,9 +357,22 @@ export function getVersionInfo() {
   };
 }
 
+/**
+ * Força verificação e notificação imediata
+ * Ignora o cooldown de dismiss
+ */
+export async function forceUpdateCheck() {
+  clearDismissed();
+  return checkForUpdates(true);
+}
+
 export default {
   initVersionCheck,
   stopVersionCheck,
+  checkForUpdates,
   forceUpdateCheck,
+  performUpdate,
+  dismissUpdate,
+  onUpdateAvailable,
   getVersionInfo,
 };

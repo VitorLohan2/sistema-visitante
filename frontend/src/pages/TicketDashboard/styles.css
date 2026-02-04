@@ -104,7 +104,7 @@
   margin-bottom: 20px;
 }
 
-.stat-card {
+.stat-card-ticket {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -114,11 +114,6 @@
   border: 1px solid #e5e7eb;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   transition: all 0.2s;
-}
-
-.stat-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
 }
 
 .stat-content {
@@ -336,6 +331,7 @@
   flex-direction: column;
   transition: all 0.2s;
   min-height: 400px;
+  max-height: calc(100vh - 260px);
 }
 
 .kanban-column.drag-over {
@@ -349,6 +345,7 @@
   justify-content: space-between;
   padding: 14px 16px;
   border-radius: 12px 12px 0 0;
+  flex-shrink: 0;
 }
 
 .column-title {
@@ -373,6 +370,31 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  /* Altura para ~5 cards (cada card ~110px + gap 12px) */
+  max-height: calc(5 * 122px);
+  min-height: 200px;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+/* Scrollbar customizada para webkit (Chrome, Safari, Edge) */
+.column-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.column-content::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.column-content::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
+.column-content::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 /* Botão Carregar Mais - Paginação */
@@ -818,7 +840,7 @@
     gap: 12px;
   }
 
-  .stat-card {
+  .stat-card-ticket {
     padding: 16px 20px;
   }
 
@@ -833,6 +855,11 @@
 
   .kanban-column {
     min-height: 300px;
+    max-height: none;
+  }
+
+  .column-content {
+    max-height: calc(4 * 122px);
   }
 
   .filters-bar {

@@ -19,6 +19,8 @@ import {
   FiImage,
   FiAlertCircle,
   FiCheckCircle,
+  FiChevronLeft,
+  FiChevronRight,
 } from "react-icons/fi";
 
 import jsPDF from "jspdf";
@@ -91,6 +93,14 @@ export default function ListaAgendamentos() {
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
 
+  // Estados de Paginação
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const itensPorPagina = 10;
+
+  // Estados do Modal de Calendário
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(new Date());
+
   // Carregar setores para o modal
   useEffect(() => {
     async function loadSetores() {
@@ -150,6 +160,19 @@ export default function ListaAgendamentos() {
     return filtered;
   }, [agendamentos, searchTerm, filterStatus, filterDate]);
 
+  // Paginação
+  const totalPaginas = Math.ceil(agendamentosFiltrados.length / itensPorPagina);
+  const agendamentosPaginados = useMemo(() => {
+    const inicio = (paginaAtual - 1) * itensPorPagina;
+    const fim = inicio + itensPorPagina;
+    return agendamentosFiltrados.slice(inicio, fim);
+  }, [agendamentosFiltrados, paginaAtual, itensPorPagina]);
+
+  // Reset página ao mudar filtros
+  useEffect(() => {
+    setPaginaAtual(1);
+  }, [searchTerm, filterStatus, filterDate]);
+
   // Estatísticas
   const stats = useMemo(
     () => ({
@@ -167,6 +190,56 @@ export default function ListaAgendamentos() {
     setSearchTerm("");
     setFilterStatus("todos");
     setFilterDate("");
+    setPaginaAtual(1);
+  };
+
+  // Funções de navegação de páginas
+  const irParaPagina = (pagina) => {
+    if (pagina >= 1 && pagina <= totalPaginas) {
+      setPaginaAtual(pagina);
+    }
+  };
+
+  // Funções do Calendário
+  const getAgendamentosDoMes = (ano, mes) => {
+    return agendamentos.filter((ag) => {
+      const data = new Date(ag.horario_agendado);
+      return data.getFullYear() === ano && data.getMonth() === mes;
+    });
+  };
+
+  const getDiasComAgendamento = (ano, mes) => {
+    const agendamentosDoMes = getAgendamentosDoMes(ano, mes);
+    const dias = {};
+    agendamentosDoMes.forEach((ag) => {
+      const data = new Date(ag.horario_agendado);
+      const dia = data.getDate();
+      if (!dias[dia]) {
+        dias[dia] = { abertos: 0, confirmados: 0, presentes: 0 };
+      }
+      if (ag.presente) {
+        dias[dia].presentes++;
+      } else if (ag.confirmado) {
+        dias[dia].confirmados++;
+      } else {
+        dias[dia].abertos++;
+      }
+    });
+    return dias;
+  };
+
+  const handleCalendarDateClick = (dia) => {
+    const ano = selectedCalendarDate.getFullYear();
+    const mes = selectedCalendarDate.getMonth();
+    const dataFormatada = `${ano}-${String(mes + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+    setFilterDate(dataFormatada);
+    setShowCalendarModal(false);
+  };
+
+  const mudarMesCalendario = (direcao) => {
+    const novaData = new Date(selectedCalendarDate);
+    novaData.setMonth(novaData.getMonth() + direcao);
+    setSelectedCalendarDate(novaData);
   };
 
   // Formatadores
@@ -434,15 +507,16 @@ export default function ListaAgendamentos() {
   const exportarExcel = () => {
     const dados = agendamentosFiltrados.map((ag) => ({
       Nome: ag.nome,
+      "Data Agendada": formatarData(ag.horario_agendado),
       CPF: formatarCPF(ag.cpf),
       Setor: ag.setor,
-      "Data Agendada": formatarData(ag.horario_agendado),
+      "Criado Por": ag.criado_por,
+      "Confirmado Por": ag.confirmado_por || "",
       Status: ag.presente
         ? "Presente"
         : ag.confirmado
           ? "Confirmado"
           : "Agendado",
-      "Criado por": ag.criado_por,
     }));
 
     const ws = XLSX.utils.json_to_sheet(dados);
@@ -461,12 +535,24 @@ export default function ListaAgendamentos() {
 
     autoTable(doc, {
       startY: 20,
-      head: [["Nome", "CPF", "Setor", "Data", "Status"]],
+      head: [
+        [
+          "Nome",
+          "Data",
+          "CPF",
+          "Setor",
+          "Criado Por",
+          "Confirmado Por",
+          "Status",
+        ],
+      ],
       body: agendamentosFiltrados.map((ag) => [
         ag.nome,
+        formatarData(ag.horario_agendado),
         formatarCPF(ag.cpf),
         ag.setor,
-        formatarData(ag.horario_agendado),
+        ag.criado_por,
+        ag.confirmado_por || "",
         ag.presente ? "Presente" : ag.confirmado ? "Confirmado" : "Agendado",
       ]),
     });
@@ -502,6 +588,14 @@ export default function ListaAgendamentos() {
           </div>
 
           <div className="header-right">
+            <button
+              className="btn-calendar"
+              onClick={() => setShowCalendarModal(true)}
+              title="Ver calendário de agendamentos"
+            >
+              <FiCalendar />
+              <span>Calendário</span>
+            </button>
             {podeCriar && (
               <button className="btn-primary" onClick={handleOpenModal}>
                 <FiPlus />
@@ -516,7 +610,7 @@ export default function ListaAgendamentos() {
       {/* STATS CARDS */}
       {/* ═══════════════════════════════════════════════════════════════ */}
       <div className="agendamentos-stats">
-        <div className="stat-card">
+        <div className="stat-card-agendamentos">
           <div className="stat-content">
             <span className="stat-label">Total</span>
             <span className="stat-value">{stats.total}</span>
@@ -526,7 +620,7 @@ export default function ListaAgendamentos() {
           </div>
         </div>
 
-        <div className="stat-card">
+        <div className="stat-card-agendamentos">
           <div className="stat-content">
             <span className="stat-label">Em Aberto</span>
             <span className="stat-value">{stats.abertos}</span>
@@ -536,7 +630,7 @@ export default function ListaAgendamentos() {
           </div>
         </div>
 
-        <div className="stat-card">
+        <div className="stat-card-agendamentos">
           <div className="stat-content">
             <span className="stat-label">Confirmados</span>
             <span className="stat-value">{stats.confirmados}</span>
@@ -546,7 +640,7 @@ export default function ListaAgendamentos() {
           </div>
         </div>
 
-        <div className="stat-card">
+        <div className="stat-card-agendamentos">
           <div className="stat-content">
             <span className="stat-label">Presentes</span>
             <span className="stat-value">{stats.presentes}</span>
@@ -650,7 +744,7 @@ export default function ListaAgendamentos() {
             </p>
           </div>
         ) : (
-          agendamentosFiltrados.map((agendamento) => (
+          agendamentosPaginados.map((agendamento) => (
             <div
               key={agendamento.id}
               className={`agendamento-card ${agendamento.presente ? "presente" : agendamento.confirmado ? "confirmado" : "aberto"}`}
@@ -818,6 +912,33 @@ export default function ListaAgendamentos() {
           ))
         )}
       </div>
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* PAGINAÇÃO */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {totalPaginas > 1 && (
+        <div className="agendamentos-paginacao">
+          <button
+            className="btn-paginacao"
+            onClick={() => irParaPagina(paginaAtual - 1)}
+            disabled={paginaAtual === 1}
+          >
+            <FiChevronLeft /> Anterior
+          </button>
+
+          <span className="paginacao-info">
+            Página {paginaAtual} de {totalPaginas}
+          </span>
+
+          <button
+            className="btn-paginacao"
+            onClick={() => irParaPagina(paginaAtual + 1)}
+            disabled={paginaAtual === totalPaginas}
+          >
+            Próxima <FiChevronRight />
+          </button>
+        </div>
+      )}
 
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* MODAL - NOVO AGENDAMENTO */}
@@ -1007,6 +1128,237 @@ export default function ListaAgendamentos() {
                 🔗 Abrir em nova aba
               </button>
               <button className="btn-primary" onClick={handleCloseImageModal}>
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* MODAL - CALENDÁRIO */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {showCalendarModal && (
+        <div
+          className="modal-overlay"
+          onClick={() => setShowCalendarModal(false)}
+        >
+          <div
+            className="calendar-modal-container"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="calendar-modal-header">
+              <h2>
+                <FiCalendar />
+                Calendário de Agendamentos
+              </h2>
+              <button
+                className="btn-close-modal"
+                onClick={() => setShowCalendarModal(false)}
+              >
+                <FiX />
+              </button>
+            </div>
+
+            <div className="calendar-modal-content">
+              {/* Navegação do mês */}
+              <div className="calendar-nav">
+                <button
+                  className="btn-calendar-nav"
+                  onClick={() => mudarMesCalendario(-1)}
+                >
+                  <FiChevronLeft />
+                </button>
+                <span className="calendar-month-year">
+                  {selectedCalendarDate.toLocaleDateString("pt-BR", {
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </span>
+                <button
+                  className="btn-calendar-nav"
+                  onClick={() => mudarMesCalendario(1)}
+                >
+                  <FiChevronRight />
+                </button>
+              </div>
+
+              {/* Legenda */}
+              <div className="calendar-legenda">
+                <span className="legenda-item aberto">
+                  <span className="legenda-dot"></span> Agendado
+                </span>
+                <span className="legenda-item confirmado">
+                  <span className="legenda-dot"></span> Confirmado
+                </span>
+                <span className="legenda-item presente">
+                  <span className="legenda-dot"></span> Presente
+                </span>
+              </div>
+
+              {/* Calendário */}
+              <div className="calendar-grid">
+                {/* Cabeçalho dos dias */}
+                <div className="calendar-weekdays">
+                  {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map(
+                    (dia) => (
+                      <span key={dia} className="calendar-weekday">
+                        {dia}
+                      </span>
+                    ),
+                  )}
+                </div>
+
+                {/* Dias do mês */}
+                <div className="calendar-days">
+                  {(() => {
+                    const ano = selectedCalendarDate.getFullYear();
+                    const mes = selectedCalendarDate.getMonth();
+                    const primeiroDia = new Date(ano, mes, 1).getDay();
+                    const diasNoMes = new Date(ano, mes + 1, 0).getDate();
+                    const diasComAgendamento = getDiasComAgendamento(ano, mes);
+                    const hoje = new Date();
+                    const isHoje = (dia) =>
+                      hoje.getDate() === dia &&
+                      hoje.getMonth() === mes &&
+                      hoje.getFullYear() === ano;
+
+                    const dias = [];
+
+                    // Dias vazios antes do primeiro dia
+                    for (let i = 0; i < primeiroDia; i++) {
+                      dias.push(
+                        <div
+                          key={`empty-${i}`}
+                          className="calendar-day empty"
+                        ></div>,
+                      );
+                    }
+
+                    // Dias do mês
+                    for (let dia = 1; dia <= diasNoMes; dia++) {
+                      const agendamentosDoDia = diasComAgendamento[dia];
+                      const temAgendamento = agendamentosDoDia !== undefined;
+
+                      dias.push(
+                        <div
+                          key={dia}
+                          className={`calendar-day ${temAgendamento ? "has-event" : ""} ${isHoje(dia) ? "hoje" : ""}`}
+                          onClick={() =>
+                            temAgendamento && handleCalendarDateClick(dia)
+                          }
+                          title={
+                            temAgendamento
+                              ? `${agendamentosDoDia.abertos + agendamentosDoDia.confirmados + agendamentosDoDia.presentes} agendamento(s)`
+                              : ""
+                          }
+                        >
+                          <span className="day-number">{dia}</span>
+                          {temAgendamento && (
+                            <div className="day-indicators">
+                              {agendamentosDoDia.abertos > 0 && (
+                                <span
+                                  className="indicator aberto"
+                                  title={`${agendamentosDoDia.abertos} agendado(s)`}
+                                >
+                                  {agendamentosDoDia.abertos}
+                                </span>
+                              )}
+                              {agendamentosDoDia.confirmados > 0 && (
+                                <span
+                                  className="indicator confirmado"
+                                  title={`${agendamentosDoDia.confirmados} confirmado(s)`}
+                                >
+                                  {agendamentosDoDia.confirmados}
+                                </span>
+                              )}
+                              {agendamentosDoDia.presentes > 0 && (
+                                <span
+                                  className="indicator presente"
+                                  title={`${agendamentosDoDia.presentes} presente(s)`}
+                                >
+                                  {agendamentosDoDia.presentes}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>,
+                      );
+                    }
+
+                    return dias;
+                  })()}
+                </div>
+              </div>
+
+              {/* Lista de agendamentos do mês */}
+              <div className="calendar-month-summary">
+                <h4>Resumo do Mês</h4>
+                {(() => {
+                  const ano = selectedCalendarDate.getFullYear();
+                  const mes = selectedCalendarDate.getMonth();
+                  const agendamentosDoMes = getAgendamentosDoMes(ano, mes);
+
+                  if (agendamentosDoMes.length === 0) {
+                    return (
+                      <p className="no-events">Nenhum agendamento neste mês</p>
+                    );
+                  }
+
+                  const resumo = {
+                    total: agendamentosDoMes.length,
+                    abertos: agendamentosDoMes.filter((ag) => !ag.confirmado)
+                      .length,
+                    confirmados: agendamentosDoMes.filter(
+                      (ag) => ag.confirmado && !ag.presente,
+                    ).length,
+                    presentes: agendamentosDoMes.filter((ag) => ag.presente)
+                      .length,
+                  };
+
+                  return (
+                    <div className="month-stats">
+                      <div className="month-stat">
+                        <span className="month-stat-value">{resumo.total}</span>
+                        <span className="month-stat-label">Total</span>
+                      </div>
+                      <div className="month-stat aberto">
+                        <span className="month-stat-value">
+                          {resumo.abertos}
+                        </span>
+                        <span className="month-stat-label">Agendados</span>
+                      </div>
+                      <div className="month-stat confirmado">
+                        <span className="month-stat-value">
+                          {resumo.confirmados}
+                        </span>
+                        <span className="month-stat-label">Confirmados</span>
+                      </div>
+                      <div className="month-stat presente">
+                        <span className="month-stat-value">
+                          {resumo.presentes}
+                        </span>
+                        <span className="month-stat-label">Presentes</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
+            <div className="calendar-modal-footer">
+              <button
+                className="btn-secondary"
+                onClick={() => {
+                  setSelectedCalendarDate(new Date());
+                }}
+              >
+                Hoje
+              </button>
+              <button
+                className="btn-primary"
+                onClick={() => setShowCalendarModal(false)}
+              >
                 Fechar
               </button>
             </div>

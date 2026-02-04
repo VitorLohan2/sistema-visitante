@@ -50,14 +50,6 @@ const TicketDashboard = () => {
   // Hook de Toast
   const { showToast, ToastContainer } = useToast();
 
-  // Paginação por coluna - 10 cards por vez
-  const CARDS_PER_PAGE = 10;
-  const [cardsVisiveis, setCardsVisiveis] = useState({
-    Aberto: CARDS_PER_PAGE,
-    "Em andamento": CARDS_PER_PAGE,
-    Resolvido: CARDS_PER_PAGE,
-  });
-
   // ═══════════════════════════════════════════════════════════════
   // DADOS DO CACHE (carregados pelo useDataLoader)
   // ═══════════════════════════════════════════════════════════════
@@ -260,14 +252,6 @@ const TicketDashboard = () => {
     setDraggedTicket(null);
   };
 
-  // Função para carregar mais cards em uma coluna
-  const carregarMaisCards = (statusKey) => {
-    setCardsVisiveis((prev) => ({
-      ...prev,
-      [statusKey]: prev[statusKey] + CARDS_PER_PAGE,
-    }));
-  };
-
   // ═══════════════════════════════════════════════════════════════
   // HANDLERS
   // ═══════════════════════════════════════════════════════════════
@@ -447,7 +431,7 @@ const TicketDashboard = () => {
       {/* MINI DASHBOARD - STATS CARDS */}
       {/* ═══════════════════════════════════════════════════════════════ */}
       <div className="stats-dashboard">
-        <div className="stat-card">
+        <div className="stat-card-ticket">
           <div className="stat-content">
             <span className="stat-label">Total de Tarefas</span>
             <span className="stat-value">{stats.total}</span>
@@ -457,7 +441,7 @@ const TicketDashboard = () => {
           </div>
         </div>
 
-        <div className="stat-card">
+        <div className="stat-card-ticket">
           <div className="stat-content">
             <span className="stat-label">Em Progresso</span>
             <span className="stat-value">{stats.emAndamento}</span>
@@ -467,7 +451,7 @@ const TicketDashboard = () => {
           </div>
         </div>
 
-        <div className="stat-card">
+        <div className="stat-card-ticket">
           <div className="stat-content">
             <span className="stat-label">Membros da Equipe</span>
             <span className="stat-value">{uniqueUsers.length}</span>
@@ -533,13 +517,6 @@ const TicketDashboard = () => {
           const columnTickets = filteredTickets.filter(
             (t) => t.status === status.key,
           );
-          // Paginação: limita a quantidade de cards visíveis
-          const ticketsVisiveis = columnTickets.slice(
-            0,
-            cardsVisiveis[status.key],
-          );
-          const temMaisTickets =
-            columnTickets.length > cardsVisiveis[status.key];
           const isDragOver = dragOverColumn === status.key;
 
           return (
@@ -582,7 +559,7 @@ const TicketDashboard = () => {
                   </div>
                 ) : (
                   <>
-                    {ticketsVisiveis.map((ticket) => (
+                    {columnTickets.map((ticket) => (
                       <div
                         className={`ticket-card ${podeEditarTicket ? "draggable" : ""}`}
                         key={ticket.id}
@@ -670,18 +647,6 @@ const TicketDashboard = () => {
                         </div>
                       </div>
                     ))}
-
-                    {/* Botão Carregar Mais */}
-                    {temMaisTickets && (
-                      <button
-                        className="btn-carregar-mais"
-                        onClick={() => carregarMaisCards(status.key)}
-                      >
-                        Carregar mais (
-                        {columnTickets.length - cardsVisiveis[status.key]}{" "}
-                        restantes)
-                      </button>
-                    )}
                   </>
                 )}
               </div>

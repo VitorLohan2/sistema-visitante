@@ -9,6 +9,9 @@ const { authMiddleware } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
+// GET /system/health - Health check com versão da API (público)
+router.get("/health", SystemController.healthCheck);
+
 // GET /system/info - Informações públicas do sistema (versão, último commit)
 router.get("/info", SystemController.getInfo);
 

@@ -1,4 +1,13 @@
 {
+  "name": "sistema-visitante",
+  "version": "2.2.7",
+  "description": "Sistema de Visitante - Liberaê",
+  "scripts": {
+    "version": "node scripts/sync-version.js",
+    "version:patch": "node scripts/sync-version.js patch",
+    "version:minor": "node scripts/sync-version.js minor",
+    "version:major": "node scripts/sync-version.js major"
+  },
   "dependencies": {
     "file-saver": "^2.0.5",
     "multer": "^2.0.0",
