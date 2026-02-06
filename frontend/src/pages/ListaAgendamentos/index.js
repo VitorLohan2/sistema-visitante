@@ -57,8 +57,7 @@ export default function ListaAgendamentos() {
   // Auth e Permissões
   const { user } = useAuth();
   const { temPermissao, papeis } = usePermissoes();
-  const ongId = user?.id;
-  const ongName = user?.name;
+  const userName = user?.name;
   const userSetorId = user?.setor_id;
 
   // Verificar se é da Segurança (usado apenas para notificações no menu lateral)
@@ -397,7 +396,7 @@ export default function ListaAgendamentos() {
       data.append("setor", setorSelecionado?.nome || "");
       data.append("horario_agendado", formData.horario_agendado);
       data.append("observacao", formData.observacao.trim());
-      data.append("criado_por", ongName);
+      data.append("criado_por", userName);
 
       // Só adiciona o arquivo se realmente existe e não está vazio
       if (file && file.size > 0 && file.type.startsWith("image/")) {
@@ -589,7 +588,7 @@ export default function ListaAgendamentos() {
 
           <div className="header-right">
             <button
-              className="btn-calendar"
+              className="btn-secondary"
               onClick={() => setShowCalendarModal(true)}
               title="Ver calendário de agendamentos"
             >
@@ -697,7 +696,7 @@ export default function ListaAgendamentos() {
           </div>
 
           {(searchTerm || filterStatus !== "todos" || filterDate) && (
-            <button className="btn-clear-filters" onClick={clearFilters}>
+            <button className="btn-clean" onClick={clearFilters}>
               Limpar filtros
             </button>
           )}
@@ -710,7 +709,7 @@ export default function ListaAgendamentos() {
           </span>
 
           <button
-            className="btn-export"
+            className="btn-excel"
             onClick={exportarExcel}
             title="Exportar Excel"
           >
@@ -719,7 +718,7 @@ export default function ListaAgendamentos() {
           </button>
 
           <button
-            className="btn-export pdf"
+            className="btn-pdf"
             onClick={exportarPDF}
             title="Exportar PDF"
           >

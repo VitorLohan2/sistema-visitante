@@ -131,6 +131,10 @@ router.use("/rondas", rondaRoutes);
 const controlidRoutes = require("./controlid.routes");
 router.use("/controlid", controlidRoutes);
 
+// Impressora - Impressão via rede (TCP/IP porta 9100)
+const impressoraRoutes = require("./impressora.routes");
+router.use("/impressora", impressoraRoutes);
+
 // ═══════════════════════════════════════════════════════════════
 // ROTAS LEGADAS ADICIONAIS (compatibilidade com frontend)
 // ═══════════════════════════════════════════════════════════════

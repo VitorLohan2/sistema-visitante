@@ -1,5 +1,9 @@
 const connection = require("../database/connection");
-const { gerarToken } = require("../utils/jwt");
+const {
+  gerarToken,
+  verificarToken,
+  decodificarToken,
+} = require("../utils/jwt");
 const {
   verificarSenha,
   hashSenha,
@@ -608,6 +612,130 @@ module.exports = {
       });
     } catch (error) {
       console.error("❌ Erro no sessions:", error);
+      return response.status(500).json({
+        error: "Erro interno no servidor",
+        code: "INTERNAL_ERROR",
+      });
+    }
+  },
+
+  /**
+   * REFRESH TOKEN — Renova um token JWT válido ou recentemente expirado
+   * POST /auth/refresh-token
+   *
+   * Permite que o frontend renove o token antes (ou logo após) a expiração,
+   * evitando que o usuário seja forçado a fazer login novamente durante
+   * sessões longas de trabalho.
+   *
+   * Regras:
+   * - Aceita tokens válidos OU tokens expirados dentro de uma janela de graça (30 min)
+   * - Busca dados atualizados do usuário no banco de dados
+   * - Retorna um novo token com expiração renovada
+   * - Se o token expirou há mais de 30 min, retorna 401 (precisa fazer login)
+   */
+  async refreshToken(request, response) {
+    const authHeader = request.headers.authorization;
+
+    if (!authHeader) {
+      return response.status(401).json({
+        error: "Token não fornecido",
+        code: "TOKEN_MISSING",
+      });
+    }
+
+    const parts = authHeader.split(" ");
+    if (parts.length !== 2 || !/^Bearer$/i.test(parts[0])) {
+      return response.status(401).json({
+        error: "Formato de token inválido",
+        code: "TOKEN_MALFORMED",
+      });
+    }
+
+    const token = parts[1];
+
+    try {
+      let decoded;
+
+      try {
+        // Tenta verificar normalmente (token ainda válido)
+        decoded = verificarToken(token);
+      } catch (error) {
+        if (error.name === "TokenExpiredError") {
+          // Token expirado — decodifica sem verificação para pegar o payload
+          decoded = decodificarToken(token);
+
+          if (!decoded || !decoded.exp) {
+            return response.status(401).json({
+              error: "Token inválido",
+              code: "TOKEN_INVALID",
+            });
+          }
+
+          // Janela de graça: permite refresh até 30 minutos após expiração
+          const GRACE_PERIOD_MS = 30 * 60 * 1000; // 30 minutos
+          const expiredAt = decoded.exp * 1000;
+          const gracePeriodEnd = expiredAt + GRACE_PERIOD_MS;
+
+          if (Date.now() > gracePeriodEnd) {
+            return response.status(401).json({
+              error: "Token expirado há muito tempo. Faça login novamente.",
+              code: "TOKEN_EXPIRED_BEYOND_GRACE",
+            });
+          }
+        } else {
+          return response.status(401).json({
+            error: "Token inválido",
+            code: "TOKEN_INVALID",
+          });
+        }
+      }
+
+      if (!decoded || !decoded.id) {
+        return response.status(401).json({
+          error: "Token sem dados de usuário",
+          code: "TOKEN_NO_USER",
+        });
+      }
+
+      // Busca dados atualizados do usuário no banco
+      const usuario = await connection("usuarios")
+        .where("id", decoded.id)
+        .select("id", "nome", "email", "empresa_id", "setor_id")
+        .first();
+
+      if (!usuario) {
+        return response.status(401).json({
+          error: "Usuário não encontrado",
+          code: "USER_NOT_FOUND",
+        });
+      }
+
+      // Verifica se é admin via papéis (atualizado)
+      const isAdmin = await isUsuarioAdmin(usuario.id);
+
+      // Gera novo token com dados atualizados
+      const newToken = gerarToken({
+        id: usuario.id,
+        nome: usuario.nome,
+        email: usuario.email,
+        empresa_id: usuario.empresa_id,
+        setor_id: usuario.setor_id,
+        isAdmin,
+      });
+
+      return response.json({
+        token: newToken,
+        usuario: {
+          id: usuario.id,
+          nome: usuario.nome,
+          email: usuario.email,
+          empresa_id: usuario.empresa_id,
+          setor_id: usuario.setor_id,
+          isAdmin,
+        },
+      });
+    } catch (error) {
+      console.error("❌ Erro ao renovar token:", error);
       return response.status(500).json({
         error: "Erro interno no servidor",
         code: "INTERNAL_ERROR",

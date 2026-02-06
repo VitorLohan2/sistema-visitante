@@ -415,7 +415,8 @@ export default function ListagemVisitante() {
   return (
     <div className="profile-container">
       <header>
-        <img src={logo} alt="DIME" />
+        {/* <img src={logo} alt="DIME" /> */}
+        <h1 className="page-title">Visitantes Cadastrados</h1>
 
         <div className="search-container">
           <div className="search-wrapper">
@@ -445,11 +446,10 @@ export default function ListagemVisitante() {
       </header>
 
       <div className="page-header-section">
-        <h1 className="page-title">Visitantes Cadastrados</h1>
         <div className="page-subtitle">
           <span className="total-counter">
             <span className="counter-value">{visitantes.length}</span>
-            <span className="counter-label">cadastros registrados</span>
+            <span className="counter-label">Cadastros Registrados</span>
           </span>
           {isSearching && searchTerm && (
             <span className="search-results-badge">

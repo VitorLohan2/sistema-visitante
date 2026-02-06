@@ -814,7 +814,7 @@ export default function ListaFuncionarios() {
                 </button>
                 <button
                   type="button"
-                  className="btn-cancelar"
+                  className="btn-secondary"
                   onClick={handleFecharModalForm}
                 >
                   Cancelar

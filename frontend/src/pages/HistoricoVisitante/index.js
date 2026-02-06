@@ -63,9 +63,6 @@ export default function HistoricoVisitante() {
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 50;
 
-  const ongId = localStorage.getItem("ongId");
-  const ongName = localStorage.getItem("ongName");
-
   // Controle de listeners do socket
   const socketListenersRef = useRef([]);
   const isDataLoadedRef = useRef(false);
@@ -281,7 +278,7 @@ export default function HistoricoVisitante() {
       socketListenersRef.current.forEach((unsub) => unsub && unsub());
       socketListenersRef.current = [];
     };
-  }, [ongId, setupSocketListeners]);
+  }, [setupSocketListeners]);
 
   // ═══════════════════════════════════════════════════════════════
   // FILTRO DE DADOS

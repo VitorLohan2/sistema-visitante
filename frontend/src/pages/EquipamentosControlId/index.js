@@ -447,7 +447,7 @@ export default function EquipamentosControlId() {
 
             {/* Botão atualizar */}
             <button
-              className="controlid-btn-secondary"
+              className="btn-secondary"
               onClick={carregarDados}
               disabled={loading}
             >
@@ -458,7 +458,7 @@ export default function EquipamentosControlId() {
             {/* Botão cadastrar */}
             {podeCadastrar && (
               <button
-                className="controlid-btn-primary"
+                className="btn-primary"
                 onClick={() => abrirModal()}
                 disabled={!servicoOnline}
               >
@@ -493,7 +493,7 @@ export default function EquipamentosControlId() {
             <FiAlertTriangle size={48} />
             <h2>Erro ao carregar</h2>
             <p>{erro}</p>
-            <button className="controlid-btn-primary" onClick={carregarDados}>
+            <button className="btn-primary" onClick={carregarDados}>
               <FiRefreshCw /> Tentar novamente
             </button>
           </div>
@@ -507,10 +507,7 @@ export default function EquipamentosControlId() {
                 : "Nenhum equipamento corresponde à busca."}
             </p>
             {podeCadastrar && dispositivos.length === 0 && (
-              <button
-                className="controlid-btn-primary"
-                onClick={() => abrirModal()}
-              >
+              <button className="btn-primary" onClick={() => abrirModal()}>
                 <FiPlus /> Cadastrar Equipamento
               </button>
             )}
@@ -776,14 +773,7 @@ export default function EquipamentosControlId() {
 
             <div className="controlid-modal-footer">
               <button
-                className="controlid-btn-secondary"
-                onClick={fecharModal}
-                disabled={salvando}
-              >
-                Cancelar
-              </button>
-              <button
-                className="controlid-btn-primary"
+                className="btn-primary"
                 onClick={handleSalvar}
                 disabled={salvando}
               >
@@ -797,6 +787,13 @@ export default function EquipamentosControlId() {
                     {editando ? "Salvar Alterações" : "Cadastrar"}
                   </>
                 )}
+              </button>
+              <button
+                className="btn-secondary"
+                onClick={fecharModal}
+                disabled={salvando}
+              >
+                Cancelar
               </button>
             </div>
           </div>
@@ -924,7 +921,7 @@ export default function EquipamentosControlId() {
                 </button>
               )}
               <button
-                className="controlid-btn-secondary"
+                className="btn-secondary"
                 onClick={() => setDispositivoDetalhes(null)}
               >
                 Fechar

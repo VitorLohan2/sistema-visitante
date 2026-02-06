@@ -195,7 +195,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .page-header-section {
-  margin-top: 40px;
+  margin-top: 32px;
   margin-bottom: 32px;
   padding-bottom: 24px;
   border-bottom: 1px solid #e5e7eb;
@@ -209,12 +209,12 @@
   letter-spacing: -0.5px;
 }
 
-.page-subtitle {
+/* .page-subtitle {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 16px;
-}
+} */
 
 /* Contador Total */
 .total-counter {
@@ -283,15 +283,15 @@
   }
 
   .page-title {
-    font-size: 22px;
+    font-size: 28px;
     text-align: center;
   }
-
+  /* 
   .page-subtitle {
     flex-direction: column;
     align-items: center;
     gap: 12px;
-  }
+  } */
 
   .total-counter {
     padding: 6px 14px;
@@ -315,10 +315,10 @@
 }
 
 /* Legacy h1 support */
-.profile-container h1 {
+/* .profile-container h1 {
   margin-top: 40px;
   margin-bottom: 24px;
-}
+} */
 
 /* NOVOS ESTILOS PARA CARDS */
 .cards-container {

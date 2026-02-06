@@ -2,15 +2,21 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import permissoesService from "../services/permissoesService";
 import { getPermissoesCache } from "../services/cacheService";
+import { validateToken } from "../utils/tokenUtils";
 import logger from "../utils/logger";
 
 /**
  * Hook para gerenciar permissões do usuário no React
  *
  * OTIMIZADO: Inicializa com cache para evitar "piscar" na UI
- * - Primeiro verifica o cache (memória + sessionStorage)
- * - Se existir, usa imediatamente sem loading
- * - Se não existir, carrega da API
+ * - Primeiro valida o token JWT (verifica expiração)
+ * - Se token válido e cache existe, usa imediatamente sem loading
+ * - Se token válido mas sem cache, carrega da API autenticada
+ * - Se token inválido, não tenta carregar (evita requisições fúteis)
+ *
+ * IMPORTANTE: Permissões SÓ são carregadas após validação do token.
+ * Isso garante que o RBAC depende exclusivamente da autenticação,
+ * nunca de dados residuais no sessionStorage.
  *
  * @example
  * const { temPermissao, isAdmin, loading, papeis } = usePermissoes();
@@ -22,9 +28,23 @@ import logger from "../utils/logger";
  */
 export function usePermissoes() {
   // ═══════════════════════════════════════════════════════════════
-  // INICIALIZAÇÃO COM CACHE (evita "piscar" na UI)
+  // VALIDAÇÃO DO TOKEN ANTES DE INICIALIZAR
+  // Se o token é inválido, não faz sentido carregar permissões
+  // ═══════════════════════════════════════════════════════════════
+  const tokenValidRef = useRef(() => {
+    const token = localStorage.getItem("token");
+    return validateToken(token).valid;
+  });
+
+  const isTokenValid = tokenValidRef.current();
+
+  // ═══════════════════════════════════════════════════════════════
+  // INICIALIZAÇÃO COM CACHE (somente se token é válido)
   // ═══════════════════════════════════════════════════════════════
   const initialCacheRef = useRef(() => {
+    if (!isTokenValid) {
+      return { permissoes: [], papeis: [], hasCache: false };
+    }
     const cached = getPermissoesCache();
     return {
       permissoes: cached.permissoes || [],
@@ -37,13 +57,13 @@ export function usePermissoes() {
 
   const [permissoes, setPermissoes] = useState(initialData.permissoes);
   const [papeis, setPapeis] = useState(initialData.papeis);
-  // Se já tem cache, não mostra loading
-  const [loading, setLoading] = useState(!initialData.hasCache);
+  // Se já tem cache e token válido, não mostra loading
+  const [loading, setLoading] = useState(!initialData.hasCache && isTokenValid);
 
   // Ref para evitar carregamentos duplicados
   const isLoadedRef = useRef(initialData.hasCache);
 
-  // Carregar permissões ao montar (apenas se não tiver cache)
+  // Carregar permissões ao montar (apenas se não tiver cache e token válido)
   useEffect(() => {
     let isMounted = true;
 
@@ -53,10 +73,14 @@ export function usePermissoes() {
         return;
       }
 
-      // NÃO tenta carregar se não há token (usuário deslogado)
+      // Valida o token antes de tentar carregar
       const token = localStorage.getItem("token");
-      if (!token) {
-        logger.log("[usePermissoes] Sem token, não carregando permissões");
+      const validation = validateToken(token);
+
+      if (!validation.valid) {
+        logger.log(
+          `[usePermissoes] Token inválido (${validation.reason}), não carregando permissões`,
+        );
         setLoading(false);
         return;
       }

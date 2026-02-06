@@ -512,10 +512,10 @@ const GerenciamentoDescargas = () => {
           </div>
 
           <div className="gd-filtros-acoes">
-            <button className="gd-btn-filtrar" onClick={aplicarFiltros}>
+            <button className="btn-secondary" onClick={aplicarFiltros}>
               <FiFilter /> Filtrar
             </button>
-            <button className="gd-btn-limpar" onClick={limparFiltros}>
+            <button className="btn-clean" onClick={limparFiltros}>
               <FiX /> Limpar
             </button>
           </div>

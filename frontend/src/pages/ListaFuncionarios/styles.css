@@ -599,23 +599,6 @@
   border-top: 1px solid var(--func-border);
 }
 
-.btn-cancelar {
-  padding: 12px 24px;
-  background: #f3f4f6;
-  color: var(--func-text);
-  border: 1px solid var(--func-border);
-  border-radius: var(--func-radius-sm);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.funcionarios-btn-cancelar:hover {
-  background: #e5e7eb;
-  border-color: var(--func-text-light);
-}
-
 /* ═══════════════════════════════════════════════════════════════
    MODAL HISTÓRICO
    ═══════════════════════════════════════════════════════════════ */
@@ -967,12 +950,6 @@
   .modal-actions {
     flex-direction: column-reverse;
     gap: 8px;
-  }
-
-  .btn-cancelar {
-    width: 100%;
-    padding: 11px 16px;
-    font-size: 13px;
   }
 
   .filtros-row {

@@ -2,6 +2,10 @@ import React from "react";
 import ReactDOM from "react-dom";
 import App from "./App";
 
+import { injectRadixColors } from "./utils/radix-colors";
+
+injectRadixColors();
+
 // ═══════════════════════════════════════════════════════════════════════════
 // NOTA: A proteção principal contra cache desatualizado está no index.html
 // O script inline no HTML executa ANTES do React carregar, garantindo que

@@ -134,8 +134,7 @@ const TicketDashboard = () => {
   // ═══════════════════════════════════════════════════════════════
   const fetchTickets = useCallback(
     async (forceRefresh = false) => {
-      const ongId = user?.id || localStorage.getItem("ongId");
-      if (!ongId) return;
+      if (!user?.id) return;
 
       setIsLoading(true);
 
@@ -151,7 +150,7 @@ const TicketDashboard = () => {
           });
         } else {
           // Se não tem cache ou forceRefresh, busca da API
-          const userRes = await api.get(`/usuarios/${ongId}`);
+          const userRes = await api.get(`/usuarios/${user.id}`);
           setUserData({
             nome: userRes.data.name,
             setor: userRes.data.setor || userRes.data.setor_nome || "",
@@ -177,8 +176,7 @@ const TicketDashboard = () => {
   // EFEITOS
   // ═══════════════════════════════════════════════════════════════
   useEffect(() => {
-    const ongId = user?.id || localStorage.getItem("ongId");
-    if (!ongId) {
+    if (!user?.id) {
       history.push("/");
       return;
     }

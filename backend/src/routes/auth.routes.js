@@ -22,7 +22,7 @@ router.post(
       senha: Joi.string().required().min(1),
     }),
   }),
-  AuthController.login
+  AuthController.login,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -36,7 +36,7 @@ router.post(
       id: Joi.string().required(),
     }),
   }),
-  AuthController.loginPorId
+  AuthController.loginPorId,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -52,7 +52,7 @@ router.post(
       confirmarSenha: Joi.string().required().min(6),
     }),
   }),
-  AuthController.criarSenha
+  AuthController.criarSenha,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -66,7 +66,7 @@ router.post(
       email: Joi.string().required().email(),
     }),
   }),
-  AuthController.esqueciSenha
+  AuthController.esqueciSenha,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -82,7 +82,7 @@ router.post(
       confirmarSenha: Joi.string().required().min(6),
     }),
   }),
-  AuthController.redefinirSenha
+  AuthController.redefinirSenha,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -99,7 +99,7 @@ router.put(
       confirmarSenha: Joi.string().required().min(6),
     }),
   }),
-  AuthController.alterarSenha
+  AuthController.alterarSenha,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -107,6 +107,16 @@ router.put(
 // GET /auth/verificar
 // ═══════════════════════════════════════════════════════════════
 router.get("/verificar", authMiddleware, AuthController.verificarToken);
+
+// ═══════════════════════════════════════════════════════════════
+// REFRESH TOKEN — Renovação proativa de token JWT
+// POST /auth/refresh-token
+//
+// Permite renovar o token antes (ou logo após) a expiração.
+// Aceita tokens válidos ou expirados dentro de uma janela de graça.
+// Não usa authMiddleware porque precisa aceitar tokens recém-expirados.
+// ═══════════════════════════════════════════════════════════════
+router.post("/refresh-token", AuthController.refreshToken);
 
 // ═══════════════════════════════════════════════════════════════
 // RECUPERAR ID (legado)
@@ -122,7 +132,7 @@ router.post(
         .regex(/^\d{4}-\d{2}-\d{2}$/),
     }),
   }),
-  AuthController.recuperarId
+  AuthController.recuperarId,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -139,7 +149,7 @@ router.post(
         .regex(/^\d{4}-\d{2}-\d{2}$/),
     }),
   }),
-  AuthController.solicitarRecuperacaoSenha
+  AuthController.solicitarRecuperacaoSenha,
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -153,7 +163,7 @@ router.get(
       token: Joi.string().required(),
     }),
   }),
-  AuthController.verificarTokenRecuperacao
+  AuthController.verificarTokenRecuperacao,
 );
 
 module.exports = router;

@@ -137,8 +137,6 @@ function App() {
   isAdmin: false,         // É administrador?
   empresa_id: 1,          // ID da empresa
   setor_id: 2,            // ID do setor
-  ongId: "abc123",        // Alias legado
-  ongName: "João Silva",  // Alias legado
 }
 ```
 

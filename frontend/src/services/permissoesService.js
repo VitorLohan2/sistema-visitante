@@ -6,31 +6,47 @@ import {
   getPermissoesCache,
   clearPermissoesCache,
 } from "./cacheService";
+import { validateToken } from "../utils/tokenUtils";
 import logger from "../utils/logger";
 
 /**
- * Busca as permissões do usuário logado
- * Usa cache em memória e sessionStorage para persistir entre navegações
+ * Busca as permissões do usuário logado.
+ *
+ * FLUXO:
+ * 1. Valida o token JWT (verifica expiração)
+ * 2. Se token inválido → retorna vazio (sem permissões)
+ * 3. Se token válido → tenta cache (memória) primeiro
+ * 4. Se cache vazio → busca da API autenticada
+ * 5. Armazena resultado no cache
+ *
+ * NOTA: O cache de permissões vive na memória (memoryCache) e no
+ * sessionStorage versionado. Não há acesso direto ao sessionStorage
+ * para evitar permissões de versões anteriores.
  */
 export async function buscarMinhasPermissoes() {
-  // Primeiro verifica se há token (usuário logado)
+  // 1. Valida se há um token JWT válido (não expirado)
   const token = localStorage.getItem("token");
-  if (!token) {
-    logger.log("[permissoesService] Sem token, retornando vazio");
+  const validation = validateToken(token);
+
+  if (!validation.valid) {
+    logger.log(
+      `[permissoesService] Token inválido (${validation.reason}), retornando vazio`,
+    );
     return { permissoes: [], papeis: [] };
   }
 
-  // Depois tenta o cache (memória + sessionStorage)
+  // 2. Tenta o cache (memória + sessionStorage versionado)
   const cached = getPermissoesCache();
   if (cached.permissoes && cached.papeis) {
     return cached;
   }
 
+  // 3. Busca da API autenticada
   try {
     const response = await api.get("/usuarios-papeis/me/permissoes");
     const { permissoes, papeis } = response.data;
 
-    // Salva no cache centralizado
+    // 4. Salva no cache centralizado (versionado)
     setPermissoesCache(permissoes, papeis);
 
     return { permissoes, papeis };

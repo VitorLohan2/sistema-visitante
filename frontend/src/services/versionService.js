@@ -255,6 +255,11 @@ export function dismissUpdate() {
 /**
  * Limpa todo o cache e força reload COMPLETO
  * Deve ser chamada quando o usuário clica em "Atualizar"
+ *
+ * CORREÇÃO: Agora usa o cache versionado. Quando o app recarrega com a nova
+ * versão, o validateCacheVersion() limpa automaticamente chaves antigas.
+ * Isso evita loops: o performUpdate salva a nova versão ANTES do reload,
+ * então na próxima carga o app sabe que já está atualizado.
  */
 export async function performUpdate() {
   logger.log("[Version] 🔄 Usuário solicitou atualização...");
@@ -265,11 +270,19 @@ export async function performUpdate() {
 
   try {
     // 1. Atualiza a versão local ANTES de limpar tudo
+    //    Isso garante que na próxima carga, checkForUpdates() não detecta mudança
+    //    e evita loops infinitos de reload.
     if (serverVersion) {
       saveLocalVersion(
         serverVersion.version,
         serverVersion.buildTime,
         serverVersion.buildNumber,
+      );
+      // Atualiza também a versão do cache para que o validateCacheVersion()
+      // saiba que precisa limpar chaves antigas
+      localStorage.setItem(
+        "cache_version",
+        serverVersion.buildNumber.toString(),
       );
     }
 
@@ -277,21 +290,18 @@ export async function performUpdate() {
     localStorage.removeItem(UPDATE_DISMISSED_KEY);
     localStorage.removeItem(RELOAD_KEY);
 
-    // 3. Limpa TODOS os dados em memória/cache da aplicação
-    // Isso garante que ao recarregar, os dados serão buscados do servidor
+    // 3. Limpa TODOS os dados de cache (sessionStorage)
     sessionStorage.clear();
 
     // 4. Limpa caches específicos da aplicação no localStorage
-    // (mantém apenas dados de versão e autenticação)
+    //    Preserva: autenticação (token/usuario) e versão do app
     const keysToKeep = [
       "token",
       "usuario",
-      "ongId",
-      "ongName",
-      "ongType",
       VERSION_KEY,
       BUILD_TIME_KEY,
       BUILD_NUMBER_KEY,
+      "cache_version",
     ];
 
     const allKeys = Object.keys(localStorage);
@@ -312,7 +322,6 @@ export async function performUpdate() {
     }
 
     // 6. Limpa Cache API (em background, não bloqueia)
-    // Não aguardamos para evitar ERR_CACHE_OPERATION_NOT_SUPPORTED
     if ("caches" in window) {
       caches.keys().then((cacheNames) => {
         cacheNames.forEach((cacheName) => {
@@ -323,18 +332,14 @@ export async function performUpdate() {
 
     logger.log("[Version] ✅ Cache limpo! Fazendo hard reload...");
 
-    // 7. HARD RELOAD - força buscar TUDO do servidor
-    // Redireciona para a HOME com parâmetro de cache-busting
-    // Isso garante que o usuário vai para a página inicial com código novo
+    // 7. HARD RELOAD — redireciona para HOME com cache-busting
     const homeUrl = window.location.origin + "/?_refresh=" + Date.now();
 
-    // Pequeno delay para garantir que as operações async iniciaram
     setTimeout(() => {
       window.location.replace(homeUrl);
     }, 100);
   } catch (error) {
     logger.error("[Version] Erro ao limpar cache:", error);
-    // Fallback: força reload na home
     window.location.replace(
       window.location.origin + "/?_refresh=" + Date.now(),
     );

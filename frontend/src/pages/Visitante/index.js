@@ -42,7 +42,6 @@ export default function Visitante() {
   const { showToast, ToastContainer } = useToast();
 
   const history = useHistory();
-  const ongId = localStorage.getItem("ongId");
 
   // ═══════════════════════════════════════════════════════════════
   // SETUP DOS LISTENERS DO SOCKET (tempo real)
@@ -179,7 +178,7 @@ export default function Visitante() {
       socketListenersRef.current.forEach((unsub) => unsub && unsub());
       socketListenersRef.current = [];
     };
-  }, [ongId, setupSocketListeners]);
+  }, [setupSocketListeners, showToast]);
 
   // ═══════════════════════════════════════════════════════════════
   // ENCERRAR VISITA

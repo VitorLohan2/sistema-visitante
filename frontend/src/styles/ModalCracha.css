@@ -267,3 +267,351 @@
     width: 100%;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   HEADER ACTIONS (Botões de ação no header)
+   ═══════════════════════════════════════════════════════════════ */
+
+.modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-header-actions .btn-icon {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.modal-header-actions .btn-icon:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   STATUS DE IMPRESSÃO
+   ═══════════════════════════════════════════════════════════════ */
+
+.status-impressao {
+  margin-top: 12px;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  width: 100%;
+}
+
+.status-impressao.info {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-impressao.sucesso {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-impressao.erro {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MODAL DE CONFIGURAÇÃO DA IMPRESSORA
+   ═══════════════════════════════════════════════════════════════ */
+
+.config-impressora-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.15s ease;
+}
+
+.config-impressora-container {
+  background: #ffffff;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  animation: slideIn 0.2s ease;
+  margin: 16px;
+}
+
+.config-impressora-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.config-impressora-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.config-impressora-header button {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.config-impressora-header button:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.config-impressora-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.config-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.config-group > label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.config-group select,
+.config-group input[type="number"],
+.config-group input[type="text"] {
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #111827;
+  background: #ffffff;
+  transition: all 0.15s ease;
+}
+
+.config-group select:focus,
+.config-group input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.config-group small {
+  font-size: 12px;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* Radio buttons para método de envio */
+.config-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.config-radio {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.config-radio:hover {
+  border-color: #3b82f6;
+  background: #f8fafc;
+}
+
+.config-radio input[type="radio"] {
+  accent-color: #3b82f6;
+  width: 16px;
+  height: 16px;
+}
+
+.config-radio input[type="radio"]:disabled + svg,
+.config-radio input[type="radio"]:disabled ~ span {
+  opacity: 0.5;
+}
+
+.config-radio span {
+  font-size: 14px;
+  color: #374151;
+}
+
+/* Inputs inline (largura, altura, dpi) */
+.config-inline-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+.config-inline-group > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.config-inline-group > div > label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.config-inline-group input,
+.config-inline-group select {
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+/* Footer da configuração */
+.config-impressora-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.config-impressora-footer .btn-secondary {
+  padding: 8px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.config-impressora-footer .btn-secondary:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+/* Preview dos comandos de impressora */
+.preview-comandos {
+  padding: 16px 20px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVIDADE ADICIONAL
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 520px) {
+  .config-inline-group {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .config-inline-group > div:last-child {
+    grid-column: span 2;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CONFIGURAÇÃO DE REDE (IP da impressora)
+   ═══════════════════════════════════════════════════════════════ */
+
+.config-ip-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.config-ip-group input[type="text"] {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.config-ip-group input[type="number"] {
+  width: 80px;
+  padding: 10px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.config-ip-group .btn-testar {
+  padding: 10px 16px;
+  border: 1px solid #3b82f6;
+  border-radius: 6px;
+  background: #3b82f6;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.config-ip-group .btn-testar:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+/* Radio recomendado (destaque) */
+.config-radio.recomendado {
+  border-color: #10b981;
+  background: #ecfdf5;
+}
+
+.config-radio.recomendado:hover {
+  border-color: #059669;
+  background: #d1fae5;
+}
+
+/* Radio desabilitado */
+.config-radio input[type="radio"]:disabled + svg + span,
+.config-radio input[type="radio"]:disabled ~ span {
+  opacity: 0.5;
+  text-decoration: line-through;
+}

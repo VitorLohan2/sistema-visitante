@@ -10,6 +10,7 @@ import { ChatSuporteProvider } from "./contexts/ChatSuporteContext";
 import { ToastProvider } from "./contexts/ToastContext";
 import ChatWidget from "./components/ChatWidget";
 import UpdateNotification from "./components/UpdateNotification";
+import { validateCacheVersion } from "./services/cacheService";
 import {
   initVersionCheck,
   stopVersionCheck,
@@ -17,6 +18,13 @@ import {
   performUpdate,
   dismissUpdate,
 } from "./services/versionService";
+
+// ═══════════════════════════════════════════════════════════════════════════
+// VALIDAÇÃO DE CACHE NA INICIALIZAÇÃO
+// Executa ANTES do React renderizar para garantir que cache antigo
+// de versões anteriores não seja lido. A autenticação (token) é preservada.
+// ═══════════════════════════════════════════════════════════════════════════
+validateCacheVersion();
 
 function App() {
   // Estado para controlar notificação de atualização

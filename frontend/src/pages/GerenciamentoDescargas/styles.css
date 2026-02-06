@@ -157,46 +157,6 @@
   gap: 8px;
 }
 
-.gd-btn-filtrar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 20px;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  color: #475569;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.gd-btn-filtrar:hover {
-  background: #e2e8f0;
-  color: #1e293b;
-}
-
-.gd-btn-limpar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 16px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 8px;
-  color: #dc2626;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.gd-btn-limpar:hover {
-  background: #fee2e2;
-  border-color: #f87171;
-  color: #b91c1c;
-}
-
 /* Resumo */
 .gd-resumo {
   margin-bottom: 16px;

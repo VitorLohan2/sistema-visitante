@@ -59,6 +59,98 @@
 import logger from "../utils/logger";
 
 // ═══════════════════════════════════════════════════════════════════════════
+// VERSIONAMENTO DE CACHE
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// O prefixo de versão garante que cache de versões anteriores do app
+// não sejam lidos por versões novas, evitando dados incompatíveis após deploy.
+//
+// Quando o app é atualizado:
+// 1. O prefixo de versão muda
+// 2. Chaves antigas no sessionStorage ficam órfãs (não são mais lidas)
+// 3. O clearStaleCache() remove essas chaves órfãs
+// 4. O cache de autenticação (token, usuario) NÃO é afetado (vive no localStorage)
+//
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Chave no localStorage que armazena a versão do cache */
+const CACHE_VERSION_KEY = "cache_version";
+
+/**
+ * Obtém a versão atual do app para prefixar as chaves de cache.
+ * Usa o buildNumber do version.json (armazenado no localStorage pelo versionService).
+ * Se não existir, usa um fallback estático.
+ */
+function getAppVersion() {
+  return localStorage.getItem("app_build_number") || "default";
+}
+
+/**
+ * Retorna o prefixo versionado para chaves de sessionStorage.
+ * Ex: "v_1770232318257_" → "v_1770232318257_cache_usuarios"
+ */
+function getVersionedPrefix() {
+  return `v_${getAppVersion()}_`;
+}
+
+/**
+ * Verifica se a versão do cache atual é compatível com a versão do app.
+ * Se não for, limpa todo o cache antigo (mas preserva autenticação).
+ *
+ * Deve ser chamada na inicialização do app.
+ */
+export function validateCacheVersion() {
+  const storedVersion = localStorage.getItem(CACHE_VERSION_KEY);
+  const currentVersion = getAppVersion();
+
+  if (storedVersion !== currentVersion) {
+    logger.log(
+      `🔄 Versão de cache mudou (${storedVersion} → ${currentVersion}). Limpando cache antigo...`,
+    );
+
+    // Limpa memória
+    Object.keys(memoryCache).forEach((key) => {
+      memoryCache[key] = null;
+    });
+
+    // Remove TODAS as chaves de cache do sessionStorage (de qualquer versão)
+    clearStaleCache();
+
+    // Salva a nova versão
+    localStorage.setItem(CACHE_VERSION_KEY, currentVersion);
+
+    logger.log(
+      "✅ Cache limpo por mudança de versão. Autenticação preservada.",
+    );
+  }
+}
+
+/**
+ * Remove chaves de cache de versões anteriores do sessionStorage.
+ * Chaves de cache seguem o padrão "v_XXXXX_cache_*" ou o legado "cache_*".
+ */
+function clearStaleCache() {
+  const currentPrefix = getVersionedPrefix();
+  const keysToRemove = [];
+
+  for (let i = 0; i < sessionStorage.length; i++) {
+    const key = sessionStorage.key(i);
+    if (key && (key.startsWith("v_") || key.startsWith("cache_"))) {
+      // Remove se não pertence à versão atual
+      if (!key.startsWith(currentPrefix)) {
+        keysToRemove.push(key);
+      }
+    }
+  }
+
+  keysToRemove.forEach((key) => sessionStorage.removeItem(key));
+
+  if (keysToRemove.length > 0) {
+    logger.log(`🗑️ ${keysToRemove.length} chaves de cache antigas removidas`);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // CACHE EM MEMÓRIA (acesso instantâneo)
 // ═══════════════════════════════════════════════════════════════════════════
 const memoryCache = {
@@ -188,6 +280,7 @@ const CACHE_KEYS = {
 
 /**
  * Salva dados no cache (memória + sessionStorage)
+ * Usa chaves versionadas no sessionStorage para evitar conflitos após deploy.
  * @param {string} key - Chave do cache
  * @param {any} data - Dados a serem salvos
  */
@@ -215,16 +308,18 @@ export function setCache(key, data) {
       memoryCache.history = data;
     }
 
-    // Salva no sessionStorage
-    const cacheKey = CACHE_KEYS[normalizedKey.toUpperCase()];
-    if (cacheKey) {
-      sessionStorage.setItem(cacheKey, JSON.stringify(data));
+    // Salva no sessionStorage com prefixo versionado
+    const baseCacheKey = CACHE_KEYS[normalizedKey.toUpperCase()];
+    if (baseCacheKey) {
+      const versionedKey = getVersionedPrefix() + baseCacheKey;
+      sessionStorage.setItem(versionedKey, JSON.stringify(data));
     }
 
     // Atualiza timestamp
     const now = Date.now();
     memoryCache.lastUpdate = now;
-    sessionStorage.setItem(CACHE_KEYS.LASTUPDATE, now.toString());
+    const lastUpdateKey = getVersionedPrefix() + CACHE_KEYS.LASTUPDATE;
+    sessionStorage.setItem(lastUpdateKey, now.toString());
 
     logger.log(
       `✅ Cache salvo: ${key} (${Array.isArray(data) ? data.length + " itens" : "dados"})`,
@@ -236,6 +331,7 @@ export function setCache(key, data) {
 
 /**
  * Recupera dados do cache (primeiro memória, depois sessionStorage)
+ * Lê do sessionStorage usando chaves versionadas.
  * @param {string} key - Chave do cache
  * @returns {any} Dados do cache ou null
  */
@@ -247,11 +343,12 @@ export function getCache(key) {
     return memoryCache[normalizedKey];
   }
 
-  // Fallback para sessionStorage
+  // Fallback para sessionStorage (com chave versionada)
   try {
-    const cacheKey = CACHE_KEYS[normalizedKey.toUpperCase()];
-    if (cacheKey) {
-      const cached = sessionStorage.getItem(cacheKey);
+    const baseCacheKey = CACHE_KEYS[normalizedKey.toUpperCase()];
+    if (baseCacheKey) {
+      const versionedKey = getVersionedPrefix() + baseCacheKey;
+      const cached = sessionStorage.getItem(versionedKey);
       if (cached) {
         const data = JSON.parse(cached);
         memoryCache[normalizedKey] = data;
@@ -301,7 +398,8 @@ export function isCacheLoaded() {
 }
 
 /**
- * Limpa todo o cache
+ * Limpa todo o cache (memória + sessionStorage)
+ * Remove apenas dados de cache, preserva autenticação e versão do app.
  */
 export function clearCache() {
   // Limpa memória
@@ -309,10 +407,15 @@ export function clearCache() {
     memoryCache[key] = null;
   });
 
-  // Limpa sessionStorage
-  Object.values(CACHE_KEYS).forEach((key) => {
-    sessionStorage.removeItem(key);
-  });
+  // Limpa sessionStorage — remove chaves de cache versionadas e legadas
+  const keysToRemove = [];
+  for (let i = 0; i < sessionStorage.length; i++) {
+    const key = sessionStorage.key(i);
+    if (key && (key.startsWith("v_") || key.startsWith("cache_"))) {
+      keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach((key) => sessionStorage.removeItem(key));
 
   logger.log("🗑️ Cache limpo completamente");
 }
@@ -610,8 +713,9 @@ export function getPermissoesCache() {
 export function clearPermissoesCache() {
   memoryCache.permissoes = null;
   memoryCache.papeis = null;
-  sessionStorage.removeItem(CACHE_KEYS.PERMISSOES);
-  sessionStorage.removeItem(CACHE_KEYS.PAPEIS);
+  const prefix = getVersionedPrefix();
+  sessionStorage.removeItem(prefix + CACHE_KEYS.PERMISSOES);
+  sessionStorage.removeItem(prefix + CACHE_KEYS.PAPEIS);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -695,6 +799,7 @@ export default {
   clearCache,
   isCacheLoaded,
   getCacheStats,
+  validateCacheVersion,
 
   // Funções CRUD genéricas
   addToCache,

@@ -46,8 +46,7 @@ export default function NovoAgendamento() {
   const socketListenersRef = useRef([]);
 
   const { user, logout } = useAuth();
-  const ongId = user?.id;
-  const ongName = user?.name;
+  const userName = user?.name;
 
   const [formData, setFormData] = useState({
     nome: "",
@@ -228,7 +227,7 @@ export default function NovoAgendamento() {
       data.append("setor", setorSelecionado?.nome || "");
       data.append("horario_agendado", formData.horario_agendado);
       data.append("observacao", formData.observacao.trim());
-      data.append("criado_por", ongName);
+      data.append("criado_por", userName);
 
       if (file) {
         data.append("foto_colaborador", file); // 🔹 adiciona imagem
@@ -286,7 +285,7 @@ export default function NovoAgendamento() {
       <header>
         <div className="ajuste-Titulo">
           <img src={logoImg} alt="DIME" />
-          <span>Bem-vindo(a), {ongName}</span>
+          <span>Bem-vindo(a), {userName}</span>
         </div>
 
         <Link className="back-link" to="/agendamentos">

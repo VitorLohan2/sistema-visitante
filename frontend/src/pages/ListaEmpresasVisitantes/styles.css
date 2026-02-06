@@ -495,49 +495,6 @@
   border-top: 1px solid var(--empresas-border);
 }
 
-.btn-cancelar {
-  padding: 12px 24px;
-  background: #f3f4f6;
-  color: var(--empresas-text);
-  border: 1px solid var(--empresas-border);
-  border-radius: var(--empresas-radius-sm);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.btn-cancelar:hover {
-  background: #e5e7eb;
-  border-color: var(--empresas-text-light);
-}
-
-.btn-salvar {
-  padding: 12px 24px;
-  background: linear-gradient(
-    135deg,
-    var(--empresas-primary) 0%,
-    var(--empresas-primary-hover) 100%
-  );
-  color: white;
-  border: none;
-  border-radius: var(--empresas-radius-sm);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
-}
-
-.btn-salvar:hover:not(:disabled) {
-  transform: translateY(-2px);
-}
-
-.btn-salvar:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
 /* ═══════════════════════════════════════════════════════════════
    RESPONSIVO - Mobile First
    ═══════════════════════════════════════════════════════════════ */
@@ -696,13 +653,6 @@
   .modal-actions {
     flex-direction: column-reverse;
     gap: 8px;
-  }
-
-  .btn-cancelar,
-  .btn-salvar {
-    width: 100%;
-    padding: 11px 16px;
-    font-size: 13px;
   }
 }
 

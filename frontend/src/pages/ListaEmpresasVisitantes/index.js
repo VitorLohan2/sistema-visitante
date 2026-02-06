@@ -596,7 +596,7 @@ export default function ListaEmpresasVisitantes() {
                 </button>
                 <button
                   type="button"
-                  className="btn-cancelar"
+                  className="btn-secondary"
                   onClick={handleFecharModal}
                 >
                   Cancelar

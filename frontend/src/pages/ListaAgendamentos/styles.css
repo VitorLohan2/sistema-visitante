@@ -304,22 +304,6 @@
   cursor: pointer;
 }
 
-.btn-clear-filters {
-  background: none;
-  border: none;
-  color: #ef4444;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 8px 12px;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-}
-
-.btn-clear-filters:hover {
-  background: #fef2f2;
-}
-
 .filters-right {
   display: flex;
   align-items: center;
@@ -332,36 +316,6 @@
   font-weight: 500;
   padding-right: 12px;
   border-right: 1px solid #e2e8f0;
-}
-
-.btn-export {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 16px;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  color: #475569;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-export:hover {
-  background: #e2e8f0;
-  color: #1e293b;
-}
-
-.btn-export.pdf {
-  background: #e9f6ff;
-  border-color: #cae7fe;
-  color: #374151;
-}
-
-.btn-export.pdf:hover {
-  background: #cae7fe;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1043,10 +997,6 @@
   .agendamento-card-title-group h3 {
     font-size: 16px;
   }
-
-  .btn-export span {
-    display: none;
-  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1276,33 +1226,6 @@
   font-size: 0.875rem;
   color: #6b7280;
   font-weight: 500;
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   BOTÃO CALENDÁRIO NO HEADER
-   ═══════════════════════════════════════════════════════════════ */
-.btn-calendar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  background: #f1f5f9;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  color: #475569;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-calendar:hover {
-  background: #e2e8f0;
-  color: #1e293b;
-}
-
-.btn-calendar svg {
-  font-size: 18px;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1630,38 +1553,6 @@
   padding: 16px 24px;
   border-top: 1px solid #e2e8f0;
   background: #f8fafc;
-}
-
-.calendar-modal-footer .btn-secondary {
-  background: #64748b;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.calendar-modal-footer .btn-secondary:hover {
-  background: #475569;
-}
-
-.calendar-modal-footer .btn-primary {
-  background: #2083e0;
-  color: white;
-  border: none;
-  padding: 10px 24px;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.calendar-modal-footer .btn-primary:hover {
-  background: #1a6fc2;
 }
 
 /* Responsividade do Modal Calendário */
